@@ -1,0 +1,51 @@
+name: ❓ 咨询
+description: 使用方式、接入方案、能力边界等咨询
+title: "[咨询] "
+labels: ["type/question"]
+body:
+  - type: input
+    id: company
+    attributes:
+      label: 企业名称 *
+      description: 请填写您的企业完整名称，以便于提供更优质的服务。如果您是独立开发者，可以填写「独立开发者」。
+      placeholder: 例如：XX 电力科技有限公司 / 独立开发者
+    validations:
+      required: true
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary *
+      description: 一句话概括你的咨询
+    validations:
+      required: true
+
+  - type: input
+    id: cloud-version
+    attributes:
+      label: 上云 API 2 版本号（选填）
+      placeholder: 例如：2.3
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 咨询详情 *
+      placeholder: 你想了解/确认的问题、背景与目标
+    validations:
+      required: true
+
+  - type: dropdown
+    id: industry
+    attributes:
+      label: 行业（选填）
+      options:
+        - 电力
+        - 公安
+        - 测绘
+        - 其他
+
+  - type: input
+    id: industry-other
+    attributes:
+      label: 行业 — 其他（选填）
+      description: 若上面「行业」选择了「其他」，请在此填写
