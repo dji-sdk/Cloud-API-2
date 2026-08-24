@@ -1,0 +1,121 @@
+name: 🐞 问题反馈（Bug）
+description: 上云 API 2 底座 / SDK / 前端组件 使用中出现的故障或缺陷
+title: "[问题] "
+labels: ["type/bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。带 **\*** 为必填。请尽量补全版本号与日志下载链接，便于研发快速定位。
+        > 说明：若为「SDK」类问题，**SDK 版本号**与**日志下载链接**为必填。
+
+  - type: input
+    id: company
+    attributes:
+      label: 企业名称 *
+      description: 请填写您的企业完整名称，以便于提供更优质的服务。如果您是独立开发者，可以填写「独立开发者」。
+      placeholder: 例如：XX 电力科技有限公司 / 独立开发者
+    validations:
+      required: true
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary *
+      description: 一句话概括问题
+      placeholder: 例如：调用 XXX 接口返回 500 / 前端组件加载白屏
+    validations:
+      required: true
+
+  - type: dropdown
+    id: problem-scope
+    attributes:
+      label: 问题类型 *
+      description: 问题所属模块
+      options:
+        - 上云 API 2 底座
+        - SDK
+        - 前端组件
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 严重程度 *
+      options:
+        - 致命
+        - 严重
+        - 一般
+        - 提示
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: 出现频率 *
+      options:
+        - always
+        - sometimes
+        - random
+        - unable to reproduce
+    validations:
+      required: true
+
+  - type: input
+    id: cloud-version
+    attributes:
+      label: 上云 API 2 版本号
+      placeholder: 例如：2.3.1
+
+  - type: input
+    id: sdk-version
+    attributes:
+      label: SDK 版本号
+      description: 「SDK」类问题必填
+      placeholder: 例如：5.8.0
+
+  - type: textarea
+    id: log-links
+    attributes:
+      label: 日志下载链接（选填，可多个）
+      description: 每行一个链接；「SDK」类问题必填
+      placeholder: |
+        https://.../log-2026xxxx.zip
+        https://.../trace-2026xxxx.zip
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 复现步骤 / 详细描述 *
+      description: 操作步骤、期望结果、实际结果、报错堆栈
+      placeholder: |
+        1. 复现步骤……
+        2. 期望：……
+        3. 实际：……
+        报错/堆栈：……
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 问题截图（选填）
+      description: 可直接把图片拖拽或粘贴到此处
+
+  - type: dropdown
+    id: industry
+    attributes:
+      label: 行业（选填）
+      options:
+        - 电力
+        - 公安
+        - 测绘
+        - 其他
+
+  - type: input
+    id: industry-other
+    attributes:
+      label: 行业 — 其他（选填）
+      description: 若上面「行业」选择了「其他」，请在此填写
