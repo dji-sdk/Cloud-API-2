@@ -1,0 +1,7 @@
+# 放在仓库的 .github/ISSUE_TEMPLATE/config.yml
+# 关闭「空白 issue」，强制用户走模板；类型即通过“选哪个模板”来分流
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 文档与常见问题
+    url: https://<你的-GitBook-文档地址>
+    about: 提交反馈前，建议先查阅文档与常见问题，很多问题可自助解决
