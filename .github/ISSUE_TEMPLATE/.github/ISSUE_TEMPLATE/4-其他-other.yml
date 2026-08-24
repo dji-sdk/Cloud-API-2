@@ -1,0 +1,43 @@
+name: 📌 其他
+description: 不属于问题 / 需求 / 咨询的其他反馈
+title: "[其他] "
+labels: ["type/other"]
+body:
+  - type: input
+    id: company
+    attributes:
+      label: 企业名称 *
+      description: 请填写您的企业完整名称，以便于提供更优质的服务。如果您是独立开发者，可以填写「独立开发者」。
+      placeholder: 例如：XX 电力科技有限公司 / 独立开发者
+    validations:
+      required: true
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary *
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 详细描述 *
+    validations:
+      required: true
+
+  - type: dropdown
+    id: industry
+    attributes:
+      label: 行业（选填）
+      options:
+        - 电力
+        - 公安
+        - 测绘
+        - 其他
+
+  - type: input
+    id: industry-other
+    attributes:
+      label: 行业 — 其他（选填）
+      description: 若上面「行业」选择了「其他」，请在此填写
