@@ -1,7 +1,7 @@
 name: 💡 需求 / 建议
 description: 功能需求、体验改进建议
 title: "[需求] "
-labels: ["type/feature"]
+labels: ["type/enhancement"]
 body:
   - type: input
     id: company
