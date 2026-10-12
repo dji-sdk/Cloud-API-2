@@ -1,0 +1,623 @@
+{
+  "_description": "SDK Demo 参数配置文件。修改此配置文件即可适配不同 demo case, 无需改代码。注意: 请勿修改 json key!",
+  "device_common_configs": {
+    "_comment_1": "设备通用配置, device_common_configs 内容, 需要用户自行对照上云API说明做配置。",
+    "_comment_2": "某些飞机可以有多个 target_payload_index, 用户需要指定目标 target_payload_index 配置",
+    "_comment_3": "model key, target_payload_index 可参考(https://developer.dji.com/doc/cloud-api-tutorial/cn/overview/product-support.html)",
+    "device_common_configs_list": [
+      {
+        "_comment": "大疆机场(Dock)",
+        "device_model_key": "3-1-0",
+        "device_class": "airport",
+        "target_payload_index": ""
+      },
+      {
+        "_comment": "大疆机场 2(Dock 2)",
+        "device_model_key": "3-2-0",
+        "device_class": "airport",
+        "target_payload_index": ""
+      },
+      {
+        "_comment": "大疆机场 3(Dock 3)",
+        "device_model_key": "3-3-0",
+        "device_class": "airport",
+        "target_payload_index": ""
+      },
+      {
+        "_comment": "经纬 300 RTK 飞机(Matrice 300 RTK), 根据不同负载相机(比如 H20/H20T; H20N; H30/H30T)和不同位置, 需要用户确认、选择和配置 target_payload_index !",
+        "device_model_key": "0-60-0",
+        "device_class": "drone",
+        "target_payload_index": ""
+      },
+      {
+        "_comment": "经纬 M30 系列飞机(Matrice 30, M30), 需要用户确认和配置 target_payload_index !",
+        "device_model_key": "0-67-0",
+        "device_class": "drone",
+        "target_payload_index": "52-0-0"
+      },
+      {
+        "_comment": "经纬 M30 系列飞机(Matrice 30T, M30T), 需要用户确认和配置 target_payload_index !",
+        "device_model_key": "0-67-1",
+        "device_class": "drone",
+        "target_payload_index": "53-0-0"
+      },
+      {
+        "_comment": "Mavic 3 行业系列(M3E), 需要用户确认和配置 target_payload_index !",
+        "device_model_key": "0-77-0",
+        "device_class": "drone",
+        "target_payload_index": "66-0-0"
+      },
+      {
+        "_comment": "Mavic 3 行业系列(M3T), 需要用户确认和配置 target_payload_index !",
+        "device_model_key": "0-77-1",
+        "device_class": "drone",
+        "target_payload_index": "67-0-0"
+      },
+      {
+        "_comment": "Mavic 3 系列(M3M), 如果用户有此飞机, 需要用户确认和配置 target_payload_index ! 可参考相机负载信息推送。",
+        "device_model_key": "0-77-2",
+        "device_class": "drone",
+        "target_payload_index": ""
+      },
+      {
+        "_comment": "Mavic 3 系列(M3TA), 需要用户确认和配置 target_payload_index !",
+        "device_model_key": "0-77-3",
+        "device_class": "drone",
+        "target_payload_index": "129-0-0"
+      },
+      {
+        "_comment": "Matrice 350 RTK, 根据不同负载相机(比如 H20/H20T; H20N; H30/H30T)和不同位置, 需要用户确认、选择和配置 target_payload_index !",
+        "device_model_key": "0-89-0",
+        "device_class": "drone",
+        "target_payload_index": "99-0-0"
+      },
+      {
+        "_comment": "Matrice 3D(M3D), 需要用户确认和配置 target_payload_index !",
+        "device_model_key": "0-91-0",
+        "device_class": "drone",
+        "target_payload_index": "80-0-0"
+      },
+      {
+        "_comment": "Matrice 3TD(M3TD), 需要用户确认和配置 target_payload_index !",
+        "device_model_key": "0-91-1",
+        "device_class": "drone",
+        "target_payload_index": "81-0-0"
+      },
+      {
+        "_comment": "DJI Matrice 4 系列(M4E), 需要用户确认和配置 target_payload_index !",
+        "device_model_key": "0-99-0",
+        "device_class": "drone",
+        "target_payload_index": "88-0-0"
+      },
+      {
+        "_comment": "DJI Matrice 4 系列(M4T), 需要用户确认和配置 target_payload_index !",
+        "device_model_key": "0-99-1",
+        "device_class": "drone",
+        "target_payload_index": "89-0-0"
+      },
+      {
+        "_comment": "Matrice 4D, 需要用户确认和配置 target_payload_index !",
+        "device_model_key": "0-100-0",
+        "device_class": "drone",
+        "target_payload_index": "98-0-0"
+      },
+      {
+        "_comment": "Matrice 4TD, 需要用户确认和配置 target_payload_index !",
+        "device_model_key": "0-100-1",
+        "device_class": "drone",
+        "target_payload_index": "99-0-0"
+      },
+      {
+        "_comment": "Matrice 400, 根据不同负载相机(比如 H30/H30T)和不同位置, 需要用户确认、选择和配置 target_payload_index !",
+        "device_model_key": "0-103-0",
+        "device_class": "drone",
+        "target_payload_index": ""
+      },
+      {
+        "_comment": "需用户确认和配置 target_payload_index !",
+        "device_model_key": "0-130-0",
+        "device_class": "drone",
+        "target_payload_index": ""
+      },
+      {
+        "_comment": " 如有 demo 需要, 需用户确认和配置 target_payload_index !",
+        "device_model_key": "9-131-0",
+        "device_class": "dock",
+        "target_payload_index": ""
+      },
+      {
+        "_comment": "Base Station(比如 O4 Ground Station), 如有 demo 需要, 需用户确认和配置 target_payload_index !",
+        "device_model_key": "8-135-0",
+        "device_class": "base_station",
+        "target_payload_index": ""
+      },
+      {
+        "_comment": "RC(DJI 带屏遥控器行业版, 搭配 Matrice 300 RTK), 如有 demo 需要, 需用户确认和配置 target_payload_index !",
+        "device_model_key": "2-56-0",
+        "device_class": "rc",
+        "target_payload_index": ""
+      },
+      {
+        "_comment": "RC(DJI RC Plus, 搭配 M350/M300 RTK, M30/30T), 如有 demo 需要, 需用户确认和配置 target_payload_index !",
+        "device_model_key": "2-119-0",
+        "device_class": "rc",
+        "target_payload_index": ""
+      },
+      {
+        "_comment": "RC(DJI RC Pro 行业版, Mavic 3 行业系列), 如有 demo 需要, 需用户确认和配置 target_payload_index !",
+        "device_model_key": "2-144-0",
+        "device_class": "rc",
+        "target_payload_index": ""
+      },
+      {
+        "_comment": "RC(DJI RC Plus 2, 搭配 DJI Matrice 4 系列), 如有 demo 需要, 需用户确认和配置 target_payload_index !",
+        "device_model_key": "2-174-0",
+        "device_class": "rc",
+        "target_payload_index": ""
+      }
+    ]
+  },
+  "fly_to": {
+    "_comment": "【必须修改】latitude/longitude 必须填写当前测试场地真实坐标, 保留 0.0 会被安全校验拒绝(飞机不会飞向赤道)。",
+    "latitude": 0.0,
+    "longitude": 0.0,
+    "height": 50.0,
+    "max_speed": 10,
+    "observe_ms": 5000
+  },
+  "fly_to_update": {
+    "_comment": "【必须修改】更新目标点坐标, 保留 0.0 会被跳过并打警告。",
+    "latitude": 0.0,
+    "longitude": 0.0,
+    "height": 60.0,
+    "max_speed": 8
+  },
+  "takeoff": {
+    "_comment": "指令飞行/一键起飞(CommandRequest)。【必须修改】target_latitude/longitude。可选字段：commander_* / rth_mode / cloud_to_cloud_id / need_verify_flight_control(-1=不传)。media_folder_name 不属于本接口(仅 GroundTakeoff)。",
+    "target_latitude": 0.0,
+    "target_longitude": 0.0,
+    "target_height": 120.0,
+    "security_takeoff_height": 100.0,
+    "max_speed": 10,
+    "rth_altitude": 100,
+    "out_of_control_action": 1,
+    "takeoff_mode": 1,
+    "commander_flight_height": 100.0,
+    "commander_flight_mode": 0,
+    "rth_mode": 0,
+    "cloud_to_cloud_id": "",
+    "need_verify_flight_control": -1
+  },
+  "flight_control": {
+    "_comment1": "WASD 摇杆参数(FlightControlDemo [7])。各轴中性 1024, SDK 建议操控范围 364~1684, 越界会被夹取(旧 demo 的 2048 属越界值, 已修正)。",
+    "_comment2": "默认全中性=飞机不动; 验证真实操控请按需修改(如 stick_pitch=1200 前进)。stick_duration_ms: 连发时长, 固定 50Hz(20ms) 频率, 上限 10000ms(越界夹取); 连发期间按 Enter 可随时中止, 结束后自动补发全中性松杆收尾帧。",
+    "stick_roll": 1024,
+    "stick_pitch": 1024,
+    "stick_throttle": 1024,
+    "stick_yaw": 1024,
+    "stick_gimbal_pitch": 1024,
+    "stick_duration_ms": 3000
+  },
+  "poi": {
+    "_comment1": "【必须修改】latitude/longitude 为 POI 环绕中心点, 保留 0.0 会被安全校验拒绝。speed=进入环绕的初始速度; update_speed=演示中途更新的环绕速度(取不同值以看出变化)。",
+    "_comment2": "climb_wait_ms=一键起飞后等待爬升到目标高度的时长; observe_ms=环绕观察时长(观察后查询任务信息)。",
+    "latitude": 0.0,
+    "longitude": 0.0,
+    "height": 200.0,
+    "speed": 2.0,
+    "update_speed": 3.0,
+    "circle_radius": 20.0,
+    "climb_wait_ms": 15000,
+    "observe_ms": 10000
+  },
+  "live": {
+    "_comment1": "码流落盘目录; 无人机/机场各写 <role>_<sn>_<时间>.h264。",
+    "_comment2": "range_timeout_ms: 等待设备上报可用直播源超时(ms); ",
+    "_comment3": "画质设置为非交互固定序列(先 0=自适应, 成功后 3=高清), 档位表 0=自适应,1=流畅,2=标清,3=高清,4=超清(参考上云 api 文档)。",
+    "output_dir": "stream_data",
+    "range_timeout_ms": 20000
+  },
+  "live_record": {
+    "_comment": "直播录制 Demo 参数(LiveRecordDemo)。time_zone: 录制时区, 默认 Asia/Shanghai。",
+    "time_zone": "Asia/Shanghai"
+  },
+  "safety_service": {
+    "_comment_1": "安全服务 Demo 参数(SafetyServiceDemo)。信号地图 / 自定义飞行区域 / 离线地图 三组。",
+    "_comment_2": "signal_map_device_sns: 用于 [1] 查询信号地图的设备 SN 列表。",
+    "_comment_3": "flight_area_create.geometry_type: Circle(用 center+radius) / Polygon / Polyline(仅禁降区支持), 非 Circle 用 coordinates 三层嵌套 [[[lng,lat],[lng,lat],...]], 多边形须首尾闭合且每环顶点数 <255。",
+    "_comment_4": "flight_area_sync_sns / offline_map_sync_sns: 分别用于飞行区域和离线地图的 同步/查同步状态 [6][7][12][13]。",
+    "signal_map_device_sns": [],
+    "signal_map_data_types": [
+      "4g",
+      "sdr"
+    ],
+    "flight_area_create": {
+      "name": "demo-flight-area",
+      "type": "nfz",
+      "created_by": "demo_user",
+      "color": "#FF0000",
+      "width": 10,
+      "clamp_to_ground": false,
+      "geometry_type": "Circle",
+      "center": [
+        0.0,
+        0.0
+      ],
+      "radius": 500.0,
+      "coordinates": []
+    },
+    "flight_area_get": {
+      "name": "",
+      "type": "",
+      "status": "",
+      "ids": [],
+      "page_index": 1,
+      "page_size": 20
+    },
+    "flight_area_sync_sns": [],
+    "offline_map_sync_sns": [],
+    "offline_map_model3d_items": [
+      {
+        "uuid": "",
+        "object_key": "",
+        "file_type": "b3dm"
+      }
+    ],
+    "offline_map_model2d_items": []
+  },
+  "psdk": {
+    "_comment_1": "PSDK Demo 参数(PsdkDemo)。psdk_index: 未订阅设备列表时的回退索引。",
+    "_comment_2": "喊话器: [4]-[8] speaker_volume/tts_*/audio_play/tts_play; [9]-[10] widget_*; [11]-[17] resource_*/upload。",
+    "_comment_3": "探照灯: [18]-[24] searchlight_*(mode/brightness/fine_*/wide_field/gimbal_ctrl/type)。",
+    "psdk_index": 0,
+    "speaker_volume": 50,
+    "speaker_play_mode": 1,
+    "tts_volume": 50,
+    "tts_speed": 5,
+    "tts_type": 0,
+    "tts_language": 0,
+    "tts_play": {
+      "name": "demo-tts",
+      "text": "你好, 这是一段测试语音",
+      "md5": ""
+    },
+    "audio_play": {
+      "name": "demo-audio",
+      "url": "",
+      "md5": "",
+      "format": "pcm"
+    },
+    "widget_input_text": "hello",
+    "widget_index": 0,
+    "widget_value": 0,
+    "resource_create": {
+      "name": "demo-resource",
+      "file_type": "audio",
+      "object_key": "test/audio.mp3",
+      "duration": 0,
+      "content": "",
+      "create_scene": "import",
+      "need_opus": false,
+      "size": 1024,
+      "visible": true
+    },
+    "resource_edit": {
+      "name": "demo-resource-edit",
+      "file_type": "audio",
+      "content": "",
+      "visible": true
+    },
+    "widget_resources_object_keys": [],
+    "upload_file_path": "",
+    "searchlight_mode": 1,
+    "searchlight_brightness": 50,
+    "searchlight_fine_position": 0,
+    "searchlight_fine_value": 0.0,
+    "searchlight_fine_saved": false,
+    "searchlight_wide_field": 0,
+    "searchlight_gimbal_ctrl": 0,
+    "searchlight_type": 2
+  },
+  "media_service": {
+    "_comment": "媒体服务 Demo 参数(MediaServiceDemo)。list_* 为查询列表 [3] 的参数(list_device_sn 须填机场 Dock SN, 空=不按 SN 过滤); upload_sts_* 为获取 STS [6] 的参数(upload_sts_file_path 为上传路径前缀, 空会被 SDK 本地校验拒绝); upload_cb_* 为上传完成回调 [7] 的参数(upload_cb_object_key 须填对象存储完整 Key, 与 upload_cb_file_name 任一为空会被 SDK 本地校验拒绝)。",
+    "list_flight_id": "",
+    "list_device_sn": "",
+    "list_start_index": 0,
+    "list_page_size": 20,
+    "upload_sts_file_path": "demo/media/",
+    "upload_sts_expire": 3600,
+    "upload_sts_sn": "",
+    "upload_sts_module": 0,
+    "upload_cb_sn": "",
+    "upload_cb_result": 0,
+    "upload_cb_progress": 100,
+    "upload_cb_expected_count": 1,
+    "upload_cb_uploaded_count": 1,
+    "upload_cb_flight_type": 0,
+    "upload_cb_biz_code": "file_upload_callback",
+    "upload_cb_version": "1.0",
+    "upload_cb_object_key": "",
+    "upload_cb_file_name": "",
+    "upload_cb_file_type": 0,
+    "upload_cb_fingerprint": ""
+  },
+  "drc": {
+    "_comment": "DRC 远程调试。gimbal_reset_mode: 0=回中 1=向下 2=偏航回中 3=俯仰向下; link_settle_ms: 建链后观察链路稳定的等待毫秒。",
+    "gimbal_reset_mode": 0,
+    "link_settle_ms": 3000
+  },
+  "drc_flight_scenario": {
+    "_comment1": "DrcFlightScenario 虚拟摇杆操控场景参数。起飞参数复用 takeoff 分组。",
+    "_comment2": "stick_step: 单次按键的杆量偏移(中性 1024, 范围 [1,660], 对应 ±step/660 行程, 默认 450≈68%)。",
+    "_comment3": "stick_hold_ms: 每次按键后杆量保持发送的时长(ms, 最短 200ms, 默认 1000ms), 超时后自动归中性(松杆)。",
+    "stick_step": 450,
+    "stick_hold_ms": 1000
+  },
+  "dock_control": {
+    "_comment": "机场控制 demo 参数。range_timeout_ms: 切换舱内/舱外摄像头前等待机场直播源的超时(ms)。",
+    "range_timeout_ms": 10000
+  },
+  "payload_control": {
+    "_comment1": "负载控制 demo 参数。zoom_factor: 变焦默认倍数(回车采用, 合法范围随机型/镜头由服务端判定)。",
+    "_comment2": "zoom_area_*: 框选变焦区域(画面归一化坐标 0~1, x/y 为左上角)。look_at_*: LookAtTarget 目标点(按测试场地修改)。",
+    "_comment3": "photo/video_storage_settings: 存储设置默认值(可选 current/vision/ir/wide/zoom)。record_range_timeout_ms: 订阅录制状态前等待机场直播源的超时(ms)。",
+    "zoom_factor": 5,
+    "zoom_area_x": 0.5,
+    "zoom_area_y": 0.5,
+    "zoom_area_width": 0.05,
+    "zoom_area_height": 0.05,
+    "look_at_latitude": 0.0,
+    "look_at_longitude": 0.0,
+    "look_at_height": 200.0,
+    "photo_storage_settings": [
+      "current"
+    ],
+    "video_storage_settings": [
+      "current"
+    ],
+    "record_range_timeout_ms": 10000
+  },
+  "flight_task": {
+    "_comment": "航线任务 Demo 参数(FlightTaskDemo [2] 创建飞行计划)。task_type: 1=立即任务 2=条件任务(demo 默认; 须 begin_at/end_at 执行窗口)。当 begin_at=0 时, 自动按当前时间 + begin_delay_minutes 生成起飞时间。",
+    "wayline_uuid": "",
+    "sn": "",
+    "task_type": 1,
+    "time_zone": "Asia/Shanghai",
+    "out_of_control_action": 1,
+    "rth_altitude": 100,
+    "begin_delay_minutes": 1,
+    "begin_at": 0,
+    "end_at": 0,
+    "list_page_size": 20
+  },
+  "wayline_manage": {
+    "_comment": "航线管理 Demo 参数(FlightTaskDemo [11])。",
+    "list_page_size": 20
+  },
+  "wayline": {
+    "_comment": "WaylineScenario 场景参数。pause_wait_ms: 暂停后等待再恢复的毫秒数; pre_pause_wait_ms: 任务进入running后等多久再暂停; observe_ms: 恢复后观察任务进度的时长毫秒数。",
+    "pause_wait_ms": 10000,
+    "pre_pause_wait_ms": 15000,
+    "observe_ms": 15000
+  },
+  "device_recommendation": {
+    "_comment": "设备推荐参数(FlightTaskDemo [8])。strategy_id: 推荐策略 ID。",
+    "strategy_id": 1
+  },
+  "flight_task_record": {
+    "_comment": "飞行记录导出 Demo 参数(FlightTaskRecordDemo)。file_name 为导出文件名前缀, 代码会自动追加时间戳。list_page_size 为菜单 [2] 查询导出进度的分页大小(默认 50)。",
+    "_comment_query": "query_content_type: 查询时按导出类型过滤, 空串=不过滤(summary/details)。query_status: 查询时按状态过滤, -1=不过滤, 0=导出中, 1=已完成, 2=失败, 3=已取消。query_sort: 排序方式, 空串=时间降序, ASC=升序。",
+    "user_id": "demo_user_id",
+    "content_type": "summary",
+    "file_name": "flight_records_export",
+    "file_type": [
+      "Excel"
+    ],
+    "time_zone": "Asia/Shanghai",
+    "locale": "zh",
+    "list_page_size": 50,
+    "query_content_type": "",
+    "query_status": -1,
+    "query_sort": ""
+  },
+  "timeouts": {
+    "default_callback_timeout_ms": 15000,
+    "takeoff_timeout_ms": 60000,
+    "fly_to_timeout_ms": 120000,
+    "poi_timeout_ms": 120000,
+    "live_stream_ready_timeout_ms": 15000
+  },
+  "logging": {
+    "_comment": "demo 日志：写入 demo_logs_dir/yyyy-MM-dd/ 下; 单文件超过 max_file_size_mb 切下一个。",
+    "demo_logs_dir": "demo_logs",
+    "max_file_size_mb": 30
+  },
+  "ai_box": {
+    "_comment1": "AI Box demo 参数(AIBoxDemo)。SDK 入口: drone.getAIBoxModule()。",
+    "_comment2": "box_sn: AI Box 设备 SN, 执行 [1] 查询后自动缓存；也可手动填写跳过查询。",
+    "_comment3": "app_id: 操作/导出时的应用 ID；upload_file_path: 上传到 AI Box 的本地文件路径。",
+    "_comment4": "app_object_key: 安装应用时的 objectKey(执行 [3-1] 上传后自动缓存)。",
+    "_comment5": "download_object_keys: 获取下载链接时的 objectKey 列表。",
+    "_comment6": "export_type: 导出文件类型(0=日志 1=数据, 以设备文档为准)。",
+    "box_sn": "",
+    "app_id": "",
+    "upload_file_path": "",
+    "app_object_key": "",
+    "download_object_keys": [],
+    "export_type": 0
+  },
+  "terra_build": {
+    "_comment1": "Terra Build demo 参数(TerraBuildDemo)。SDK 入口: workspace.getTerraBuildModule()。",
+    "_comment2": "file_id / file_uuid: 执行 [1-1] 查询列表后自动缓存；也可手动填写。",
+    "_comment3": "folder_uuids: 重建任务/全景拼接所需的媒体文件夹 UUID 列表(必填才能创建任务)。",
+    "_comment4": "reconstruction_type: 重建类型列表, 2=二维 3=三维 4=3DGS RGB 6=全景 7=激光雷达。",
+    "_comment5": "las_wkt: LAS 模型坐标系(如 \"EPSG:4326\" 或完整 WKT 字符串)。",
+    "_comment6": "upload_object_key / upload_file_name: 外部上传模型后的 OSS key 和文件名, 用于上传回调。",
+    "file_id": -1,
+    "file_uuid": "",
+    "folder_uuids": [],
+    "reconstruction_type": [
+      2
+    ],
+    "reconstruction_name": "SDK Demo 重建任务",
+    "reconstruction_wkt": "",
+    "panorama_name": "SDK Demo 全景拼接",
+    "language": "zh",
+    "measure_unit_system": "metric",
+    "rename_to": "SDK Demo 重命名",
+    "las_wkt": "",
+    "upload_object_key": "",
+    "upload_file_name": "",
+    "list_page": 1,
+    "list_page_size": 10
+  },
+  "log_management": {
+    "_comment1": "日志管理 demo 参数(SystemManagementDemo - 日志模块)。",
+    "_comment2": "device_sn: 查询日志/创建报告的目标设备 SN, 留空时自动使用 session 的机场或飞机 SN。",
+    "_comment3": "module_list: 日志模块过滤(空数组=全部), 参考上云 API 文档的模块枚举值。",
+    "_comment4": "report_id: [4] 日志报告操作(取消/删除)的目标 reportUuid, 先执行 [3] 查询列表获取。",
+    "_comment5": "append_file_path: [5] 上传附加文件的本地路径, 如 \"/tmp/extra.log\"。",
+    "device_sn": "",
+    "device_model_key": "",
+    "module_list": [],
+    "report_information": "SDK Demo 日志报告",
+    "_error_start_time_comment": "错误开始时间, Unix 秒级时间戳(C++ message.h); 0=demo 自动取当前时间前 1h。",
+    "error_start_time": 0,
+    "contact_email": "",
+    "contact_phone": "",
+    "report_id": "",
+    "append_file_path": "",
+    "list_page": 1,
+    "list_page_size": 3
+  },
+  "firmware_manage": {
+    "_comment1": "固件管理 demo 参数(SystemManagementDemo - 固件模块)。",
+    "_comment2": "device_model_keys: [2] 获取固件说明的设备型号 key 列表, 如 [\"3-3-0\",\"0-130-0\"]。",
+    "_comment3": "device_sns: [3] 检查固件状态的设备 SN 列表, 留空自动使用 session 设备。",
+    "_comment4": "upgrade_*: [4] 触发固件升级的参数；upgrade_product_version 为目标版本号, 留空时的服务端行为仓库内无出处, 以实际返回为准(可先用 [2] 获取最新固件说明查到版本号后填入)。",
+    "_comment5": "firmware_file_path: [7] 上传固件文件的本地路径(.tar 或厂商指定格式)。",
+    "_comment6": "firmware_file_id: [9] 发布/取消/删除操作的目标固件 ID, 执行 [1] 查询列表后自动填充。",
+    "_comment7": "firmware_object_key: [8] 提交固件信息时的 objectKey, 执行 [7] 上传后自动填充。",
+    "_comment8": "upgrade_type: 固件升级类型, 1=普通升级, 2=一致性升级(bean FirmwareUpgradeDeviceItem)。",
+    "device_model_keys": [],
+    "language": "zh",
+    "device_sns": [],
+    "upgrade_device_sn": "",
+    "upgrade_device_model_key": "",
+    "upgrade_product_version": "",
+    "upgrade_type": 1,
+    "firmware_file_path": "",
+    "firmware_device_model_key": "",
+    "firmware_version": "",
+    "firmware_desc": "",
+    "firmware_md5": "",
+    "firmware_object_key": "",
+    "firmware_file_id": "",
+    "list_page": 1,
+    "list_page_size": 10
+  },
+  "device_debug": {
+    "_comment1": "设备调试 demo 参数(DeviceDebugDemo)。SDK 入口: dock.getDeviceDebugModule()。",
+    "_comment2": "target_device_sn: 目标设备 SN, 留空时自动使用当前 session 的机场 SN。",
+    "_comment3": "子菜单 [5] 飞行参数: distance_limit_state(0=关 1=开), obstacle_avoidance_state(0=关 1=开), night_lights_state(0=关 1=开), alarm_light_state(0=关 1=开)。",
+    "_comment4": "子菜单 [5] 机场: air_conditioner_mode(0=空闲 1=制冷 2=制热 3=除湿), silent_mode(0=关 1=开)。",
+    "_comment5": "子菜单 [6] 维护: battery_store_mode(0=关 1=开), dongle_power_state(0=关 1=开), low_power_mode(0=关 1=开), manual_swap_slot_id: 换电目标电池卡槽 ID。",
+    "_comment6": "sdr_work_mode: SDR 工作模式枚举值, 参考设备文档。",
+    "target_device_sn": "",
+    "distance_limit_state": 1,
+    "distance_limit_value": 500,
+    "height_limit": 120,
+    "obstacle_avoidance_state": 1,
+    "rth_remaining_power": 30,
+    "night_lights_state": 1,
+    "alarm_light_state": 1,
+    "air_conditioner_mode": 0,
+    "silent_mode": 0,
+    "battery_store_mode": 0,
+    "dongle_power_state": 1,
+    "low_power_mode": 0,
+    "manual_swap_slot_id": 0,
+    "dongle_device_sn": "",
+    "dongle_imei": "",
+    "dongle_device_type": "",
+    "esim_operator": -1,
+    "sim_slot": -1,
+    "sdr_work_mode": 0,
+    "_comment_geo": "Geo Caging 地理围栏：geo_caging_switch(0=关 1=开)；fg=飞行围栏中心, cv=自定义围栏中心；坐标留0则发空列表(清除围栏)。",
+    "geo_caging_switch": 0,
+    "geo_caging_fg_longitude": 0.0,
+    "geo_caging_fg_latitude": 0.0,
+    "geo_caging_fg_radius": 500,
+    "geo_caging_fg_height": 120,
+    "geo_caging_cv_longitude": 0.0,
+    "geo_caging_cv_latitude": 0.0,
+    "geo_caging_cv_radius": 500,
+    "geo_caging_cv_height": 120,
+    "_comment_cloud_env": "子菜单 [8] 云环境切换(cloudEnvironmentSwitch / cloudEnvironmentSwitchCallback / topic_cloud_environment_switch)。",
+    "_comment_cloud_env2": "target_type: 0=司空2公有云(填 bind_code/org_id/zone_id), 1=三方云API1 或 3=三方云API2(填 bind_code/org_id/mqtt_*), 2=司空2私有云(填 bind_code/org_id/private_url)。",
+    "_comment_cloud_env3": "parent_sn 留空时自动用当前已选设备 SN(机场); host_sn 配置后才会在 devices_list 里带 host(飞行器)。callsign/model_key 需与后端登记值一致。",
+    "_comment_cloud_env4": "device_secret: 回调接口 device_auth_verify.secret(一机一密), auth_sn 留空则用当前设备 SN; nonce 每次自动生成。",
+    "cloud_env": {
+      "target_type": 3,
+      "bind_code": "bind_code",
+      "org_id": "org_id",
+      "mqtt_addr": "mqtt_addr",
+      "mqtt_password": "//这里的密码要替换",
+      "parent_sn": "parent_sn",
+      "parent_callsign": "",
+      "parent_device_model_key": "parent_device_model_key",
+      "host_sn": "host_sn",
+      "host_callsign": "",
+      "host_device_model_key": "host_device_model_key",
+      "device_secret": "",
+      "zone_id": "",
+      "private_url": "",
+      "mqtt_username": "",
+      "auth_sn": "",
+      "callback_code": 0,
+      "callback_status": "ok"
+    }
+  },
+  "maintenance": {
+    "_comment1": "保修管理 demo 参数(MaintenanceDemo)。建议操作顺序: [1] 查配置 → [2] 创建订单 → [3] 查详情 → [4] 查列表。",
+    "_comment2": "device_sns: [1] 查询报修配置的设备 SN 列表; 空数组时 demo 自动回退当前已选设备 SN(机场+飞机), 两者均空则拦截提示(不向服务端发空列表)。",
+    "_comment3": "target_device_sn/model_key: [2] 创建订单的目标设备。target_device_sn 留空时自动回退当前已选设备 SN(机场优先, 其次飞机), 回退仍为空才提示并跳过; target_device_model_key 必填(demo 未做自动回退, 需手动配置), 留空时提示并跳过创建。",
+    "_comment4": "source_type: 报修来源 0=定损 2=日志反馈 3=直接报修(默认)。fault_occurrence_time: SDK 内创建请求字段未注明格式(HTTP 层创建示例 '2026-04-01 10:00:00', 查详情响应注 RFC3339), 以服务端实际校验为准, 留空允许。",
+    "_comment5": "query_order_number: [3] 查订单详情的工单号, [2] 成功后自动沿用不需配置; 填写时可查询历史订单。",
+    "_comment6": "list_status_filter: [4] 按状态筛选 '0'=草稿 '1'=提交中 '2'=受理中 '3'=已受理 '4'=维修中 '5'=待评价 '6'=已完成 '7'=已取消, 空字符串=不筛选。",
+    "device_sns": [],
+    "target_device_sn": "",
+    "target_device_model_key": "3-3-0",
+    "source_type": 3,
+    "fault_description": "SDK Demo 测试报修订单",
+    "fault_occurrence_time": "",
+    "device_module": "",
+    "nameplate_sn": "",
+    "contact_person": "",
+    "contact_phone": "",
+    "contact_email": "",
+    "contact_country": "",
+    "contact_province": "",
+    "contact_city": "",
+    "contact_district": "",
+    "contact_address_detail": "",
+    "query_order_number": "",
+    "list_page": 1,
+    "list_page_size": 10,
+    "list_status_filter": "",
+    "list_device_sn_filter": ""
+  },
+  "fly_safe_unlock": {
+    "_comment": "限飞解禁 (FlySafeUnlockDemo)。",
+    "device_sn": "",
+    "_device_sn_comment": "目标设备 SN (飞机或机场)；留空时自动使用 session 中选定的设备。",
+    "license_id": -1,
+    "_license_id_comment": "[2] 切换解锁证书状态时使用；执行 [1] 查询列表后会自动缓存, 通常无需手动填写。",
+    "file_key": "",
+    "_file_key_comment": "[3] 检查时使用；执行 [6] 上传文件后会自动缓存(fileStoreDir+文件名), 通常无需手动填写。",
+    "cert_url": "",
+    "_cert_url_comment": "[4] 提交时使用；执行 [3] 检查后会自动缓存返回的证书下载 url, 通常无需手动填写。",
+    "cert_file_path": "/tmp/fly-safe-test/test_cert.zip",
+    "_cert_file_path_comment": "[6] 上传解锁证书文件时使用；填写本地 .zip/.cert 证书文件的绝对路径。"
+  }
+}

@@ -1,24 +1,46 @@
-# Compiled class file
-*.class
+# ============================================================
+# Cloud-API-2  —  方案 A（完整分发）
+# 预编译库(.a/.so/.dylib)与 gradle-wrapper.jar 均纳入版本管理，
+# 仅忽略真正的构建产物、本地垃圾与打包临时文件。
+# ============================================================
 
-# Log file
+# --- Compiled objects / class files（构建产物，忽略） ---
+*.class
+*.o
+*.obj
+
+# --- Logs ---
 *.log
 
-# BlueJ files
+# --- BlueJ / J2ME ---
 *.ctxt
-
-# Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
+# --- Archive / packaging artifacts（make_source_package.sh 等打包产物，忽略） ---
+# 注意：方案 A 保留 *.jar / *.so / *.a / *.dylib，不在此忽略
 *.zip
 *.tar.gz
+*.tgz
 *.rar
+*.7z
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# --- Build output directories（CMake / Gradle，忽略） ---
+build/
+out/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+.gradle/
+
+# --- IDE / editor ---
+.idea/
+*.iml
+.vscode/
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+
+# --- JVM crash logs ---
 hs_err_pid*
 replay_pid*

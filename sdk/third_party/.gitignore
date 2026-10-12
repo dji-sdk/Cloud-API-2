@@ -1,0 +1,7 @@
+fmt/support/.gradle
+
+build
+build.log
+**/build/*
+
+# libwebrtc 完整树在 third_party/libwebrtc/.gitignore（/src/、depot_tools）

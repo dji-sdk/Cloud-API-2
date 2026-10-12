@@ -1,0 +1,14 @@
+# 缓存
+.cache/
+.idea/
+.vscode/
+
+# 构建产物
+cmake-build-debug/
+build/
+build_notificationcentersdk/
+
+platform/web/emsdk/
+platform/web/build/
+
+platform/cpp/build/

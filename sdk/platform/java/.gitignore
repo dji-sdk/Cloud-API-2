@@ -1,0 +1,31 @@
+# Gradle构建产物
+build/
+.gradle/
+
+# Eclipse 项目元数据
+.project
+.settings/
+.classpath
+
+# 构建目录
+build_java_debug/
+build_java_release/
+dist/
+
+/flight_hub_sdk_demo/target/
+/flight_hub_sdk_demo/*.log
+/flight_hub_sdk_demo/bin/
+/flight_hub_sdk_docs/bin/
+
+# 新版模块化 demo (new_sdk_demo)：日志与冒烟测试目录（另见 new_sdk_demo/.gitignore；build/ .gradle/ 已由上方通配覆盖）
+/new_sdk_demo/*.log
+/new_sdk_demo/tests/
+
+notification_center_sdk.log*
+
+stream_data/
+
+dot/
+
+# demo 测试目录
+/flight_hub_sdk_demo/demo_tests/

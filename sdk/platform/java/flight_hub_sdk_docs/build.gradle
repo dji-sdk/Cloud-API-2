@@ -1,0 +1,125 @@
+import org.jetbrains.dokka.DokkaConfiguration.Visibility
+import org.jetbrains.dokka.gradle.DokkaTask
+
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.9.24'
+    id 'org.jetbrains.dokka' version '1.9.20'
+}
+
+description = 'Flight Hub SDK 文档生成模块（Javadoc + Dokka）'
+
+def sdkJavaSrc = file('../flight_hub_sdk/src/main/java')
+
+java {
+    sourceCompatibility = JavaVersion.toVersion(project.findProperty('java.sourceCompatibility'))
+    targetCompatibility = JavaVersion.toVersion(project.findProperty('java.targetCompatibility'))
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = [sdkJavaSrc]
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+def sdkVersion = gradle.ext.sdkVersion
+def sdkDocTitle = "Flight Hub SDK ${sdkVersion}"
+
+tasks.named('javadoc', Javadoc).configure {
+    description = '基于 flight_hub_sdk 源码生成对外 Javadoc HTML（排除 generated / internal.convert / util）'
+    dependsOn tasks.named('compileJava')
+    source = fileTree(sdkJavaSrc) {
+        include '**/*.java'
+        exclude '**/generated/**'
+        exclude '**/internal/convert/**'
+        exclude '**/util/**'
+    }
+    classpath = sourceSets.main.output + sourceSets.main.compileClasspath
+    destinationDir = layout.buildDirectory.dir('docs/javadoc').get().asFile
+    options.encoding = 'UTF-8'
+    options.charSet = 'UTF-8'
+    options.docEncoding = 'UTF-8'
+    options.windowTitle = "${sdkDocTitle} API"
+    options.docTitle = sdkDocTitle
+    options.header = sdkDocTitle
+    options.addBooleanOption('html5', true)
+    options.addStringOption('Xdoclint:none', '-quiet')
+}
+
+tasks.withType(DokkaTask).configureEach { t ->
+    t.moduleName.set('flight-hub-sdk')
+    t.moduleVersion.set(sdkVersion.toString().replaceFirst(/^v/, ''))
+    t.dokkaSourceSets.named('main') {
+        sourceRoots.from(sdkJavaSrc)
+        documentedVisibilities.set([Visibility.PUBLIC, Visibility.PROTECTED])
+        skipEmptyPackages.set(true)
+        reportUndocumented.set(false)
+        jdkVersion.set(17)
+        // 与《3_FHSDK_Java_Javadoc进一步优化》优化点一一致：对外文档不生成内部包页面
+        perPackageOption {
+            matchingRegex.set('com\\.dji\\.flighthubsdk\\.generated.*')
+            suppress.set(true)
+        }
+        perPackageOption {
+            matchingRegex.set('com\\.dji\\.flighthubsdk\\.internal\\.convert.*')
+            suppress.set(true)
+        }
+        perPackageOption {
+            matchingRegex.set('com\\.dji\\.flighthubsdk\\.util.*')
+            suppress.set(true)
+        }
+    }
+    if (t.name == 'dokkaHtml') {
+        t.outputDirectory.set(layout.buildDirectory.dir('docs/dokka-html'))
+    } else if (t.name == 'dokkaGfm') {
+        t.outputDirectory.set(layout.buildDirectory.dir('docs/dokka-gfm'))
+    }
+}
+
+tasks.register('docsAll') {
+    group = 'documentation'
+    description = '生成 Javadoc + Dokka HTML + Dokka GFM（对外，不含 @implNote）'
+    dependsOn tasks.named('javadoc'), tasks.named('dokkaHtml'), tasks.named('dokkaGfm')
+}
+
+tasks.register('javadocInternal', Javadoc) {
+    group = 'documentation'
+    description = '生成对内 Javadoc HTML（包含 @implNote 链路信息，排除 generated / internal.convert / util）'
+    dependsOn tasks.named('compileJava')
+    source = fileTree(sdkJavaSrc) {
+        include '**/*.java'
+        exclude '**/generated/**'
+        exclude '**/internal/convert/**'
+        exclude '**/util/**'
+    }
+    classpath = sourceSets.main.output + sourceSets.main.compileClasspath
+    destinationDir = layout.buildDirectory.dir('docs/javadoc-internal').get().asFile
+    options.encoding = 'UTF-8'
+    options.charSet = 'UTF-8'
+    options.docEncoding = 'UTF-8'
+    options.windowTitle = "${sdkDocTitle} API (Internal)"
+    options.docTitle = "${sdkDocTitle} (Internal)"
+    options.header = sdkDocTitle
+    options.addBooleanOption('html5', true)
+    options.addStringOption('Xdoclint:none', '-quiet')
+    options.tags = [
+        'implNote:a:Implementation Note:',
+    ]
+}
+
+tasks.register('docsInternal') {
+    group = 'documentation'
+    description = '生成对内全套文档（含 @implNote 链路信息）'
+    dependsOn tasks.named('javadocInternal')
+}
+
+tasks.register('markdownDocs') {
+    group = 'documentation'
+    description = '仅生成 Dokka GFM Markdown 文档'
+    dependsOn tasks.named('dokkaGfm')
+}

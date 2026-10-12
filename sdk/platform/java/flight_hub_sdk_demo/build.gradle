@@ -1,0 +1,140 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+// 版本号：全局 SoT 是仓根 dji_flight_hub_sdk/VERSION（人手只改那一处；CI/-v= 由 build_java.sh 写回）。
+// 查找顺序（打包脚本会把 VERSION 复制到用户 demo 目录，用户无整仓也能编）：
+//   1) 主工程 gradle.ext.sdkVersion（platform/java 多模块）
+//   2) 本目录 VERSION（发布包内 / 脚本复制）
+//   3) 仓根 ../../../VERSION（仓库内独立跑本 demo）
+def resolveSdkVersion() {
+    if (gradle.ext.has('sdkVersion') && gradle.ext.sdkVersion) {
+        return gradle.ext.sdkVersion.toString()
+    }
+    def candidates = [
+        file("${rootDir}/VERSION"),
+        file("${rootDir}/../../../VERSION"),
+    ]
+    for (def f : candidates) {
+        if (f.exists()) {
+            def v = f.text.trim()
+            if (v) {
+                return v.startsWith('v') ? v : "v${v}"
+            }
+        }
+    }
+    throw new GradleException(
+        "找不到 VERSION：请确认发布包含 demo/VERSION，或仓库根存在 dji_flight_hub_sdk/VERSION")
+}
+def sdkVersion = resolveSdkVersion()
+
+mainClassName = 'com.dji.flighthubsdk.demo.FlightHubSDKDemo'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java']
+        }
+    }
+}
+
+// 读取配置文件中的SDK jar包路径
+def getSdkJarPath() {
+    def configFile = file('config.properties')
+    if (configFile.exists()) {
+        def properties = new Properties()
+        configFile.withInputStream { properties.load(it) }
+        def sdkJarPath = properties.getProperty('sdk.jar.path')
+        if (sdkJarPath) {
+            // 将相对路径转换为绝对路径
+            def absolutePath = file(sdkJarPath).absolutePath
+            println "使用配置文件中的SDK jar包: $absolutePath"
+            return absolutePath
+        }
+    }
+    // 如果没有指定jar包路径，抛出异常
+    throw new GradleException("SDK jar包路径未配置，请在config.properties文件中设置sdk.jar.path")
+}
+
+dependencies {
+    // 从配置文件读取SDK jar包路径
+    implementation files(getSdkJarPath())
+}
+
+// 配置application插件的分发任务
+distTar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+distZip {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+jar {
+    archiveBaseName = 'flight-hub-sdk-demo'
+
+    manifest {
+        attributes(
+            'Implementation-Title': 'Flight Hub SDK Demo',
+            'Implementation-Version': sdkVersion,
+            'Implementation-Vendor': 'DJI',
+            'Built-JDK': System.getProperty('java.version'),
+            'Built-Date': new Date().format('yyyy-MM-dd HH:mm:ss')
+        )
+    }
+}
+
+// 创建可执行jar包任务
+task executableJar(type: Jar) {
+    archiveClassifier = 'executable'
+    archiveBaseName = 'flight-hub-sdk-demo'
+
+    manifest {
+        attributes(
+            'Implementation-Title': 'Flight Hub SDK Demo',
+            'Implementation-Version': sdkVersion,
+            'Implementation-Vendor': 'DJI',
+            'Built-JDK': System.getProperty('java.version'),
+            'Built-Date': new Date().format('yyyy-MM-dd HH:mm:ss'),
+            'Main-Class': 'com.dji.flighthubsdk.demo.FlightHubSDKDemo'
+        )
+    }
+    
+    // 包含编译后的类文件
+    from sourceSets.main.output
+    
+    // 包含所有依赖（创建Fat JAR）
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// 配置文件不进 fat jar（需可编辑）；打到 jar 同级目录供运行时读取
+task copyDemoConfigs(type: Copy) {
+    description = 'Copy config*.json and drtc_config_node*.json next to the executable jar'
+    from('.') {
+        include 'config.json'
+        include 'config_*.json'
+        include 'drtc_config_node*.json'
+    }
+    into "$buildDir/libs"
+    // 避免把旧日志等无关文件带进去；仅上述 include
+}
+
+executableJar.finalizedBy copyDemoConfigs
+jar.finalizedBy copyDemoConfigs
+
+run {
+    // 设置系统属性
+    systemProperty 'file.encoding', 'UTF-8'
+    systemProperty 'user.language', 'zh'
+    systemProperty 'user.country', 'CN'
+}

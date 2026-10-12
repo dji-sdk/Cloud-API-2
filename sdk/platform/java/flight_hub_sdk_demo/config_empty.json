@@ -1,0 +1,34 @@
+{
+  "server": {
+    "address": "https://xx.xx.xx.xx",
+    "port": "30812",
+    "notification_server": "wss://xx.xx.xx.xx:30812/openapi/v0.9/notification/ws/v1/notifications",
+    "verify_ssl": true,
+    "ssl_ca_path": "/etc/ssl/certs/your_xxx.pem"
+  },
+  "sdk": {
+    "log_level": "info",
+    "log_to_console": false,
+    "log_file_path": "flight_hub_sdk.log",
+    "log_max_file_size": 4194304,
+    "log_max_files": 1000,
+    "drtc_config_path": "drtc_config_node.json"
+  },
+  "app": {
+    "encoding": "UTF-8",
+    "working_dir": "."
+  },
+  "rtmp": {
+    "server_url": "rtmp://xx.xx.xx.xx/live/",
+    "stream_key": "livestream?secret=<YOUR_RTMP_SECRET>",
+    "frame_rate": 30,
+    "bitrate": 4000000,
+    "width": 1920,
+    "height": 1080,
+    "enabled": false
+  },
+  "auth": {
+    "header_key": "",
+    "header_value": ""
+  }
+}

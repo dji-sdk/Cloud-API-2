@@ -1,0 +1,151 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+// 版本号：全局 SoT 是仓根 dji_flight_hub_sdk/VERSION（人手只改那一处；CI/-v= 由 build_java.sh 写回）。
+// 查找顺序（打包脚本会把 VERSION 复制到用户 new_sdk_demo 目录）：
+//   1) 本目录 VERSION（发布包内 / 脚本复制）
+//   2) 仓根 ../../../VERSION（仓库内独立跑）
+def resolveSdkVersion() {
+    def candidates = [
+        file("${rootDir}/VERSION"),
+        file("${rootDir}/../../../VERSION"),
+    ]
+    for (def f : candidates) {
+        if (f.exists()) {
+            def v = f.text.trim()
+            if (v) {
+                return v.startsWith('v') ? v : "v${v}"
+            }
+        }
+    }
+    throw new GradleException(
+        "找不到 VERSION：请确认发布包含 new_sdk_demo/VERSION，或仓库根存在 dji_flight_hub_sdk/VERSION")
+}
+def sdkVersion = resolveSdkVersion()
+
+// 默认入口：模块化 demo 的统一菜单入口(唯一带 main() 的类)。
+// 跑单个 demo 用 `./gradlew run --args="config.json FlyToScenario"`(名称大小写不敏感)。
+// 注：module/scenario 各类当前没有自己的 main(), 故 `-PmainClass=...module.X` 暂不可用。
+application {
+    mainClass = project.hasProperty('mainClass') ? project.property('mainClass')
+            : 'com.dji.flighthubsdk.demo.DemoEntry'
+    // 强制 UTF-8：一处配置同时作用于 `gradlew run` 与生成的 install/distZip/distTar 启动脚本,
+    // 保证中文日志/菜单在任何默认字符集(含 Windows-GBK)的 JVM 上都不乱码。
+    // (注: `java -jar` 直跑走的是另一条路径, 由 DemoEntry.main 里的控制台兜底包装保证, 见该处注释。)
+    applicationDefaultJvmArgs = ['-Dfile.encoding=UTF-8']
+}
+
+java {
+    // 源码保持 Java 8 兼容(与 SDK 一致, 便于用户直接拷贝到低版本工程)。
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+// 强制 UTF-8 编译：源码含大量中文字面量, 非 UTF-8 默认字符集(JDK<18 / Windows-GBK)下会烤成乱码。
+// -Xlint:-options 抑制 source/target 8 在现代 JDK 上的 obsolete/bootstrap-classpath 告警。
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    // 用现代 JDK(>=9)构建时, 追加 `--release 8`：它会链接<b>真正的 Java 8 API 签名</b>(经 ct.sym),
+    // 从而在编译期就拦下误用的 Java 9+ API(List.of / String.isBlank / Optional.isEmpty / ByteBuffer 协变返回…)。
+    // 仅有 sourceCompatibility/targetCompatibility=8 时, javac 仍按当前 JDK(如 21)的 rt 类解析 API,
+    // 这类误用会「本机编译通过、却在客户 Java 8 上 NoSuchMethodError 崩溃」。加此守卫即根除该回归面。
+    // 守卫必需：`--release` 只在 javac>=9 存在；真 JDK 8 上跳过, 由 source/target 1.8 原生链 Java 8 rt.jar。
+    if (JavaVersion.current().isJava9Compatible()) {
+        options.release = 8
+    }
+    options.compilerArgs << '-Xlint:-options'
+}
+
+sourceSets {
+    main {
+        java { srcDirs = ['src/main/java'] }
+        resources { srcDirs = ['src/main/resources'] }
+    }
+}
+
+// 从 config.properties 读取 SDK jar 路径(零硬编码)。
+def resolveSdkJar() {
+    def cfg = file('config.properties')
+    if (cfg.exists()) {
+        def props = new Properties()
+        cfg.withInputStream { props.load(it) }
+        def p = props.getProperty('sdk.jar.path')
+        if (p) {
+            def f = file(p)
+            if (!f.exists()) {
+                throw new GradleException("SDK jar 不存在: ${f.absolutePath}, 请先构建 SDK(默认 ../dist/flight-hub-sdk.jar)或修正 config.properties 的 sdk.jar.path")
+            }
+            println "使用 SDK jar: ${f.absolutePath}"
+            return f.absolutePath
+        }
+    }
+    throw new GradleException("未配置 SDK jar 路径, 请在 config.properties 中设置 sdk.jar.path")
+}
+
+dependencies {
+    // 仅依赖 SDK jar, 零第三方依赖(纯 JDK + SDK)。
+    implementation files(resolveSdkJar())
+}
+
+run {
+    // 允许把配置文件路径作为参数传入： ./gradlew run --args="config.json"
+    // 运行目录固定为项目根, 保证相对路径(config.json / demo_params.json)可被找到。
+    workingDir = projectDir
+    standardInput = System.in
+    // 注: -Dfile.encoding=UTF-8 已上移到 application.applicationDefaultJvmArgs(同时覆盖 run 与启动脚本)。
+}
+
+distTar { duplicatesStrategy = DuplicatesStrategy.EXCLUDE }
+distZip { duplicatesStrategy = DuplicatesStrategy.EXCLUDE }
+
+jar {
+    archiveBaseName = 'new-sdk-demo'
+    manifest {
+        attributes(
+            'Implementation-Title': 'Flight Hub SDK Modular Demo',
+            'Implementation-Version': sdkVersion,
+            'Implementation-Vendor': 'DJI',
+            'Built-JDK': System.getProperty('java.version'),
+            'Built-Date': new Date().format('yyyy-MM-dd HH:mm:ss')
+        )
+    }
+}
+
+// 可执行 Fat JAR：内含 SDK 类与原生库, 可直接 `java -jar` 运行。
+// 与 build.sh --executable 产物等价(供使用 gradle 的用户)。
+task executableJar(type: Jar) {
+    archiveClassifier = 'executable'
+    archiveBaseName = 'new-sdk-demo'
+    manifest {
+        attributes(
+            'Implementation-Title': 'Flight Hub SDK Modular Demo',
+            'Implementation-Version': sdkVersion,
+            'Implementation-Vendor': 'DJI',
+            'Built-JDK': System.getProperty('java.version'),
+            'Built-Date': new Date().format('yyyy-MM-dd HH:mm:ss'),
+            'Main-Class': 'com.dji.flighthubsdk.demo.DemoEntry'
+        )
+    }
+    from sourceSets.main.output
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+
+    // 构建完成后, 把产物同步到 tests/ 目录(覆盖旧的), 供 `java -jar` 测试直接使用。
+    // 把 tests 副本登记为 output：副本丢失/损坏会让本 task 失效并重新拷贝(而非被判 UP-TO-DATE 跳过)。
+    def testsCopy = file("$projectDir/tests/new-sdk-demo-executable.jar")
+    outputs.file(testsCopy)
+    doLast {
+        testsCopy.parentFile.mkdirs()
+        java.nio.file.Files.copy(
+            archiveFile.get().asFile.toPath(),
+            testsCopy.toPath(),
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING
+        )
+        println "已同步可执行 JAR 到: ${testsCopy}"
+    }
+}

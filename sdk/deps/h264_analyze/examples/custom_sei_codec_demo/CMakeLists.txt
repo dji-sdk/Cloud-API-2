@@ -1,0 +1,20 @@
+# Custom SEI Codec Demo CMakeLists.txt
+add_executable(custom_sei_codec_demo custom_sei_codec_demo.cpp)
+add_executable(custom_sei_encode_demo custom_sei_encode_demo.cpp)
+add_executable(custom_sei_decode_demo custom_sei_decode_demo.cpp)
+add_executable(custom_sei_encode_stream_demo custom_sei_encode_stream_demo.cpp)
+add_executable(custom_sei_decode_stream_demo custom_sei_decode_stream_demo.cpp)
+
+# 链接CustomSEICodec库
+target_link_libraries(custom_sei_codec_demo h264_custom_sei_codec_lib)
+target_link_libraries(custom_sei_encode_demo h264_custom_sei_codec_lib)
+target_link_libraries(custom_sei_decode_demo h264_custom_sei_codec_lib)
+target_link_libraries(custom_sei_encode_stream_demo h264_custom_sei_codec_lib h264_parser_lib)
+target_link_libraries(custom_sei_decode_stream_demo h264_custom_sei_codec_lib h264_parser_lib)
+
+# 设置包含目录
+target_include_directories(custom_sei_codec_demo PRIVATE ${CMAKE_SOURCE_DIR}/lib)
+target_include_directories(custom_sei_encode_demo PRIVATE ${CMAKE_SOURCE_DIR}/lib)
+target_include_directories(custom_sei_decode_demo PRIVATE ${CMAKE_SOURCE_DIR}/lib)
+target_include_directories(custom_sei_encode_stream_demo PRIVATE ${CMAKE_SOURCE_DIR}/lib)
+target_include_directories(custom_sei_decode_stream_demo PRIVATE ${CMAKE_SOURCE_DIR}/lib)

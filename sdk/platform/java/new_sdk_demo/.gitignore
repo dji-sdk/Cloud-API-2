@@ -1,0 +1,17 @@
+# 构建产物
+build/
+.gradle/
+# 冒烟测试目录：同步的可执行 jar + 运行日志等，全部为生成物，不入库
+tests/
+
+# 本地配置与鉴权（切勿提交真实 token / uuid）
+config.json
+flight_hub_config.json
+
+# demo 运行产物
+*.log
+*.h264
+*.mp4
+
+# 版本号 SoT 在仓根 VERSION；本目录若出现 VERSION 多为误拷，勿提交
+VERSION

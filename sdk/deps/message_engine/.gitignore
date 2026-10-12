@@ -1,0 +1,13 @@
+.idea/
+.vscode/
+**/.vscode/
+**/__pycache__/
+
+.cxx
+build/
+**/cmake-build-*/
+**/cmake-build-debug/
+**/cmake-build-release/
+
+src/version.h
+.cache/

@@ -1,0 +1,131 @@
+// Flight Hub Java SDK 多项目构建配置
+
+// 所有项目的通用设置（包括根项目）
+allprojects {
+    group = project.findProperty('project.group')
+    version = gradle.ext.sdkVersion
+
+    repositories {
+        mavenCentral()
+        mavenLocal()
+    }
+
+    // 强制所有 Java 编译任务使用 UTF-8 编码，解决中文注释乱码警告
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+        sourceCompatibility = project.findProperty('java.sourceCompatibility')
+        targetCompatibility = project.findProperty('java.targetCompatibility')
+    }
+}
+
+// 所有子项目的通用设置
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'maven-publish'
+
+    sourceCompatibility = project.findProperty('java.sourceCompatibility')
+    targetCompatibility = project.findProperty('java.targetCompatibility')
+
+    dependencies {
+        // 添加通用依赖
+        testImplementation 'junit:junit:4.13.2'
+    }
+
+    // 发布配置
+    publishing {
+        publications {
+            maven(MavenPublication) {
+                from components.java
+            }
+        }
+    }
+
+    // 配置JAR任务以包含版本信息
+    // 版本 & Built-JDK & Built-Date 改为运行时求值，避免 gradle.properties 里模板变量不解析
+    jar {
+        manifest {
+            attributes(
+                'Implementation-Title': project.findProperty('sdk.name'),
+                'Implementation-Version': gradle.ext.sdkVersion,
+                'Implementation-Vendor': project.findProperty('sdk.vendor'),
+                'Built-By': project.findProperty('build.user'),
+                'Built-JDK': System.getProperty('java.version'),
+                'Built-Date': new Date().format('yyyy-MM-dd HH:mm:ss')
+            )
+        }
+    }
+}
+
+// 根项目特定任务
+task cleanAll(type: Delete) {
+    delete rootProject.buildDir
+    subprojects.each { subproject ->
+        delete subproject.buildDir
+    }
+    description = '清理所有构建产物'
+}
+
+task buildAll {
+    dependsOn subprojects.build
+    description = '构建所有子项目'
+}
+
+task testAll {
+    dependsOn subprojects.test
+    description = '测试所有子项目'
+}
+
+task publishAll {
+    dependsOn subprojects.publishToMavenLocal
+    description = '发布所有子项目到本地Maven仓库'
+}
+
+// 版本配置验证任务
+task validateVersionConfig {
+    description = '验证所有必需的版本配置是否存在'
+    doLast {
+        // 版本号来自 VERSION 文件（通过 settings.gradle 注入 gradle.ext.sdkVersion）
+        if (!gradle.hasProperty('ext') || !gradle.ext.has('sdkVersion') || !gradle.ext.sdkVersion) {
+            throw new RuntimeException("缺少 gradle.ext.sdkVersion; 请检查 settings.gradle 是否成功读取 VERSION 文件")
+        }
+        def requiredProperties = [
+            'project.group',
+            'sdk.name',
+            'sdk.vendor',
+            'java.sourceCompatibility',
+            'java.targetCompatibility'
+        ]
+
+        def missingProperties = []
+        requiredProperties.each { prop ->
+            if (!project.findProperty(prop)) {
+                missingProperties << prop
+            }
+        }
+
+        if (missingProperties) {
+            throw new RuntimeException("缺少必需的版本配置: ${missingProperties.join(', ')}\n请检查 gradle.properties 文件")
+        }
+
+        println "✓ 所有版本配置验证通过"
+        println "✓ SDK名称: ${project.findProperty('sdk.name')}"
+        println "✓ SDK版本: ${gradle.ext.sdkVersion} (来自 VERSION 文件)"
+        println "✓ 项目组: ${project.findProperty('project.group')}"
+    }
+}
+
+// 让所有构建任务依赖于版本配置验证
+allprojects {
+    tasks.withType(JavaCompile) {
+        dependsOn validateVersionConfig
+    }
+    tasks.withType(Jar) {
+        dependsOn validateVersionConfig
+    }
+}
+
+// 创建Gradle Wrapper任务
+wrapper {
+    gradleVersion = '8.5'
+    distributionType = Wrapper.DistributionType.BIN
+}
