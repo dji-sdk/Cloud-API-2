@@ -1,2 +1,47 @@
-# Cloud-API-2
-Cloud-API-2
+<p align="center">
+  <img src="./docs/assets/logo.svg" alt="大疆上云 API 2" height="100">
+</p>
+
+上云 API 2 是面向 DJI 硬件生态的开放 PaaS 产品。以免费、DJI 原厂能力开放、原生易集成为设计目标，一体化提供二次开发 SDK、前端组件、AI Plugin 与 AI Coding 脚手架、设备模拟器、调试工具等开放能力，助力软件集成商与开发者更高效地基于 DJI 硬件完成二次开发与垂直行业的解决方案交付。
+
+## 📋 关键特性
+
+1. **免费开放**：上云 API 2 License 完全免费，不限设备台数，在 [DJI 开发者平台](https://developer.dji.com/) 几步即可完成申请。
+2. **DaaS（Drone / Dock as a Service）SDK**：面向对象、协议无感、链式调用，屏蔽底层协议细节，相较上云 API 从零封装协议，集成效率显著提升。
+3. **前端独立组件**：提供驾驶舱、航线编辑器、飞行记录、设备管理维保等开箱即用组件，并支持功能配置化与主题定制，配合 AI Plugin 更快完成二次开发。
+4. **功能丰富**：覆盖设备管理、实时直播、远程调试、远程操控、媒体管理、航线管理、航线任务、日志管理、模型重建、4G 私有化增强图传等场景能力，且持续迭代开放。
+5. **AI 能力开放**：提供 AI Plugin 与 AI Coding 脚手架，进一步降低二次开发门槛、提升交付效率。
+6. **虚拟调试工具**：内置虚拟设备与工况模拟，配套 Demo 齐全，二次开发无需强依赖真机。
+
+## 🚀 快速开始
+
+1. [申请许可证](./docs/cn/01.apply-license.md)
+2. [部署上云 API 2 应用运行与设备管控底座](./docs/cn/02.deployment/00.index.md)
+3. [设备上云](./docs/cn/04.device-onboarding/00.index.md)
+4. [配置鉴权](./docs/cn/08.auth.md)
+5. [集成前端独立组件](./docs/cn/06.frontend/00.index.md)
+6. [集成 SDK](./docs/cn/07.sdk/00.index.md)
+
+## 🛠 辅助开发
+
+1. [使用上云 API 2 设备模拟器](./docs/cn/03.simulator.md)
+2. [使用上云 API 2 AI Plugin 加速集成](./docs/cn/05.ai-plugin.md)
+3. [使用上云 API 2 二次开发 Demo](./docs/cn/09.demo/00.index.md)
+
+## 📦 下载中心
+
+SDK、API 文档、软件工具等资源下载请访问[下载中心](./docs/cn/11.downloads.md)。
+
+## ❓ 常见问题
+
+如果您在使用上云 API 2 过程中遇到了问题，可以先查阅[上云 API 2 常见问题](https://s.apifox.cn/0b65cc12-6cf6-4493-90ff-b4b3636f800d)，我们已整理了涵盖许可证申请、安装部署、SDK、前端组件、设备上云等方面的常见问题及解答。
+
+## 💬 问题反馈
+
+上云 API 2 致力于为开发者提供最快捷高效的二次开发体验，在使用过程中遇到任何技术问题、Bug 或功能需求，欢迎通过在上云 API 2 的官方 GitHub 仓库提交 Issue 向我们反馈，DJI 技术支持专家会及时进行处理和答复。
+
+[点击此处提交 Issue](https://github.com/dji-sdk/Cloud-API-2/issues)
+
+---
+**🤝 感谢您对 上云 API 2 的使用与支持！**
+
