@@ -1,0 +1,9 @@
+{
+  "dji-cloud-api2": {
+    "type": "sse",
+    "url": "http://<REMOTE_SERVER_IP>:8080/pf-devkit/ai-plugin/mcp/sse",
+    "headers": {
+      "Authorization": "Bearer <FH_SSE_AUTH_TOKEN>"
+    }
+  }
+}

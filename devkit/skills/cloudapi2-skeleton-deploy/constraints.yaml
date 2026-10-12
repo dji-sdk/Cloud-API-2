@@ -1,0 +1,78 @@
+# DJI FlightHub PaaS SDK Skeleton 部署约束规则
+#
+# 部署 = 引导式半自动流程，本文件定义部署 Skill 特有的硬约束。
+# 共享约束见 _shared/constraints-common.yaml（SSOT）。
+#
+# level: critical — 违反必导致部署失败或安全风险
+# level: warning  — 违反可能导致问题但不一定立即失败
+
+# extends: _shared/constraints-common.yaml
+
+# ============================================================
+# 部署特有约束
+# ============================================================
+
+- id: platform-amd64-only
+  rule: sdk 模式部署必须 Linux amd64（SDK JNI 原生库仅支持 linux-x86_64）；探测到非 amd64 必须提示降级（mock/Docker 或换机）
+  violation: sdk 模式下 .so 加载失败，应用无法初始化 SDK
+  level: critical
+
+- id: jwt-secret-required
+  rule: FH_JWT_SECRET 必须显式配置（openssl rand -hex 32），禁止使用默认值/占位符；缺失即停
+  violation: 未配置启动失败；弱默认值可被离线伪造 JWT
+  level: critical
+
+- id: db-password-strong
+  rule: FH_DB_PASSWORD / MYSQL_ROOT_PASSWORD 必须强随机（openssl rand -hex 24），禁止默认密码
+  violation: 弱口令可被爆破
+  level: critical
+
+- id: build-sdk-real
+  rule: 生产构建必须 mvn clean package -Psdk-real -DskipTests，否则打包的是 mock 实现
+  violation: 部署的是 mock 实现，无法连接真实 FlightHub
+  level: critical
+
+- id: private-sdk-jar-install
+  rule: 首次构建前必须 mvn install:install-file 安装 libs/flight-hub-sdk-3.3.7.jar 到本地 Maven 仓库；检测 ~/.m2 是否已有
+  violation: mvn package 找不到 SDK 依赖，构建失败
+  level: critical
+
+- id: native-lib-extract
+  rule: 普通机器部署必须用 deploy/native-lib-extract.sh 解压 SDK native lib 到 /opt/sdk-libs，并确保 systemd ExecStart 含 -Djava.library.path=/opt/sdk-libs
+  violation: SDK 无法加载原生库，initialize 失败
+  level: critical
+
+- id: semi-auto-boundary
+  rule: AI 不自动执行 sudo apt / docker build / kubectl apply / systemctl / mysql 等系统级操作；只给精确命令并等待用户回报
+  violation: 越权执行系统操作，透明性差且不可审计
+  level: critical
+
+- id: no-destructive-by-default
+  rule: 删数据、重建卷、覆盖已有配置文件前必须先与用户确认
+  violation: 误删生产数据或配置
+  level: critical
+
+- id: verify-health-before-done
+  rule: 部署完成必须引导用户执行健康检查（actuator/health 返回 UP）并确认访问，才能宣告完成
+  violation: 未验证即声称部署成功
+  level: warning
+
+- id: sdk-vars-complete
+  rule: sdk profile 下 FH_SKELETON_SDK_TOKEN / ADDRESS / PORT / NOTIFICATION_SERVER 必须 4 项齐全
+  violation: SDK initialize 返回 ERROR_INVALID_PARAM，事件不触发
+  level: critical
+
+- id: amd64-node-selector
+  rule: "K8s 部署后端 Pod 必须保留 nodeSelector kubernetes.io/arch: amd64（manifest 已含，勿删）"
+  violation: Pod 调度到非 amd64 节点，SDK 加载失败
+  level: critical
+
+- id: mcp-url-when-chat
+  rule: 启用 Chat（FH_CHAT_ENABLED=true）时必须配置 FH_CHAT_MCP_URL 指向已部署的 MCP Server
+  violation: Chat 功能不可用
+  level: warning
+
+- id: cleanup-confirm-data-keep
+  rule: 清理部署必须先与用户确认"保留数据 or 清除数据"；删除数据卷/PVC/数据库/配置文件（down -v、delete namespace、DROP DATABASE、rm 配置）前必须逐条二次确认
+  violation: 误删生产数据或配置，不可逆
+  level: critical

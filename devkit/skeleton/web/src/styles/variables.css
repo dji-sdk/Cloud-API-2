@@ -1,0 +1,109 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   FlightHub Design Tokens
+   三层架构：背景层次 → 语义色 → 品牌色
+   深色主题唯一，不提供 light mode（操控类系统适配控制室场景）
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Layer 1：背景 & 文字 & 边框 ────────────────────────────────────────── */
+
+:root {
+  /* 背景 5 级灰度（从深到浅） */
+  --app-bg:              #0b0f15;
+  --app-bg-panel:        #111827;
+  --app-bg-surface:      #1a2332;
+  --app-bg-card:         #1f2b3d;
+  --app-bg-card-hover:   #263448;
+  --app-bg-elevated:     #2d3a4e;
+
+  /* 侧边栏 */
+  --sidebar-bg:          #0d1219;
+
+  /* 文字 */
+  --app-text:            #e6edf3;
+  --app-text-secondary:  #8b949e;
+  --app-text-muted:      #6b7280;
+  --app-text-inverse:    #0b0f15;
+
+  /* 边框 */
+  --app-border:          rgba(255, 255, 255, 0.08);
+  --app-border-light:    rgba(255, 255, 255, 0.05);
+  --app-border-strong:   rgba(255, 255, 255, 0.15);
+
+  /* 交互态 */
+  --app-hover-bg:        rgba(255, 255, 255, 0.06);
+  --app-active-bg:       rgba(255, 255, 255, 0.10);
+
+  /* 遮罩 */
+  --app-overlay:         rgba(0, 0, 0, 0.6);
+}
+
+/* ── Layer 2：语义色 ──────────────────────────────────────────────────── */
+
+:root {
+  --app-success:         #34d399;
+  --app-success-bg:      rgba(52, 211, 153, 0.12);
+  --app-warning:         #fbbf24;
+  --app-warning-bg:      rgba(251, 191, 36, 0.12);
+  --app-danger:          #f87171;
+  --app-danger-bg:       rgba(248, 113, 113, 0.12);
+  --app-info:            #60a5fa;
+  --app-info-bg:         rgba(96, 165, 250, 0.12);
+}
+
+/* ── Layer 3：品牌色 — Teal（运行时可通过 --fh-brand-primary 覆盖） ──── */
+
+:root {
+  --app-primary:         var(--fh-brand-primary, #06b6d4);
+  --app-primary-hover:   var(--fh-brand-primary-hover, #22d3ee);
+  --app-primary-active:  var(--fh-brand-primary-active, #0891b2);
+  --app-primary-bg:      var(--fh-brand-primary-bg, rgba(6, 182, 212, 0.10));
+  --app-primary-bg-hover: var(--fh-brand-primary-bg-hover, rgba(6, 182, 212, 0.18));
+  --app-primary-glow:    var(--fh-brand-primary-glow, 0 0 12px rgba(6, 182, 212, 0.30));
+}
+
+/* ── Layer 4：设计规格 Token（圆角 / 阴影 / 动画） ───────────────────── */
+
+:root {
+  /* 圆角 */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-full: 9999px;
+
+  /* 阴影 */
+  --shadow-sm:   0 1px 3px rgba(0, 0, 0, 0.12);
+  --shadow-md:   0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-lg:   0 8px 24px rgba(0, 0, 0, 0.2);
+  --shadow-glow: var(--app-primary-glow);
+
+  /* 动画 */
+  --transition-fast:  0.1s ease;
+  --transition-base:  0.15s ease;
+  --transition-slow:  0.25s ease;
+
+  /* 字体 */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+               'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  /* 间距 */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  12px;
+  --space-lg:  16px;
+  --space-xl:  24px;
+  --space-2xl: 32px;
+}
+
+/* ── 兼容映射：--fh-* → --app-*（供 SDK 组件 fallback 引用） ────────────── */
+
+:root {
+  --fh-bg-sidebar:      var(--sidebar-bg);
+  --fh-text-primary:    var(--app-text);
+  --fh-text-secondary:  var(--app-text-secondary);
+  --fh-text-muted:      var(--app-text-muted);
+  --fh-border-color:    var(--app-border);
+  --fh-hover-bg:        var(--app-hover-bg);
+  --fh-active-bg:       var(--app-primary-bg);
+}

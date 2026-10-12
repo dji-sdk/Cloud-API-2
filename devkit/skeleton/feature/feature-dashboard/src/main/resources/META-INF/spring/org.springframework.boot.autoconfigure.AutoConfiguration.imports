@@ -1,0 +1,2 @@
+com.dji.fh.feature.dashboard.DashboardAutoConfiguration
+com.dji.fh.feature.dashboard.spi.sdk.SdkDashboardAutoConfiguration

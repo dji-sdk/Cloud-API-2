@@ -1,0 +1,17 @@
+services:
+  oryx:
+    image: registry.cn-hangzhou.aliyuncs.com/ossrs/oryx:5
+    container_name: fhsdk-demo-oryx
+    ports:
+      - "12022:2022"   # 避开 VS Code 抢占本机 2022
+      - "8000:8000/udp"  # WebRTC 媒体
+    environment:
+      TZ: Asia/Shanghai
+    restart: unless-stopped
+    networks:
+      - fhsdk-demo
+
+networks:
+  fhsdk-demo:
+    name: fhsdk-demo
+    driver: bridge

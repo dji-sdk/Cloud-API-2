@@ -1,0 +1,19 @@
+# 前端运行时变量 ConfigMap
+# 容器启动时 docker-entrypoint.sh 读取这些环境变量生成 /usr/share/nginx/html/config.js
+# 敏感项（BING_KEY / TIANDITU_KEY）放在 Secret 中，避免明文进 ConfigMap。
+# 修改后需重启前端 Pod 生效（无需重新构建镜像）。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: skeleton-frontend-config
+  namespace: fh-skeleton
+data:
+  VITE_FH2_ADDRESS: <REPLACE_ME>
+  VITE_FH2_PORT: "30812"
+  VITE_FH2_WSS_URL: <REPLACE_ME>
+  VITE_FH2_PRJ_ID: <REPLACE_ME>
+  VITE_DEFAULT_THEME: light
+  VITE_PRIMARY_COLOR: "#1a73e8"
+  VITE_PRIMARY_HOVER_COLOR: ""
+  VITE_MOCK_ENABLED: "false"
+  VITE_MAP_PROVIDER: esri

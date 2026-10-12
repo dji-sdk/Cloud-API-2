@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: fhsdk-demo-server
+
+# Override via env / docker-compose .env for local runs. Do not commit real hosts/tokens.
+fhsdk:
+  address: ${FHSDK_ADDRESS:http://YOUR_FH_SERVER_HOST}
+  port: "${FHSDK_PORT:30812}"
+  notification-server: ${FHSDK_NOTIFICATION_SERVER:ws://YOUR_FH_SERVER_HOST:30812/openapi/v0.9/notification/ws/v1/notifications}
+  log-level: ${FHSDK_LOG_LEVEL:info}
+  log-to-console: true
+  log-file-path: logs/flight_hub_sdk.log
+  # Optional; env FHSDK_DRTC_CONFIG has higher priority
+  drtc-config-path: ${FHSDK_DRTC_CONFIG_PATH:}
+  auth-header-key: ${FHSDK_AUTH_HEADER_KEY:user_id}
+  auth-header-value: ${FHSDK_AUTH_HEADER_VALUE:}
+
+oryx:
+  whip-url-template: ${ORYX_WHIP_URL_TEMPLATE:http://127.0.0.1:2022/rtc/v1/whip/?app=live&stream={streamKey}}
+  whep-url-template: ${ORYX_WHEP_URL_TEMPLATE:http://127.0.0.1:2022/rtc/v1/whep/?app=live&stream={streamKey}}
+  publish-secret: ${ORYX_PUBLISH_SECRET:}
+
+live:
+  # auto | h264 | hevc — auto detects from Annex-B NAL (EA340=hevc, others usually h264)
+  input-format: ${LIVE_INPUT_FORMAT:auto}
+  # Only applies when input is hevc; H264 always copy. Demo SEI uses SDK callbacks, not bitstream.
+  transcode-to-h264: ${LIVE_TRANSCODE_TO_H264:true}
+
+demo:
+  stick-default-interval-ms: 50
+  # Optional default payload highlight; leave empty to rely on listenLiveAvailableRange
+  # drone-payload-index: "81-0-0"

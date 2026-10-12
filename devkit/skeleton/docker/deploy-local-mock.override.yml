@@ -1,0 +1,83 @@
+# ============================================================================
+# FH Skeleton 本地部署（mock 模式）— Compose 覆盖文件
+# 用法：docker compose -f skeleton/docker/docker-compose.yml \
+#            -f skeleton/docker/deploy-local-mock.override.yml \
+#            --env-file skeleton/deploy.env.local-mock up --build
+#
+# 与远端 deploy-compose.yml 的区别：
+# - 内置 MySQL 8.0（本地骨架栈自带，不断连远端数据库）
+# - 前端映射到宿主机 8082（覆盖原 80 端口，避免与系统 nginx 冲突）
+# - 后端映射到宿主机 8081（8080 留给本机已有 flighthub-mcp-sse）
+# - mock profile 健康检查不依赖 SDK 初始化
+# - 前端 VITE_* 变量同时通过 build args 注入（构建期生效）
+# ============================================================================
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: pf-devkit-mysql-local
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
+      MYSQL_DATABASE: fh_skeleton
+    volumes:
+      - ../../deploy-init-sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  skeleton:
+    container_name: pf-devkit-skeleton-server-local
+    ports:
+      - "8081:8080"
+    environment:
+      FH_PROFILE_OVERRIDE: ${FH_PROFILE:-mock}
+      FH_SDK_MODE: ${FH_SDK_MODE:-mock}
+      FH_DB_URL: jdbc:mysql://mysql:3306/fh_skeleton?useSSL=${FH_DB_USE_SSL:-false}&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      FH_DB_USERNAME: ${FH_DB_USERNAME:-root}
+      FH_DB_PASSWORD: ${FH_DB_PASSWORD:?FH_DB_PASSWORD must be set}
+      FH_JWT_SECRET: "${FH_JWT_SECRET:?FH_JWT_SECRET must be set}"
+      FH_CHAT_ENABLED: ${FH_CHAT_ENABLED:-false}
+      FH_CHAT_MCP_URL: ${FH_CHAT_MCP_URL:-}
+      FH_CHAT_MCP_AUTH_TOKEN: ${FH_CHAT_MCP_AUTH_TOKEN:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  fh-ui:
+    container_name: pf-devkit-skeleton-web-local
+    ports:
+      - "8082:80"
+    build:
+      args:
+        VITE_FH2_ADDRESS: ${VITE_FH2_ADDRESS:-}
+        VITE_FH2_PORT: ${VITE_FH2_PORT:-30812}
+        VITE_FH2_PRJ_ID: ${VITE_FH2_PRJ_ID:-}
+        VITE_DEFAULT_THEME: ${VITE_DEFAULT_THEME:-dark}
+        VITE_PRIMARY_COLOR: ${VITE_PRIMARY_COLOR:-#1a73e8}
+        VITE_PRIMARY_HOVER_COLOR: ${VITE_PRIMARY_HOVER_COLOR:-}
+        VITE_MOCK_ENABLED: ${VITE_MOCK_ENABLED:-true}
+        VITE_MAP_PROVIDER: ${VITE_MAP_PROVIDER:-esri}
+        VITE_BING_KEY: ${VITE_BING_KEY:-}
+        VITE_TIANDITU_KEY: ${VITE_TIANDITU_KEY:-}
+    environment:
+      VITE_FH2_ADDRESS: ${VITE_FH2_ADDRESS:-}
+      VITE_FH2_PORT: ${VITE_FH2_PORT:-30812}
+      VITE_FH2_WSS_URL: ${VITE_FH2_WSS_URL:-}
+      VITE_FH2_PRJ_ID: ${VITE_FH2_PRJ_ID:-}
+      VITE_FH2_SDK_AUTH_KEY: ${VITE_FH2_SDK_AUTH_KEY:-}
+      VITE_FH2_SDK_AUTH_VALUE: ${VITE_FH2_SDK_AUTH_VALUE:-}
+      VITE_DEFAULT_THEME: ${VITE_DEFAULT_THEME:-dark}
+      VITE_PRIMARY_COLOR: ${VITE_PRIMARY_COLOR:-#1a73e8}
+      VITE_PRIMARY_HOVER_COLOR: ${VITE_PRIMARY_HOVER_COLOR:-}
+      VITE_MOCK_ENABLED: ${VITE_MOCK_ENABLED:-true}
+      VITE_FH2_DEVICE_SDK_ENABLED: ${VITE_FH2_DEVICE_SDK_ENABLED:-true}
+      VITE_MAP_PROVIDER: ${VITE_MAP_PROVIDER:-esri}
+      VITE_BING_KEY: ${VITE_BING_KEY:-}
+      VITE_TIANDITU_KEY: ${VITE_TIANDITU_KEY:-}
+    depends_on:
+      - skeleton
+    restart: unless-stopped

@@ -1,0 +1,75 @@
+{
+  "groups": [
+    {
+      "name": "fh.skeleton.sdk.real",
+      "type": "com.dji.fh.kernel.realsdk.RealSdkProperties",
+      "description": "真 SDK 适配层配置（kernel-real-sdk 模块，仅 fh.skeleton.sdk.mode=sdk 时生效）。"
+    }
+  ],
+  "properties": [
+    {
+      "name": "fh.skeleton.sdk.real.token",
+      "type": "java.lang.String",
+      "description": "SDK workspace token。生产环境必须通过环境变量 / 配置中心注入，不要硬编码到 yaml。",
+      "sourceType": "com.dji.fh.kernel.realsdk.RealSdkProperties"
+    },
+    {
+      "name": "fh.skeleton.sdk.real.address",
+      "type": "java.lang.String",
+      "description": "HTTP API 服务端 host（不带 scheme/port，如 api.example.com）。",
+      "sourceType": "com.dji.fh.kernel.realsdk.RealSdkProperties"
+    },
+    {
+      "name": "fh.skeleton.sdk.real.port",
+      "type": "java.lang.String",
+      "description": "HTTP API 服务端 port（如 443）。",
+      "sourceType": "com.dji.fh.kernel.realsdk.RealSdkProperties"
+    },
+    {
+      "name": "fh.skeleton.sdk.real.notification-server-address",
+      "type": "java.lang.String",
+      "description": "通知 / WebSocket 服务端完整 URL（如 wss://api.example.com/ws）。",
+      "sourceType": "com.dji.fh.kernel.realsdk.RealSdkProperties"
+    },
+    {
+      "name": "fh.skeleton.sdk.real.log-level",
+      "type": "java.lang.String",
+      "description": "SDK 内部日志级别。",
+      "defaultValue": "info",
+      "sourceType": "com.dji.fh.kernel.realsdk.RealSdkProperties"
+    },
+    {
+      "name": "fh.skeleton.sdk.real.device-list-timeout",
+      "type": "java.time.Duration",
+      "description": "启动时拉初始设备清单的超时；超时后跳过 per-device listen 但 workspace listen 仍生效。",
+      "defaultValue": "10s",
+      "sourceType": "com.dji.fh.kernel.realsdk.RealSdkProperties"
+    },
+    {
+      "name": "fh.skeleton.sdk.real.osd-interval-millis",
+      "type": "java.lang.Long",
+      "description": "OSD 合成 Tick 间隔（毫秒）。与 fh.skeleton.mock.osd.interval-millis 对称。",
+      "defaultValue": 1000,
+      "sourceType": "com.dji.fh.kernel.realsdk.RealSdkProperties"
+    },
+    {
+      "name": "fh.skeleton.sdk.real.osd-snapshot-ttl",
+      "type": "java.time.Duration",
+      "description": "OSD 单 source 快照保留时长，超过此时长视为陈旧不发。",
+      "defaultValue": "5s",
+      "sourceType": "com.dji.fh.kernel.realsdk.RealSdkProperties"
+    }
+  ],
+  "hints": [
+    {
+      "name": "fh.skeleton.sdk.real.log-level",
+      "values": [
+        { "value": "trace", "description": "最详细，含每条 SDK 内部消息" },
+        { "value": "debug", "description": "诊断用" },
+        { "value": "info", "description": "正常运行（默认）" },
+        { "value": "warn", "description": "仅告警和错误" },
+        { "value": "error", "description": "仅错误" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+/**
+ * FH2 SDK 布局结构样式
+ *
+ * 仅包含容器 flex 布局规则，不覆盖 SDK 组件的颜色/主题。
+ * SDK 暗色主题通过 setupDeviceManager({ theme: 'dark' }) 原生支持。
+ */
+
+/*
+ * Official FH2 container CSS (from documentation)
+ * https://fh.dji.com/user-manual/cn/custom-development/frontend-components/
+ */
+.fh2-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+#project-app-container > div,
+#cockpit-app-container > div,
+.map-app-container > div {
+  width: 100%;
+  height: 100%;
+}
+
+.project-details {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex: 1;
+  overflow: auto;
+}
+
+.project-details .right-micro-app {
+  position: relative;
+  display: flex;
+  flex: 1;
+}
+
+.project-details .right-micro-app .maps-micro-app {
+  display: flex;
+  flex: 1;
+}
+
+.project-details .right-micro-app .map-app-placeholder {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.project-details .right-micro-app .map-app-container {
+  height: 100%;
+}
+
+/* Wayline editor overlay (official: absolute positioned, pointer-events: none) */
+.project-details .right-micro-app #wayline-app-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Device manager layout (aligns with device-manager.html demo) */
+.device-details {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex: 1;
+  overflow: auto;
+}
+
+.device-details .right-micro-app {
+  position: relative;
+  display: flex;
+  flex: 1;
+}
+
+.device-details .right-micro-app .map-app-placeholder {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.device-details .right-micro-app .map-app-container {
+  height: 100%;
+}

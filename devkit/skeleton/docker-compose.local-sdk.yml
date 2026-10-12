@@ -1,0 +1,116 @@
+# FH Skeleton 本地 SDK 部署 Docker Compose
+#
+# 基于 docker/docker-compose.yml（源码构建）+ deploy-compose.yml（MySQL + 完整 env）
+# 适用于本地 Apple Silicon 机器，SDK 模式连接真实 FlightHub PaaS。
+#
+# 用法：
+#   cd skeleton
+#   DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose \
+#     -f docker-compose.local-sdk.yml \
+#     --env-file deploy.env.local-sdk \
+#     up --build -d
+#
+# 停止：
+#   docker compose -f docker-compose.local-sdk.yml down
+#
+# 停止并清除数据：
+#   docker compose -f docker-compose.local-sdk.yml down -v
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: fh-skeleton-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
+      MYSQL_DATABASE: fh_skeleton
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./deploy-init-sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  skeleton:
+    build:
+      context: ..
+      dockerfile: skeleton/docker/Dockerfile
+      platforms:
+        - linux/amd64
+    container_name: fh-skeleton-server
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${FH_PROFILE:-sdk}
+      FH_DB_URL: jdbc:mysql://mysql:3306/fh_skeleton?useSSL=${FH_DB_USE_SSL:-false}&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      FH_DB_USERNAME: ${FH_DB_USERNAME:-root}
+      FH_DB_PASSWORD: ${FH_DB_PASSWORD:?FH_DB_PASSWORD must be set}
+      FH_JWT_SECRET: "${FH_JWT_SECRET:?FH_JWT_SECRET must be set}"
+      FH_SKELETON_SDK_TOKEN: ${FH_SKELETON_SDK_TOKEN:-}
+      FH_SKELETON_SDK_ADDRESS: ${FH_SKELETON_SDK_ADDRESS:-}
+      FH_SKELETON_SDK_PORT: ${FH_SKELETON_SDK_PORT:-443}
+      FH_SKELETON_SDK_NOTIFICATION_SERVER: ${FH_SKELETON_SDK_NOTIFICATION_SERVER:-}
+      FH_SKELETON_SDK_AUTH_HEADER_KEY: ${FH_SKELETON_SDK_AUTH_HEADER_KEY:-}
+      FH_SKELETON_SDK_AUTH_HEADER_VALUE: ${FH_SKELETON_SDK_AUTH_HEADER_VALUE:-}
+      FH_SKELETON_SDK_REAL_HTTPAUTHHEADERKEY: ${FH_SKELETON_SDK_AUTH_HEADER_KEY:-}
+      FH_SKELETON_SDK_REAL_HTTPAUTHHEADERVALUE: ${FH_SKELETON_SDK_AUTH_HEADER_VALUE:-}
+      SPRING_APPLICATION_JSON: '{"fh":{"skeleton":{"sdk":{"real":{"http-auth-header-key":"${FH_SKELETON_SDK_AUTH_HEADER_KEY:-}","http-auth-header-value":"${FH_SKELETON_SDK_AUTH_HEADER_VALUE:-}"}}}}}'
+      SPRING_AI_ANTHROPIC_API_KEY: ${SPRING_AI_ANTHROPIC_API_KEY:-not-configured}
+      SPRING_AI_OPENAI_API_KEY: ${SPRING_AI_OPENAI_API_KEY:-not-configured}
+      FH_CHAT_ENABLED: ${FH_CHAT_ENABLED:-false}
+      FH_CHAT_MCP_URL: ${FH_CHAT_MCP_URL:-http://localhost:8080}
+      FH_CHAT_MCP_AUTH_TOKEN: ${FH_CHAT_MCP_AUTH_TOKEN:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/pf-devkit/ai-plugin/skeleton/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  fh-ui:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      args:
+        VITE_FH2_ADDRESS:         ${VITE_FH2_ADDRESS:-}
+        VITE_FH2_PORT:            ${VITE_FH2_PORT:-30812}
+        VITE_FH2_PRJ_ID:          ${VITE_FH2_PRJ_ID:-}
+        VITE_DEFAULT_THEME:       ${VITE_DEFAULT_THEME:-dark}
+        VITE_PRIMARY_COLOR:       ${VITE_PRIMARY_COLOR:-#1a73e8}
+        VITE_PRIMARY_HOVER_COLOR: ${VITE_PRIMARY_HOVER_COLOR:-}
+        VITE_MOCK_ENABLED:        ${VITE_MOCK_ENABLED:-false}
+        VITE_MAP_PROVIDER:        ${VITE_MAP_PROVIDER:-esri}
+        VITE_BING_KEY:            ${VITE_BING_KEY:-}
+        VITE_TIANDITU_KEY:        ${VITE_TIANDITU_KEY:-}
+    container_name: fh-skeleton-web
+    ports:
+      - "80:80"
+    environment:
+      VITE_FH2_ADDRESS: ${VITE_FH2_ADDRESS:-}
+      VITE_FH2_PORT: ${VITE_FH2_PORT:-30812}
+      VITE_FH2_WSS_URL: ${VITE_FH2_WSS_URL:-}
+      VITE_FH2_PRJ_ID: ${VITE_FH2_PRJ_ID:-}
+      VITE_FH2_SDK_AUTH_KEY: ${VITE_FH2_SDK_AUTH_KEY:-}
+      VITE_FH2_SDK_AUTH_VALUE: ${VITE_FH2_SDK_AUTH_VALUE:-}
+      VITE_FH2_DEVICE_SDK_ENABLED: ${VITE_FH2_DEVICE_SDK_ENABLED:-false}
+      VITE_DEFAULT_THEME: ${VITE_DEFAULT_THEME:-dark}
+      VITE_PRIMARY_COLOR: ${VITE_PRIMARY_COLOR:-#1a73e8}
+      VITE_PRIMARY_HOVER_COLOR: ${VITE_PRIMARY_HOVER_COLOR:-}
+      VITE_MOCK_ENABLED: ${VITE_MOCK_ENABLED:-false}
+      VITE_MAP_PROVIDER: ${VITE_MAP_PROVIDER:-esri}
+      VITE_BING_KEY: ${VITE_BING_KEY:-}
+      VITE_TIANDITU_KEY: ${VITE_TIANDITU_KEY:-}
+    depends_on:
+      skeleton:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mysql-data:

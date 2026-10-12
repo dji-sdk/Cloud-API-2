@@ -1,0 +1,64 @@
+# DJI FlightHub SEI/OSD 遥测数据约束规则
+#
+# 共享约束见 _shared/constraints-common.yaml（SSOT），本文件只定义 SEI/OSD Skill 特有的规则。
+# 共享约束包括：initialize-check, error-code-check, listen-cancel-pairing,
+#   null-guard-instances, thread-safety, resource-cleanup
+#
+# level: critical — 违反必导致功能失败
+# level: warning  — 违反可能导致问题但不一定立即失败
+
+# extends: _shared/constraints-common.yaml
+
+# ============================================================
+# SEI 特有约束
+# ============================================================
+
+- id: sei-requires-webrtc
+  rule: SEI 数据必须通过 WebRTC 直推获取，RTSP 点播、声网拉流、自建流媒体均无法获取 i 帧 SEI
+  violation: SEI 回调永远不触发，开发者误以为 SDK 不支持
+  level: critical
+
+- id: livemodule-prerequisite
+  rule: SEI 订阅前必须先 getLiveStream(liveInfo) 获取 LiveModule，再 start() 开直播成功
+  violation: NullPointerException 或订阅静默失败
+  level: critical
+
+- id: drc-link-prerequisite
+  rule: DRC OSD（listenDrcCameraMeasureTarget）需先 connectDrcLink 成功
+  violation: 回调不触发
+  level: critical
+
+- id: no-high-freq-mqtt-osd
+  rule: MQTT OSD 频率固定 0.5Hz，不可调高；需高频位置请走 DRC（可配 1~30Hz）或 SEI（帧级）
+  violation: 开发者在错误路径上浪费时间，问题永远解决不了
+  level: critical
+
+- id: device-model-adaptation
+  rule: SEI 解析协议因机型不同（M10E/M3T 走 UTF8 JSON，M4D/M4T/M4E 走二进制），角度需乘 CAM_COEFFICIENT（M10E=1e-7, M4E=1）
+  violation: 解析出乱码或数值偏差 7 个数量级
+  level: critical
+
+- id: sei-open-switch
+  rule: 设备不会默认发送 SEI，需调用 openDroneSeiMessageSend（ar_info_switch:1）开启
+  violation: 直播正常但 SEI 回调不触发
+  level: warning
+
+- id: browser-webrtc-limit
+  rule: 浏览器端解析 SEI 仅 Chrome/Edge 支持（依赖 Chromium createEncodedStreams），Safari/Firefox 不支持
+  violation: 前端 AR 功能在非 Chrome 浏览器失效
+  level: warning
+
+- id: coordinate-system-ned
+  rule: SEI 中 camera_pos 为 NED（北东地）坐标系，单位米，原点为起飞点/机场位置
+  violation: 坐标转换错误导致地图标注偏移
+  level: warning
+
+- id: height-datum-confusion
+  rule: 高度有两套基准 — height（WGS84 椭球高）和 elevation（EGM96 大地高），需用 egm96 库转换
+  violation: 高度偏差几十米，视锥落地计算错误
+  level: warning
+
+- id: drc-osd-frequency-config
+  rule: DRC OSD 频率通过 drc_mode_enter 时的 osd_frequency 参数配置，范围 1~30Hz，默认 3Hz
+  violation: 开发者不知道可配置，一直用默认 3Hz 觉得不够快
+  level: info

@@ -1,0 +1,29 @@
+# FHSDK Demo 后端（linux/amd64）。与 ../oryx 共用 fhsdk-demo 网络，WHIP 直连容器内 Oryx。
+services:
+  fhsdk-demo-server:
+    build:
+      context: .
+      platforms:
+        - linux/amd64
+    image: fhsdk-demo-server:local
+    platform: linux/amd64
+    container_name: fhsdk-demo-server
+    ports:
+      - "18080:8080"
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Shanghai
+      FHSDK_DRTC_CONFIG: /app/config/drtc_config_node.json
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./config/drtc_config_node.json:/app/config/drtc_config_node.json:ro
+    restart: unless-stopped
+    networks:
+      - fhsdk-demo
+
+networks:
+  fhsdk-demo:
+    name: fhsdk-demo
+    external: true

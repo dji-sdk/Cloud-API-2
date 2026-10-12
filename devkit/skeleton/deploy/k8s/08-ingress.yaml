@@ -1,0 +1,70 @@
+# 前端 + 后端 Ingress 入口
+#
+# 说明：
+#   - 前端镜像 nginx.conf 的 proxy_pass 硬编码 http://skeleton:8080（Docker Compose 服务名）。
+#     K8s 下为保持前端镜像零改动，额外创建名为 skeleton 的 Service 别名指向后端，
+#     使 nginx.conf 无需修改即可反代到正确后端。
+#   - 前端路由 /（SPA）→ skeleton-frontend:80
+#   - 后端路由 /pf-devkit/ai-plugin/skeleton → skeleton-backend:8080
+#     （后端 context-path 已含此前缀，Ingress path 与容器路径一致）
+#   - SSE 长连接：proxy-buffering off + proxy-read-timeout 300（Chat 工具链路）
+#   - TLS：启用前将 TLS 证书 base64 填入 tls-secret，并把注释掉的 host/tls 打开
+apiVersion: v1
+kind: Service
+metadata:
+  name: skeleton
+  namespace: fh-skeleton
+spec:
+  type: ClusterIP
+  selector:
+    app: skeleton-backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tls-secret
+  namespace: fh-skeleton
+type: kubernetes.io/tls
+stringData:
+  tls.crt: <OPTIONAL_REPLACE_ME_LEAVE_EMPTY_IF_NOT_USING_TLS>
+  tls.key: <OPTIONAL_REPLACE_ME_LEAVE_EMPTY_IF_NOT_USING_TLS>
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: skeleton-ingress
+  namespace: fh-skeleton
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 50m
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: <REPLACE_ME_YOUR_DOMAIN>
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: skeleton-frontend
+                port:
+                  number: 80
+          - path: /pf-devkit/ai-plugin/skeleton
+            pathType: Prefix
+            backend:
+              service:
+                name: skeleton-backend
+                port:
+                  number: 8080
+  # TLS（可选）：签发证书后填充 tls-secret 并取消注释
+  # tls:
+  #   - hosts:
+  #       - <REPLACE_ME_YOUR_DOMAIN>
+  #     secretName: tls-secret

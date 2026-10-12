@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.dji.fh</groupId>
+        <artifactId>fh-skeleton-parent</artifactId>
+        <version>0.1.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>fh-skeleton-bom</artifactId>
+    <packaging>pom</packaging>
+
+    <name>FH Skeleton BOM</name>
+    <description>Single entry-point ISVs import to align all skeleton artifact versions.</description>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.dji.fh</groupId>
+                <artifactId>kernel-spi</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dji.fh</groupId>
+                <artifactId>kernel-impl</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dji.fh</groupId>
+                <artifactId>kernel-mock-sdk</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dji.fh</groupId>
+                <artifactId>kernel-real-sdk</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dji.fh</groupId>
+                <artifactId>feature-chat</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dji.fh</groupId>
+                <artifactId>feature-device</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dji.fh</groupId>
+                <artifactId>feature-user</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dji.fh</groupId>
+                <artifactId>fh-skeleton-app</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

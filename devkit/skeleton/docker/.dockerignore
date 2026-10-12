@@ -1,0 +1,9 @@
+# 排除构建产物和版本控制
+**/target/
+**/.git/
+**/.gitignore
+**/.idea/
+**/*.iml
+**/node_modules/
+**/.env
+**/docs/superpowers/

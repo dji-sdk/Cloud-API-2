@@ -1,0 +1,39 @@
+# ============================================================================
+# FH Skeleton 后端 systemd unit
+# 安装：
+#   sudo cp skeleton/deploy/skeleton.service /etc/systemd/system/
+#   sudo cp skeleton/deploy/skeleton.env.example /etc/fh-skeleton.env
+#   # 编辑 /etc/fh-skeleton.env 填入真实配置
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now skeleton
+# 查看日志：journalctl -u skeleton -f
+# ============================================================================
+[Unit]
+Description=FH Skeleton backend (DJI FlightHub PaaS SDK ISV skeleton)
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+# 必填：JWT 密钥等敏感配置通过 EnvironmentFile 注入，勿写入 unit 文件
+EnvironmentFile=/etc/fh-skeleton.env
+# 生产打包必须 -Psdk-real；native lib 由 native-lib-extract.sh 解压到 /opt/sdk-libs
+ExecStart=/usr/bin/java -Xms512m -Xmx2g \
+  -Djava.library.path=/opt/sdk-libs \
+  -jar /opt/fh-skeleton/fh-skeleton-app-0.1.0.jar
+WorkingDirectory=/opt/fh-skeleton
+# 以独立低权限用户运行（部署时创建：useradd -r -s /sbin/nologin fhskeleton）
+User=fhskeleton
+Group=fhskeleton
+Restart=on-failure
+RestartSec=10
+# 优雅停机（spring.lifecycle.timeout-per-shutdown-phase=30s）
+TimeoutStopSec=45
+# 安全加固
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

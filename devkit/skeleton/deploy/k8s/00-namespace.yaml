@@ -1,0 +1,5 @@
+# fh-skeleton 命名空间 — 所有 skeleton 相关资源统一放置
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fh-skeleton

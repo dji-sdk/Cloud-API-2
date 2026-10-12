@@ -1,0 +1,70 @@
+# 随包错误码词典（私有化离线判定用）
+#
+# 本文件是 `scripts/diag.sh` 静态判级的**本地随包词典**：collect 到 `ERROR_* / NPE`
+# token 后，命中此词典 = 已知故障（保守落 L1，见 rules/classification.yaml），
+# 未命中 = 词典外（L2/L3）。
+#
+# 派生关系（唯一真值源在别处）：
+#   - 内容派生自 `../cloudapi2-troubleshooting/error-codes.yaml` 的 backend 段，
+#     **不要在这里扩词条**——错误码的 cause/fix 以 troubleshooting 词典为准。
+#   - `diag.sh` 里 `classify_code` 的 case 分支才是被真正执行的命中集合，
+#     本 YAML 只作人读。改词典必须同步改三处：troubleshooting 词典 / 本文件 / classify_code。
+#   - 判定语义按 `智能诊断体系 03 §3.4`：离线本地判级是私有化「数据不出网」的显式降级口径，
+#     模型判级与动态知识检索只在 `fh-diag-server`。
+
+version: 0.1.0
+source: cloudapi2-troubleshooting/error-codes.yaml (backend section)
+synced: 2026-09-03
+
+codes:
+  - code: ERROR_INIT_FAILED
+    layer: sdk
+    cause: SDK initialize 失败 — 配置参数错误（serverAddress/accessToken）或服务端不可达
+    fix: |
+      1. 检查 FlightHubSdkConfig 中 serverAddress 是否正确（含协议和端口）
+      2. 确认 accessToken 有效且未过期
+      3. 确认网络连通性（telnet/curl 测试）
+      4. 检查 SDK 日志中的详细错误信息
+
+  - code: ERROR_INVALID_STATE
+    layer: sdk
+    cause: SDK 状态不正确 — 未初始化就调用方法、或飞控指令前未获取控制权
+    fix: |
+      1. 确认 initialize() 已成功返回（回调 error_code == 0）
+      2. 飞控指令前确认 acquireFlightControlAuthority() 成功
+      3. 检查是否有其他客户端抢占了控制权
+
+  - code: ERROR_DEVICE_NOT_FOUND
+    layer: sdk
+    cause: 设备不存在 — drone_sn / dock_sn 打错、设备已解绑、或设备不在当前 workspace
+    fix: |
+      1. 核对 device SN 与 `fh_device_list` 输出一致
+      2. 确认设备仍在当前 workspace（未解绑/未迁移）
+      3. 确认传入的是 drone SN 而非 dock SN（TASK 命令用 dock SN）
+
+  - code: ERROR_CALLBACK_TIMEOUT
+    layer: sdk
+    cause: 回调超时 — 命令已发出但规定时间内未收到回调（网络抖动 / 设备离线 / 消息未订阅）
+    fix: |
+      1. 确认命令对应的 listen*/subscribe* 已成功注册（listenId >= 0）
+      2. 确认网络链路稳定（DRC/管理链路）
+      3. 检查设备是否在线；超时后按 SDK 约定补发或查询状态
+
+  - code: ERROR_LISTEN_FAILED
+    layer: sdk
+    cause: 订阅失败 — listen*/subscribe* 返回负值，一般为 listenId 冲突或参数非法
+    fix: |
+      1. 确认 listenId 由 SDK 返回，未与已存在订阅冲突
+      2. 确认订阅参数（主题/条件）合法
+      3. 确认生命周期内不重复订阅同一事件
+
+  - code: NPE
+    layer: java
+    cause: NullPointerException — getXxxInstance(sn) 返回 null 后未判空就使用（initialize 未完成或 SN 不在当前会话）
+    fix: |
+      1. 确认 initialize() 同步完成后才调用其他方法（见 _shared/constraints-common.yaml id: initialize-check）
+      2. getDroneInstance / getDockInstance 返回值先判空再使用
+      3. 检查回调 error_code 后再访问 data 字段
+
+# 校验提示：grep -E '^  - code: (ERROR_[A-Z_]+|NPE)$' 本文件 与
+# ../cloudapi2-troubleshooting/error-codes.yaml 的 backend 段应完全一致，改任一侧都必须同步另一侧。

@@ -1,0 +1,39 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Java / Maven
+**/target/
+*.class
+*.jar
+
+# 后端运行时
+**/logs/
+**/webrtc_logs/
+*.log
+
+# Node / Vite / Vue
+**/node_modules/
+**/dist/
+**/dist-ssr/
+*.tsbuildinfo
+
+# 环境变量
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*~
+
+# 本地配置与构建产物
+backend/docker/demo-server/.env
+backend/docker/demo-server/app.jar
+backend/docker/demo-server/config/drtc_config_node.json
+backend/fhsdk-demo-server/src/main/resources/application-local.yml
+**/flight-hub-sdk.jar
+backend/docker/demo-server/.env.bak
+backend/docker/demo-server/*.bak

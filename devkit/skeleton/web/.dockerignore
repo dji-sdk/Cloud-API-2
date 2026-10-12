@@ -1,0 +1,27 @@
+# 排除不需要进入 Docker build context 的文件
+# 减少约 200MB+ daemon I/O（本地 node_modules）
+
+node_modules/
+dist/
+.git/
+.gitignore
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 环境配置（含敏感信息）
+.env
+.env.local
+.env.*.local
+
+# 测试与覆盖率
+coverage/
+*.test.ts
+*.spec.ts
+
+# OS
+.DS_Store
+Thumbs.db

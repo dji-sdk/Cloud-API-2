@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.dji.fh</groupId>
+        <artifactId>fh-skeleton-parent</artifactId>
+        <version>0.1.0</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>feature-wayline</artifactId>
+
+    <name>FH Skeleton Feature Wayline</name>
+    <description>航线库管理 feature module — 航线列表查询，基于 SDK WaylineManageModule。对齐前端 /api/v1/workspace/waylines 契约。</description>
+
+    <dependencies>
+        <!-- 自家 SPI（拿 event 类定义） -->
+        <dependency>
+            <groupId>com.dji.fh</groupId>
+            <artifactId>kernel-spi</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Spring Boot Web（REST 端点） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+
+        <!-- FlightHub SDK（optional：仅 SDK 模式下需要） -->
+        <dependency>
+            <groupId>com.dji.flighthubsdk</groupId>
+            <artifactId>flight-hub-sdk</artifactId>
+            <version>3.3.7</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <configuration>
+                    <!-- SDK 实现类依赖 JNI 原生库，单元测试环境无法实例化，需集成测试覆盖 -->
+                    <excludes>
+                        <exclude>com/dji/fh/feature/wayline/spi/sdk/**</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

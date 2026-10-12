@@ -1,0 +1,39 @@
+# ============================================================================
+# fh-skeleton-app — sdk profile（真 SDK 适配层）
+#
+# 启用方式：
+#   1. Maven 打包必须含 sdk-real profile：
+#      mvn package -Psdk-real
+#   2. 运行命令必须激活此 profile：
+#      java -jar target/*.jar --spring.profiles.active=sdk
+#
+# 生产部署：建议用 Docker（等 A4 plan）。
+# Mac arm64 / Linux x86_64 开发：直接 java -jar 即可（jar 内已含 native lib）。
+#
+# 详见 skeleton/docs/sdk-profile-isv-guide.md。
+# ============================================================================
+
+fh:
+  skeleton:
+    sdk:
+      # 核心开关：触发 RealSdkAutoConfiguration 装配（与 mock 互斥）
+      mode: sdk
+
+      # 真 SDK 启动配置（生产应通过 env / vault 注入 token，不要硬编码）
+      real:
+        token: ${FH_SKELETON_SDK_TOKEN:}                                       # 必填
+        address: ${FH_SKELETON_SDK_ADDRESS:}                                   # 必填
+        port: ${FH_SKELETON_SDK_PORT:443}                                      # 必填
+        notification-server-address: ${FH_SKELETON_SDK_NOTIFICATION_SERVER:}   # 必填
+        log-level: info
+        device-list-timeout: 10s
+        osd-interval-millis: 1000
+        osd-snapshot-ttl: 5s
+        http-auth-header-key: ${FH_SKELETON_SDK_AUTH_HEADER_KEY:}
+        http-auth-header-value: ${FH_SKELETON_SDK_AUTH_HEADER_VALUE:}
+
+# sdk profile 下的日志级别
+logging:
+  level:
+    com.dji.fh.kernel.realsdk: info
+    com.dji.flighthubsdk: warn   # SDK 自身日志默认 warn，避免噪音

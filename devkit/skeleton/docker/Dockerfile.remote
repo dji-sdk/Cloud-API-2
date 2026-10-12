@@ -1,0 +1,39 @@
+# FH Skeleton 后端 — 远端构建专用 Dockerfile
+# 在 x86 远端服务器上运行 docker build，基础镜像 native 拉取无延迟
+#
+# 构建上下文中需要：app.jar、sdk.jar
+
+FROM eclipse-temurin:17-jre-jammy
+
+LABEL maintainer="DJI DevKit Team"
+LABEL description="FH Skeleton — remote-built runtime image"
+
+WORKDIR /app
+
+# 复制预编译 jar（本地 mvn package 产出）
+COPY app.jar app.jar
+
+# 提取 SDK native .so
+COPY sdk.jar /tmp/sdk.jar
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl unzip && \
+    mkdir -p /opt/sdk-libs && \
+    unzip -j -o /tmp/sdk.jar 'lib/linux-x86_64/*' -d /opt/sdk-libs && \
+    chmod 755 /opt/sdk-libs/*.so* && \
+    rm /tmp/sdk.jar && \
+    apt-get purge -y unzip && apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
+# 以非 root 用户运行（安全加固 PAAS-CI-03）
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost:8080/pf-devkit/ai-plugin/skeleton/actuator/health || exit 1
+
+ENTRYPOINT ["java", \
+    "-Djava.library.path=/opt/sdk-libs", \
+    "-jar", "app.jar"]

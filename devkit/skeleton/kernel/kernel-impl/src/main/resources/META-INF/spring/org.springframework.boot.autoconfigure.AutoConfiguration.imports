@@ -1,0 +1,5 @@
+com.dji.fh.kernel.impl.async.AsyncAutoConfiguration
+com.dji.fh.kernel.impl.repository.RepositoryAutoConfiguration
+com.dji.fh.kernel.impl.event.EventBusAutoConfiguration
+com.dji.fh.kernel.impl.auth.AuthAutoConfiguration
+com.dji.fh.kernel.impl.manifest.ManifestAutoConfiguration

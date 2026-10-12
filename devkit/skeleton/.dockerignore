@@ -1,0 +1,32 @@
+# 构建上下文为 skeleton/，排除无关文件
+# 减少 daemon I/O（node_modules ~300MB、target ~180MB）
+
+**/node_modules/
+**/dist/
+**/target/
+**/.git/
+**/.env
+**/.env.*
+
+# 密钥 / 凭证文件
+**/deploy.env
+**/deploy.env.*
+**/*.key
+**/*.pem
+**/*.p12
+**/*.jks
+**/*.keystore
+**/id_rsa*
+**/deploy_known_hosts
+
+# IDE / Editor
+**/.vscode/
+**/.idea/
+**/*.swp
+
+# OS
+**/.DS_Store
+**/Thumbs.db
+
+# 测试产物
+**/coverage/

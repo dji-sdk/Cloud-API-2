@@ -1,0 +1,10 @@
+{
+  "dji-cloud-api2": {
+    "command": "bash",
+    "args": ["/path/to/dji-flighthub-devkit/mcp/run-mcp-local.sh"],
+    "env": {
+      "FH_SERVER_ADDRESS": "http://placeholder",
+      "FH_MOCK": "true"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "groups": [
+    {
+      "name": "fh.skeleton.async",
+      "type": "com.dji.fh.kernel.impl.async.FhAsyncProperties",
+      "description": "Kernel 事件异步派发线程池的可调配置。"
+    }
+  ],
+  "properties": [
+    {
+      "name": "fh.skeleton.async.core-size",
+      "type": "java.lang.Integer",
+      "description": "核心线程数。",
+      "defaultValue": 4
+    },
+    {
+      "name": "fh.skeleton.async.max-size",
+      "type": "java.lang.Integer",
+      "description": "最大线程数。",
+      "defaultValue": 16
+    },
+    {
+      "name": "fh.skeleton.async.queue-capacity",
+      "type": "java.lang.Integer",
+      "description": "任务队列容量。",
+      "defaultValue": 200
+    },
+    {
+      "name": "fh.skeleton.async.keep-alive-seconds",
+      "type": "java.lang.Integer",
+      "description": "空闲线程 keepAlive 秒数。",
+      "defaultValue": 60
+    },
+    {
+      "name": "fh.skeleton.async.rejection",
+      "type": "com.dji.fh.kernel.impl.async.FhAsyncProperties$Rejection",
+      "description": "线程池拒绝策略。",
+      "defaultValue": "caller-runs"
+    }
+  ],
+  "hints": [
+    {
+      "name": "fh.skeleton.async.rejection",
+      "values": [
+        {"value": "caller-runs", "description": "提交线程兜底执行，不丢任务。"},
+        {"value": "abort", "description": "抛 RejectedExecutionException。"},
+        {"value": "discard", "description": "静默丢弃被拒任务。"},
+        {"value": "discard-oldest", "description": "丢队首老任务后重入。"}
+      ]
+    }
+  ]
+}

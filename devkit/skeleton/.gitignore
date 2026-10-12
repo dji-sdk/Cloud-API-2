@@ -1,0 +1,61 @@
+target/
+*.class
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# SDK 反编译/解压源码 — 仅供 IDE 查看，构建依赖 libs/ 下的 JAR，勿提交
+/com/
+
+# H2 嵌入式数据库文件（默认路径 ./data/）
+data/
+*.mv.db
+*.trace.db
+
+# 敏感文件 — 永远不要提交
+.env
+.env.*
+!.env.example
+*.env.local
+*.key
+*.pem
+*.p12
+*.pfx
+*.keystore
+*.jks
+deploy.env
+*.mv.db
+*.lock.db
+*.trace.db
+deploy_known_hosts
+
+# 交付时由 scripts/package-delivery.sh 显式排除（复制环节二次防线）
+.deploy.env
+.deploy.env.local
+.deploy.env.local-mock
+.deploy.env.local-sdk
+.env.runtime
+logs/
+*.runtime.log
+
+# 防御性模式 — 阻止意外提交敏感/调试/临时文件
+*.bak
+*.tmp
+*.swp
+*.orig
+*.log
+.idea/
+.vscode/
+*.iml
+__pycache__/
+.pytest_cache/
+node_modules/
+dist/
+*.tar.gz
+*.zip
+id_rsa*
+known_hosts
+credentials.json
+secrets.yml
+secrets.yaml

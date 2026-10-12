@@ -1,0 +1,115 @@
+@import './variables.css';
+@import './fh2-theme.css';
+
+/* ── Reset（仅作用于 app 自身元素，不干扰 SDK） ──────── */
+
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+ * box-sizing 仅限 app 自身组件，
+ * 不用 * 通配符以免覆盖 SDK 内部（Ant Design 部分组件依赖 content-box）。
+ */
+.app-sidebar,
+.app-sidebar *,
+.layout-main,
+.layout-main *:not([class*="uranus"]):not([class*="ant-"]) {
+  box-sizing: border-box;
+}
+
+/* app 自身区域的文字和背景色 */
+.app-sidebar {
+  color: var(--app-text);
+}
+
+.layout-main {
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ── 全局交互样式（限定在 #app 内，避免影响 SDK 微前端子应用） ── */
+
+#app button {
+  font-family: inherit;
+}
+
+#app :focus-visible {
+  outline: 2px solid var(--app-primary);
+  outline-offset: 2px;
+}
+
+#app ::selection {
+  background: var(--app-primary-bg);
+  color: var(--app-primary);
+}
+
+/* ── 自定义滚动条 ─────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--app-border-strong);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--app-text-muted);
+}
+
+/* ── 布局工具类 ──────────────────────────────────────── */
+
+.layout-fill {
+  width: 100%;
+  height: 100%;
+}
+
+.layout-app {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.layout-main {
+  flex: 1;
+  overflow: auto;
+}
+
+/* ── 页面过渡动画 ─────────────────────────────────────── */
+
+.page-enter-active,
+.page-leave-active {
+  transition: opacity var(--transition-slow), transform var(--transition-slow);
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}

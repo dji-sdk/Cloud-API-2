@@ -1,0 +1,32 @@
+{
+  "groups": [
+    {
+      "name": "fh.skeleton.feature.device",
+      "type": "com.dji.fh.feature.device.DeviceProperties",
+      "description": "设备状态管理 feature 配置。"
+    }
+  ],
+  "properties": [
+    {
+      "name": "fh.skeleton.feature.device.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用 feature-device（false 则不装配）。",
+      "defaultValue": true,
+      "sourceType": "com.dji.fh.feature.device.DeviceProperties"
+    },
+    {
+      "name": "fh.skeleton.feature.device.hms-max-per-device",
+      "type": "java.lang.Integer",
+      "description": "每设备 HMS 告警队列最大长度。",
+      "defaultValue": 50,
+      "sourceType": "com.dji.fh.feature.device.DeviceProperties"
+    },
+    {
+      "name": "fh.skeleton.feature.device.liveness-timeout",
+      "type": "java.time.Duration",
+      "description": "存活超时：事件驱动在线态在此时长内未收到任何存活信号即判离线。设为 0s 可关闭该兜底。",
+      "defaultValue": "5m",
+      "sourceType": "com.dji.fh.feature.device.DeviceProperties"
+    }
+  ]
+}

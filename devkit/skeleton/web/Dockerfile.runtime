@@ -1,0 +1,27 @@
+# ============================================================
+# FH Skeleton UI — 薄运行镜像（供 deploy.sh 本地快速构建使用）
+# ============================================================
+# 与完整 Dockerfile 的区别：
+# - 不包含 npm ci / npm run build（由本地 native node 完成）
+# - 仅 COPY 预构建的 dist/ 目录到 nginx
+# - Apple Silicon 上构建速度从 5-10min 降至 ~3s
+#
+# CI pipeline 仍使用完整 Dockerfile
+# ============================================================
+
+# syntax=docker/dockerfile:1
+# 安全加固（PAAS-CI-04）：使用非特权 nginx 镜像，进程以 uid 101 运行，无需 root
+FROM nginxinc/nginx-unprivileged:alpine
+
+COPY --chown=nginx:nginx dist /usr/share/nginx/html
+COPY --chown=nginx:nginx nginx.conf /etc/nginx/conf.d/default.conf
+
+# 运行时注入：由 entrypoint 依据环境变量生成 config.js 并补齐 nginx CSP 白名单
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+USER root
+RUN chmod +x /docker-entrypoint.sh && chown nginx:nginx /docker-entrypoint.sh
+USER nginx
+
+EXPOSE 8080
+
+ENTRYPOINT ["/docker-entrypoint.sh"]

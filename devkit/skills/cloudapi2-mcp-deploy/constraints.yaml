@@ -1,0 +1,70 @@
+# DJI FlightHub MCP Server 部署约束规则
+#
+# 部署 = 引导式半自动流程，本文件定义部署 Skill 特有的硬约束。
+# 共享约束见 _shared/constraints-common.yaml（SSOT）。
+#
+# level: critical — 违反必导致部署失败或安全风险
+# level: warning  — 违反可能导致问题但不一定立即失败
+
+# 注意：以下约束与 skeleton-deploy 的同名约束（platform-amd64-only、semi-auto-boundary、
+# no-destructive-by-default、verify-health-before-done）内容相似但操作列表不同，
+# 因部署形态差异无法完全复用，各自维护。
+
+# ============================================================
+# MCP Server 部署特有约束
+# ============================================================
+
+- id: platform-amd64-only
+  rule: 真实 SDK 模式仅支持 Linux x86_64（JNI 原生库限制）；非 amd64 平台必须使用 Docker --platform linux/amd64 或降级为 Mock 模式
+  violation: SDK .so 加载失败，SDK initialize 返回错误
+  level: critical
+
+- id: sse-auth-token-required
+  rule: SSE 模式 FH_SSE_AUTH_TOKEN 必须显式配置强随机值（openssl rand -hex 32），留空或使用公知占位值被 StartupAuthValidator 拒绝启动
+  violation: 容器启动立即退出，日志报"Auth token is blank or uses a well-known placeholder"
+  level: critical
+
+- id: glibc-execstack
+  rule: Ubuntu 26.04+（glibc 2.39+）必须设置环境变量 GLIBC_TUNABLES=glibc.rtld.execstack=2，否则 libVolcEngineRTC.so 加载被拒
+  violation: SDK 原生库加载失败，应用无法初始化
+  level: critical
+
+- id: docker-platform-amd64
+  rule: 在 Apple Silicon / ARM64 构建/运行 MCP 镜像必须加 --platform linux/amd64，否则生成 ARM 镜像在 x86_64 服务器报 exec format error
+  violation: 容器启动失败报 exec format error
+  level: critical
+
+- id: semi-auto-boundary
+  rule: AI 不自动执行 docker build / docker compose / ssh / mvn package 等系统级操作；只给精确命令并等待用户回报
+  violation: 越权执行系统操作，透明性差且不可审计
+  level: critical
+
+- id: no-destructive-by-default
+  rule: 覆盖已有 .env 文件、强制重建容器、删除 Docker volume 前必须先与用户确认
+  violation: 误覆盖生产配置或丢失数据
+  level: critical
+
+- id: verify-health-before-done
+  rule: 部署完成必须引导用户执行健康检查（/pf-devkit/ai-plugin/mcp/health 返回 UP）并确认 SSE 流可达，才能宣告完成
+  violation: 未验证即声称部署成功
+  level: warning
+
+- id: claude-json-priority
+  rule: Claude Code MCP 配置必须写入 ~/.claude.json（优先级最高），不要配置到 ~/.claude/settings.json 或 ~/.claude/.mcp.json（会被静默覆盖）
+  violation: 用户配置不生效，调试浪费时间
+  level: warning
+
+- id: sse-type-field
+  rule: Claude Code SSE 配置必须包含 "type":"sse" 字段，缺失导致按 stdio 解析失败（报 command expected string received undefined）
+  violation: MCP Server 被静默跳过，不出现在工具列表
+  level: critical
+
+- id: private-sdk-jar-install
+  rule: 本地 Maven 构建前必须确认 ~/.m2 中已安装 flight-hub-sdk-3.3.7.jar（mvn install:install-file）；Docker 构建内部已自动处理
+  violation: mvn package 找不到 SDK 依赖，构建失败
+  level: critical
+
+- id: base-path-correct
+  rule: 所有 HTTP 端点（健康检查、SSE、message）必须带 base-path /pf-devkit/ai-plugin/mcp，裸路径 /sse 或 /health 会 404
+  violation: 客户端连接 404，健康检查永远失败
+  level: critical

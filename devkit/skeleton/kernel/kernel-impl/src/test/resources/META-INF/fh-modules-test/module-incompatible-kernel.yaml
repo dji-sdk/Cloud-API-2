@@ -1,0 +1,14 @@
+schemaVersion: "1.0"
+id: "feature-future"
+version: "1.0.0"
+name: "未来 feature"
+description: "需要 kernel ≥ 99.0，本地装不下"
+metadata:
+  category: "feature"
+  authors: ["test"]
+requires:
+  kernel: ">=99.0.0,<100.0.0"
+  modules: []
+toggle:
+  property: "fh.skeleton.feature.future.enabled"
+  defaultValue: false

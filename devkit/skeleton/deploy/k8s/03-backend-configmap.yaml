@@ -1,0 +1,18 @@
+# 后端非敏感环境变量 ConfigMap
+# 敏感值（FH_JWT_SECRET / DB 密码 / SDK token / MCP auth）放 04-backend-secret.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: skeleton-backend-config
+  namespace: fh-skeleton
+data:
+  SPRING_PROFILES_ACTIVE: sdk
+  FH_SKELETON_SDK_ADDRESS: <REPLACE_ME>
+  FH_SKELETON_SDK_PORT: "443"
+  FH_SKELETON_SDK_NOTIFICATION_SERVER: <REPLACE_ME>
+  FH_CHAT_ENABLED: "false"
+  FH_CHAT_MCP_URL: <REPLACE_ME>
+  FH_DB_URL: jdbc:mysql://mysql:3306/fh_skeleton?useSSL=true&allowPublicKeyRetrieval=true&serverTimezone=UTC
+  FH_DB_USERNAME: fh_skeleton
+  FH_DDL_AUTO: update
+  FH_CHAT_PROVIDER: openai

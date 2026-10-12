@@ -1,0 +1,2 @@
+com.dji.fh.feature.flightarea.FlightAreaAutoConfiguration
+com.dji.fh.feature.flightarea.spi.sdk.SdkOfflineMapAutoConfiguration

@@ -1,0 +1,20 @@
+CodeMeter Lite Runtime — Redistribution Notice
+================================================
+
+The file `codemeter-lite_8.10.6221.500_amd64.deb` is the CodeMeter Lite Runtime
+package provided by Wibu-Systems AG.
+
+Redistribution Terms:
+  - This package is redistributed under the Wibu-Systems CodeMeter Runtime
+    redistribution license granted to DJI as part of the CodeMeter SDK license
+    agreement.
+  - End users (ISVs) may install and use this runtime solely for the purpose of
+    running DJI FlightHub PaaS SDK protected applications.
+  - Further redistribution by ISVs to their end customers is permitted only when
+    bundled with a licensed DJI FlightHub PaaS application.
+
+For full CodeMeter license terms, see:
+  https://www.wibu.com/support/user/downloads-user-software.html
+
+Copyright (c) Wibu-Systems AG. All rights reserved.
+CodeMeter is a registered trademark of Wibu-Systems AG.

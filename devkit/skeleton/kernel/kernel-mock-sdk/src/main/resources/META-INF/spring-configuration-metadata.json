@@ -1,0 +1,72 @@
+{
+  "groups": [
+    {
+      "name": "fh.skeleton.mock",
+      "type": "com.dji.fh.kernel.mocksdk.MockSdkProperties",
+      "description": "Mock SDK 可调配置（仅 mock profile 生效）。"
+    },
+    {
+      "name": "fh.skeleton.sdk",
+      "description": "SDK 运行模式开关。"
+    }
+  ],
+  "properties": [
+    {
+      "name": "fh.skeleton.sdk.mode",
+      "type": "java.lang.String",
+      "description": "SDK 运行模式：mock（默认开发态）/ sdk（生产）。",
+      "defaultValue": "mock"
+    },
+    {
+      "name": "fh.skeleton.mock.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Mock SDK 总开关。",
+      "defaultValue": true
+    },
+    {
+      "name": "fh.skeleton.mock.device.sn",
+      "type": "java.lang.String",
+      "description": "虚拟 drone SN。",
+      "defaultValue": "MOCK-DRONE-001"
+    },
+    {
+      "name": "fh.skeleton.mock.device.model",
+      "type": "java.lang.String",
+      "description": "虚拟 drone 型号。",
+      "defaultValue": "Mock Drone"
+    },
+    {
+      "name": "fh.skeleton.mock.dock.sn",
+      "type": "java.lang.String",
+      "description": "虚拟 dock SN。",
+      "defaultValue": "MOCK-DOCK-001"
+    },
+    {
+      "name": "fh.skeleton.mock.dock.model",
+      "type": "java.lang.String",
+      "description": "虚拟 dock 型号。",
+      "defaultValue": "Mock Dock"
+    },
+    {
+      "name": "fh.skeleton.mock.osd.interval-millis",
+      "type": "java.lang.Long",
+      "description": "OSD 推送间隔（毫秒），默认 1000=1Hz。",
+      "defaultValue": 1000
+    },
+    {
+      "name": "fh.skeleton.mock.script.enabled",
+      "type": "java.lang.Boolean",
+      "description": "启用启动脚本回放。",
+      "defaultValue": true
+    }
+  ],
+  "hints": [
+    {
+      "name": "fh.skeleton.sdk.mode",
+      "values": [
+        {"value": "mock", "description": "Mock SDK（无 JNI，开发态默认）。"},
+        {"value": "sdk", "description": "真 SDK（Linux JNI，A3 不提供 adapter，后续 plan 补）。"}
+      ]
+    }
+  ]
+}

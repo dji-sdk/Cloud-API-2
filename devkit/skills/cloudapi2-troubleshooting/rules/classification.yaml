@@ -1,0 +1,27 @@
+# 静态判级决策表（人读版）
+#
+# 本文件是 `scripts/diag.sh` `classify_code` / `classify` 的**人读映射**；
+# 被执行的是 bash case（diag.sh 是程序），本 YAML 不参与运行时。
+# 错误码词典唯一真值源 = `error-codes.yaml`（含 frontend/backend/设备侧）；
+# 本表只描述判级语义，词典命中与否见 error-codes.yaml。
+
+version: 2.0.0
+scope: 收集→判级→（可选）RCA→反馈，全部可本地闭环；出网仅由用户主动决策
+
+classification:
+  - level: L0
+    condition: 词典命中 且 动作具体到可复制粘贴
+    action: 输出可执行动作 + 用户确认已执行
+    executable_from: pending # 按 03 开放问题 12 定启发式后放开
+
+  - level: L1
+    condition: 词典命中 且 只能给结论与建议
+    action: 给结论与建议，引用 error-codes.yaml 的 fix 字段，不主动执行
+
+  - level: L2
+    condition: 零命中 或 命中但判定为 SDK/服务端问题
+    action: 生成结构化升级包（sanitized 摘要），走 RCA / 升级路径
+
+  - level: L3
+    condition: 零命中 且 关键采集缺失（env 或 sdk_log 为空）
+    action: 降级为原始工单 + 现场快照，标注低质量包

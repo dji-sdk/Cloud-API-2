@@ -1,0 +1,17 @@
+{
+  "dji-cloud-api2": {
+    "command": "docker",
+    "args": [
+      "run", "--rm", "-i", "--platform", "linux/amd64",
+      "-e", "FH_MOCK=false",
+      "-e", "FH_TRANSPORT=stdio",
+      "-e", "FH_SERVER_ADDRESS=http://<YOUR_SERVER_IP>",
+      "-e", "FH_SERVER_PORT=<YOUR_SERVER_PORT>",
+      "-e", "FH_ACCESS_TOKEN=<your-access-token>",
+      "-e", "FH_WORKSPACE_UUID=<your-workspace-uuid>",
+      "dji/flighthub-mcp:latest",
+      "--spring.profiles.active=stdio",
+      "--spring.main.web-application-type=none"
+    ]
+  }
+}
