@@ -47,7 +47,7 @@ claude plugin install superpowers
 
 ### 方式 1：Plugin 一键安装（推荐）
 
-本套 Skill 已打包为 `devkit@cloud-api2` Plugin，一次安装即可获得全部 11 个 Skill。
+本套 Skill 已打包为 `cloudapi2@dji` Plugin，一次安装即可获得全部 11 个 Skill。
 
 #### 前置条件
 
@@ -58,18 +58,18 @@ claude plugin install superpowers
 #### 第 1 步：添加 Marketplace
 
 ```bash
-claude plugin marketplace add <your-plugin-repo-url>
+claude plugin marketplace add dji-sdk/Cloud-API-2
 ```
 
-> 此命令将 `cloud-api2` marketplace 注册到你的 Claude Code 配置中。只需执行一次。
+> 此命令将 `dji` marketplace 注册到你的 Claude Code 配置中。只需执行一次。
 
 #### 第 2 步：安装 Plugin
 
 ```bash
-claude plugin install devkit@cloud-api2
+claude plugin install cloudapi2@dji
 ```
 
-> 此命令启用 `devkit` plugin（包含全部 10 个 Skill）。安装完成后新开会话即生效。
+> 此命令启用 `cloudapi2` plugin（包含全部 11 个 Skill）。安装完成后新开会话即生效。
 
 #### 第 3 步：验证安装
 
@@ -79,7 +79,7 @@ claude plugin install devkit@cloud-api2
 /plugins
 ```
 
-应看到输出中包含 `devkit@cloud-api2 (enabled)`。
+应看到输出中包含 `cloudapi2@dji (enabled)`。
 
 然后试一条触发语句：
 
@@ -102,8 +102,8 @@ claude plugin install devkit@cloud-api2
 #### 第 1 步：Clone 仓库
 
 ```bash
-git clone <your-plugin-repo-url>
-# 记住 clone 后的绝对路径，例如：/Users/yourname/projects/dji-flighthub-devkit
+git clone https://github.com/dji-sdk/Cloud-API-2.git
+# 记住 clone 后的绝对路径，例如：/Users/yourname/projects/Cloud-API-2
 ```
 
 #### 第 2 步：编辑 settings.json
@@ -115,13 +115,13 @@ git clone <your-plugin-repo-url>
   // ... 你的其他配置 ...
 
   "enabledPlugins": {
-    "devkit@cloud-api2": true
+    "cloudapi2@dji": true
   },
   "extraKnownMarketplaces": {
-    "cloud-api2": {
+    "dji": {
       "source": {
         "source": "directory",
-        "path": "/Users/yourname/projects/dji-flighthub-devkit"  // ← 替换为实际路径
+        "path": "/Users/yourname/projects/Cloud-API-2"  // ← 替换为实际路径
       }
     }
   }
@@ -138,7 +138,7 @@ git clone <your-plugin-repo-url>
 
 ```bash
 claude   # 新开会话
-/plugins # 确认 devkit@cloud-api2 已启用
+/plugins # 确认 cloudapi2@dji 已启用
 ```
 
 ---
@@ -146,7 +146,7 @@ claude   # 新开会话
 ### 方式 3：手动拷贝（不想配置 Plugin 时使用）
 
 ```bash
-cd dji-flighthub-devkit
+cd Cloud-API-2/devkit
 
 # Claude Code — 全部安装
 for d in skills/cloudapi2-*/; do cp -r "$d" ~/.claude/skills/; done
@@ -193,8 +193,8 @@ for d in skills/cloudapi2-*/; do cp -r "$d" .github/skills/; done
 
 **Q: Plugin 安装后没有触发？**
 
-1. 确认 `claude plugin list` 输出中 `devkit@cloud-api2` 状态为 enabled
-2. 如果用方式 2：确认 `path` 是绝对路径，指向仓库根目录（不是 `skills/` 子目录）
+1. 确认 `claude plugin list` 输出中 `cloudapi2@dji` 状态为 enabled
+2. 如果用方式 2：确认 `path` 是绝对路径，指向仓库根目录（包含 `devkit/` 子目录的那一级）
 3. 确认 JSON 格式正确 — 运行 `cat ~/.claude/settings.json | python3 -m json.tool` 验证
 4. 重启 Claude Code（新开终端窗口）
 

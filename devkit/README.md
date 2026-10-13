@@ -17,7 +17,7 @@
 
 | 目录 | 方向 | 状态 | 说明 | 文档 |
 |---|---|---|---|---|
-| `skills/` | 方向 2 | ✅ **可用** | AI Skill 集合（6 个 `cloudapi2-*` Skill）— 教 AI 正确生成 SDK 集成代码 | [总览](skills/README.md) |
+| `skills/` | 方向 2 | ✅ **可用** | AI Skill 集合（11 个 `cloudapi2-*` Skill）— 教 AI 正确生成 SDK 集成代码 | [总览](skills/README.md) |
 | `mcp/` | 方向 1 | ✅ **可用** | MCP Server — 让 AI Agent 运行时操控无人机（50 个 Tool，13 个模块） | [快速开始](mcp/README.md) · [工具手册](docs/mcp-tools-guide.md) |
 | `skeleton/` | 方向 2 | 🚧 计划中 | BFF（Spring Boot）+ Web 前端（React + Vite） | — |
 | `fov-demo/` | 方向 2 | ✅ **可用** | ISV 培训 Demo — FHSDK Java 自研前后端的直播、OSD、SEI、地图与手动操控全栈参考实现 | [快速开始](fov-demo/README.md) · [实战案例](fov-demo/docs/case-study/ISV自研Demo实战案例.md) |
@@ -34,10 +34,14 @@
 ### 安装
 
 ```bash
-# 方式 1：npx（推荐，自动检测 IDE）
-npx skills add https://github.com/dji-sdk/dji-flighthub-devkit
+# 方式 1：Claude Code Plugin 一键安装（推荐）
+claude plugin marketplace add dji-sdk/Cloud-API-2
+claude plugin install cloudapi2@dji
 
-# 方式 2：手动拷贝
+# 方式 2：npx skills add（自动检测 IDE）
+npx skills add https://github.com/dji-sdk/Cloud-API-2
+
+# 方式 3：手动拷贝
 cp -r skills/cloudapi2-sdk-core ~/.claude/skills/    # Claude Code
 cp -r skills/cloudapi2-sdk-core .cursor/skills/      # Cursor
 ```
