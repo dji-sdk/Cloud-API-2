@@ -1,0 +1,50 @@
+Cloud API 2 SDK
+Copyright 2026 SZ DJI Technology Co., Ltd.
+
+This product includes software developed by SZ DJI Technology Co., Ltd.
+First-party source is licensed under the Apache License, Version 2.0.
+See the LICENSE file in the repository root.
+
+This NOTICE file is provided for attribution (Apache-2.0 §4(d)).
+It does not modify the License.
+
+---------------------------------------------------------------------------
+DJI proprietary native libraries (not Apache-2.0)
+---------------------------------------------------------------------------
+The following prebuilt dynamic libraries shipped with the Java SDK remain
+DJI property and are not licensed under Apache-2.0:
+
+    libdrtc / libdrtc_device_sdk
+    libdrpc
+
+They are redistributed in binary form only. Source is not in this tree.
+
+---------------------------------------------------------------------------
+Third-party open source
+---------------------------------------------------------------------------
+This product includes third-party open source software. Full license texts
+for the components bundled with the Java SDK live in:
+
+    platform/java/THIRD_PARTY_LICENSES/
+
+Upstream copies also sit next to each vendored tree under third_party/.
+
+Summary (runtime / link surface)
+--------------------------------
+OpenSSL 1.1.1f (Linux)     OpenSSL/SSLeay dual
+OpenSSL 3.x                Apache-2.0                     (macOS 本机构建, 非官方交付)
+libwebsockets v2.4.2       LGPL-2.1 + warmcat exceptions  (dynamic link)
+paho-mqtt-c 1.3.14         EPL-2.0 or EDL-1.0             (dynamic link)
+libwebrtc (branch 6477)    BSD-3-Clause                   (static)
+aws-cpp-sdk-s3 1.11.642    Apache-2.0                     (static)
+libcurl                    curl license (MIT-like)        (static)
+plog                       MIT
+AIGCJson / RapidJSON / json11   MIT
+
+Weak-copyleft components (paho, libwebsockets) are dynamically linked so that
+copyleft does not infect first-party code. Source for those two:
+
+    https://github.com/eclipse/paho.mqtt.c
+    https://github.com/warmcat/libwebsockets/tree/v2.4.2
+
+See platform/java/THIRD_PARTY_LICENSES/README.md for the complete table.

@@ -1,0 +1,95 @@
+# 添加新 feature 模块 — 步骤方案
+# 场景：ISV 需要在 skeleton 中新增一个与设备管理相关的业务模块
+
+name: add-device-feature
+description: 在 skeleton 中新建一个 feature 模块的完整步骤
+trigger: 用户说"新建模块"、"添加功能模块"、"feature module"
+depth: L3
+
+steps:
+  - id: create-module
+    title: 创建 Maven 模块目录
+    detail: |
+      在 skeleton/feature/ 下创建 feature-xxx/ 目录结构：
+      ```
+      feature/feature-xxx/
+      ├── pom.xml
+      └── src/main/java/com/dji/fh/feature/xxx/
+          ├── XxxAutoConfiguration.java
+          ├── XxxProperties.java
+          ├── XxxService.java
+          └── XxxRestController.java
+      ```
+    verify: 目录结构存在且 pom.xml 语法正确
+
+  - id: configure-pom
+    title: 配置模块 POM
+    detail: |
+      使用 snippets/feature-module-pom.xml 模板。
+      确保：
+      - parent 指向 fh-skeleton-parent
+      - artifactId 命名为 feature-xxx
+      - 依赖 kernel-spi（provided scope）
+    verify: mvn validate 通过
+
+  - id: register-parent
+    title: 在 parent POM 注册模块
+    detail: |
+      在 skeleton/pom.xml 的 <modules> 中添加：
+      <module>feature/feature-xxx</module>
+    verify: 出现在 module 列表中
+
+  - id: create-auto-configuration
+    title: 创建 AutoConfiguration
+    detail: |
+      使用 snippets/auto-configuration.java 模板。
+      必须包含：
+      - @AutoConfiguration
+      - @ConditionalOnProperty(name = "fh.skeleton.feature.xxx.enabled", havingValue = "true", matchIfMissing = true)
+      - @EnableConfigurationProperties(XxxProperties.class)
+      - @Bean @ConditionalOnMissingBean 注册 Service 和 Controller
+    verify: 注解完整且编译通过
+
+  - id: register-auto-configuration
+    title: 注册 AutoConfiguration
+    detail: |
+      创建文件：
+      src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
+      内容为 AutoConfiguration 的全限定类名。
+    verify: 文件存在且内容正确
+
+  - id: create-event-listener
+    title: 创建 EventListener Service
+    detail: |
+      使用 snippets/event-listener-service.java 模板。
+      必须：
+      - @EventListener 方法消费正确的 KernelEvent 子类
+      - ConcurrentHashMap 存储状态
+      - synchronized 保护多字段写入
+    verify: 编译通过 + 事件类型匹配
+
+  - id: create-rest-api
+    title: 创建 REST Controller
+    detail: |
+      使用 snippets/rest-controller.java 模板。
+      路径规范：/api/v1/feature-xxx/...
+    verify: 端点可达
+
+  - id: add-app-dependency
+    title: 在 app 模块添加依赖
+    detail: |
+      在 app/fh-skeleton-app/pom.xml 中添加：
+      <dependency>
+        <groupId>com.dji.fh</groupId>
+        <artifactId>feature-xxx</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+    verify: mvn compile 通过
+
+  - id: verify
+    title: 整体验证
+    detail: |
+      1. mvn clean compile -pl feature/feature-xxx
+      2. mvn clean package -DskipTests（全量编译）
+      3. 启动应用确认 feature 被加载（日志中出现 AutoConfiguration 注册信息）
+    verify: 无编译错误 + 启动成功

@@ -1,0 +1,47 @@
+# K8s manifest 字段核验清单 — AI 在用户编辑完 manifest 后逐项核对
+# 对应文件：skeleton/deploy/k8s/*.yaml
+#
+# 用法：AI 读取用户编辑后的文件，逐项确认以下字段非空且正确。
+
+- file: 01-mysql-secret.yaml
+  checks:
+    - name: MYSQL_ROOT_PASSWORD 非空且非占位符
+      hint: openssl rand -hex 24
+    - name: MYSQL_PASSWORD 非空
+      hint: openssl rand -hex 24
+
+- file: 04-backend-secret.yaml
+  checks:
+    - name: FH_JWT_SECRET 非空且 >=32 字节
+      hint: openssl rand -hex 32
+    - name: FH_DB_PASSWORD 非空
+      hint: 与 01 的 MYSQL_PASSWORD 一致或独立强随机
+    - name: FH_SKELETON_SDK_TOKEN 非空
+      hint: FlightHub 控制台获取
+
+- file: 03-backend-configmap.yaml
+  checks:
+    - name: FH_SKELETON_SDK_ADDRESS 非空
+    - name: FH_SKELETON_SDK_NOTIFICATION_SERVER 非空
+    - name: FH_CHAT_MCP_URL 非空（Chat 启用时）
+    - name: SPRING_PROFILES_ACTIVE 为 sdk（生产）
+
+- file: 06-frontend-configmap.yaml
+  checks:
+    - name: VITE_FH2_ADDRESS 非空
+    - name: VITE_FH2_WSS_URL 非空
+
+- file: 05-backend-deploy.yaml
+  checks:
+    - name: image 已替换 <REGISTRY>/paas-sdk-devkit/skeleton:<TAG>
+    - name: "nodeSelector kubernetes.io/arch: amd64 保留"
+    - name: 探针路径 /pf-devkit/ai-plugin/skeleton/actuator/health
+
+- file: 07-frontend-deploy.yaml
+  checks:
+    - name: image 已替换 <REGISTRY>/paas-sdk-devkit/skeleton-ui:<TAG>
+
+- file: 08-ingress.yaml
+  checks:
+    - name: host 已替换 <REPLACE_ME_YOUR_DOMAIN>
+    - name: TLS 块若启用，tls-secret 已填充

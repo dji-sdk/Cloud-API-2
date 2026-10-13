@@ -1,0 +1,49 @@
+services:
+  mcp:
+    # 生产部署用 CI 构建的镜像，deploy job 只需传入 IMAGE_TAG
+    # docker compose pull mcp && IMAGE_TAG=<pipeline_id> docker compose up -d mcp
+    # ISV 自建环境：通过 REGISTRY 环境变量指向自有镜像仓库
+    image: ${REGISTRY:-your-registry.example.com}/paas-sdk-devkit/mcp:${IMAGE_TAG:-latest}
+    container_name: pf-devkit-mcp
+    ports:
+      - "8080:8080"
+    environment:
+      # Transport
+      FH_TRANSPORT: sse
+      FH_SSE_PORT: "8080"
+
+      # ISV 接入鉴权 — 设置后所有 SSE/message 请求需携带 Authorization: Bearer <token>
+      # ⚠️ 安全要求：SSE 模式必须显式配置，留空会导致所有飞行控制工具无鉴权暴露
+      #    请在 .env 中设置强随机 token（建议 openssl rand -hex 32 生成）
+      FH_SSE_AUTH_TOKEN: ${FH_SSE_AUTH_TOKEN:?FH_SSE_AUTH_TOKEN must be set — see mcp/.env.example}
+
+      # FlightHub Server Connection (fill in your values)
+      FH_SERVER_ADDRESS: ${FH_SERVER_ADDRESS:-https://your-server.com}
+      FH_SERVER_PORT: ${FH_SERVER_PORT:-443}
+      FH_ACCESS_TOKEN: ${FH_ACCESS_TOKEN:-your-token}
+      FH_WORKSPACE_UUID: ${FH_WORKSPACE_UUID:-your-uuid}
+
+      # Cockpit 前端地址 — 起飞成功后返回直播观察链接
+      FH_COCKPIT_URL: ${FH_COCKPIT_URL:-}
+
+      # Security
+      # ⚠️ 默认 L2（飞行控制）；生产环境如需开放 L3 紧急停机，显式设置 FH_MAX_SECURITY_LEVEL=3
+      FH_MAX_SECURITY_LEVEL: ${FH_MAX_SECURITY_LEVEL:-2}
+      FH_OPERATOR_TOKEN: ${FH_OPERATOR_TOKEN:-}
+      FH_SESSION_TIMEOUT: ${FH_SESSION_TIMEOUT:-1800}
+
+      # Java options
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+      # glibc 2.39+（Ubuntu 26.04）默认拒绝加载带 execstack 标记的 .so
+      # SDK 原生库需要可执行栈，设此变量允许加载
+      GLIBC_TUNABLES: "glibc.rtld.execstack=2"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/pf-devkit/ai-plugin/mcp/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    mem_limit: 1g
+    memswap_limit: 1g
+    restart: unless-stopped

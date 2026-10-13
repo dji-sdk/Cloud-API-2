@@ -1,0 +1,87 @@
+# 后端 Spring Boot Deployment + Service
+# 前置：已将后端镜像推送到 <REGISTRY>（构建命令见 docs/部署指南.md §5.1）
+# 说明：
+#   - 镜像内已含 SDK native lib（/opt/sdk-libs）+ 系统依赖，Pod 直接启动
+#   - SDK JNI 仅 Linux amd64：nodeSelector 锁定 amd64 节点
+#   - 探针路径 = context-path + actuator/health
+apiVersion: v1
+kind: Service
+metadata:
+  name: skeleton-backend
+  namespace: fh-skeleton
+  labels:
+    app: skeleton-backend
+spec:
+  type: ClusterIP
+  selector:
+    app: skeleton-backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: skeleton-backend
+  namespace: fh-skeleton
+  labels:
+    app: skeleton-backend
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: skeleton-backend
+  template:
+    metadata:
+      labels:
+        app: skeleton-backend
+    spec:
+      # SDK JNI 原生库仅支持 linux/amd64，请部署在 amd64 节点
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+      containers:
+        - name: skeleton
+          image: <REGISTRY>/paas-sdk-devkit/skeleton:<TAG>
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - configMapRef:
+                name: skeleton-backend-config
+            - secretRef:
+                name: skeleton-backend-secret
+          resources:
+            requests:
+              cpu: 500m
+              memory: 768Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /pf-devkit/ai-plugin/skeleton/actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /pf-devkit/ai-plugin/skeleton/actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+      # SDK 需要出网连接 FlightHub API 与通知服务；如需 NetworkPolicy 限制
+      # egress，请按实际环境放开对 FH_SKELETON_SDK_ADDRESS 的 443 端口。
+      restartPolicy: Always

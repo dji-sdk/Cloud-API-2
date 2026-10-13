@@ -1,0 +1,17 @@
+# 构建产物
+build/
+.gradle/
+
+# 本地配置副本（含真实鉴权/域名/IP，切勿提交）
+config.json
+config_*.json
+!config_empty.json
+drtc_config_node_*.json
+
+# demo 运行产物
+*.log
+*.h264
+*.mp4
+
+# 版本号 SoT 在仓根 VERSION；本目录若出现 VERSION 多为误拷，勿提交
+VERSION

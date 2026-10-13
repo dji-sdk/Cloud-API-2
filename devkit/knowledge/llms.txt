@@ -1,0 +1,29 @@
+# FlightHub PaaS SDK
+
+> DJI FlightHub PaaS SDK 知识库 — 为 ISV 的 AI Agent 和编码助手提供无人机管理领域知识。
+> SDK Version: 3.3.5 | Last Updated: 2026-08-05
+
+## Docs
+
+- [SDK 初始化指南](knowledge/getting-started/sdk-setup.md): SDK 初始化配置、环境要求、Spring Boot 集成模式
+- [飞控权限模型](knowledge/architecture/control-authority.md): 飞控权限互斥锁模型（acquire → operate → release）
+- [FlightHub PaaS 系统架构全景](knowledge/architecture/system-overview.md): SDK/MCP/前端组件三层架构全景
+- [SDK 集成核心规则](knowledge/api-reference/core-rules.md): 6 条必须遵守的 SDK 集成核心规则
+- [设备管理全流程](knowledge/api-reference/device-management.md): 设备发现 → 订阅 → 控制全流程
+- [错误码四层分诊手册](knowledge/api-reference/error-codes.md): 四层分诊错误码字典（errorCode → httpCode → serverCode → deviceCode）
+- [飞控与权限管理](knowledge/api-reference/flight-control.md): 飞控权限 API、DRC 链路、安全执行模板
+- [任务能力矩阵与重复调度限制](knowledge/api-reference/flight-task-capabilities.md): PaaS 通道下任务策略的送达边界：立即/单次定时可用，重复定时、连续执行、蛙跳、手飞在协议层没有承载位
+- [部署架构与运维指南](knowledge/operations/deployment.md): Docker Compose 部署架构、CI/CD、环境配置
+- [前端 SDK 组件鉴权失败排查清单](knowledge/operations/frontend-sdk-auth-checklist.md): SDK 前端组件初始化失败的排查顺序：config.js → 容器 .env 变量 → FH2 网关路径白名单 → WebSocket 连通性
+- [EA340/EA610 设备无法直播排查](knowledge/operations/live-stream-troubleshooting.md): EA340D/EA340T/EA610 私有化环境无法直播的五步自查：固件版本、上云方式、DRTC 与底座 .env、端口开放
+- [SDK 高频问题](knowledge/faq/sdk-common-questions.md): ISV 最常见的 10 个 SDK 接入问题
+
+## Optional
+
+- [Getting Started Index](knowledge/getting-started/index.md): SDK 初始化、环境配置、第一次飞行
+- [Architecture Index](knowledge/architecture/index.md): 系统架构、设计模式、权限模型
+- [API Reference Index](knowledge/api-reference/index.md): 核心规则、错误码、接口流程
+- [Scenarios Index](knowledge/scenarios/index.md): 行业场景方案（巡检、安防、测绘）
+- [Operations Index](knowledge/operations/index.md): 部署、监控、故障恢复
+- [Migration Index](knowledge/migration/index.md): 版本迁移、Breaking Changes
+- [FAQ Index](knowledge/faq/index.md): 高频问题汇总

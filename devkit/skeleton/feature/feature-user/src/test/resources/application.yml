@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+fh:
+  user:
+    jwt:
+      secret: test-secret-key-at-least-32-characters-long!!
+      expiry: 1h
+    registration:
+      enabled: true  # 单元测试需要注册入口；生产默认关闭（见 UserProperties）
+      default-role: user

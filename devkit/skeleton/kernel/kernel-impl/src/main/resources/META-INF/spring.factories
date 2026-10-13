@@ -1,0 +1,2 @@
+org.springframework.boot.env.EnvironmentPostProcessor=\
+com.dji.fh.kernel.impl.KernelDefaultsEnvironmentPostProcessor

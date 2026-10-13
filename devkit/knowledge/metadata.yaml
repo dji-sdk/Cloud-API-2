@@ -1,0 +1,33 @@
+version: "1.0.0"
+last_updated: "2026-08-05"
+sdk_version: "3.3.7"
+description: "FlightHub PaaS SDK Knowledge Base — LLM-friendly domain knowledge for ISV AI agents and developers"
+
+modules:
+  - id: getting-started
+    title: "Getting Started"
+    description: "SDK 初始化、环境配置、第一次飞行"
+  - id: architecture
+    title: "Architecture"
+    description: "系统架构、设计模式、权限模型"
+  - id: api-reference
+    title: "API Reference"
+    description: "核心规则、错误码、接口流程"
+  - id: scenarios
+    title: "Scenarios"
+    description: "行业场景方案（巡检、安防、测绘）"
+  - id: operations
+    title: "Operations"
+    description: "部署、监控、故障恢复"
+  - id: migration
+    title: "Migration"
+    description: "版本迁移、Breaking Changes"
+  - id: faq
+    title: "FAQ"
+    description: "高频问题汇总"
+
+frontmatter_schema:
+  required: [title, module, tags, audience, summary, last_updated]
+  optional: [complexity, sdk_version, source, related]
+  audience_values: [agent, developer, operator]
+  complexity_values: [beginner, intermediate, advanced]

@@ -1,0 +1,45 @@
+# DJI FlightHub PaaS SDK 设备管理模块约束规则
+#
+# 共享约束见 _shared/constraints-common.yaml（SSOT），本文件只定义设备管理 Skill 特有的规则。
+# 共享约束包括：initialize-check, error-code-check, listen-cancel-pairing,
+#   flight-control-authority, dangerous-operation-warning, null-guard-instances,
+#   thread-safety, resource-cleanup
+#
+# level: critical — 违反必导致功能失败
+# level: warning  — 违反可能导致问题但不一定立即失败
+
+# extends: _shared/constraints-common.yaml
+
+# ============================================================
+# 设备管理特有约束
+# ============================================================
+
+- id: feature-module-pattern
+  rule: 新功能必须作为独立 feature 模块（feature/feature-xxx/），包含 AutoConfiguration + @ConditionalOnProperty
+  violation: 破坏 skeleton 模块化架构，ISV 无法按需开关
+  level: warning
+
+- id: event-bus-only
+  rule: 消费 SDK 事件必须通过 @EventListener 监听 KernelEvent 子类，禁止直接调用底层 SDK 的 listen/cancel
+  violation: 绕过 kernel 事件总线的限流/埋点/扩展能力
+  level: warning
+
+- id: conditional-on-missing-bean
+  rule: Service 和 Controller Bean 必须加 @ConditionalOnMissingBean，允许 ISV 覆盖默认实现
+  violation: ISV 无法替换默认行为，违反"可替换"设计原则
+  level: warning
+
+- id: auto-configuration-registration
+  rule: 新 feature 的 AutoConfiguration 必须在 META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports 中注册
+  violation: Spring Boot 无法发现和加载 feature 模块
+  level: critical
+
+- id: bounded-collection
+  rule: 内存中存储时序数据（如 HMS 告警）必须使用 bounded 集合（如 ArrayDeque + maxSize），不可无限增长
+  violation: 长时间运行后 OOM
+  level: critical
+
+- id: clock-injection
+  rule: 需要时间的地方通过 Clock Bean 注入，不可直接 Instant.now()
+  violation: 单元测试无法控制时间，时区问题
+  level: warning

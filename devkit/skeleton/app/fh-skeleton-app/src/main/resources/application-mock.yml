@@ -1,0 +1,48 @@
+# =============================================================================
+# mock profile —— 仅本地开发态使用
+#
+# ⚠️ 安全警告：
+# - 本 profile 装配 MockRestController（POST /mock/devices/{sn}/* 全部端点）
+# - 当前默认 SecurityFilter = NoOpSecurityFilter（不做鉴权）
+# - 切勿在生产、staging 或可被公网访问的环境启用 mock profile
+# - 生产请使用 sdk profile（fh.skeleton.sdk.mode=sdk），Mock bean 整体不装配
+# =============================================================================
+
+spring:
+  ai:
+    anthropic:
+      api-key: ${SPRING_AI_ANTHROPIC_API_KEY:mock-not-configured}
+    openai:
+      api-key: ${SPRING_AI_OPENAI_API_KEY:mock-not-configured}
+
+fh:
+  skeleton:
+    sdk:
+      mode: mock
+    mock:
+      enabled: true
+      device:
+        sn: "MOCK-DRONE-001"
+        model: "Mock Drone"
+      dock:
+        sn: "MOCK-DOCK-001"
+        model: "Mock Dock"
+      osd:
+        interval-millis: 1000
+      script:
+        enabled: true
+        events:
+          - at-millis: 3000
+            type: "device-online"
+            device: "drone"
+          - at-millis: 4000
+            type: "device-online"
+            device: "dock"
+          - at-millis: 30000
+            type: "flight-task-progress"
+            device: "drone"
+            status: "PENDING"
+
+logging:
+  level:
+    com.dji.fh.kernel.mocksdk: DEBUG

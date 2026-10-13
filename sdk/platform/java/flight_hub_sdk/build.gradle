@@ -1,0 +1,122 @@
+// Flight Hub SDK 子项目构建配置
+
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+// 设置源码和测试目录
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java']
+        }
+    }
+    test {
+        java {
+            srcDirs = ['src/test/java']
+        }
+    }
+}
+
+dependencies {
+    // 测试依赖
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:4.11.0'
+}
+
+// JAR任务配置
+jar {
+    // 设置JAR文件名
+    archiveBaseName = 'flight-hub-sdk'
+    archiveVersion = gradle.ext.sdkVersion
+
+    // BIN-P1-04: 不打包 SWIG 生成的 .java 源文件, 避免源码泄露 (只保留 .class) 。
+    exclude '**/*.java'
+
+    // 包含native库文件到JAR的lib目录
+    from('../lib') {
+        include '**/*.so.*'
+        include '**/*.so'
+        include '**/*.dylib'
+        into 'lib'  // 放到JAR包的lib目录下
+    }
+
+    // LIC-P2-01: 附带第三方开源库 LICENSE / NOTICE 文本, 满足 LGPL/EPL/Apache 分发合规。
+    from('../THIRD_PARTY_LICENSES') {
+        into 'THIRD_PARTY_LICENSES'
+    }
+
+    manifest {
+        attributes(
+            'Implementation-Title': project.findProperty('sdk.name'),
+            'Implementation-Version': gradle.ext.sdkVersion,
+            'Implementation-Vendor': project.findProperty('sdk.vendor'),
+            'Built-By': project.findProperty('build.user'),
+            'Built-JDK': System.getProperty('java.version'),
+            'Built-Date': new Date().format('yyyy-MM-dd HH:mm:ss'),
+            'Main-Class': 'com.dji.flighthubsdk.FlightHubSDK'
+        )
+    }
+}
+
+// 发布工件 - 只发布主JAR
+artifacts {
+    // 只保留主JAR包，不发布源码和文档包
+}
+
+// 检查native库文件是否存在的任务
+task checkNativeLibraries {
+    description = '检查native库文件是否存在'
+    doLast {
+        def libDir = file('../lib')
+        if (!libDir.exists()) {
+            logger.warn("警告: lib目录不存在: ${libDir.absolutePath}")
+            return
+        }
+        
+        def foundLibs = []
+        libDir.eachFileRecurse { file ->
+            if (file.name.endsWith('.so') || file.name.contains('.so.') || file.name.endsWith('.dylib')) {
+                foundLibs.add(file.relativePath(libDir))
+            }
+        }
+        
+        if (foundLibs.isEmpty()) {
+            logger.warn("警告: 在lib目录中未找到native库文件")
+        } else {
+            println "找到native库文件:"
+            foundLibs.each { lib ->
+                println "  - ${lib}"
+            }
+        }
+    }
+}
+
+// 让jar任务依赖库文件检查
+jar.dependsOn checkNativeLibraries
+
+// JNI库文件保持在lib目录下，并在JAR打包时包含进去
+// 用户可以通过java.library.path或从JAR中提取库文件来加载native库
+
+// 清理任务
+clean {
+    // 不需要清理resources/native目录，因为我们不再复制到那里
+    // 清理可能生成的bin目录
+    delete 'bin'
+}
+
+// 打印构建信息
+task printBuildInfo {
+    doLast {
+        println "=== Flight Hub SDK 构建信息 ==="
+        println "SDK名称: ${project.findProperty('sdk.name')}"
+        println "SDK版本: ${gradle.ext.sdkVersion}"
+        println "项目组: ${project.findProperty('project.group')}"
+        println "Java版本: ${project.findProperty('java.version')}"
+        println "构建时间: ${new Date().format('yyyy-MM-dd HH:mm:ss')}"
+        println "============================"
+    }
+}
+
+build.dependsOn printBuildInfo

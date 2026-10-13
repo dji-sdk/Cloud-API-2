@@ -1,0 +1,14 @@
+rootProject.name = 'flight-hub-java'
+
+// 版本号统一 SoT：从 dji_flight_hub_sdk/VERSION 读；主工程内所有 include 的子项目通过
+// gradle.ext.sdkVersion 拿到（形如 "v3.1.0"，保留 "v" 前缀习惯）。
+// 独立 Gradle 工程（如 new_sdk_demo）不共享此 gradle.ext，需自己读同一份 VERSION。
+def versionFile = file("${rootDir}/../../VERSION")
+if (!versionFile.exists()) {
+    throw new GradleException("VERSION file not found: ${versionFile.absolutePath}")
+}
+gradle.ext.sdkVersion = "v${versionFile.text.trim()}"
+
+include 'flight_hub_sdk'
+include 'flight_hub_sdk_demo'
+include 'flight_hub_sdk_docs'

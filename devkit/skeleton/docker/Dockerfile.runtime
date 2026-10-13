@@ -1,0 +1,48 @@
+# ============================================================
+# FH Skeleton — 薄运行镜像（供 deploy.sh 本地快速构建使用）
+# ============================================================
+# 与完整 Dockerfile 的区别：
+# - 不包含 Maven 编译阶段（由本地 native mvn package 完成）
+# - 仅 COPY 预编译 jar + 提取 SDK native .so
+# - Apple Silicon 上构建速度从 10-20min 降至 ~10s
+#
+# CI pipeline 仍使用完整 Dockerfile（CI runner 是 x86，无模拟问题）
+# ============================================================
+
+# syntax=docker/dockerfile:1
+# 平台由 docker build --platform 指定，不在 FROM 内硬编码
+# 避免 BuildKit 绕过 registry-mirrors 直拉 Docker Hub
+FROM eclipse-temurin:17-jre-jammy
+
+LABEL maintainer="DJI DevKit Team"
+LABEL description="FH Skeleton — runtime-only image for local deploy"
+
+WORKDIR /app
+
+# 复制本地预编译的 fat jar
+COPY skeleton/app/fh-skeleton-app/target/fh-skeleton-app-*.jar app.jar
+
+# 复制 SDK jar 并提取 native .so
+COPY libs/flight-hub-sdk-3.3.7.jar /tmp/sdk.jar
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl unzip && \
+    mkdir -p /opt/sdk-libs && \
+    unzip -j -o /tmp/sdk.jar 'lib/linux-x86_64/*' -d /opt/sdk-libs && \
+    chmod 755 /opt/sdk-libs/*.so* && \
+    rm /tmp/sdk.jar && \
+    apt-get purge -y unzip && apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
+# 以非 root 用户运行（安全加固）
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost:8080/pf-devkit/ai-plugin/skeleton/actuator/health || exit 1
+
+ENTRYPOINT ["java", \
+    "-Djava.library.path=/opt/sdk-libs", \
+    "-jar", "app.jar"]

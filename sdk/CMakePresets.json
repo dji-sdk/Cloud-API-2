@@ -1,0 +1,61 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "macos-arm64-release",
+      "displayName": "macOS arm64 Release (local dev only)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CLOUD_API2_OS": "macosx",
+        "CLOUD_API2_ARCH": "arm64"
+      }
+    },
+    {
+      "name": "macos-arm64-debug",
+      "displayName": "macOS arm64 Debug (local dev only)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CLOUD_API2_OS": "macosx",
+        "CLOUD_API2_ARCH": "arm64"
+      }
+    },
+    {
+      "name": "linux-x86_64-release",
+      "displayName": "Linux x86_64 Release",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CLOUD_API2_OS": "linux",
+        "CLOUD_API2_ARCH": "x86_64"
+      }
+    },
+    {
+      "name": "linux-x86_64-debug",
+      "displayName": "Linux x86_64 Debug",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CLOUD_API2_OS": "linux",
+        "CLOUD_API2_ARCH": "x86_64"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "macos-arm64-release", "configurePreset": "macos-arm64-release" },
+    { "name": "macos-arm64-debug", "configurePreset": "macos-arm64-debug" },
+    { "name": "linux-x86_64-release", "configurePreset": "linux-x86_64-release" },
+    { "name": "linux-x86_64-debug", "configurePreset": "linux-x86_64-debug" }
+  ]
+}

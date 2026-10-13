@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "role": "node",
+  "log_level": "INFO",
+  "dump_stream": false,
+  "ssl_ca_path": "/etc/ssl/certs",
+  "verify_ssl": true,
+  "arbitration": {
+    "module_log_level": "INFO",
+    "ignore": false,
+    "type": "https",
+    "https": {
+      "host": "xx.xx.xx.xx",
+      "port": 8443,
+      "path": "/mediaserver/arbitration",
+      "verify_ssl": true,
+      "debug": false
+    }
+  },
+  "signaling": {
+    "module_log_level": "INFO",
+    "debug": false,
+    "type": "joint",
+    "https": {
+      "host": "xx.xx.xx.xx",
+      "port": 60006,
+      "path": "/v1/join",
+      "verify_ssl": true,
+      "debug": false
+    }
+  },
+  "token_service": {
+    "module_log_level": "INFO",
+    "https": {
+      "host": "xx.xx.xx.xx",
+      "port": 8443,
+      "path": "/v1/exchange/token",
+      "verify_ssl": true,
+      "debug": false
+    },
+    "http": {
+      "host": "xx.xx.xx.xx",
+      "port": 8088,
+      "path": "/v1/exchange/token",
+      "verify_ssl": true,
+      "debug": false
+    }
+  },
+  "transport": {
+    "module_log_level": "INFO",
+    "types": [
+      "udp"
+    ],
+    "max_paths": 0,
+    "use_static": false,
+    "paths": [
+      {
+        "mconfig": {
+          "name": "eth0",
+          "bw_kbps": 3000
+        },
+        "pconfig": {
+          "protocol": "udp",
+          "server": false,
+          "local_ip": "0.0.0.0",
+          "local_port": 60001,
+          "target_ip": "xx.xx.xx.xx",
+          "target_port": 60003,
+          "path_id": 12345,
+          "user_name": "",
+          "key": "",
+          "sec_disable": false,
+          "sec_suite": 0,
+          "sec_cred_base64": ""
+        }
+      }
+    ],
+    "multipath": {
+      "module_log_level": "INFO",
+      "strategy": "ecored"
+    },
+    "qos": {
+      "module_log_level": "INFO"
+    },
+    "common": {
+      "module_log_level": "INFO"
+    }
+  },
+  "peer_connection": {
+    "module_log_level": "INFO",
+    "type": "librtc",
+    "librtc": {
+      "sn_id": 4
+    },
+    "qos": {
+      "module_log_level": "INFO"
+    }
+  },
+  "sdp": {
+    "type": "json"
+  },
+  "event_loop": {
+    "module_log_level": "INFO",
+    "type": "libuv"
+  },
+  "modem_manager": {
+    "module_log_level": "INFO",
+    "enable": false,
+    "drpc_moudle": "0x0e06",
+    "drpc_cfg_path": ""
+  },
+  "monitor": {
+    "module_log_level": "INFO",
+    "type": "https",
+    "stats": {
+      "host": "xx.xx.xx.xx",
+      "port": 8443,
+      "path": "/v1/sdk/stats",
+      "verify_ssl": true,
+      "debug": false
+    },
+    "event": {
+      "host": "xx.xx.xx.xx",
+      "port": 8443,
+      "path": "/v1/sdk/event",
+      "verify_ssl": true,
+      "debug": false
+    }
+  }
+}

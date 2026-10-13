@@ -1,0 +1,3 @@
+schemaVersion: "1.0"
+id: "broken-syntax
+version: 1.0.0    # 上面这行少闭引号，整个文件解析失败

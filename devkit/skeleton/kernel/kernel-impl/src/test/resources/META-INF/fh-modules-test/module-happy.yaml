@@ -1,0 +1,15 @@
+schemaVersion: "1.0"
+id: "feature-device"
+version: "1.0.0"
+name: "设备管理"
+description: "设备查询、状态监听、基础控制"
+metadata:
+  category: "feature"
+  tier: "must"
+  authors: ["DJI DevKit Team"]
+requires:
+  kernel: ">=0.1.0,<1.0.0"
+  modules: []
+toggle:
+  property: "fh.skeleton.feature.device.enabled"
+  defaultValue: true

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Maven 构建配置示例。
+
+  安全发布专项修复：
+  - 原 config/settings.xml 强制 mirrorOf=* 路由到内部 Nexus，
+    ISV 外部构建 100% 失败。
+  - 现改为默认使用 Maven Central，仅供本地参考；ISV 可在此基础上添加自家私服。
+  - 内部 CI 构建请使用 settings.xml.internal（不入库，由 CI 注入）。
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                              https://maven.apache.org/xsd/settings-1.0.0.xsd">
+    <!-- 默认不配置 mirror，使用 Maven Central（https://repo1.maven.org/maven2）。
+         ISV 如需对接自家私服，取消下方注释并替换为自有 Nexus 地址：
+    <mirrors>
+        <mirror>
+            <id>isv-maven</id>
+            <mirrorOf>*</mirrorOf>
+            <name>ISV Maven Nexus</name>
+            <url>https://your-nexus.example.com/repository/maven-public/</url>
+        </mirror>
+    </mirrors>
+    -->
+</settings>

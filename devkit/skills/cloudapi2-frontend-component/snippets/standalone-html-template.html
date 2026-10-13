@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WaylineEditor - DJI 上云API 2 航线编辑器接入示例</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+
+    /* === FH2 航线编辑器必备布局（不可改类名/层级） === */
+    .fh2-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+      padding-top: 48px;
+    }
+    .map-app-container > div { width: 100%; height: 100%; }
+    .project-details {
+      position: relative;
+      width: 100%;
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    .project-details .right-micro-app {
+      position: relative;
+      display: flex;
+      flex: 1;
+    }
+    .project-details .right-micro-app .maps-micro-app {
+      display: flex;
+      flex: 1;
+      height: 100%;
+    }
+    .project-details .right-micro-app .map-app-placeholder {
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .project-details .right-micro-app .map-app-container {
+      height: 100%;
+      min-height: 0;
+    }
+    .project-details .right-micro-app #wayline-app-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ====== DOM 骨架（ID/class 不可更改，SDK 内部 teleport 依赖） ====== -->
+  <div class="fh2-container">
+    <div id="wayline-header"></div>
+    <div class="project-details">
+      <div id="project-middle-container"></div>
+      <div id="project-right-micro-app" class="right-micro-app">
+        <div class="maps-micro-app">
+          <div id="project-map-app-placeholder" class="map-app-placeholder">
+            <div id="map-app-global" class="map-app-container"></div>
+          </div>
+        </div>
+        <div id="wayline-app-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!--
+    ====== 资源加载 ======
+    paas.js 和 SDK 均由 JS 动态加载（地址统一从 CONFIG.frontHost 派生），
+    避免 script 标签与 CONFIG 不一致。
+
+    ⚠️ 本页面不支持 file:// 协议，必须通过 HTTP 服务访问：
+       python3 -m http.server 8080
+       npx serve -p 8080
+  -->
+  <!-- paas.js 地址由下方 CONFIG.frontHost 决定，JS 动态插入 -->
+
+  <script>
+    // ====== 配置区（按实际环境替换） ======
+    // 示例值使用 192.168.1.100，请替换为你的 FH2 部署地址
+    var CONFIG = {
+      // FH2 Web 门户地址（paas.js 所在站点，通常 80 端口）
+      frontHost: 'http://192.168.1.100',
+      // API 网关地址
+      serverUrl: 'http://192.168.1.100:30812',
+      // WebSocket 地址
+      wssUrl:    'ws://192.168.1.100:30812/openapi/v0.9/notification/ws/v1/notifications',
+      // SDK 部署路径（默认在 frontHost 下）
+      sdkCss:    '',  // 自动拼接: frontHost + '/paasjs-demo/wayline-edit-sdk/index.css'
+      sdkJs:     '',  // 自动拼接: frontHost + '/paasjs-demo/wayline-edit-sdk/index.js'
+    }
+    // 自动补全 SDK 路径（避免手动重复填写 frontHost）
+    if (!CONFIG.sdkCss) CONFIG.sdkCss = CONFIG.frontHost + '/paasjs-demo/wayline-edit-sdk/index.css'
+    if (!CONFIG.sdkJs) CONFIG.sdkJs = CONFIG.frontHost + '/paasjs-demo/wayline-edit-sdk/index.js'
+
+    // ====== 鉴权配置（用函数形式，支持 token 自动刷新） ======
+    var auth = {
+      authKeys: ['x-auth-token'],
+      headers: function() {
+        return { 'x-auth-token': localStorage.getItem('x-auth-token') || 'YOUR_TOKEN_HERE' }
+      },
+    }
+
+    // ====== 主流程 ======
+    ;(async function main() {
+      try {
+        // 动态加载 paas.js（地址统一由 CONFIG.frontHost 派生）
+        await loadScript(CONFIG.frontHost + '/paas.js')
+        console.log('[FH2] paas.js 已加载，等待 WASM 初始化...')
+        await waitForFH2(30000)
+        console.log('[FH2] window.FH2 就绪')
+
+        // 动态加载 SDK CSS + JS
+        loadCSS(CONFIG.sdkCss)
+        await loadScript(CONFIG.sdkJs)
+        console.log('[FH2] WaylineEditor SDK 已加载')
+
+        // 创建编辑器实例
+        var editor = new window.WaylineEditor({
+          hostUrl: CONFIG.frontHost,
+          api: { baseUrl: CONFIG.serverUrl + '/gateway', auth: auth },
+          ws:  { url: CONFIG.wssUrl },
+          locale: { language: 'zh' },
+        })
+
+        // 挂载
+        editor.mount(document.getElementById('wayline-app-container'))
+
+        // 加载地图（edit 模式必须）
+        await editor.loadMap()
+        console.log('[FH2] 地图加载完成')
+
+        // 进入创建模式（也可 render('edit', {waylineId: '...'}) 进入编辑模式）
+        var result = await editor.create()
+        console.log('[FH2] 航线已保存, waylineId:', result.waylineId)
+
+      } catch (err) {
+        if (err && err.message === 'User cancelled') {
+          console.log('[FH2] 用户取消了创建')
+        } else {
+          console.error('[FH2] 初始化失败:', err)
+        }
+      }
+    })()
+
+    // ====== 工具函数 ======
+
+    /** 轮询等待 window.FH2 就绪（paas.js WASM 异步注册） */
+    function waitForFH2(timeout) {
+      timeout = timeout || 30000
+      return new Promise(function(resolve, reject) {
+        if (window.FH2) { resolve(); return }
+        var start = Date.now()
+        var timer = setInterval(function() {
+          if (window.FH2) { clearInterval(timer); resolve() }
+          else if (Date.now() - start > timeout) {
+            clearInterval(timer)
+            reject(new Error('Timeout: window.FH2 未就绪，检查 paas.js 是否加载成功'))
+          }
+        }, 100)
+      })
+    }
+
+    /** 动态加载 JS 文件 */
+    function loadScript(src) {
+      return new Promise(function(resolve, reject) {
+        var s = document.createElement('script')
+        s.src = src
+        s.onload = resolve
+        s.onerror = function() { reject(new Error('加载失败: ' + src)) }
+        document.head.appendChild(s)
+      })
+    }
+
+    /** 动态加载 CSS 文件 */
+    function loadCSS(href) {
+      var link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = href
+      document.head.appendChild(link)
+    }
+  </script>
+</body>
+</html>

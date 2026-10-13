@@ -1,0 +1,100 @@
+server:
+  port: ${FH_SKELETON_PORT:8080}
+  shutdown: graceful
+  servlet:
+    # 对外 HTTP 接口统一前置到 /pf-devkit/ai-plugin/skeleton 命名空间（controller / actuator / mock 自动前置）
+    context-path: /pf-devkit/ai-plugin/skeleton
+
+spring:
+  application:
+    name: fh-skeleton
+  profiles:
+    active: ${FH_SKELETON_PROFILE:sdk}  # 默认 sdk；本地开发可设 FH_SKELETON_PROFILE=mock 切换 mock 模式
+  datasource:
+    # 生产环境通过 FH_DB_URL 注入带 SSL 的连接串（useSSL=true&requireSSL=true）
+    # 本地开发 fallback 不强制 SSL，避免本地 MySQL/Docker 无证书时连接失败
+    url: ${FH_DB_URL:jdbc:mysql://localhost:3306/fh_skeleton?allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${FH_DB_USERNAME:root}
+    password: ${FH_DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      # ddl-auto 默认由 KernelDefaultsEnvironmentPostProcessor 注入 update（最低优先级）
+      # 生产环境建议 ISV 显式设为 validate + Flyway/Liquibase 管理 schema
+      ddl-auto: ${FH_DDL_AUTO:update}
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: never
+      schema-locations: classpath:schema-user.sql
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+fh:
+  skeleton:
+    sdk:
+      mode: ${FH_SDK_MODE:sdk}
+    async:
+      core-size: 4
+      max-size: 16
+      queue-capacity: 200
+      keep-alive-seconds: 60
+      rejection: caller-runs
+  user:
+    jwt:
+      # 安全发布专项修复：移除公知默认 fallback，强制 FH_JWT_SECRET 注入
+      # 原 fallback "change-me-in-production-must-be-32-chars!!" 开源后成为公开已知值，可被用于离线伪造 JWT
+      secret: ${FH_JWT_SECRET}
+      expiry: 24h
+    registration:
+      # 默认关闭开放注册（外部审计 I-02）：公网部署时防止匿名抢注；
+      # 首个账号通过 FH_USER_REGISTRATION_ENABLED=true 临时开启注册创建，
+      # 或使用初始化 SQL/CLI 创建后即关闭
+      enabled: ${FH_USER_REGISTRATION_ENABLED:false}
+      default-role: user
+  chat:
+    enabled: false  # ISV 需显式设置为 true 才启用 Chat Bot 功能
+    provider: openai
+    max-history-turns: 20
+    max-tokens: 8192
+    # L0 只读查询使用的轻量模型；可通过环境变量覆盖
+    light-model: ${FH_CHAT_LIGHT_MODEL:deepseek-v4-flash-private}
+    system-prompt-path: classpath:chat-system-prompt.txt
+    mcp:
+      enabled: true
+      url: ${FH_CHAT_MCP_URL:http://localhost:8080}
+      # SSE 鉴权 token，需与 MCP Server 的 FH_SSE_AUTH_TOKEN 一致；留空表示不鉴权
+      auth-token: ${FH_CHAT_MCP_AUTH_TOKEN:}
+      timeout: 30s
+      connect-timeout: 10s
+    rag:
+      enabled: true
+      documents-path: classpath:chat-docs/
+      embedding-provider: openai
+      chunk-size: 1000
+      chunk-overlap: 200
+      top-k: 5
+      similarity-threshold: 0.7
+
+spring.ai:
+  openai:
+    chat:
+      options:
+        # 明确指定模型，避免使用 Spring AI 默认旧模型；可用 FH_CHAT_MODEL 环境变量覆盖
+        model: ${FH_CHAT_MODEL:deepseek-v4-flash-private}
+        # max-tokens 设置：DeepSeek V4 Flash 不需要 reasoning token 预算，但保持足够输出长度
+        max-tokens: ${fh.chat.max-tokens:8192}
+
+logging:
+  level:
+    root: INFO
+    com.dji.fh: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

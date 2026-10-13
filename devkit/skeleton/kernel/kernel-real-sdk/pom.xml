@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.dji.fh</groupId>
+        <artifactId>fh-skeleton-parent</artifactId>
+        <version>0.1.0</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>kernel-real-sdk</artifactId>
+
+    <name>FH Skeleton Kernel Real SDK</name>
+    <description>真 SDK 适配层 — FlightHubSDK 5 类 callback → 5 KernelEvent。仅 fh.skeleton.sdk.mode=sdk 时装配，与 kernel-mock-sdk 互斥。</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.dji.fh</groupId>
+            <artifactId>kernel-spi</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.dji.fh</groupId>
+            <artifactId>kernel-impl</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- 真 SDK：compile scope（模块自身编译/单测需要）;
+             BOM 不传递此依赖，由 app Maven profile -Psdk-real 决定是否拼入 fat jar。 -->
+        <dependency>
+            <groupId>com.dji.flighthubsdk</groupId>
+            <artifactId>flight-hub-sdk</artifactId>
+            <version>3.3.7</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

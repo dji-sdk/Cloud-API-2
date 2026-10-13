@@ -1,0 +1,8 @@
+/src/
+/build
+
+# make install 产物：FHSDK 只链 lib/<os>/<arch>/*.a + include/，不入库 cmake config
+# organize_output() 会把 install 的 lib/cmake 挪到 lib/<os>/<arch>/cmake
+lib/*/*/cmake/
+# install 残留的嵌套 lib/（如 s2n cmake）
+lib/*/*/lib/

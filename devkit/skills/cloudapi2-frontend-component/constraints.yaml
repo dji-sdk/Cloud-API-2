@@ -1,0 +1,132 @@
+# DJI 上云API 2 前端组件接入约束规则
+#
+# 共享约束见 _shared/constraints-common.yaml（SSOT）。
+# 前端组件 Skill 的约束全部为领域特有规则，与共享约束无重叠。
+#
+# level: critical — 违反必导致功能失败
+# level: warning  — 违反可能导致问题但不一定立即失败
+
+# extends: _shared/constraints-common.yaml
+
+- id: protocol-consistency
+  rule: HTTPS 页面必须用 https:// + wss://，HTTP 页面必须用 http:// + ws://
+  violation: Mixed Content 浏览器阻断，SDK 加载失败
+  level: critical
+
+- id: paas-js-load-order
+  rule: paas.js 必须在任何组件 SDK (wayline-edit-sdk/fly-data-sdk) 之前加载；initConfig 必须在 loadXxx 之前调用
+  violation: MAP_INIT_ERROR (6002) 或 FH2 undefined
+  level: critical
+
+- id: paas-js-wasm-async
+  rule: paas.js 内部通过 WASM 异步初始化，window.FH2 不会在 script 执行完毕时立即就绪。SDK index.js 必须在 window.FH2 完全就绪后再动态加载（轮询或回调），不能仅靠 HTML script 标签顺序
+  violation: SDK 执行时 window.FH2 为 undefined，prepend 崩溃
+  level: critical
+
+- id: no-file-protocol
+  rule: 页面必须通过 HTTP/HTTPS 服务访问，不支持 file:// 协议
+  violation: paas.js 内部 HTTP 请求加载 WASM/微应用资源全部跨域失败
+  level: critical
+
+- id: sdk-deploy-path
+  rule: WaylineEditor SDK 默认部署路径为 http://{frontHost}/paasjs-demo/wayline-edit-sdk/index.{css,js}，不是 :30812/sdk/ 端口
+  violation: 404 加载失败
+  level: warning
+
+- id: device-manager-independent
+  rule: UranusDeviceManagerApp 模式完全独立，不需要 paas.js，不调 initConfig
+  violation: 加载多余脚本或调用不存在的方法
+  level: critical
+
+- id: singleton-constraint
+  rule: 同一页面不能同时挂多个 WaylineEditor 或 FlyDataReplay 实例
+  violation: 全局 mapAppState 冲突，渲染异常
+  level: critical
+
+- id: destroy-on-unmount
+  rule: 切换页面/路由/参数前必须 destroy() 旧组件实例并取消事件订阅
+  violation: 内存泄漏、WebSocket 残留、地图残影
+  level: critical
+
+- id: dom-structure-immutable
+  rule: FH2 SDK 要求的 DOM ID/class 不可修改（SDK 内部 getElementById 依赖）
+  violation: 组件不渲染或渲染到错误位置
+  level: critical
+
+- id: container-must-have-size
+  rule: 所有挂载容器必须有显式宽高（100% 或像素值）
+  violation: 组件渲染后 0 高度不可见
+  level: warning
+
+- id: vue-ensureFH2Init-pattern
+  rule: skeleton/web 中必须通过 ensureFH2Init() 加载 paas.js，不可自行插入 script 标签
+  violation: 破坏单例模式，重复加载或竞态条件
+  level: critical
+  scope: vue-only
+
+- id: vue-onUnmounted-cleanup
+  rule: Vue 组件必须在 onUnmounted 中执行 FH2.destroyXxx() + unsubscribe 全部事件
+  violation: 路由切换后旧实例残留
+  level: critical
+  scope: vue-only
+
+- id: vue-useSDKLoader-pattern
+  rule: skeleton/web 中使用 useSDKLoader composable 管理加载状态，不可自行维护 loading/error 状态
+  violation: 状态管理不一致，SDKLoadingMask 组件无法工作
+  level: warning
+  scope: vue-only
+
+- id: auth-token-freshness
+  rule: auth.headers 回调必须每次返回最新 token（从 localStorage 或 store 动态取值），不可闭包捕获旧值
+  violation: token 过期后 WebSocket 鉴权失败 (4001)
+  level: critical
+
+- id: auth-token-must-be-jwt
+  rule: localStorage 中 x-user-token 必须是合法 JWT（三段 base64url 格式），不能是裸字符串如 'paas_test'
+  violation: 驾驶舱微应用内部 API 调用 JWT 校验失败，组件结构加载但内容空白/黑屏
+  level: critical
+
+- id: auth-headers-user-id
+  rule: auth.headers 除 X-User-Token 外还必须包含 user_id 字段（值为平台用户标识），authKeys 数组需同时声明两个 key
+  violation: 部分接口鉴权不通过，驾驶舱功能不完整
+  level: critical
+
+- id: hosturl-must-be-fh2-frontend
+  rule: initConfig 的 hostUrl 必须指向 FH2 前端服务器地址（如 https://host，端口 80），不能用 localhost 或 Vite dev server 地址。qiankun 微应用根据 hostUrl 解析内部资源路径，设为 localhost 后微应用子 chunk/CSS/图片等嵌套资源无法正确加载
+  violation: 驾驶舱微应用挂载失败，页面黑屏（cockpit:mounted 事件永不触发）
+  level: critical
+
+- id: cockpit-qiankun-nav-guard
+  rule: loadCockpit 触发 qiankun 加载微应用时可能执行 window.location 全页面跳转（非 pushState），导致宿主 SPA 被卸载。在非 FH2 门户宿主中集成时，需在 loadCockpit 前安装 beforeunload 事件守卫，cockpit:mounted 后移除
+  violation: 点击驾驶舱后页面"闪退"（被跳转到微应用路径）
+  level: warning
+
+- id: wayline-loadmap-edit-only
+  rule: WaylineEditor 的 loadMap() 仅 edit 模式必需，create 模式不需要
+  violation: create 模式下调用 loadMap 可能加载不必要数据
+  level: warning
+
+- id: flydata-loadmap-always
+  rule: FlyDataReplay 的 loadMap() 始终必需且必须在 mount() 之前调用
+  violation: 地图不渲染，组件白屏
+  level: critical
+
+- id: device-manager-mount-devicetype
+  rule: mountDeviceList 必须传 props.deviceType（'airport' 或 'aircraft'），不传时设备列表为空
+  violation: 设备管理面板渲染成功但列表内容为空，无设备数据
+  level: critical
+
+- id: device-manager-serverurl-direct
+  rule: 设备管理 SDK 的 serverUrl 必须直连 FH2 后端真实地址（如 https://host:30812），不走本地 Vite 代理。FH2 后端自身已配置 CORS
+  violation: API 请求路径错误（SDK 内部 API 路径非公开，代理无法覆盖所有路径），设备列表为空
+  level: warning
+
+- id: device-manager-ant-theme-path
+  rule: antThemeBaseUrl 标准路径为 http://[前端服务地址]/paasjs-demo/device-manager-sdk/ant-theme（无 -v2 后缀）
+  violation: Ant Design 主题产物加载失败，组件样式异常
+  level: warning
+
+- id: media-url-must-not-be-presigned-direct
+  rule: 照片预览 / 视频播放 / 下载的地址必须指向本服务的代理端点，禁止把 SDK 或平台接口返回的对象存储预签名 URL（`http://<主机>:30802/<桶>/...?X-Amz-*`）直接赋给 `<img src>` / `<video src>` 或下载链接。回放页 FlyDataReplay 的媒体面板由 FH2 托管的 UMD 自行取流、ISV 无法改写，该场景只能贴证据走平台侧修复（见 cloudapi2-troubleshooting 的 references/replay-media-troubleshooting.md）
+  violation: 媒体列表正常加载（元数据走 FH2 网关 :30812），点开文件后照片全黑、视频进度条停在 0:00、下载无反应 —— :30802 是对象存储的服务端口，客户网段不可达，请求静默超时
+  level: critical

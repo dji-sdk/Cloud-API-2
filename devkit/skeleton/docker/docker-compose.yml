@@ -1,0 +1,59 @@
+# FH Skeleton Docker Compose
+# 两种部署方式：
+#   A) 从镜像仓库拉取（需要 REGISTRY 环境变量）：
+#      docker compose pull && docker compose up -d
+#   B) 从源码构建（无需镜像仓库）：
+#      docker compose up --build
+#
+# 详见 skeleton/docs/部署指南.md（§4 Docker Compose 部署）
+
+services:
+  skeleton:
+    # 有镜像仓库时：docker compose pull && docker compose up -d
+    image: ${REGISTRY:-local}/paas-sdk-devkit/skeleton:${IMAGE_TAG:-latest}
+    # 无镜像仓库时：docker compose up --build（从源码 multi-stage 构建）
+    build:
+      context: ../..
+      dockerfile: skeleton/docker/Dockerfile
+      platforms:
+        - linux/amd64
+    container_name: pf-devkit-skeleton-server
+    expose:
+      - "8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${FH_PROFILE:-mock}
+      FH_SKELETON_SDK_TOKEN: ${FH_SKELETON_SDK_TOKEN:-}
+      FH_SKELETON_SDK_ADDRESS: ${FH_SKELETON_SDK_ADDRESS:-}
+      FH_SKELETON_SDK_PORT: ${FH_SKELETON_SDK_PORT:-443}
+      FH_SKELETON_SDK_NOTIFICATION_SERVER: ${FH_SKELETON_SDK_NOTIFICATION_SERVER:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/pf-devkit/ai-plugin/skeleton/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  fh-ui:
+    image: ${REGISTRY:-local}/paas-sdk-devkit/skeleton-ui:${IMAGE_TAG:-latest}
+    build:
+      # context 用 skeleton/（而非 web/），这样 docs/user-guide 使用说明文档
+      # 能进入构建上下文，供 vite copy 插件写入前端产物
+      context: ..
+      dockerfile: web/Dockerfile
+      args:
+        VITE_FH2_ADDRESS:         ${FH2_ADDRESS}
+        VITE_FH2_PORT:            ${FH2_PORT:-30812}
+        VITE_FH2_PRJ_ID:          ${FH2_PRJ_ID}
+        VITE_DEFAULT_THEME:       ${DEFAULT_THEME:-dark}
+        VITE_PRIMARY_COLOR:       ${PRIMARY_COLOR:-#1a73e8}
+        VITE_PRIMARY_HOVER_COLOR: ${PRIMARY_HOVER_COLOR:-}
+        VITE_MOCK_ENABLED:        ${MOCK_ENABLED:-false}
+        VITE_MAP_PROVIDER:        ${MAP_PROVIDER:-esri}
+        VITE_BING_KEY:            ${BING_KEY:-}
+        VITE_TIANDITU_KEY:        ${TIANDITU_KEY:-}
+    ports:
+      - "80:8080"
+    depends_on:
+      - skeleton
+    restart: unless-stopped

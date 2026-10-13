@@ -1,0 +1,27 @@
+{
+  "name": "dji",
+  "owner": {
+    "name": "DJI CloudAPI2 Team"
+  },
+  "metadata": {
+    "description": "DJI FlightHub Cloud API 2.0 ISV DevKit — AI Skills + MCP Server",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "cloudapi2",
+      "source": "./devkit",
+      "description": "Cloud API 2.0 全套 AI Skill（11 个 skill 覆盖 SDK 核心规则、前端组件、MCP 路由、设备管理、SEI/OSD、部署、排障、反馈、知识库入库）",
+      "version": "1.0.0",
+      "category": "skills",
+      "tags": [
+        "dji",
+        "flighthub",
+        "cloud-api",
+        "drone",
+        "sdk",
+        "skills"
+      ]
+    }
+  ]
+}

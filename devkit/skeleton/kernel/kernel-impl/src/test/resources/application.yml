@@ -1,0 +1,6 @@
+# kernel-impl 测试专用：显式 create-drop（KernelDefaults 生产默认 none）
+# 使 @DataJpaTest 在测试环境自动建表，回归 JpaAppendLogAdapterTest / JpaRepositoryAdapterTest
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop

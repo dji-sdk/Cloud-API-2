@@ -1,0 +1,34 @@
+# 测试环境覆盖 — 使用 H2 内存库替代 MySQL
+server:
+  servlet:
+    # 测试上下文同样需要 context-path，验证带前缀的 actuator/mock 路径可访问
+    context-path: /pf-devkit/ai-plugin/skeleton
+
+spring:
+  ai:
+    anthropic:
+      api-key: test-dummy-key-for-ci
+    openai:
+      api-key: test-dummy-key-for-ci
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  sql:
+    init:
+      mode: never
+
+fh:
+  skeleton:
+    sdk:
+      mode: mock
+  user:
+    jwt:
+      secret: test-secret-key-at-least-32-characters-long!!
+      expiry: 1h
+    registration:
+      enabled: true
+      default-role: user
+    # 首用户注册后自动成为 admin（测试专用引导，与主配置默认关闭不冲突）

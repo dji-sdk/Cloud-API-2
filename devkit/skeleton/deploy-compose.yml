@@ -1,0 +1,121 @@
+# FH Skeleton 远端部署专用 Docker Compose
+#
+# 与 skeleton/docker/docker-compose.yml 的区别：
+# - 前端使用预构建镜像（deploy.sh 本地构建后传输），不走 build:
+# - 端口映射通过环境变量控制（BACKEND_PORT / FRONTEND_PORT）
+# - depends_on 加 condition: service_healthy（等后端就绪再启前端）
+# - 内置 MySQL 8.0 + 自动初始化（init-sql 目录挂载到 /docker-entrypoint-initdb.d/）
+#
+# MCP Server 不在此 compose 栈内，由 mcp/docker-compose.yml 独立部署。
+# skeleton 通过 FH_CHAT_MCP_URL 连接外部 MCP Server。
+#
+# 用法（由 deploy.sh 自动同步到远端）：
+#   IMAGE_TAG=latest docker compose -f deploy-compose.yml up -d
+
+services:
+  mysql:
+    image: ${REGISTRY:?REGISTRY must be set}/public/mysql:8.0.35
+    container_name: pf-devkit-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
+      MYSQL_DATABASE: fh_skeleton
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init-sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  skeleton:
+    image: ${REGISTRY:?REGISTRY must be set}/paas-sdk-devkit/skeleton:${IMAGE_TAG:-latest}
+    container_name: pf-devkit-skeleton-server
+    ports:
+      - "${BACKEND_PORT:-8081}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${FH_PROFILE:-sdk}
+      FH_DB_URL: jdbc:mysql://mysql:3306/fh_skeleton?useSSL=${FH_DB_USE_SSL:-true}&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      FH_DB_USERNAME: ${FH_DB_USERNAME:-root}
+      FH_DB_PASSWORD: ${FH_DB_PASSWORD:?FH_DB_PASSWORD must be set}
+      FH_JWT_SECRET: "${FH_JWT_SECRET:?FH_JWT_SECRET must be set - run: openssl rand -hex 32}"
+      FH_SKELETON_SDK_TOKEN: ${FH_SKELETON_SDK_TOKEN:-}
+      FH_SKELETON_SDK_ADDRESS: ${FH_SKELETON_SDK_ADDRESS:-}
+      FH_SKELETON_SDK_PORT: ${FH_SKELETON_SDK_PORT:-443}
+      FH_SKELETON_SDK_NOTIFICATION_SERVER: ${FH_SKELETON_SDK_NOTIFICATION_SERVER:-}
+      FH_SKELETON_SDK_AUTH_HEADER_KEY: ${FH_SKELETON_SDK_AUTH_HEADER_KEY:-}
+      FH_SKELETON_SDK_AUTH_HEADER_VALUE: ${FH_SKELETON_SDK_AUTH_HEADER_VALUE:-}
+      FH_SKELETON_SDK_REAL_HTTPAUTHHEADERKEY: ${FH_SKELETON_SDK_AUTH_HEADER_KEY:-}
+      FH_SKELETON_SDK_REAL_HTTPAUTHHEADERVALUE: ${FH_SKELETON_SDK_AUTH_HEADER_VALUE:-}
+      SPRING_APPLICATION_JSON: '{"fh":{"skeleton":{"sdk":{"real":{"http-auth-header-key":"${FH_SKELETON_SDK_AUTH_HEADER_KEY:-}","http-auth-header-value":"${FH_SKELETON_SDK_AUTH_HEADER_VALUE:-}"}}}}}'
+      SPRING_AI_ANTHROPIC_API_KEY: ${SPRING_AI_ANTHROPIC_API_KEY:-not-configured}
+      SPRING_AI_ANTHROPIC_BASE_URL: ${SPRING_AI_ANTHROPIC_BASE_URL:-https://api.anthropic.com}
+      SPRING_AI_OPENAI_API_KEY: ${SPRING_AI_OPENAI_API_KEY:-not-configured}
+      SPRING_AI_OPENAI_BASE_URL: ${SPRING_AI_OPENAI_BASE_URL:-https://api.openai.com}
+      FH_CHAT_ENABLED: ${FH_CHAT_ENABLED:-true}
+      FH_CHAT_MCP_URL: ${FH_CHAT_MCP_URL:?FH_CHAT_MCP_URL must be set — MCP Server 独立部署，需指定地址如 http://host:8080}
+      FH_CHAT_MCP_AUTH_TOKEN: ${FH_CHAT_MCP_AUTH_TOKEN:-}
+      FH_CHAT_RAG_ENABLED: ${FH_CHAT_RAG_ENABLED:-false}
+      FH_CHAT_PROVIDER: ${FH_CHAT_PROVIDER:-openai}
+      SPRING_AI_ANTHROPIC_CHAT_OPTIONS_MODEL: ${SPRING_AI_ANTHROPIC_CHAT_OPTIONS_MODEL:-deepseek-v4-flash-private}
+      SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL: ${SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL:-deepseek-v4-flash-private}
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_AI: ${LOGGING_LEVEL_SPRING_AI:-INFO}
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB_CLIENT: ${LOGGING_LEVEL_WEB_CLIENT:-INFO}
+      FH_USER_REGISTRATION_ENABLED: ${FH_USER_REGISTRATION_ENABLED:-false}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/pf-devkit/ai-plugin/skeleton/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  fh-ui:
+    image: ${REGISTRY:?REGISTRY must be set}/paas-sdk-devkit/skeleton-ui:${IMAGE_TAG:-latest}
+    container_name: pf-devkit-skeleton-web
+    ports:
+      - "${FRONTEND_PORT:-8082}:8080"
+    environment:
+      VITE_FH2_ADDRESS: ${VITE_FH2_ADDRESS:-}
+      VITE_FH2_PORT: ${VITE_FH2_PORT:-30812}
+      VITE_FH2_WSS_URL: ${VITE_FH2_WSS_URL:-}
+      VITE_FH2_PRJ_ID: ${VITE_FH2_PRJ_ID:-}
+      VITE_FH2_SDK_AUTH_KEY: ${VITE_FH2_SDK_AUTH_KEY:-}
+      VITE_FH2_SDK_AUTH_VALUE: ${VITE_FH2_SDK_AUTH_VALUE:-}
+      VITE_DEFAULT_THEME: ${VITE_DEFAULT_THEME:-light}
+      VITE_PRIMARY_COLOR: ${VITE_PRIMARY_COLOR:-#1a73e8}
+      VITE_PRIMARY_HOVER_COLOR: ${VITE_PRIMARY_HOVER_COLOR:-}
+      VITE_MOCK_ENABLED: ${VITE_MOCK_ENABLED:-false}
+      VITE_MAP_PROVIDER: ${VITE_MAP_PROVIDER:-esri}
+      VITE_BING_KEY: ${VITE_BING_KEY:-}
+      VITE_TIANDITU_KEY: ${VITE_TIANDITU_KEY:-}
+    depends_on:
+      skeleton:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # SSL 终止代理（profile: https）——仅当 deploy.env 配置了证书路径时由 deploy.sh 激活
+  # Web Speech API 需要 HTTPS；证书借用服务器上已有的 DJI 自签名证书
+  # ISV 自建环境可执行：openssl req -x509 -nodes -days 365 -newkey rsa:2048
+  #     -keyout key.pem -out cert.pem -subj "/CN=<your-server-ip>"
+  fh-ssl:
+    image: ${REGISTRY:?REGISTRY must be set}/public/nginx:1.26.1
+    container_name: pf-devkit-skeleton-ssl
+    profiles: [https]
+    ports:
+      - "${HTTPS_PORT:-8083}:443"
+    volumes:
+      - ${SSL_CERT_PATH:-/dev/null}:/etc/ssl/cert.pem:ro
+      - ${SSL_KEY_PATH:-/dev/null}:/etc/ssl/key.pem:ro
+      - ${SSL_CONF_PATH:-./deploy-ssl.conf}:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - fh-ui
+    restart: unless-stopped
+
+volumes:
+  mysql-data:

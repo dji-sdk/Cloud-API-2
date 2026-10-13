@@ -1,0 +1,85 @@
+# 跨 Skill 共享约束规则（Single Source of Truth）
+#
+# 本文件定义所有 cloudapi2-* Skill 共用的约束规则。
+# 各 Skill 的 constraints.yaml 只定义该 Skill **特有**的规则，
+# 并通过 extends 字段声明引用本文件。
+#
+# sdk-core SKILL.md 中的"6 条核心规则"是这些约束的**教学版本**（含正反代码示例），
+# 本文件是**机器版本**（结构化 ID + 规则 + 违反后果）。
+#
+# level: critical — 违反必导致功能失败或安全事故
+# level: warning  — 违反可能导致问题但不一定立即失败
+
+# ============================================================
+# SDK 生命周期
+# ============================================================
+
+- id: initialize-check
+  rule: FlightHubSDK.initialize() 必须先完成，且检查返回值为 SUCCESS 后才可调用其他 SDK 方法
+  violation: 后续 getWorkspaceInstance / getDroneInstance 返回 null，所有操作静默失败
+  level: critical
+  sdk-core-rule: 1
+
+# ============================================================
+# 回调与错误处理
+# ============================================================
+
+- id: error-code-check
+  rule: 所有 SDK 回调必须先检查 error.getErrorCode() == SUCCESS，data 字段在错误时可能为 null
+  violation: NPE 或读取到脏数据
+  level: critical
+  sdk-core-rule: 2
+
+# ============================================================
+# 订阅生命周期
+# ============================================================
+
+- id: listen-cancel-pairing
+  rule: 每个 listen*/subscribe* 调用返回的 listenId 必须保存，在 @PreDestroy / onUnmounted / destroy 中调用对应的 cancel*/unSubscribe* 释放
+  violation: 回调泄漏、内存暴涨、服务端资源耗尽
+  level: critical
+  sdk-core-rule: 3
+
+# ============================================================
+# 飞控安全
+# ============================================================
+
+- id: flight-control-authority
+  rule: 发送飞控指令前必须 acquireFlightControlAuthority()，完成后（含异常路径）必须 releaseFlightControlAuthority()
+  violation: 控制权泄漏，其他客户端无法操作飞机
+  level: critical
+  sdk-core-rule: 4
+
+- id: dangerous-operation-warning
+  rule: 生成 takeoff/returnHome/emergencyStop/flyToPoint 代码时，必须在代码块之前输出结构化警告块（操作类型、不可逆性、物理影响、生产建议），禁止直接给出代码
+  violation: 用户无风险感知直接部署危险代码，可能导致坠机或财产损失
+  level: critical
+  sdk-core-rule: 6
+
+# ============================================================
+# Null 安全
+# ============================================================
+
+- id: null-guard-instances
+  rule: getDroneInstance(sn) / getDockInstance(sn) / getWorkspaceInstance() / getLiveStream(liveInfo) 返回值必须判空后再调用方法
+  violation: NullPointerException 导致整个回调链断裂
+  level: critical
+  sdk-core-rule: 5
+
+# ============================================================
+# 线程安全
+# ============================================================
+
+- id: thread-safety
+  rule: 共享可变状态必须使用 ConcurrentHashMap + volatile/AtomicInteger + synchronized 保护；SDK 回调在非主线程执行
+  violation: 数据竞争，在高频 OSD 推送下状态不一致
+  level: critical
+
+# ============================================================
+# 资源清理
+# ============================================================
+
+- id: resource-cleanup
+  rule: 所有资源（SDK 订阅、DRC 链路、直播流、控制权）必须在退出路径上释放，包括异常路径
+  violation: 资源泄漏、后续操作被阻塞
+  level: critical

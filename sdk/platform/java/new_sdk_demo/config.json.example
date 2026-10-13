@@ -1,0 +1,41 @@
+{
+    "_comment": "复制为 config.json 后填入你的环境。切勿把真实鉴权值提交到 git（见 auth.value / 环境变量 FLIGHTHUB_AUTH_VALUE）。",
+    "server": {
+        "address": "https://xx.xx.xx.xx",
+        "port": "30812",
+        "notification_server": "wss://xx.xx.xx.xx:30812/openapi/v0.9/notification/ws/v1/notifications",
+        "_comment_tls": "verify_ssl 默认 true(安全默认)。私有化自签名环境须将 ssl_ca_path 指向私有 CA 证书(PEM); 受控测试环境可显式置 false(会产生 WARN 日志)。ssl_ca_path 为空时使用系统 CA 信任库。drtc_config_path 仅 Linux DRTC 拉流场景需要。",
+        "verify_ssl": true,
+        "__comment_for_ssl_ca_path": "证书占位符示例",
+        "ssl_ca_path": "/etc/ssl/certs/your_xxx.pem"
+    },
+    "sdk": {
+        "log_level": "info",
+        "log_to_console": false,
+        "log_file_path": "flight_hub_sdk_demo.log",
+        "log_max_file_size": 4194304,
+        "log_max_files": 1000,
+        "drtc_config_path": "drtc_config_node.json"
+    },
+    "app": {
+        "encoding": "UTF-8",
+        "working_dir": "."
+    },
+    "rtmp": {
+        "server_url": "rtmp://xx.xx.xx.xx/live/",
+        "stream_key": "livestream?secret=XXXXXX",
+        "frame_rate": 30,
+        "bitrate": 4000000,
+        "width": 1920,
+        "height": 1080,
+        "enabled": false
+    },
+    "auth": {
+        "_comment": "gateway 鉴权头, 数组每项为一个 key-value, 可按需配置多个。value 建议留空并通过环境变量 FLIGHTHUB_AUTH_VALUE 注入, 避免提交明文。",
+        "auth_key_values": [
+            {
+                "YOUR_AUTH_KEY": "YOUR_AUTH_VALUE"
+            }
+        ]
+    }
+}

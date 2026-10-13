@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FH2 设备管理 — SDK 模式</title>
+
+  <!-- 1. 加载 SDK 资源（CSS + JS）-->
+  <!-- 安全发布专项修复：移除内网 IP fallback，改为占位符 -->
+  <script>
+    var DEMO_CONFIG = {
+      sdkCss: 'http://<your-fh2-server>/paasjs-demo/device-manager-sdk/index.css',
+      sdkJs:  'http://<your-fh2-server>/paasjs-demo/device-manager-sdk/index.js',
+    }
+    document.write('<link rel="stylesheet" href="' + DEMO_CONFIG.sdkCss + '">')
+    document.write('<script defer src="' + DEMO_CONFIG.sdkJs + '"><\/script>')
+  </script>
+
+  <style>
+    html, body {
+      width: 100%; height: 100%;
+      margin: 0; padding: 0;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+      background: #f5f7fa;
+    }
+    /* 容器必须有显式宽高 */
+    #uranus-device-manager-app {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 2. DOM 容器 -->
+  <div id="uranus-device-manager-app"></div>
+
+  <!-- 3. 初始化 -->
+  <script>
+    window.addEventListener('load', function () {
+      // 检查 SDK 是否加载成功
+      if (!window.UranusDeviceManagerApp) {
+        document.getElementById('uranus-device-manager-app').innerHTML =
+          '<p style="padding:40px;color:#f5222d;">SDK 加载失败，请检查 sdkJs 路径是否可访问</p>'
+        return
+      }
+
+      // ① init 之前把 token 写入 localStorage，让 auth.headers 闭包能读到
+      localStorage.setItem('x-user-token', '[JWT_TOKEN]')
+
+      // ② 构造鉴权配置
+      var auth = {
+        authKeys: ['X-User-Token'],
+        headers: function () {
+          return {
+            'X-User-Token': localStorage.getItem('x-user-token') || '',
+          }
+        },
+      }
+
+      // ③ 自动检测 API 版本（新版 setupDeviceManager / 旧版 init）
+      var sdk = window.UranusDeviceManagerApp
+      var serverUrl = 'http://<your-fh2-server>:30812'
+      var wsUrl = 'ws://<your-fh2-server>:30812/openapi/v0.9/notification/ws/v1/notifications'
+      var callbacks = { onError: function (err) { console.error('[DeviceManager] onError:', err) } }
+
+      var initPromise
+      if (typeof sdk.setupDeviceManager === 'function') {
+        initPromise = sdk.setupDeviceManager({
+          serverUrl: serverUrl, wsUrl: wsUrl, auth: auth, locale: 'zh', callbacks: callbacks,
+        }).then(function () {
+          sdk.mountDeviceList({ container: '#uranus-device-manager-app', props: { deviceType: 'airport' } })
+        })
+      } else if (typeof sdk.init === 'function') {
+        initPromise = sdk.init({
+          containerId: '#uranus-device-manager-app',
+          serverUrl: serverUrl, wsUrl: wsUrl, auth: auth, locale: 'zh', callbacks: callbacks,
+        })
+      } else {
+        document.getElementById('uranus-device-manager-app').innerHTML =
+          '<p style="padding:40px;color:#f5222d;">SDK 加载成功但未找到 init 或 setupDeviceManager 方法，请检查 SDK 版本</p>'
+        return
+      }
+
+      initPromise
+        .then(function () { console.log('设备管理初始化成功') })
+        .catch(function (err) { console.error('设备管理初始化失败', err) })
+    })
+  </script>
+</body>
+</html>

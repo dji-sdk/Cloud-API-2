@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FHSDK Demo — UI 交互原型</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --panel2: #243044;
+      --border: #2d3a4f;
+      --text: #e8edf4;
+      --muted: #8b9cb3;
+      --accent: #3b82f6;
+      --accent-dim: #2563eb;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --slow: #f97316;
+      --fast: #22c55e;
+      --sei: #06b6d4;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .topbar {
+      height: 48px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 20px;
+      flex-shrink: 0;
+    }
+    .topbar h1 { font-size: 15px; font-weight: 600; }
+    .badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+    }
+    .badge.on { border-color: var(--ok); color: var(--ok); }
+    .badge.off { color: var(--muted); }
+    .main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 220px 1fr 1fr;
+      grid-template-rows: 1fr auto;
+      gap: 8px;
+      padding: 8px;
+      min-height: 0;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .panel-hd {
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .device-list { overflow-y: auto; flex: 1; }
+    .device-item {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .device-item:hover { background: var(--panel2); }
+    .device-item.active {
+      background: rgba(59, 130, 246, 0.15);
+      border-left: 3px solid var(--accent);
+    }
+    .device-item .sn { font-size: 13px; font-weight: 500; }
+    .device-item .meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .center-col {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 0;
+    }
+    .live-wrap {
+      flex: 1;
+      position: relative;
+      min-height: 200px;
+      background: #000;
+      border-radius: 0 0 8px 8px;
+      overflow: hidden;
+    }
+    .live-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      pointer-events: none;
+    }
+    .live-placeholder.hidden { display: none; }
+    .live-drag-layer {
+      position: absolute;
+      inset: 0;
+      cursor: grab;
+      z-index: 2;
+    }
+    .live-drag-layer.disabled {
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+    .live-drag-layer:active { cursor: grabbing; }
+    .drag-hint {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.5);
+      z-index: 3;
+      pointer-events: none;
+    }
+    .live-toolbar {
+      display: flex;
+      gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+    }
+    button {
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--panel2);
+      color: var(--text);
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { border-color: var(--accent); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent-dim);
+      color: #fff;
+    }
+    button.danger { border-color: var(--danger); color: var(--danger); }
+    .osd-bar {
+      display: flex;
+      gap: 24px;
+      padding: 10px 16px;
+      font-size: 12px;
+      flex-wrap: wrap;
+    }
+    .osd-item label { color: var(--muted); margin-right: 6px; }
+    .osd-item span { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .map-body { flex: 1; position: relative; min-height: 0; }
+    #mapCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: 0 0 8px 8px;
+    }
+    .map-legend {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      font-size: 11px;
+      background: rgba(0,0,0,0.6);
+      padding: 8px 10px;
+      border-radius: 6px;
+      line-height: 1.6;
+    }
+    .map-legend .dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+    .bottom-bar {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 8px;
+      max-height: 140px;
+    }
+    .keys {
+      display: flex;
+      gap: 6px;
+      padding: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .key {
+      width: 36px; height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      background: var(--panel2);
+    }
+    .key.active { background: var(--accent); border-color: var(--accent); }
+    .key-label { font-size: 11px; color: var(--muted); margin-left: 8px; }
+    .log {
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      overflow-y: auto;
+      padding: 8px 12px;
+      flex: 1;
+      line-height: 1.5;
+    }
+    .log .line { color: var(--muted); }
+    .log .line.ws { color: #a5b4fc; }
+    .log .line.rest { color: #86efac; }
+    .hint-banner {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-size: 11px;
+      color: var(--warn);
+      padding: 4px;
+      background: rgba(245, 158, 11, 0.1);
+      border-radius: 6px;
+      margin: 0 8px 4px;
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <h1>FHSDK ISV Demo</h1>
+    <span class="badge" id="badgeSdk">SDK · 未初始化</span>
+    <span class="badge off" id="badgeWs">WS · 断开</span>
+    <span class="badge off" id="badgeDrc">DRC · 未连接</span>
+    <span style="margin-left:auto;font-size:12px;color:var(--muted)" id="currentDevice">未选择设备</span>
+  </header>
+
+  <div class="hint-banner">交互原型 · 模拟数据 · 用于 Review 布局与操作流程（非真实 FHSDK）</div>
+
+  <div class="main">
+    <!-- 设备列表 -->
+    <section class="panel" style="grid-row: span 1">
+      <div class="panel-hd">设备列表</div>
+      <div class="device-list" id="deviceList"></div>
+      <div style="padding:8px;border-top:1px solid var(--border)">
+        <button id="btnDeselect" style="width:100%" disabled>取消选择</button>
+      </div>
+    </section>
+
+    <!-- 直播 + OSD -->
+    <div class="center-col">
+      <section class="panel" style="flex:1">
+        <div class="live-toolbar">
+          <button class="primary" id="btnDrc" disabled>Connect DRC</button>
+          <button id="btnInit">初始化 SDK</button>
+          <span style="font-size:11px;color:var(--muted);margin-left:auto">直播区无 AR 叠加</span>
+        </div>
+        <div class="live-wrap" id="liveWrap">
+          <div class="live-placeholder" id="livePh">选择设备后播放 WHEP</div>
+          <div class="live-drag-layer disabled" id="dragLayer"></div>
+          <div class="drag-hint" id="dragHint">DRC 连接后可拖拽控制云台</div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-hd">OSD</div>
+        <div class="osd-bar">
+          <div class="osd-item"><label>电量</label><span id="osdBattery">--</span></div>
+          <div class="osd-item"><label>高度</label><span id="osdAlt">--</span></div>
+          <div class="osd-item"><label>水平速度</label><span id="osdHSpd">--</span></div>
+          <div class="osd-item"><label>风速</label><span id="osdWind">--</span></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 地图 -->
+    <section class="panel">
+      <div class="panel-hd">Cesium 地图（原型为 2D 示意）</div>
+      <div class="map-body">
+        <canvas id="mapCanvas"></canvas>
+        <div class="map-legend">
+          <div><span class="dot" style="background:#fff"></span>飞机模型</div>
+          <div><span class="dot" style="background:var(--sei)"></span>SEI 视锥</div>
+          <div><span class="dot" style="background:var(--slow)"></span>慢通道测距</div>
+          <div><span class="dot" style="background:var(--fast)"></span>快通道测距</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 底部：操控 + 日志 -->
+    <div class="bottom-bar">
+      <section class="panel">
+        <div class="panel-hd">杆量 WASD</div>
+        <div class="keys">
+          <div class="key" data-k="W">W</div>
+          <div class="key" data-k="A">A</div>
+          <div class="key" data-k="S">S</div>
+          <div class="key" data-k="D">D</div>
+          <span class="key-label">需 DRC · 按住移动</span>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-hd">消息日志（含 uuid）</div>
+        <div class="log" id="msgLog"></div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const uuid = () => crypto.randomUUID();
+
+    const state = {
+      sdkReady: false,
+      selectedId: null,
+      drcConnected: false,
+      wsConnected: false,
+      keys: new Set(),
+      anim: null,
+      plane: { x: 0.5, y: 0.5, heading: 0 },
+      slowMeasure: { x: 0.62, y: 0.38 },
+      fastMeasure: { x: 0.64, y: 0.36 },
+      frustumAngle: 0,
+    };
+
+    const MOCK_DEVICES = [
+      { id: 'gw1', sn: 'EXAMPLE_SN_0001', name: '机场 3 · M3D', online: true },
+      { id: 'gw2', sn: 'EXAMPLE_SN_0002', name: '机场 2 · M30', online: true },
+      { id: 'gw3', sn: 'OFFLINE-SN-001', name: '离线设备', online: false },
+    ];
+
+    function log(msg, type = 'line') {
+      const el = $('msgLog');
+      const line = document.createElement('div');
+      line.className = 'line ' + type;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      el.prepend(line);
+      if (el.children.length > 80) el.lastChild.remove();
+    }
+
+    function logWs(type, field, extra = '') {
+      const id = uuid();
+      log(`WS uuid=${id.slice(0,8)}… type=${type}${field ? ' field=' + field : ''} ${extra}`, 'ws');
+      return id;
+    }
+
+    function logRest(method, path) {
+      log(`REST ${method} ${path}`, 'rest');
+    }
+
+    function renderDevices() {
+      const list = $('deviceList');
+      list.innerHTML = '';
+      MOCK_DEVICES.forEach((d) => {
+        const div = document.createElement('div');
+        div.className = 'device-item' + (state.selectedId === d.id ? ' active' : '');
+        div.innerHTML = `<div class="sn">${d.name}</div><div class="meta">${d.sn}${d.online ? '' : ' · 离线'}</div>`;
+        div.onclick = () => selectDevice(d);
+        list.appendChild(div);
+      });
+    }
+
+    function updateBadges() {
+      $('badgeSdk').textContent = state.sdkReady ? 'SDK · 已就绪' : 'SDK · 未初始化';
+      $('badgeSdk').className = 'badge ' + (state.sdkReady ? 'on' : 'off');
+      $('badgeWs').textContent = state.wsConnected ? 'WS · 已连接' : 'WS · 断开';
+      $('badgeWs').className = 'badge ' + (state.wsConnected ? 'on' : 'off');
+      $('badgeDrc').textContent = state.drcConnected ? 'DRC · 已连接' : 'DRC · 未连接';
+      $('badgeDrc').className = 'badge ' + (state.drcConnected ? 'on' : 'off');
+      const dev = MOCK_DEVICES.find((d) => d.id === state.selectedId);
+      $('currentDevice').textContent = dev ? `当前：${dev.sn}` : '未选择设备';
+    }
+
+    function updateControls() {
+      const hasDev = !!state.selectedId;
+      $('btnDrc').disabled = !hasDev;
+      $('btnDrc').textContent = state.drcConnected ? 'Disconnect DRC' : 'Connect DRC';
+      $('btnDrc').className = state.drcConnected ? 'danger' : 'primary';
+      $('btnDeselect').disabled = !hasDev;
+      $('dragLayer').classList.toggle('disabled', !state.drcConnected);
+      $('livePh').classList.toggle('hidden', hasDev);
+      $('livePh').textContent = hasDev ? '' : '选择设备后播放 WHEP';
+      if (hasDev && !$('livePh').classList.contains('hidden')) {
+        $('livePh').textContent = 'WHEP 播放中（示意）';
+      }
+      document.querySelectorAll('.key').forEach((k) => {
+        k.classList.toggle('active', state.keys.has(k.dataset.k) && state.drcConnected);
+      });
+    }
+
+    function selectDevice(d) {
+      if (!state.sdkReady) {
+        log('请先点击「初始化 SDK」');
+        return;
+      }
+      if (!d.online) {
+        log('设备离线，无法选择');
+        return;
+      }
+      if (state.selectedId === d.id) return;
+      if (state.selectedId) deselectDevice(false);
+      state.selectedId = d.id;
+      logRest('POST', '/api/v1/devices/select');
+      state.wsConnected = true;
+      log('WebSocket connect /api/v1/ws/telemetry', 'rest');
+      logRest('GET', '/api/v1/live/stream-url');
+      logWs('mqtt_osd', 'location');
+      logWs('mqtt_osd', 'battery');
+      startTelemetry();
+      renderDevices();
+      updateBadges();
+      updateControls();
+      drawMap();
+    }
+
+    function deselectDevice(manual = true) {
+      if (!state.selectedId) return;
+      if (state.drcConnected) toggleDrc(false);
+      if (manual) logRest('DELETE', '/api/v1/devices/select');
+      state.wsConnected = false;
+      log('WebSocket disconnect', 'rest');
+      stopTelemetry();
+      state.selectedId = null;
+      $('osdBattery').textContent = '--';
+      $('osdAlt').textContent = '--';
+      $('osdHSpd').textContent = '--';
+      $('osdWind').textContent = '--';
+      renderDevices();
+      updateBadges();
+      updateControls();
+      drawMap();
+    }
+
+    function toggleDrc(connect) {
+      if (connect === undefined) connect = !state.drcConnected;
+      if (!state.selectedId) return;
+      if (connect) {
+        logRest('POST', '/api/v1/control/drc-link');
+        state.drcConnected = true;
+        logWs('drc_camera', '', 'measureTarget');
+        logWs('sei', '', 'ar+fov');
+      } else {
+        logRest('DELETE', '/api/v1/control/drc-link');
+        state.drcConnected = false;
+      }
+      updateBadges();
+      updateControls();
+    }
+
+    let telemetryTimer = null;
+    function startTelemetry() {
+      stopTelemetry();
+      let tick = 0;
+      telemetryTimer = setInterval(() => {
+        if (!state.selectedId) return;
+        tick++;
+        $('osdBattery').textContent = (88 - (tick % 5)) + '%';
+        $('osdAlt').textContent = (120 + Math.sin(tick * 0.1) * 2).toFixed(1) + ' m';
+        $('osdHSpd').textContent = (5.2 + Math.random() * 0.3).toFixed(1) + ' m/s';
+        $('osdWind').textContent = (3.1).toFixed(1) + ' m/s';
+        if (tick % 4 === 0) logWs('mqtt_osd', 'location');
+        if (state.drcConnected && tick % 2 === 0) logWs('drc_camera', '');
+        if (state.drcConnected && tick % 3 === 0) logWs('sei', '');
+        if (state.keys.size && state.drcConnected) {
+          const spd = 0.004;
+          if (state.keys.has('W')) state.plane.y -= spd;
+          if (state.keys.has('S')) state.plane.y += spd;
+          if (state.keys.has('A')) state.plane.x -= spd;
+          if (state.keys.has('D')) state.plane.x += spd;
+          state.plane.heading += (state.keys.has('D') ? 1 : 0) - (state.keys.has('A') ? 1 : 0);
+          logRest('POST', '/api/v1/control/stick');
+        }
+        state.frustumAngle += 0.02;
+        drawMap();
+      }, 500);
+    }
+    function stopTelemetry() {
+      if (telemetryTimer) clearInterval(telemetryTimer);
+      telemetryTimer = null;
+    }
+
+    // Map canvas
+    const canvas = $('mapCanvas');
+    const ctx = canvas.getContext('2d');
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      drawMap();
+    }
+    function drawMap() {
+      const w = canvas.width, h = canvas.height;
+      ctx.fillStyle = '#0d1117';
+      ctx.fillRect(0, 0, w, h);
+      // grid
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < w; i += 40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,h); ctx.stroke(); }
+      for (let j = 0; j < h; j += 40) { ctx.beginPath(); ctx.moveTo(0,j); ctx.lineTo(w,j); ctx.stroke(); }
+      if (!state.selectedId) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('选择设备后显示地图', w/2, h/2);
+        return;
+      }
+      const px = state.plane.x * w, py = state.plane.y * h;
+      // frustum (SEI)
+      if (state.drcConnected) {
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(state.frustumAngle + state.plane.heading * 0.05);
+        ctx.fillStyle = 'rgba(6, 182, 212, 0.25)';
+        ctx.strokeStyle = '#06b6d4';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(80, -40);
+        ctx.lineTo(120, 0);
+        ctx.lineTo(80, 40);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+      // measure lines
+      const sx = state.slowMeasure.x * w, sy = state.slowMeasure.y * h;
+      const fx = state.fastMeasure.x * w, fy = state.fastMeasure.y * h;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = '#f97316';
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(sx, sy); ctx.stroke();
+      ctx.fillStyle = '#f97316';
+      ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2); ctx.fill();
+      if (state.drcConnected) {
+        ctx.setLineDash([]);
+        ctx.strokeStyle = '#22c55e';
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(fx, fy); ctx.stroke();
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath(); ctx.arc(fx, fy, 6, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.setLineDash([]);
+      // plane
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(state.plane.heading * 0.05);
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.moveTo(14, 0);
+      ctx.lineTo(-10, -8);
+      ctx.lineTo(-6, 0);
+      ctx.lineTo(-10, 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Drag gimbal
+    let dragStart = null;
+    $('dragLayer').addEventListener('pointerdown', (e) => {
+      if (!state.drcConnected) return;
+      dragStart = { x: e.clientX, y: e.clientY };
+      $('dragLayer').setPointerCapture(e.pointerId);
+    });
+    $('dragLayer').addEventListener('pointerup', (e) => {
+      if (!dragStart) return;
+      const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        logRest('POST', `/api/v1/control/gimbal-drag pitch=${(-dy*0.1).toFixed(1)} yaw=${(dx*0.1).toFixed(1)}`);
+        state.frustumAngle += dx * 0.01;
+        drawMap();
+      }
+      dragStart = null;
+    });
+
+    // WASD
+    window.addEventListener('keydown', (e) => {
+      const k = e.key.toUpperCase();
+      if (!'WASD'.includes(k)) return;
+      if (!state.drcConnected) return;
+      e.preventDefault();
+      state.keys.add(k);
+      updateControls();
+    });
+    window.addEventListener('keyup', (e) => {
+      const k = e.key.toUpperCase();
+      state.keys.delete(k);
+      updateControls();
+    });
+
+    $('btnInit').onclick = () => {
+      if (state.sdkReady) return;
+      logRest('POST', '/api/v1/session/init');
+      logRest('GET', '/api/v1/devices');
+      state.sdkReady = true;
+      updateBadges();
+      renderDevices();
+    };
+    $('btnDrc').onclick = () => toggleDrc();
+    $('btnDeselect').onclick = () => deselectDevice(true);
+
+    window.addEventListener('resize', resizeCanvas);
+    renderDevices();
+    updateBadges();
+    updateControls();
+    resizeCanvas();
+    log('打开原型页 · 流程：初始化 SDK → 选择设备 → Connect DRC → WASD / 拖拽');
+  </script>
+</body>
+</html>

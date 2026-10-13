@@ -1,0 +1,14 @@
+# FH Skeleton UI — 远端构建专用 Dockerfile
+# 在 x86 远端服务器上运行 docker build，基础镜像 native 拉取无延迟
+#
+# 构建上下文中需要：dist/、nginx.conf
+# ISV 自建环境：通过 --build-arg NGINX_BASE_IMAGE=your-registry/nginx-unprivileged:1.26.1 覆盖
+
+# 安全加固（PAAS-CI-04）：使用非特权 nginx 镜像，进程以 uid 101 运行，无需 root
+ARG NGINX_BASE_IMAGE=nginxinc/nginx-unprivileged:1.26.1
+FROM ${NGINX_BASE_IMAGE}
+
+COPY dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 8080
