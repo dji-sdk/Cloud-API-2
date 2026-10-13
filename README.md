@@ -1,5 +1,10 @@
 <p align="center">
-  <img src="./docs/assets/logo.svg" alt="大疆上云 API 2" height="100">
+  <picture>
+    <!-- 暗黑模式下显示的 Logo -->
+    <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/logo-dark.svg">
+    <!-- 明亮模式下显示的 Logo（同时作为默认回退方案） -->
+    <img src="./docs/assets/logo.svg" alt="大疆上云 API 2" height="100">
+  </picture>
 </p>
 
 上云 API 2 是面向 DJI 硬件生态的开放 PaaS 产品。以免费、DJI 原厂能力开放、原生易集成为设计目标，一体化提供二次开发 SDK、前端组件、AI Plugin 与 AI Coding 脚手架、设备模拟器、调试工具等开放能力，助力软件集成商与开发者更高效地基于 DJI 硬件完成二次开发与垂直行业的解决方案交付。
