@@ -5,7 +5,7 @@ version: 1.1.0
 author: DJI CloudAPI2 Team
 ---
 
-# DJI FlightHub PaaS SDK 设备管理接入助手
+# DJI CloudAPI2 SDK 设备管理接入助手
 
 ## 这个 Skill 是干什么的
 

@@ -14,7 +14,7 @@ related:
   - api-reference/error-codes.md
 ---
 
-ISV 接入 FlightHub SDK 时最常遇到的 10 个问题，涵盖 listen 回调、设备管理、初始化、直播、Token 和航线任务控制等核心场景。
+ISV 接入 DJI CloudAPI2 SDK 时最常遇到的 10 个问题，涵盖 listen 回调、设备管理、初始化、直播、Token 和航线任务控制等核心场景。
 
 ## Q1: listen 回调不触发，怎么排查？
 

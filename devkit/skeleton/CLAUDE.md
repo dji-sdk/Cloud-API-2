@@ -2,7 +2,7 @@
 
 ## 项目定位
 
-DJI FlightHub PaaS SDK 的 ISV 接入骨架。基于 Spring Boot 3.2.5 + Java 17 的多模块架构，feature 可插拔，开箱即跑。
+DJI CloudAPI2 SDK 的 ISV 接入骨架。基于 Spring Boot 3.2.5 + Java 17 的多模块架构，feature 可插拔，开箱即跑。
 
 技术栈：后端 Spring Boot 3.2.5 / Spring AI 1.1.8 / Java 17 / Maven；前端 Vue 3 + TypeScript + Vite。
 
@@ -161,7 +161,7 @@ java -jar app/fh-skeleton-app/target/fh-skeleton-app-0.1.0.jar --spring.profiles
 
 ## 深度 SDK 知识
 
-本项目基于 DJI FlightHub PaaS SDK 3.3.7。如需完整的 SDK 接口知识、错误码字典、设备管理流程、飞控权限模型等深度内容，安装以下 Skills：
+本项目基于 DJI CloudAPI2 SDK 3.3.7。如需完整的 SDK 接口知识、错误码字典、设备管理流程、飞控权限模型等深度内容，安装以下 Skills：
 
 - `cloudapi2-sdk-core` — SDK 集成核心规则与代码模板
 - `cloudapi2-device-management` — 设备管理完整开发指南

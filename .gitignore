@@ -24,9 +24,10 @@
 *.rar
 *.7z
 
-# --- Build output directories（CMake / Gradle，忽略） ---
+# --- Build output directories（CMake / Maven / Gradle，忽略） ---
 build/
 out/
+target/
 cmake-build-*/
 CMakeFiles/
 CMakeCache.txt

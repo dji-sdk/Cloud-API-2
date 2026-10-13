@@ -1,6 +1,6 @@
-# DJI FlightHub MCP Guide
+# DJI CloudAPI2 MCP Guide
 
-帮助 AI Agent 在运行时正确选择和编排 FlightHub MCP Tool 调用。
+帮助 AI Agent 在运行时正确选择和编排 DJI CloudAPI2 MCP Tool 调用。
 
 ## 与 cloudapi2-sdk-core 的关系
 
@@ -54,7 +54,7 @@ cp -r skills/cloudapi2-mcp-guide ~/.claude/skills/
 
 ## 前提条件
 
-本 skill 生效的前提是 FlightHub MCP Server 已连接：
+本 skill 生效的前提是 DJI CloudAPI2 MCP Server 已连接：
 - MCP Server 正在运行（stdio 或 SSE 模式）
 - Claude Code 已配置 MCP 连接（见 `mcp/` 目录的 README）
 - 至少有一个 `fh_*` 工具可用

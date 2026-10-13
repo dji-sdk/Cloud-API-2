@@ -1,5 +1,5 @@
 ---
-title: "FlightHub PaaS 系统架构全景"
+title: "DJI CloudAPI2 系统架构全景"
 module: architecture
 tags: [architecture, sdk, mcp, frontend, overview]
 audience: [agent, developer]
@@ -11,7 +11,7 @@ related:
   - architecture/control-authority.md
 ---
 
-FlightHub PaaS SDK 由三层组成：Java SDK（核心能力）、MCP Server（AI 工具层）、前端组件（UI 层），共同服务 ISV 的无人机管理系统。
+DJI CloudAPI2 SDK 由三层组成：Java SDK（核心能力）、MCP Server（AI 工具层）、前端组件（UI 层），共同服务 ISV 的无人机管理系统。
 
 # 系统架构全景
 
@@ -30,7 +30,7 @@ FlightHub PaaS SDK 由三层组成：Java SDK（核心能力）、MCP Server（A
          └────────────────┼──────────────┘
                           ▼
               ┌───────────────────────┐
-              │  FlightHub 2 Platform │
+              │  DJI CloudAPI2 Platform │
               │  (WebSocket + HTTP)   │
               └───────────────────────┘
 ```
@@ -45,8 +45,8 @@ FlightHub PaaS SDK 由三层组成：Java SDK（核心能力）、MCP Server（A
 
 ## SDK 通信协议
 
-- **控制指令**：HTTP REST → FlightHub Platform → MQTT → 设备
-- **遥测数据**：设备 → MQTT → FlightHub Platform → WebSocket Push → SDK 回调
+- **控制指令**：HTTP REST → DJI CloudAPI2 Platform → MQTT → 设备
+- **遥测数据**：设备 → MQTT → DJI CloudAPI2 Platform → WebSocket Push → SDK 回调
 - **媒体流**：设备 → RTMP/WebRTC → 流媒体服务 → 前端播放器
 
 ## 关键约束

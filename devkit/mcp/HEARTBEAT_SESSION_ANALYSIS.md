@@ -1,8 +1,8 @@
-# FlightHub MCP Server: Session & SSE Client State Management Analysis
+# DJI CloudAPI2 MCP Server: Session & SSE Client State Management Analysis
 
 ## Executive Summary
 
-This report analyzes the current session lifecycle and SSE client management in the FlightHub MCP codebase. **Critical finding**: There is **NO bidirectional mapping between SSE clients and MCP sessions**, creating a significant gap in reconnection/heartbeat handling. When an SSE connection drops, the associated MCP session persists orphaned until timeout.
+This report analyzes the current session lifecycle and SSE client management in the DJI CloudAPI2 MCP codebase. **Critical finding**: There is **NO bidirectional mapping between SSE clients and MCP sessions**, creating a significant gap in reconnection/heartbeat handling. When an SSE connection drops, the associated MCP session persists orphaned until timeout.
 
 ---
 

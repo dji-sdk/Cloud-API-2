@@ -1,6 +1,6 @@
-# FlightHub PaaS Knowledge Base
+# DJI CloudAPI2 Knowledge Base
 
-DJI FlightHub PaaS SDK 的领域知识库 —— 整个 AI 辅助接入生态的**知识单一源头（SSOT）**。
+DJI CloudAPI2 SDK 的领域知识库 —— 整个 AI 辅助接入生态的**知识单一源头（SSOT）**。
 
 当前已建成的消费通道（llms.txt、Skills）从这里取内容，而非各自维护副本。规划中的通道（MCP Resources、静态文档站、向量检索）同样以此为源。
 

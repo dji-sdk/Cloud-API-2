@@ -110,13 +110,13 @@ Spring 日志有异常？
 
 > 逐层猜要跑 N 次；一次全链路取证只跑 1 次，而且结论是证据不是推测。
 
-FlightHub ISV 的链路有 5 个边界：
+DJI CloudAPI2 ISV 的链路有 5 个边界：
 
 | # | 边界 | 出入口各记什么 | 断在这里说明 |
 |---|---|---|---|
 | B1 | 浏览器 ↔ paas.js / 前端组件 | `paas.js` 请求是否 200；`initConfig` 入参（host、token 长度或前 8 位、容器 id）；容器实际宽高 | 资源没加载或配置没传进去（`FH2 is undefined`、容器无尺寸） |
 | B2 | 前端 ↔ 你的 BFF | 请求 URL + 方法 + 参数；**响应体全文**（不是只看 HTTP 状态码） | 你的接口层问题。注意平台 ServiceError **HTTP 也是 200**，必须看 body 里的 `code` |
-| B3 | BFF ↔ FlightHub SDK | 调用前：方法名 + SN / workspace / 关键参数；<br>回调里：`error.error_code`、`data` 是否为 null、`listenXxx` 的返回 `listen_id` | 参数在你侧就已经是坏值，或 SDK 未初始化就被调用（静默返回 `null`） |
+| B3 | BFF ↔ DJI CloudAPI2 SDK | 调用前：方法名 + SN / workspace / 关键参数；<br>回调里：`error.error_code`、`data` 是否为 null、`listenXxx` 的返回 `listen_id` | 参数在你侧就已经是坏值，或 SDK 未初始化就被调用（静默返回 `null`） |
 | B4 | SDK ↔ 平台（HTTP / WS） | 平台响应体原文（含 `message` 里的内层 `err_code`）；WS 是否连上；订阅用的频道 `{DeviceSN}-{Topic}` | 参数/权限/平台内部问题 → 转 `platform-error-response.md`；频道对不上 → 转 `event-callback-checklist.md` |
 | B5 | 平台 ↔ 设备 | `fh_device_list` 在线状态与设备树；`fh_osd_snapshot` 遥测；`fh_hms` 告警 | 设备侧状态问题，不是代码问题 → 转 Stage 2.5 定性 |
 
@@ -141,7 +141,7 @@ FlightHub ISV 的链路有 5 个边界：
 5. 修在第 4 步，不修在第 1 步
 ```
 
-FlightHub 场景里最常见的几类坏值源头：
+DJI CloudAPI2 场景里最常见的几类坏值源头：
 
 | 坏值 | 常见源头 |
 |---|---|

@@ -18,12 +18,12 @@ related:
 
 ## 为什么是互斥锁
 
-无人机飞行安全要求指令来源唯一。如果两个操作方同时下发相反指令（一个让飞、一个让停），结果不可预测。因此 FlightHub 强制单一控制权持有者模式。
+无人机飞行安全要求指令来源唯一。如果两个操作方同时下发相反指令（一个让飞、一个让停），结果不可预测。因此 DJI CloudAPI2 强制单一控制权持有者模式。
 
 ## 权限获取流程
 
 ```
-ISV BFF                    FlightHub Platform              设备
+ISV BFF                    DJI CloudAPI2 Platform              设备
   │                              │                          │
   │── acquireControlAuthority ──▶│                          │
   │                              │── 通知当前持有者释放 ──▶│

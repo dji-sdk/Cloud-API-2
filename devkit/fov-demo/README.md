@@ -2,17 +2,7 @@
 
 演示 ISV 基于 **FHSDK Java** 自研前后端的直播、OSD、SEI、地图与手动操控。
 
-**路线图**（详见 [需求说明 §6](docs/requirement/需求说明.md#6-实现阶段)）：A～D 已完成（地图 SEI 视锥/贴地、杆量与云台拖拽）；D′ 飞行控制规划中。
-
-## 文档
-
-| 文档 | 说明 |
-|------|------|
-| [需求说明](docs/requirement/需求说明.md) | 做什么 |
-| [整体方案](docs/0_整体方案.md) | 架构与协议 |
-| [后端方案](docs/1_后端方案.md) | `backend/` 工程结构 |
-| [前端方案](docs/2_前端方案.md) | `frontend/` 工程结构 |
-| [**实战案例**](docs/case-study/ISV自研Demo实战案例.md) | 从需求到落地全过程 + [HTML 幻灯片](docs/case-study/slides/index.html) |
+**路线图**：A～D 已完成（地图 SEI 视锥/贴地、杆量与云台拖拽）；D′ 飞行控制规划中。
 
 ## 工程目录
 
@@ -71,7 +61,7 @@ fov-demo/
 
 ### 远端平台（FHSDK）
 
-后端通过 **FHSDK Java** 连接 FlightHub 平台，配置由 `backend/docker/demo-server/.env` 传入容器：
+后端通过 **FHSDK Java** 连接 DJI CloudAPI2 平台，配置由 `backend/docker/demo-server/.env` 传入容器：
 
 - HTTP：`FHSDK_ADDRESS` + `FHSDK_PORT`
 - Notification WebSocket：`FHSDK_NOTIFICATION_SERVER`
@@ -89,7 +79,7 @@ fov-demo/
 - 不嵌入 PaaS 驾驶舱前端
 - 前端不直连 FHSDK、MQTT、DRC
 
-更细说明：[`backend/fhsdk-demo-server/README.md`](backend/fhsdk-demo-server/README.md)、[`backend/docker/oryx/README.md`](backend/docker/oryx/README.md)、[`docs/1_后端方案.md`](docs/1_后端方案.md) §3–§5。
+更细说明：[`backend/fhsdk-demo-server/README.md`](backend/fhsdk-demo-server/README.md)、[`backend/docker/oryx/README.md`](backend/docker/oryx/README.md)。
 
 ## UI 原型预览
 

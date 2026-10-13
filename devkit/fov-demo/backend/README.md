@@ -9,4 +9,4 @@
 
 **依赖环境**（Java 17、FFmpeg、Docker/Oryx、FHSDK 平台等）见项目根目录 [`README.md`](../README.md) §依赖环境。
 
-方案文档：[`docs/1_后端方案.md`](../docs/1_后端方案.md)
+

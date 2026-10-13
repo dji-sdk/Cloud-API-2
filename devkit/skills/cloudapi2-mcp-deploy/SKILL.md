@@ -1,8 +1,8 @@
 ---
 name: cloudapi2-mcp-deploy
 description: |
-  仅在用户要求将 FlightHub MCP Server 部署到自有环境时使用。
-  不要在处理飞行控制、设备管理、遥测查询等运行时运维操作时加载本 skill（那些由 FlightHub MCP Server 直接处理）。
+  仅在用户要求将 DJI CloudAPI2 MCP Server 部署到自有环境时使用。
+  不要在处理飞行控制、设备管理、遥测查询等运行时运维操作时加载本 skill（那些由 DJI CloudAPI2 MCP Server 直接处理）。
   适用场景：Docker Compose 远程 SSE 部署、stdio 本地开发（Docker 代理或 Mock JAR）、
   环境探测、配置生成、密钥生成、Claude Code MCP 接入配置、部署排障。
   关键词：MCP 部署, MCP deploy, mcp server 部署, docker 部署 mcp, SSE 部署,
@@ -13,13 +13,13 @@ author: DJI CloudAPI2 Team
 version: 1.0.0
 ---
 
-# FlightHub MCP Server 部署 Skill
+# DJI CloudAPI2 MCP Server 部署 Skill
 
 ## 适用场景
 
 当开发者描述以下场景时触发本 Skill：
 
-- 将 FlightHub MCP Server 部署到远程服务器（Docker Compose + SSE 模式）
+- 将 DJI CloudAPI2 MCP Server 部署到远程服务器（Docker Compose + SSE 模式）
 - 在本地配置 Claude Code / Cursor 接入 MCP Server（stdio 或 SSE）
 - 部署前的环境准备、密钥生成、配置填写
 - MCP Server 构建（Maven + Docker 镜像）
@@ -82,9 +82,9 @@ version: 1.0.0
 
 | 变量 | 生成命令 | 说明 |
 |---|---|---|
-| `FH_SERVER_ADDRESS` | — | FlightHub 服务器地址（含协议） |
-| `FH_ACCESS_TOKEN` | 从 FlightHub 控制台获取 | 工作空间访问令牌 |
-| `FH_WORKSPACE_UUID` | 从 FlightHub 控制台获取 | 工作空间 UUID |
+| `FH_SERVER_ADDRESS` | — | DJI CloudAPI2 服务器地址（含协议） |
+| `FH_ACCESS_TOKEN` | 从 DJI CloudAPI2 控制台获取 | 工作空间访问令牌 |
+| `FH_WORKSPACE_UUID` | 从 DJI CloudAPI2 控制台获取 | 工作空间 UUID |
 | `FH_SSE_AUTH_TOKEN` | `openssl rand -hex 32` | SSE 鉴权 token（留空拒绝启动） |
 
 ## 排障路由

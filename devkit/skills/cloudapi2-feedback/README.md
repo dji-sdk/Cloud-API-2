@@ -1,4 +1,4 @@
-# cloudapi2-feedback — DJI FlightHub 问题反馈助手
+# cloudapi2-feedback — DJI CloudAPI2 问题反馈助手
 
 > **版本**：v1.0.0 | **更新**：2026-09-22
 > **适用对象**：ISV 集成工程师、售后支持、开发者

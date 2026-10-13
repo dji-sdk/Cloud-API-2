@@ -179,5 +179,5 @@ workspace.getDeviceDetailInfo(deviceSn, (error, detail) -> {
 | 问题 | 原因 | 解决 |
 |------|------|------|
 | getDeviceList 回调返回空列表 | orgUuid 不匹配或无设备绑定 | 确认 Workspace 配置正确 |
-| subDevices 为空 | 机场已绑定但无人机未入网 | 检查无人机是否已在 FlightHub 注册 |
+| subDevices 为空 | 机场已绑定但无人机未入网 | 检查无人机是否已在 DJI CloudAPI2 注册 |
 | getDroneInstance 返回 null 但列表中有 | 设备刚离线，缓存已清除 | 监听 onlineStatus，离线时移除 |

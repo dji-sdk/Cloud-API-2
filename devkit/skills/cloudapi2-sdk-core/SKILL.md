@@ -2,11 +2,11 @@
 name: cloudapi2-sdk-core
 description: |
   仅在需要编写、生成或审查 Cloud API 2.0 Java SDK 集成代码时使用。
-  不要在用户请求连接 FlightHub、查看设备、控制无人机、查询遥测等运维操作时加载本 skill
-  （运维操作由 FlightHub MCP Server 直接处理，无需本 skill 介入）。
+  不要在用户请求连接 DJI CloudAPI2、查看设备、控制无人机、查询遥测等运维操作时加载本 skill
+  （运维操作由 DJI CloudAPI2 MCP Server 直接处理，无需本 skill 介入）。
   适用场景：写 Java 代码调用 SDK API、实现飞控逻辑、
   生成 Spring Boot Service 集成层、审查 SDK 调用代码质量。
-  关键词：FlightHub, DJI, 无人机, 机场, drone, dock, listen, cancel,
+  关键词：DJI CloudAPI2, DJI, 无人机, 机场, drone, dock, listen, cancel,
   acquireFlightControlAuthority, releaseFlightControlAuthority, errorCode,
   initialize, getWorkspaceInstance, getDroneInstance, getDockInstance,
   getControlAuthModule, getFlightControlModule, getTakeoffModule,
@@ -23,13 +23,13 @@ author: DJI CloudAPI2 Team
 version: 1.4.0
 ---
 
-# DJI FlightHub SDK 接入 Skill
+# DJI CloudAPI2 SDK 接入 Skill
 
 ## 适用场景
 
 当开发者描述以下场景时触发本 Skill：
 
-- 集成 / 接入 FlightHub SDK（Java）
+- 集成 / 接入 DJI CloudAPI2 SDK（Java）
 - 监听无人机或机场状态（OSD、在线状态、电量等）
 - 控制无人机（起飞、返航/取消返航、急停、指点飞行；降落通过 returnHome 实现）
 - 开始 / 停止直播流
@@ -39,7 +39,7 @@ version: 1.4.0
 
 ## SDK 心智模型
 
-FlightHub Java SDK 是**事件驱动**的，核心模式是 `listen / cancel`：
+DJI CloudAPI2 Java SDK 是**事件驱动**的，核心模式是 `listen / cancel`：
 
 ```
 FlightHubSDK（静态入口）

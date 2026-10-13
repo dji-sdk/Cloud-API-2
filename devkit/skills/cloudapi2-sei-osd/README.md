@@ -1,6 +1,6 @@
 # cloudapi2-sei-osd — SEI/OSD 实时遥测数据接入助手
 
-帮 ISV 开发者正确接入 DJI FlightHub 的 **SEI（帧级位置数据）** 和 **OSD（设备遥测数据）**，解决"怎么拿到每一帧画面对应的、准确的、足够高频的位置数据"这一最集中的 ISV 痛点。
+帮 ISV 开发者正确接入 DJI CloudAPI2 的 **SEI（帧级位置数据）** 和 **OSD（设备遥测数据）**，解决"怎么拿到每一帧画面对应的、准确的、足够高频的位置数据"这一最集中的 ISV 痛点。
 
 ## 能力
 
@@ -147,6 +147,6 @@ cloudapi2-sei-osd/
 
 ## 适用版本
 
-- **FHSDK**: Flight Hub SDK v2.0+（含 `LiveModule` + SEI 订阅 API）
+- **FHSDK**: DJI CloudAPI2 SDK v2.0+（含 `LiveModule` + SEI 订阅 API）
 - **设备**: 机场 3（M4D/M4TD/M4E）、M3T/M3E/M3TA、M10E/M10T
 - **前端**: Chrome/Edge（SEI 解析需 Chromium），Vue 3 + Cesium（可视化）
