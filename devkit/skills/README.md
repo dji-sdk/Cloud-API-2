@@ -1,6 +1,6 @@
-# Skills 总览 — Cloud API 2.0 SDK AI 能力包
+# Skills 总览 — Cloud API 2 SDK AI 能力包
 
-本目录包含面向 AI Agent 的 Skill（能力包），安装后 AI 在你编写 Cloud API 2.0 集成代码或操控设备时**自动加载**对应知识，确保生成正确、安全、符合规范的代码。
+本目录包含面向 AI Agent 的 Skill（能力包），安装后 AI 在你编写 Cloud API 2 集成代码或操控设备时**自动加载**对应知识，确保生成正确、安全、符合规范的代码。
 
 ## Skill 列表
 
@@ -12,9 +12,10 @@
 | [`cloudapi2-device-management`](cloudapi2-device-management/) | 垂直场景 | 设备管理 | 设备管理模块扩展（OSD 订阅/HMS 告警/feature 模块创建） |
 | [`cloudapi2-sei-osd`](cloudapi2-sei-osd/) | 垂直场景 | SEI/OSD 遥测 | 帧级位置数据(SEI) + 设备遥测(OSD) 接入，含前端 Cesium 可视化 |
 | [`cloudapi2-skeleton-deploy`](cloudapi2-skeleton-deploy/) | 垂直场景 | 部署 | FH Skeleton 三形态部署引导（普通机器/Docker/K8s），半自动 + 排障 |
-| [`cloudapi2-mcp-deploy`](cloudapi2-mcp-deploy/) | 垂直场景 | 部署 | DJI CloudAPI2 MCP Server Docker 部署引导（SSE 远程/stdio 本地），半自动 + 排障 |
+| [`cloudapi2-mcp-deploy`](cloudapi2-mcp-deploy/) | 垂直场景 | 部署 | DJI Cloud API 2 MCP Server Docker 部署引导（SSE 远程/stdio 本地），半自动 + 排障 |
 | [`cloudapi2-troubleshooting`](cloudapi2-troubleshooting/) | 横切 | 本地诊断 + 排障 | 本地采集/脱敏/静态判级（L1/L2/L3）+ 4 阶段 RCA + 错误码词典，单一入口一条流水线；`v2.0.0` 起并入原 `cloudapi2-diagnosis` |
 | [`cloudapi2-feedback`](cloudapi2-feedback/) | 横切 | 问题反馈 | 问题反馈闭环（session 采集→脱敏→确认→issue 自动创建），无需错误码即可启动；共享 troubleshooting 的 `diag.sh` 脚本 |
+| [`cloudapi2-knowledge-ingest`](cloudapi2-knowledge-ingest/) | 横切 | 知识库入库 | 自动完成知识文档入库：获取内容 → 分析归属模块 → 格式化（含 LLM 生成 summary）→ 写入 + 重建索引 + Git 提交 |
 | [`cloudapi2-diagnosis`](cloudapi2-diagnosis/) | 横切 | 本地诊断（**已弃用**） | ⚠️ 已并入 `cloudapi2-troubleshooting` v2.0.0——固定命令集采集 + 正则脱敏 + 静态判级（L0-L3）本地闭环；目录保留作历史与设计走查，新实现请走 troubleshooting |
 | [`_shared`](_shared/) | — | 共享模板 | SOP 模板 + 共享约束 SSOT + Skill 路由规则 + 输出格式标准（其他 Skill 引用） |
 
@@ -47,7 +48,7 @@ claude plugin install superpowers
 
 ### 方式 1：Plugin 一键安装（推荐）
 
-本套 Skill 已打包为 `cloudapi2@dji` Plugin，一次安装即可获得全部 11 个 Skill。
+本套 Skill 已打包为 `cloudapi2@dji` Plugin，一次安装即可获得全部 10 个 Skill。
 
 #### 前置条件
 
@@ -69,7 +70,7 @@ claude plugin marketplace add dji-sdk/Cloud-API-2
 claude plugin install cloudapi2@dji
 ```
 
-> 此命令启用 `cloudapi2` plugin（包含全部 11 个 Skill）。安装完成后新开会话即生效。
+> 此命令启用 `cloudapi2` plugin（包含全部 10 个 Skill）。安装完成后新开会话即生效。
 
 #### 第 3 步：验证安装
 
@@ -84,7 +85,7 @@ claude plugin install cloudapi2@dji
 然后试一条触发语句：
 
 ```
-帮我初始化 DJI CloudAPI2 SDK
+帮我初始化 DJI Cloud API 2 SDK
 ```
 
 如果 AI 回复中提到了 "6 条核心规则"、"initialize 必须先完成" 等内容，说明 Skill 已成功加载。
@@ -177,7 +178,7 @@ for d in skills/cloudapi2-*/; do cp -r "$d" .github/skills/; done
 
 | 测试输入 | 期望触发的 Skill | 验证标志 |
 |---------|---------|---------|
-| "帮我初始化 DJI CloudAPI2 SDK" | `cloudapi2-sdk-core` | 提到 initialize 返回值检查 |
+| "帮我初始化 DJI Cloud API 2 SDK" | `cloudapi2-sdk-core` | 提到 initialize 返回值检查 |
 | "让无人机飞到这个坐标" | `cloudapi2-mcp-guide` | 提到 fh_flyto / fh_control_acquire |
 | "接入航线编辑器组件" | `cloudapi2-frontend-component` | 提到 WaylineEditor / paas.js |
 | "添加 OSD 订阅功能" | `cloudapi2-device-management` | 提到 @EventListener / OsdUpdateEvent |
@@ -206,7 +207,7 @@ for d in skills/cloudapi2-*/; do cp -r "$d" .github/skills/; done
 
 **Q: 可以只安装部分 Skill 吗？**
 
-Plugin 模式安装全部 11 个 Skill（推荐）。如果只需要部分 Skill，使用方式 3 手动拷贝指定的 Skill 目录。
+Plugin 模式安装全部 10 个 Skill（推荐）。如果只需要部分 Skill，使用方式 3 手动拷贝指定的 Skill 目录。
 
 ---
 
