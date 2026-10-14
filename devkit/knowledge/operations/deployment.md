@@ -13,7 +13,7 @@ related:
 
 devkit 包含两个独立可部署的服务（MCP Server + Skeleton BFF），通过 Docker Compose 滚动更新部署。
 
-# DJI FlightHub PaaS DevKit 部署总览
+# DJI CloudAPI2 DevKit 部署总览
 
 > **版本**: v1.0
 > **更新日期**: 2026-08-01
@@ -47,7 +47,7 @@ devkit 包含两个独立可部署的服务（MCP Server + Skeleton BFF），通
                                      │ SDK (JNI, Linux x86_64)
                                      ▼
                           ┌──────────────────────────┐
-                          │  FlightHub / CloudAPI 2.0│
+                          │  DJI CloudAPI2              │
                           └──────────────────────────┘
 
    浏览器 ──80/443──▶ fh-ssl (可选 TLS)
@@ -68,7 +68,7 @@ devkit 包含两个独立可部署的服务（MCP Server + Skeleton BFF），通
 
 ### 3.1 平台限制
 
-两个服务都依赖 FlightHub SDK 的 **JNI 原生库（仅 Linux x86_64）**：
+两个服务都依赖 DJI CloudAPI2 SDK 的 **JNI 原生库（仅 Linux x86_64）**：
 - Linux x86_64：可直接运行 JAR。
 - macOS / Windows：必须用 Docker `--platform linux/amd64`。
 - Mock 模式（MCP `FH_MOCK=true` / Skeleton `FH_PROFILE=mock`）：无平台限制，跳过 SDK 初始化，返回模拟数据，仅用于开发演示。
@@ -152,7 +152,7 @@ Skeleton 的 Chat 模块依赖 MCP Server，故建议按序部署：
 
 | 变量 | 说明 |
 |------|------|
-| `FH_SERVER_ADDRESS` | FlightHub 服务器地址 |
+| `FH_SERVER_ADDRESS` | DJI CloudAPI2 服务器地址 |
 | `FH_ACCESS_TOKEN` | workspace-access-token |
 | `FH_WORKSPACE_UUID` | workspace-binding-uuid |
 | `FH_SSE_AUTH_TOKEN` | SSE 鉴权（`openssl rand -hex 32`，留空拒绝启动） |

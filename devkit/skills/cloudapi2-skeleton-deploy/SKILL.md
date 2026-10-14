@@ -1,7 +1,7 @@
 ---
 name: cloudapi2-skeleton-deploy
 description: |
-  仅在用户要求部署或清理 FH Skeleton（DJI FlightHub PaaS SDK ISV 接入骨架）到自有环境时使用。
+  仅在用户要求部署或清理 FH Skeleton（DJI CloudAPI2 SDK ISV 接入骨架）到自有环境时使用。
   适用场景：普通机器 / Docker Compose / Kubernetes 三种形态的 skeleton 部署引导与清理卸载，
   含环境探测、形态选型、密钥生成、配置填写、构建启动、健康检查验证、部署/清理排障。
   关键词：部署, 清理, 卸载, 下线, remove, cleanup, undeploy, 清理部署, 卸载骨架,
@@ -74,7 +74,7 @@ version: 1.0.0
 |---|---|---|
 | `FH_JWT_SECRET` | `openssl rand -hex 32` | JWT 签名密钥，至少 32 字节，**未配启动失败** |
 | `FH_DB_PASSWORD` / `MYSQL_ROOT_PASSWORD` | `openssl rand -hex 24` | 数据库密码 |
-| `FH_SKELETON_SDK_TOKEN` | 从 FlightHub 控制台获取 | SDK 身份令牌（sdk profile） |
+| `FH_SKELETON_SDK_TOKEN` | 从 DJI CloudAPI2 控制台获取 | SDK 身份令牌（sdk profile） |
 | `FH_SKELETON_SDK_ADDRESS` | — | SDK 服务地址 |
 | `FH_SKELETON_SDK_NOTIFICATION_SERVER` | — | SDK 通知服务地址（sdk profile 必填） |
 

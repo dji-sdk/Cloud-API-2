@@ -7,8 +7,8 @@
 
 | 模式 | 适用场景 | 需要 Docker | 需要 Java | 平台限制 |
 |------|----------|-------------|-----------|----------|
-| B1: Mock JAR | Prompt 调试、功能演示、无 FlightHub 环境 | 否 | 是（JDK 17+） | 任意平台 |
-| B2: Docker stdio | 需要真实 SDK（连接 FlightHub 平台） | 是 | 否 | Docker 可跑 amd64 |
+| B1: Mock JAR | Prompt 调试、功能演示、无 DJI CloudAPI2 环境 | 否 | 是（JDK 17+） | 任意平台 |
+| B2: Docker stdio | 需要真实 SDK（连接 DJI CloudAPI2 平台） | 是 | 否 | Docker 可跑 amd64 |
 
 ## B1: Mock 模式（本地 JAR 直接跑）
 
@@ -102,7 +102,7 @@ FH_MOCK=true ./run-mcp-local.sh
 ### 前提条件
 
 - Docker Desktop（macOS/Windows）或 Docker Engine（Linux）
-- 已有 FlightHub 服务器凭证（`FH_SERVER_ADDRESS` / `FH_ACCESS_TOKEN` / `FH_WORKSPACE_UUID`）
+- 已有 DJI CloudAPI2 服务器凭证（`FH_SERVER_ADDRESS` / `FH_ACCESS_TOKEN` / `FH_WORKSPACE_UUID`）
 
 ### 步骤
 
@@ -154,10 +154,10 @@ docker build --platform linux/amd64 -t dji/flighthub-mcp:latest .
 | 维度 | Mock 模式 | 真实模式 |
 |------|-----------|----------|
 | 启动速度 | 2-3 秒 | 10-15 秒 |
-| 数据来源 | 固定模拟数据 | FlightHub 真实平台 |
+| 数据来源 | 固定模拟数据 | DJI CloudAPI2 真实平台 |
 | 设备操控 | 模拟成功响应 | 真实下发指令 |
 | 适用场景 | Prompt 调试、演示、CI | 生产运维、真实飞行 |
-| 依赖 | 无外部依赖 | FlightHub 服务器 + 凭证 |
+| 依赖 | 无外部依赖 | DJI CloudAPI2 服务器 + 凭证 |
 
 ## 常见坑
 

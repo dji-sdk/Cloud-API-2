@@ -1,6 +1,6 @@
-# cloudapi2-mcp-deploy — FlightHub MCP Server 部署助手
+# cloudapi2-mcp-deploy — DJI CloudAPI2 MCP Server 部署助手
 
-帮 ISV 开发者将 FlightHub MCP Server 部署到自有环境，**半自动引导式**：AI 探测环境、推荐路径、生成密钥与配置、给出精确命令，用户执行系统级操作并回报，AI 校验继续、遇错排障。
+帮 ISV 开发者将 DJI CloudAPI2 MCP Server 部署到自有环境，**半自动引导式**：AI 探测环境、推荐路径、生成密钥与配置、给出精确命令，用户执行系统级操作并回报，AI 校验继续、遇错排障。
 
 ## 能力
 

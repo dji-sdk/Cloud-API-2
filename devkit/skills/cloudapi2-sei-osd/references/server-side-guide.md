@@ -25,7 +25,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  平台 (FlightHub Server)                                               │
+│  平台 (DJI CloudAPI2 Server)                                               │
 │     │                                                                 │
 │     ├── notification / MQTT ──► SDK(JNI) ──► Drone/Dock               │  ← MQTT OSD（秒级）
 │     │                                                                 │

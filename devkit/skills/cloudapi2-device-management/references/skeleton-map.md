@@ -65,7 +65,7 @@ skeleton/
 │   │       ├── bridge/                  # EventBridge SPI
 │   │       └── manifest/                # module.yaml 反序列化结构
 │   ├── kernel-impl/                     # 默认实现（事件总线/存储/鉴权切面）
-│   ├── kernel-real-sdk/                 # FlightHub SDK JNI 适配
+│   ├── kernel-real-sdk/                 # DJI CloudAPI2 SDK JNI 适配
 │   └── kernel-mock-sdk/                 # Mock 模式（开发环境，无需真实 SDK）
 ├── feature/
 │   ├── feature-device/                  # ★ 参考模板 —— ISV 新建 feature 照此模式

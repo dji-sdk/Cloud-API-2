@@ -1,6 +1,6 @@
 # 设备生命周期
 
-DJI FlightHub PaaS SDK 中的设备生命周期由 kernel-spi 事件驱动，ISV 通过 `@EventListener` 消费。
+DJI CloudAPI2 SDK 中的设备生命周期由 kernel-spi 事件驱动，ISV 通过 `@EventListener` 消费。
 
 ## 生命周期 6 步
 

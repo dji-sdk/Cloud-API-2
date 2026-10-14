@@ -1,6 +1,6 @@
 # FH Skeleton — ISV 快速接入骨架
 
-基于 DJI FlightHub PaaS SDK 的 ISV 接入骨架项目，提供开箱即用的 Spring Boot 后端 + Vue 3 前端，ISV 开发者只需实现业务逻辑即可完成 SDK 集成。
+基于 DJI CloudAPI2 SDK 的 ISV 接入骨架项目，提供开箱即用的 Spring Boot 后端 + Vue 3 前端，ISV 开发者只需实现业务逻辑即可完成 SDK 集成。
 
 ## 技术栈
 
@@ -124,7 +124,7 @@ ISV 扩展点：实现 `AuthenticationProvider` SPI 可对接自有认证系统�
 - **设备详情**：`GET /api/v1/devices/{sn}`
 - **事件监听**：通过 `@EventListener` 消费 `DeviceOnlineEvent`、`OsdUpdateEvent` 等
 
-Mock 模式下返回模拟设备数据，生产模式自动对接 FlightHub SDK。
+Mock 模式下返回模拟设备数据，生产模式自动对接 DJI CloudAPI2 SDK。
 
 ### feature-chat：AI Chat Bot
 
@@ -134,7 +134,7 @@ Mock 模式下返回模拟设备数据，生产模式自动对接 FlightHub SDK�
 - **Tool 确认**：`POST /api/v1/chat/confirm/{id}`
 - **RAG 知识库**：自动加载 `chat-docs/` 下的文档作为上下文
 
-详细使用指南参见 `docs/rag-usage-guide.md`。
+详细使用指南参见 Chat Bot 模块源码。
 
 ## 前端说明
 
@@ -180,7 +180,7 @@ mvn verify -Pci
 
 ### 总入口：部署指南
 
-面向 **ISV 的完整部署指南**（普通机器 / Docker Compose / Kubernetes 三种形态 + MCP Server 部署）见 [部署指南.md](./docs/部署指南.md)。以下为内部远端部署脚本方式。
+面向 **ISV 的完整部署指南**（普通机器 / Docker Compose / Kubernetes 三种形态 + MCP Server 部署）。以下为内部远端部署脚本方式。
 
 ### 远端部署（SSH + Docker Compose）
 
@@ -193,7 +193,7 @@ cp skeleton/deploy.env.example skeleton/deploy.env
 ./skeleton/deploy.sh
 ```
 
-详细部署指南见 [部署指南.md](./docs/部署指南.md)（唯一部署文档）。
+详细部署指南见 deploy.env.example 中的注释说明（唯一部署参考）。
 
 > **注意**：`.gitlab-ci.yml` 中的 `skeleton-privatization-build-wibu-*` stage 为 DJI 内部私有化构建专用（依赖内部 Harbor 镜像和 Wibu AxProtector 工具链），外部 ISV fork 后**无法使用且可安全跳过**，不影响标准构建和部署流程。
 
@@ -251,10 +251,7 @@ public class MyEventListener {
 
 ## 相关文档
 
-- [部署指南](docs/部署指南.md) — 唯一部署文档（普通机器/Docker/K8s）
-- [RAG 知识库使用指南](docs/rag-usage-guide.md)
-- [SDK Profile ISV 指南](docs/sdk-profile-isv-guide.md)
-- [RAG 模块提取时机 ADR](docs/adr-rag-extraction-timing.md)
+（以下文档待补充，当前不可用）
 
 ## 安全加固指南
 

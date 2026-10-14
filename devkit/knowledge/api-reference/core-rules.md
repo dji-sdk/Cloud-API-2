@@ -13,7 +13,7 @@ related:
   - api-reference/device-management.md
 ---
 
-FlightHub SDK 有 6 条必须遵守的核心规则，违反任何一条都会导致静默失败或未定义行为。
+DJI CloudAPI2 SDK 有 6 条必须遵守的核心规则，违反任何一条都会导致静默失败或未定义行为。
 
 # 核心规则详解
 
@@ -26,7 +26,7 @@ FlightHub SDK 有 6 条必须遵守的核心规则，违反任何一条都会导
 
 ### 为什么
 
-FlightHub Java SDK 底层通过 C++/JNI 实现核心逻辑。调用 `initialize` 时，SDK 依次执行：
+DJI CloudAPI2 Java SDK 底层通过 C++/JNI 实现核心逻辑。调用 `initialize` 时，SDK 依次执行：
 
 1. 加载 15+ 个平台原生库（.so / .dll / .dylib）
 2. 建立 WebSocket 长连接（`notificationServerAddress`）
@@ -169,11 +169,11 @@ public class SdkLifecycleConfig {
         if (code != FlightHubSdkErrorCode.SUCCESS) {
             // 抛出异常阻止 Spring 启动，避免服务以半初始化状态对外提供服务
             throw new IllegalStateException(
-                "FlightHub SDK 初始化失败，errorCode=" + code
+                "DJI CloudAPI2 SDK 初始化失败，errorCode=" + code
                 + "，请检查 address/port/notificationServerAddress 及鉴权头配置");
         }
 
-        log.info("FlightHub SDK 初始化成功，版本：{}", FlightHubSDK.getVersion());
+        log.info("DJI CloudAPI2 SDK 初始化成功，版本：{}", FlightHubSDK.getVersion());
     }
 
     /**
@@ -184,9 +184,9 @@ public class SdkLifecycleConfig {
         if (FlightHubSDK.isInitialized()) {
             FlightHubSdkErrorCode code = FlightHubSDK.shutdown();
             if (code != FlightHubSdkErrorCode.SUCCESS) {
-                log.error("FlightHub SDK shutdown 失败，errorCode={}", code);
+                log.error("DJI CloudAPI2 SDK shutdown 失败，errorCode={}", code);
             } else {
-                log.info("FlightHub SDK 已正常关闭");
+                log.info("DJI CloudAPI2 SDK 已正常关闭");
             }
         }
     }
@@ -634,7 +634,7 @@ public void restart() {
 
 ### 为什么
 
-FlightHub 支持多操作员同时连接（多个 BFF 实例、Web 控制台、遥控器），飞控权限是**互斥资源**：
+DJI CloudAPI2 支持多操作员同时连接（多个 BFF 实例、Web 控制台、遥控器），飞控权限是**互斥资源**：
 
 - 任何时刻只有一个操作员持有飞控权
 - 未抢权就发送指令，服务端返回权限错误（`errorCode = ERROR_OPERATION_FAILED`，`serverCode` 为权限相关码）

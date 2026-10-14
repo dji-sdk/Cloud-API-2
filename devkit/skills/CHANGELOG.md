@@ -14,7 +14,7 @@
 
 - **增强** `cloudapi2-skeleton-deploy` Skill：新增"清理部署"能力 — 三形态卸载引导（普通机器 systemd/nginx/Docker down[-v]/K8s namespace/PVC），先确认保留/清除数据后逐步删除命令；同步在 `skeleton/docs/部署指南.md` 新增 §9 清理部署章节、references 新增 `清理部署.md`、constraints 新增 `cleanup-confirm-data-keep`
 
-- **升级** FlightHub PaaS SDK 3.0.0 → 3.1.5（`knowledge-ingest` SKILL.md 的 `sdk_version` 同步更新）。SDK 为向后兼容升级：核心模块仅新增监听接口（live status / dongle infos / flysafe db version / mode code reason / wpmz version / air conditioner mode / camera watermark / psdk ui resource / offline map enable / commander flight mode 等），无删除。`sdk-core` 规则中的类名/方法名无需变更。
+- **升级** DJI CloudAPI2 SDK 3.0.0 → 3.1.5（`knowledge-ingest` SKILL.md 的 `sdk_version` 同步更新）。SDK 为向后兼容升级：核心模块仅新增监听接口（live status / dongle infos / flysafe db version / mode code reason / wpmz version / air conditioner mode / camera watermark / psdk ui resource / offline map enable / commander flight mode 等），无删除。`sdk-core` 规则中的类名/方法名无需变更。
 
 ### cloudapi2-feedback
 
@@ -46,7 +46,7 @@
 - **强化排障行为护栏（v2.2.0）**：Stage 1 增加「最近变更」与「频率」两项必收信息（偶现 ≈ 时序问题，走不同排查路径）；Stage 2 增加**边界埋点取证**（5 个组件边界跑一次看证据在哪层断，替代逐层猜）与**反向溯源**（追坏值到首次赋值处，修在源头不修在报错点）；Stage 2.5 增加「一次只验一个假设、只动一个变量」；Stage 3 增加「一次一个修复」「修复没生效回 Stage 2」与**三振出局**（修 3 次不好停手质疑前提，指向平台侧则走升级不再改代码）
 - **新增「反模式自查」段**：8 条合理化念头对照表 + 3 条用户信号（"别猜了"/"你确认过吗"/"这样能看到吗"）→ 触发即回 Stage 2
 - **扩写** `references/rca-methodology.md`：最近变更清单（5 类变更源查法）、频率→排查策略表、5 边界埋点取证表与埋点纪律（凭证必遮蔽）、反向溯源常见坏值源头、时序类问题的条件等待写法（CountDownLatch + 超时，替代固定 sleep）、三振升级、修复后加固
-- 以上行为护栏借鉴 `superpowers:systematic-debugging` 的方法论，**已全部改写为 FlightHub 领域语言**（SDK/平台/设备边界、MCP 只读快照、平台能力缺失）；未引入其外部 skill 依赖与通用示例代码
+- 以上行为护栏借鉴 `superpowers:systematic-debugging` 的方法论，**已全部改写为 DJI CloudAPI2 领域语言**（SDK/平台/设备边界、MCP 只读快照、平台能力缺失）；未引入其外部 skill 依赖与通用示例代码
 - **新增 `diag.sh issue [报告路径]` 子命令（v2.3.0）**：解析本地脱敏报告，生成 GitHub new-issue 预填 URL（template/title/body），用户点击=出网决策、粘贴全文=完整出网；纯 bash urlencode（RFC 3986，bash 3.2 兼容）；`DIAG_ISSUE_REPO` 环境变量可覆盖仓库地址
 - **新增 `.github/ISSUE_TEMPLATE/diagnostic-report.md`**：诊断报告回传模板（判级/环境/全文/补充信息/敏感自查清单）
 - **修复 `feedback` 未实现的第 3 参数提示**：TSV 增至 4 列（追加报告文件名），路径非法时记 `-` 并告警；反馈后联动打印 issue 链接

@@ -1,11 +1,11 @@
 ---
 name: cloudapi2-troubleshooting
-description: DJI FlightHub PaaS SDK 本地诊断 + 排障一体化。触发词：报错、错误码、error、errorCode、4001-7000、bug、修复、排查、debug、白屏、加载失败、timeout、连接失败、鉴权失败、本地诊断、现场采集、收集日志、diag.sh、report、收不到回调、listen 没反应、事件没推送、err_code、200612、实机验证、模拟器验证、偶现、时序问题、昨天还好好的、改了几次都没用、越修越乱、无法直播、直播失败、直播黑屏、打不开、设备离线、212015、EA340、EA610、DRTC、上云方式、上云 API2、底座 .env、私有化环境排查。
+description: DJI CloudAPI2 SDK 本地诊断 + 排障一体化。触发词：报错、错误码、error、errorCode、4001-7000、bug、修复、排查、debug、白屏、加载失败、timeout、连接失败、鉴权失败、本地诊断、现场采集、收集日志、diag.sh、report、收不到回调、listen 没反应、事件没推送、err_code、200612、实机验证、模拟器验证、偶现、时序问题、昨天还好好的、改了几次都没用、越修越乱、无法直播、直播失败、直播黑屏、打不开、设备离线、212015、EA340、EA610、DRTC、上云方式、上云 API2、底座 .env、私有化环境排查。
 version: 2.6.0
 author: DJI CloudAPI2 Team
 ---
 
-# DJI FlightHub PaaS SDK 本地诊断 + 排障助手
+# DJI CloudAPI2 SDK 本地诊断 + 排障助手
 
 ## 这是什么
 
@@ -15,7 +15,7 @@ author: DJI CloudAPI2 Team
 
 ## 何时触发
 
-> **先判域，再判词**：本 Skill 只处理 **DJI FlightHub PaaS SDK / ISV 集成侧**的问题（SDK 方法、错误码、`fh_*` 相关能力、ISV 自己的接入代码）。"报错/bug/排查/debug"是通用动词，不能只看动词命中就触发——如果问题主体是**调用方/集成方自己业务系统内部**的代码（不涉及本 SDK 的接口、错误码或行为），不在本 Skill 处理范围内。
+> **先判域，再判词**：本 Skill 只处理 **DJI CloudAPI2 SDK / ISV 集成侧**的问题（SDK 方法、错误码、`fh_*` 相关能力、ISV 自己的接入代码）。"报错/bug/排查/debug"是通用动词，不能只看动词命中就触发——如果问题主体是**调用方/集成方自己业务系统内部**的代码（不涉及本 SDK 的接口、错误码或行为），不在本 Skill 处理范围内。
 
 - 用户报错 / 说 bug
 - 用户提到错误码（4001 / 5000 / 6002 / 6 位设备码 / ERROR_* / NPE）
@@ -410,7 +410,7 @@ session start → set(元数据) → collect(采集+判级)
 - `references/live-verification.md` — Stage 2.5 实机验证：前置链、验证配方、已知陷阱
 - `references/platform-error-response.md` — 平台 HTTP 响应解构：双错误码、域前缀表
 - `references/event-callback-checklist.md` — `listenXxx` 收不到回调排查清单
-- `references/live-stream-device-troubleshooting.md` — EA340/EA610 私有化环境无法直播：固件版本、上云方式（`WZR2JJ`）、DRTC/FlightHub2 底座 `.env`、端口表、两个历史案例
+- `references/live-stream-device-troubleshooting.md` — EA340/EA610 私有化环境无法直播：固件版本、上云方式（`WZR2JJ`）、DRTC/DJI CloudAPI2 底座 `.env`、端口表、两个历史案例
 - `references/replay-media-troubleshooting.md` — 回放页/媒体页照片全黑、视频停在 `0:00`：取流地址指向对象存储 `:30802`，客户网段不可达（存储健康），附两条判定命令与平台侧修复方向
 - `cloudapi2-feedback` — 独立问题反馈 Skill（纯反馈场景优先使用；共享 diag.sh 脚本）
 - `skills/_shared/constraints-common.yaml` — 跨 Skill 共享约束（8 条通用规则）

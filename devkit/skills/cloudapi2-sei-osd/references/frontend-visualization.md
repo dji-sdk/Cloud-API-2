@@ -94,7 +94,7 @@ cesium/map.ts               → seiMapLayer
 
 ```
 浏览器 ──5173──► 前端 Vite Dev Server
-                  │  proxy /api  ──8080──► 后端 fhsdk-demo-server ──30812──► FlightHub 服务器(<fhsdk-server-host>)
+                  │  proxy /api  ──8080──► 后端 fhsdk-demo-server ──30812──► DJI CloudAPI2 服务器(<fhsdk-server-host>)
                   └  proxy /oryx ──2022──► Oryx(SRS) 流媒体  ◄──WHIP 推流── 后端
 浏览器 ◄──WHEP 拉流(经 /oryx 代理 → 2022)── Oryx
 ```
@@ -104,8 +104,8 @@ cesium/map.ts               → seiMapLayer
 | 配置项 | 默认值 | 作用 | 谁要跟它一致 |
 |---|---|---|---|
 | `server.port` | `8080` | 后端 HTTP + WebSocket 服务端口 | 前端 vite proxy `/api` 的 target |
-| `fhsdk.address` | `http://<fhsdk-server-host>` | FlightHub 服务器地址 | —（换环境时改，前端无感） |
-| `fhsdk.port` | `30812` | FlightHub 端口 | — |
+| `fhsdk.address` | `http://<fhsdk-server-host>` | DJI CloudAPI2 服务器地址 | —（换环境时改，前端无感） |
+| `fhsdk.port` | `30812` | DJI CloudAPI2 端口 | — |
 | `fhsdk.notification-server` | `ws://<fhsdk-server-host>:30812/...` | FH 通知 WS（含 `x-auth-token`） | 与 address/port 同源 |
 | `oryx.whip-url-template` | `…127.0.0.1:2022…` | 后端把直播 WHIP 推到 Oryx | Oryx 实际地址 |
 | `oryx.whep-url-template` | `…127.0.0.1:2022…` | 返回给前端的 WHEP 拉流地址 | 前端 proxy `/oryx` + `whep.ts` 正则 |
@@ -126,7 +126,7 @@ cesium/map.ts               → seiMapLayer
    - 前端 `vite.config.ts` 的 `/oryx` proxy target
    - 前端 `src/utils/whep.ts` 的正则 `^https?:\/\/127\.0\.0\.1:2022`
      （后端返回的 WHEP URL 里带 `127.0.0.1:2022`，前端靠这条正则把它改写成 `/oryx` 代理来规避跨域）
-3. **FlightHub 环境**（`fhsdk.address/port/notification-server`、token）：只在后端，换内网/正式环境时改；默认是内网测试环境写死值，详见服务端指南 §3。
+3. **DJI CloudAPI2 环境**（`fhsdk.address/port/notification-server`、token）：只在后端，换内网/正式环境时改；默认是内网测试环境写死值，详见服务端指南 §3。
 
 ### 前后端契约：WS 消息格式
 

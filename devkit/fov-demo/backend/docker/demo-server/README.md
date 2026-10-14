@@ -37,7 +37,7 @@ docker compose up -d --build
 - `ORYX_WHIP_URL_TEMPLATE=http://fhsdk-demo-oryx:2022/...`（容器间同网直连，避免 `host.docker.internal` UDP 超时）
 - `ORYX_WHEP_URL_TEMPLATE=http://127.0.0.1:12022/...`（浏览器走宿主映射）
 
-复制 `.env.example` 为 `.env` 后按环境改 FlightHub 地址。
+复制 `.env.example` 为 `.env` 后按环境改 DJI CloudAPI2 地址。
 
 ## 最小验收
 

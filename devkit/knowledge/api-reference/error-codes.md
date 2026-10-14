@@ -15,7 +15,7 @@ related:
 
 SDK 所有回调遵循统一错误结构，采用四层分诊流程：errorCode → httpCode → serverCode → deviceCode。
 
-# FlightHub SDK 错误码诊断参考手册
+# DJI CloudAPI2 SDK 错误码诊断参考手册
 
 > **加载时机**：当用户遇到 SDK 返回错误、回调异常或 API 调用失败时，优先加载本文件。
 

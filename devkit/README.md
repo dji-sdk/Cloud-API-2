@@ -1,6 +1,6 @@
 # dji-flighthub-devkit
 
-> DJI FlightHub PaaS SDK — ISV AI 易接入一站式开发者套件
+> DJI CloudAPI2 SDK — ISV AI 易接入一站式开发者套件
 
 ## 快速入口
 
@@ -18,9 +18,9 @@
 | 目录 | 方向 | 状态 | 说明 | 文档 |
 |---|---|---|---|---|
 | `skills/` | 方向 2 | ✅ **可用** | AI Skill 集合（11 个 `cloudapi2-*` Skill）— 教 AI 正确生成 SDK 集成代码 | [总览](skills/README.md) |
-| `mcp/` | 方向 1 | ✅ **可用** | MCP Server — 让 AI Agent 运行时操控无人机（50 个 Tool，13 个模块） | [快速开始](mcp/README.md) · [工具手册](docs/mcp-tools-guide.md) |
+| `mcp/` | 方向 1 | ✅ **可用** | MCP Server — 让 AI Agent 运行时操控无人机（50 个 Tool，13 个模块） | [快速开始](mcp/README.md) |
 | `skeleton/` | 方向 2 | 🚧 计划中 | BFF（Spring Boot）+ Web 前端（React + Vite） | — |
-| `fov-demo/` | 方向 2 | ✅ **可用** | ISV 培训 Demo — FHSDK Java 自研前后端的直播、OSD、SEI、地图与手动操控全栈参考实现 | [快速开始](fov-demo/README.md) · [实战案例](fov-demo/docs/case-study/ISV自研Demo实战案例.md) |
+| `fov-demo/` | 方向 2 | ✅ **可用** | ISV 培训 Demo — FHSDK Java 自研前后端的直播、OSD、SEI、地图与手动操控全栈参考实现 | [快速开始](fov-demo/README.md) |
 | `cli/` | — | 🚧 计划中 | `@dji/security-init` 安全护栏注入 CLI | — |
 | `llms/` | 方向 3 | 🚧 计划中 | llms.txt / llms-full.txt 生成器 | — |
 | `docs/` | — | — | 共享技术文档（设计 spec、实施计划等） | — |
@@ -59,7 +59,7 @@ cp -r skills/cloudapi2-sdk-core .cursor/skills/      # Cursor
 ### 触发方式
 
 安装后**无需手动调用**，输入以下关键词时自动触发：
-- "集成 FlightHub SDK" / "初始化 SDK" / "订阅无人机状态"
+- "集成 DJI CloudAPI2 SDK" / "初始化 SDK" / "订阅无人机状态"
 - "让无人机返航" / "getDroneInstance 返回 null"
 - "检查 SDK 接入代码质量"
 
@@ -76,7 +76,7 @@ cd mcp && mvn package -DskipTests
 # 启动后 AI Agent 通过 JSON-RPC 调用 SDK 工具
 ```
 
-→ [快速开始](mcp/README.md) · [工具使用手册](docs/mcp-tools-guide.md)
+→ [快速开始](mcp/README.md)
 
 ---
 
@@ -96,14 +96,14 @@ cd mcp && mvn package -DskipTests
 
 ## 边界声明
 
-- 本仓库**不包含** FlightHub SDK 本身——SDK 以 JAR 依赖方式引入
+- 本仓库**不包含** DJI CloudAPI2 SDK 本身——SDK 以 JAR 依赖方式引入
 - 本仓库**不替代** SDK 的任何能力——只降低接入成本
 - Skill 是**认知层工具**——教 AI 正确生成代码，不提供运行时保护
 - MCP Server 是**能力层工具**——提供运行时 SDK 调用，不生成代码
 
 ## 适用版本
 
-- FlightHub Java SDK v0.8.0+
+- DJI CloudAPI2 Java SDK v0.8.0+
 - Spring Boot 2.x / 3.x
 - IDE：Claude Code / Cursor / GitHub Copilot / 任何支持 Agent Skills 的工具
 

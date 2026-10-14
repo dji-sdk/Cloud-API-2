@@ -1,7 +1,7 @@
 ---
 name: cloudapi2-mcp-guide
 description: |
-  仅在 AI Agent 通过 MCP 连接 FlightHub Server 并需要调用 fh_* 工具时使用。
+  仅在 AI Agent 通过 MCP 连接 DJI CloudAPI2 Server 并需要调用 fh_* 工具时使用。
   帮助 AI 判断该用哪个 MCP Tool、以什么参数调用、以什么顺序编排多步工具链。
   不适用于编写 Java SDK 集成代码（那是 cloudapi2-sdk-core skill 的职责）。
   适用场景：用户要求查看设备、创建航线任务、控制无人机、查询遥测数据——
@@ -14,11 +14,11 @@ author: DJI CloudAPI2 Team
 version: 1.1.0
 ---
 
-# DJI FlightHub MCP Tool 路由指南
+# DJI CloudAPI2 MCP Tool 路由指南
 
 ## 适用场景
 
-当 AI Agent 已通过 MCP 连接到 FlightHub Server，用户要求执行以下操作时触发：
+当 AI Agent 已通过 MCP 连接到 DJI CloudAPI2 Server，用户要求执行以下操作时触发：
 
 - 查看设备列表 / 设备状态
 - 创建、执行、暂停、取消航线任务

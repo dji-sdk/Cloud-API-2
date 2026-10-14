@@ -10,7 +10,7 @@
 1. 固件版本达标？            → 不达标则后续全部无意义
 2. 上云方式对？              → MQTT Broker 里有没有该 SN 的会话、username/clientid 前缀对不对
 3. DRTC 底座 .env 对？       → EXTERNAL_DOMAIN / EXTERNAL_IP / HOST_IP
-4. FlightHub2 底座 .env 对？ → 与 DRTC 的内外网 IP 是否成对一致
+4. DJI CloudAPI2 底座 .env 对？ → 与 DRTC 的内外网 IP 是否成对一致
 5. 端口开了吗？              → 从设备网络侧验证，不只看本地监听
 6. 仍定位不到？              → 对号入座两个历史案例
 ```
@@ -25,7 +25,7 @@
 | EA340D | 00.06.0220 及以上 |
 | EA340T | 00.06.0220 及以上 |
 
-在 FlightHub2 设备管理页或司空 App 查看当前版本。低于要求先升级再继续排查。
+在 DJI CloudAPI2 设备管理页或司空 App 查看当前版本。低于要求先升级再继续排查。
 
 ## 2. 上云方式（MQTT 接入标识）
 
@@ -71,7 +71,7 @@ docker compose up -d <drtc相关容器>
 
 `restart` 不会触发 DRTC **证书重新生成**，新域名/IP 不会写进证书 —— 这是本类问题里最容易被忽略的一步。
 
-## 4. FlightHub2 底座 `.env` 与 DRTC 交叉核对
+## 4. DJI CloudAPI2 底座 `.env` 与 DRTC 交叉核对
 
 | 变量 | 要求 |
 |------|------|
@@ -80,7 +80,7 @@ docker compose up -d <drtc相关容器>
 | `INTERNAL_IP` | 内网 IP，**须等于** DRTC 的 `HOST_IP` |
 | `EXTERNAL_IP` | 外网 IP，**须等于** DRTC 的 `EXTERNAL_IP` |
 
-把两份 `.env` 的对应变量并排比对，确认内外网 IP **成对一致**。典型不匹配：FlightHub2 用了外网 IP，DRTC 的 `HOST_IP` 却配了另一个内网 IP。
+把两份 `.env` 的对应变量并排比对，确认内外网 IP **成对一致**。典型不匹配：DJI CloudAPI2 用了外网 IP，DRTC 的 `HOST_IP` 却配了另一个内网 IP。
 
 ## 5. 端口开放（以宿主机监听端口为准）
 
@@ -140,8 +140,8 @@ docker compose up -d <drtc相关容器>
 - [ ] 上云方式不对时：行服 APP 已升到 0.0.90+，并已用上云 API2 重新扫码
 - [ ] DRTC `.env`：`EXTERNAL_DOMAIN`/`EXTERNAL_IP` 为外部地址，`HOST_IP` 为内网 IP
 - [ ] 改过 IP 后 DRTC 容器已执行**删除重建**（非简单 restart）
-- [ ] FlightHub2 `.env`：`USE_SSL=true`、`OBJECT_STORAGE_USE_HTTPS=true`
-- [ ] FlightHub2 `INTERNAL_IP` 与 DRTC `HOST_IP` 一致；`EXTERNAL_IP` 双方一致
+- [ ] DJI CloudAPI2 `.env`：`USE_SSL=true`、`OBJECT_STORAGE_USE_HTTPS=true`
+- [ ] DJI CloudAPI2 `INTERNAL_IP` 与 DRTC `HOST_IP` 一致；`EXTERNAL_IP` 双方一致
 - [ ] 上表全部端口已开放，且**从设备网络侧**验证可达
 - [ ] 以上均无误仍无法直播 → 收集 MQTT Broker 日志 + 设备状态服务日志 + DRTC 容器日志，走 `diag.sh report` 出脱敏包后按 Jira Bug 单流程提单
 

@@ -1,6 +1,6 @@
 # 实机验证（MCP + 模拟器）
 
-用 devkit MCP Server 的 `fh_*` 工具对 FlightHub 平台做真实调用，把「读代码得出的假设」变成「实测证实/证伪的结论」。
+用 devkit MCP Server 的 `fh_*` 工具对 DJI CloudAPI2 平台做真实调用，把「读代码得出的假设」变成「实测证实/证伪的结论」。
 
 对应 RCA **Stage 2.5**，位于 Locate 之后、Fix 之前。前置条件：MCP Server 已部署并连通（部署见 `cloudapi2-mcp-deploy`，工具选型见 `cloudapi2-mcp-guide`）。
 

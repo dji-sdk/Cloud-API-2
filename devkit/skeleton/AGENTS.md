@@ -4,7 +4,7 @@
 
 ## 项目简介
 
-FH Skeleton 是 DJI FlightHub PaaS SDK 的 ISV 接入骨架项目。Spring Boot 3.2.5 + Java 17 多模块架构，feature 模块可插拔。
+FH Skeleton 是 DJI CloudAPI2 SDK 的 ISV 接入骨架项目。Spring Boot 3.2.5 + Java 17 多模块架构，feature 模块可插拔。
 
 ## 快速上下文
 

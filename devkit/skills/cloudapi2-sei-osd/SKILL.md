@@ -5,11 +5,11 @@ version: 1.2.0
 author: DJI CloudAPI2 Team
 ---
 
-# DJI FlightHub SEI/OSD 实时遥测数据接入助手
+# DJI CloudAPI2 SEI/OSD 实时遥测数据接入助手
 
 ## 这个 Skill 是干什么的
 
-帮 ISV 开发者正确接入 DJI FlightHub 的 **SEI（帧级位置数据）** 和 **OSD（设备遥测数据）**，覆盖服务端 FHSDK 数据获取 + 前端地图可视化两端。
+帮 ISV 开发者正确接入 DJI CloudAPI2 的 **SEI（帧级位置数据）** 和 **OSD（设备遥测数据）**，覆盖服务端 FHSDK 数据获取 + 前端地图可视化两端。
 
 **核心价值**：ISV 最集中的痛点是"怎么拿到每一帧画面对应的、准确的、足够高频的位置数据"。本 Skill 把 SEI/OSD 的 What/Why/How 讲透。
 

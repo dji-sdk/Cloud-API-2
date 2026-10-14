@@ -1,6 +1,6 @@
 # libs — 私有 SDK JAR
 
-本目录存放 DJI FlightHub SDK 的私有 JAR。SDK **不在 Maven Central**，
+本目录存放 DJI CloudAPI2 SDK 的私有 JAR。SDK **不在 Maven Central**，
 需在开发机手动安装到本地仓库后构建（见下方命令）。
 
 ## 文件清单
@@ -16,7 +16,7 @@
 
 ## 来源说明
 
-- 渠道：DJI FlightHub 官方 SDK 发布包（`flight_hub_sdk_v3.3.7_20261010`）。
+- 渠道：DJI CloudAPI2 官方 SDK 发布包（`flight_hub_sdk_v3.3.7_20261010`）。
 - 平台：内置 JNI native 库，仅 Linux x86_64 运行时加载；macOS/Windows 使用 mock 模式，不加载 native。
 
 ## 安装到本地 Maven 仓库（开发机首次）

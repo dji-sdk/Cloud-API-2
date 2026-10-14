@@ -14,18 +14,18 @@
               ▼
       <remote-server>:8080
         └── Docker: pf-devkit-mcp
-              └── FlightHub SDK (JNI, linux/amd64)
+              └── DJI CloudAPI2 SDK (JNI, linux/amd64)
                     │
                     │  gRPC/HTTP
                     ▼
-              FlightHub 平台服务
+              DJI CloudAPI2 平台服务
 ```
 
 ## 前提条件
 
 - 远程服务器：Linux x86_64、Docker 24+、docker compose v2
 - 本地机器：有 SSH 访问远程服务器 + Docker（用于构建镜像）
-- FlightHub 控制台已创建工作空间，获取 `access_token` + `workspace_uuid`
+- DJI CloudAPI2 控制台已创建工作空间，获取 `access_token` + `workspace_uuid`
 
 ## 步骤清单
 
@@ -48,9 +48,9 @@ AI 生成密钥并拼接完整 `.env` 内容（使用 `prompts/gen-secrets.sh` �
 必填项：
 | 变量 | 来源 |
 |---|---|
-| `FH_SERVER_ADDRESS` | FlightHub 服务器地址（含协议） |
-| `FH_ACCESS_TOKEN` | FlightHub 控制台 → 工作空间 → 访问令牌 |
-| `FH_WORKSPACE_UUID` | FlightHub 控制台 → 工作空间 → UUID |
+| `FH_SERVER_ADDRESS` | DJI CloudAPI2 服务器地址（含协议） |
+| `FH_ACCESS_TOKEN` | DJI CloudAPI2 控制台 → 工作空间 → 访问令牌 |
+| `FH_WORKSPACE_UUID` | DJI CloudAPI2 控制台 → 工作空间 → UUID |
 | `FH_SSE_AUTH_TOKEN` | `openssl rand -hex 32` 生成 |
 
 ### 3. 构建并推送 Docker 镜像

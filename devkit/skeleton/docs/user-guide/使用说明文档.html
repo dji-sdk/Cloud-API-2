@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DJI 大疆上云 API 2 — 无人机管理平台使用说明</title>
+<style>
+  :root {
+    /* 主题色板 */
+    --bg: #0b0f1a;
+    --bg-soft: #111827;
+    --bg-card: #151c2e;
+    --bg-card-hover: #1a2338;
+    --border: #232d47;
+    --border-soft: #1c2540;
+    --text: #e6ebf5;
+    --text-dim: #9aa7bd;
+    --text-faint: #6b7790;
+    --primary: #2f7bff;
+    --primary-soft: rgba(47, 123, 255, 0.12);
+    --accent: #22d3ee;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --radius: 14px;
+    --shadow: 0 10px 30px rgba(0,0,0,0.35);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+            "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --mono: "SF Mono", SFMono-Regular, ui-monospace, "JetBrains Mono",
+            "Cascadia Code", Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; scroll-padding-top: 84px; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(1000px 500px at 80% -10%, rgba(47,123,255,0.14), transparent 60%),
+      radial-gradient(800px 400px at 0% 0%, rgba(34,211,238,0.08), transparent 55%);
+    background-attachment: fixed;
+  }
+
+  /* ===== 顶部导航 ===== */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 28px;
+    background: rgba(11,15,26,0.82);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .topbar .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 15px; letter-spacing: 0.3px;
+  }
+  .logo-badge {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: #fff; font-size: 15px; font-weight: 800;
+    box-shadow: 0 4px 12px rgba(47,123,255,0.4);
+  }
+  .topbar .version {
+    font-size: 12px; color: var(--text-faint);
+    background: var(--bg-card); border: 1px solid var(--border-soft);
+    padding: 2px 10px; border-radius: 999px;
+  }
+  .topbar nav { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; }
+  .topbar nav a {
+    color: var(--text-dim); text-decoration: none;
+    font-size: 13px; padding: 6px 12px; border-radius: 8px;
+    transition: 0.2s;
+  }
+  .topbar nav a:hover { color: var(--text); background: var(--bg-card); }
+
+  /* ===== 主容器 ===== */
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
+
+  /* ===== Hero ===== */
+  .hero {
+    padding: 64px 0 40px;
+    text-align: center;
+    position: relative;
+  }
+  .hero .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--accent);
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.25);
+    padding: 5px 16px; border-radius: 999px;
+    margin-bottom: 20px; letter-spacing: 0.5px;
+  }
+  .hero h1 {
+    font-size: 42px; line-height: 1.2; letter-spacing: -0.5px;
+    background: linear-gradient(120deg, #fff 0%, #c7d6ff 60%, var(--accent) 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 16px;
+  }
+  .hero p.sub {
+    max-width: 640px; margin: 0 auto 12px;
+    color: var(--text-dim); font-size: 16px;
+  }
+  .hero .meta {
+    display: flex; justify-content: center; gap: 24px; flex-wrap: wrap;
+    margin-top: 22px; color: var(--text-faint); font-size: 13px;
+  }
+  .hero .meta span { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* ===== 目录卡片 ===== */
+  .toc { padding: 24px 0 8px; }
+  .toc h2.section-title { text-align: center; margin-bottom: 8px; }
+  .toc .group { margin-bottom: 28px; }
+  .toc .group-label {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; font-weight: 600; letter-spacing: 1px;
+    color: var(--text-faint); text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .toc .group-label::after {
+    content: ""; flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--border-soft), transparent);
+  }
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 18px; border-radius: var(--radius);
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    text-decoration: none; color: inherit;
+    transition: 0.22s ease;
+    position: relative; overflow: hidden;
+  }
+  .card::before {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(47,123,255,0.10), transparent 60%);
+    opacity: 0; transition: 0.22s;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    background: var(--bg-card-hover);
+    border-color: var(--border);
+    box-shadow: var(--shadow);
+  }
+  .card:hover::before { opacity: 1; }
+  .card .icon {
+    flex: 0 0 auto;
+    width: 42px; height: 42px; border-radius: 11px;
+    display: grid; place-items: center;
+    font-size: 20px;
+    background: var(--primary-soft);
+    border: 1px solid rgba(47,123,255,0.25);
+    position: relative; z-index: 1;
+  }
+  .card .body { position: relative; z-index: 1; min-width: 0; }
+  .card .body h3 { font-size: 15px; margin-bottom: 4px; }
+  .card .body p {
+    font-size: 13px; color: var(--text-dim); line-height: 1.55;
+  }
+  .card .arrow {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    color: var(--text-faint); opacity: 0; transition: 0.22s;
+  }
+  .card:hover .arrow { opacity: 1; color: var(--primary); }
+
+  /* ===== 章节 ===== */
+  section.chapter { padding: 40px 0 8px; }
+  .chapter-head { margin-bottom: 24px; }
+  .chapter-head .num {
+    font-family: var(--mono); font-size: 13px; color: var(--primary);
+    letter-spacing: 1px; margin-bottom: 6px;
+  }
+  .chapter-head h2 {
+    font-size: 28px; letter-spacing: -0.3px; margin-bottom: 8px;
+  }
+  .chapter-head .lead {
+    color: var(--text-dim); font-size: 15px; max-width: 720px;
+  }
+  .chapter-head .lead strong { color: var(--text); }
+
+  h3 { font-size: 19px; margin: 28px 0 10px; }
+  h3 .dot { color: var(--accent); margin-right: 6px; }
+  h4 { font-size: 16px; margin: 20px 0 8px; color: var(--text); }
+
+  p { margin-bottom: 12px; color: var(--text-dim); }
+  p strong, li strong { color: var(--text); }
+  .chapter p { color: var(--text-dim); }
+  .chapter p strong { color: var(--text); }
+
+  /* ===== 截图 ===== */
+  .screenshot {
+    margin: 18px 0 22px;
+    border-radius: 12px; overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--bg-soft);
+    box-shadow: var(--shadow);
+  }
+  .screenshot img { display: block; width: 100%; height: auto; }
+  .screenshot .caption {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px; font-size: 13px; color: var(--text-faint);
+    background: var(--bg-soft); border-top: 1px solid var(--border-soft);
+  }
+  .screenshot .caption::before {
+    content: "🖼"; font-size: 12px;
+  }
+
+  /* ===== 表格 ===== */
+  .table-wrap {
+    margin: 16px 0 22px; overflow-x: auto;
+    border-radius: 12px; border: 1px solid var(--border-soft);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead th {
+    text-align: left; padding: 12px 16px;
+    background: var(--bg-card);
+    color: var(--text); font-weight: 600; white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td {
+    padding: 11px 16px; border-bottom: 1px solid var(--border-soft);
+    color: var(--text-dim); vertical-align: top;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--bg-card-hover); }
+
+  /* ===== 提示框 ===== */
+  .callout {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 14px 18px; border-radius: 12px; margin: 18px 0;
+    font-size: 14px; line-height: 1.6;
+  }
+  .callout .ico { flex: 0 0 auto; font-size: 17px; line-height: 1.4; }
+  .callout strong { display: block; margin-bottom: 2px; }
+  .callout.info { background: var(--primary-soft); border: 1px solid rgba(47,123,255,0.3); }
+  .callout.info strong { color: var(--accent); }
+  .callout.warn { background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.3); }
+  .callout.warn strong { color: var(--warning); }
+
+  /* ===== 步骤 ===== */
+  .steps { margin: 14px 0 20px; counter-reset: step; }
+  .steps .step {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 12px 0; border-bottom: 1px dashed var(--border-soft);
+  }
+  .steps .step:last-child { border-bottom: none; }
+  .steps .step .n {
+    counter-increment: step;
+    flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--primary-soft); color: var(--accent);
+    border: 1px solid rgba(47,123,255,0.3);
+    font-size: 13px; font-weight: 700; font-family: var(--mono);
+    margin-top: 2px;
+  }
+  .steps .step .c { color: var(--text-dim); }
+  .steps .step .c strong { color: var(--text); }
+
+  /* ===== 标签 ===== */
+  .tag {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; margin: 0 2px; white-space: nowrap;
+  }
+  .tag.green { background: rgba(52,211,153,0.12); color: var(--success); }
+  .tag.red { background: rgba(248,113,113,0.12); color: var(--danger); }
+  .tag.blue { background: rgba(47,123,255,0.14); color: var(--accent); }
+  .tag.orange { background: rgba(251,191,36,0.12); color: var(--warning); }
+  .tag.gray { background: rgba(154,167,189,0.12); color: var(--text-dim); }
+  .tag.purple { background: rgba(167,139,250,0.14); color: #a78bfa; }
+
+  /* ===== 特性网格 ===== */
+  .feat-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px; margin: 16px 0 20px;
+  }
+  .feat {
+    padding: 16px; border-radius: 12px;
+    background: var(--bg-card); border: 1px solid var(--border-soft);
+  }
+  .feat .f-ico { font-size: 20px; margin-bottom: 8px; }
+  .feat strong { display: block; font-size: 14px; margin-bottom: 4px; }
+  .feat p { font-size: 13px; color: var(--text-dim); margin: 0; }
+
+  ul.list { margin: 10px 0 16px; padding-left: 4px; list-style: none; }
+  ul.list li {
+    padding: 6px 0 6px 24px; position: relative; color: var(--text-dim);
+  }
+  ul.list li::before {
+    content: ""; position: absolute; left: 4px; top: 15px;
+    width: 8px; height: 8px; border-radius: 2px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+  }
+  ul.list li strong { color: var(--text); }
+
+  /* ===== Keyboard ===== */
+  kbd {
+    display: inline-block; padding: 1px 7px; border-radius: 6px;
+    font-family: var(--mono); font-size: 12px; color: var(--text);
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-bottom-width: 2px; margin: 0 2px;
+  }
+
+  /* ===== 页脚 ===== */
+  footer {
+    margin-top: 56px; padding: 32px 0 40px;
+    border-top: 1px solid var(--border-soft);
+    text-align: center; color: var(--text-faint); font-size: 13px;
+  }
+  footer .links { margin-bottom: 12px; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+  footer a { color: var(--text-dim); text-decoration: none; }
+  footer a:hover { color: var(--accent); }
+
+  /* ===== 回到顶部 ===== */
+  .backtop {
+    position: fixed; right: 24px; bottom: 24px; z-index: 99;
+    width: 42px; height: 42px; border-radius: 12px;
+    display: grid; place-items: center;
+    background: var(--bg-card); border: 1px solid var(--border);
+    color: var(--text-dim); cursor: pointer; font-size: 18px;
+    box-shadow: var(--shadow); transition: 0.2s;
+    opacity: 0; pointer-events: none;
+  }
+  .backtop.show { opacity: 1; pointer-events: auto; }
+  .backtop:hover { color: var(--accent); border-color: rgba(34,211,238,0.4); }
+
+  @media (max-width: 720px) {
+    .hero h1 { font-size: 30px; }
+    .card-grid { grid-template-columns: 1fr; }
+    .topbar nav { display: none; }
+    .container { padding: 0 18px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== 顶部导航 ===== -->
+<header class="topbar">
+  <div class="logo">
+    <span class="logo-badge">DJI</span>
+    <span>无人机管理平台</span>
+  </div>
+  <span class="version">v1.0</span>
+  <nav>
+    <a href="#1-平台概述">概述</a>
+    <a href="#2-登录与账号">登录</a>
+    <a href="#3-数据看板">看板</a>
+    <a href="#5-设备管理">设备</a>
+    <a href="#6-驾驶舱">驾驶舱</a>
+    <a href="#7-航线编辑器">航线</a>
+    <a href="#8-任务管理">任务</a>
+    <a href="#12-ai助手">AI 助手</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <!-- ===== Hero ===== -->
+  <section class="hero">
+    <div class="eyebrow">✦ FlightHub PaaS · ISV 接入骨架</div>
+    <h1>DJI 大疆上云 API 2<br>无人机管理平台使用说明</h1>
+    <p class="sub">基于 FlightHub PaaS SDK 构建的全功能无人机运营管理系统 —— 从设备接入、实时监控到航线规划、任务调度与三维重建，一站式的专业机队管理解决方案。</p>
+    <div class="meta">
+      <span>📅 更新日期：2026-08-08</span>
+      <span>🖥 适用系统：FH Skeleton</span>
+      <span>📄 版本：v1.0</span>
+    </div>
+  </section>
+
+  <!-- ===== 目录卡片 ===== -->
+  <section class="toc" id="toc">
+    <h2 class="section-title">快速导航</h2>
+
+    <!-- 分组 1：入门与基础 -->
+    <div class="group">
+      <div class="group-label">🚀 入门与基础操作</div>
+      <div class="card-grid">
+        <a class="card" href="#1-平台概述">
+          <span class="icon">🧭</span>
+          <span class="body"><h3>1. 平台概述</h3><p>了解平台的体系架构、核心功能模块与统一导航栏布局。</p></span>
+          <span class="arrow">→</span>
+        </a>
+        <a class="card" href="#2-登录与账号">
+          <span class="icon">🔐</span>
+          <span class="body"><h3>2. 登录与账号管理</h3><p>注册、登录、用户管理与角色权限（管理员 / 用户）。</p></span>
+          <span class="arrow">→</span>
+        </a>
+        <a class="card" href="#3-数据看板">
+          <span class="icon">📊</span>
+          <span class="body"><h3>3. 数据看板</h3><p>资产统计、设备地图分布与任务飞行数据总览。</p></span>
+          <span class="arrow">→</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- 分组 2：飞行与监控 -->
+    <div class="group">
+      <div class="group-label">🛸 飞行与实时监控</div>
+      <div class="card-grid">
+        <a class="card" href="#4-直播大屏">
+          <span class="icon">📺</span>
+          <span class="body"><h3>4. 直播大屏</h3><p>多路实时视频流监控，支持多种布局与 OSD 叠加。</p></span>
+          <span class="arrow">→</span>
+        </a>
+        <a class="card" href="#5-设备管理">
+          <span class="icon">📡</span>
+          <span class="body"><h3>5. 设备管理</h3><p>机场 / 飞行器列表、在线状态、固件管理与维保。</p></span>
+          <span class="arrow">→</span>
+        </a>
+        <a class="card" href="#6-驾驶舱">
+          <span class="icon">🎛</span>
+          <span class="body"><h3>6. 驾驶舱</h3><p>实时飞行监控、遥控操作、地图轨迹与飞行仪表。</p></span>
+          <span class="arrow">→</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- 分组 3：任务与数据 -->
+    <div class="group">
+      <div class="group-label">🗺 任务规划与数据管理</div>
+      <div class="card-grid">
+        <a class="card" href="#7-航线编辑器">
+          <span class="icon">🗺</span>
+          <span class="body"><h3>7. 航线编辑器</h3><p>航线库管理、3D 可视化航线创建与贴近摄影规划。</p></span>
+          <span class="arrow">→</span>
+        </a>
+        <a class="card" href="#8-任务管理">
+          <span class="icon">📋</span>
+          <span class="body"><h3>8. 任务管理</h3><p>飞行任务创建、执行、暂停 / 取消与轨迹回放。</p></span>
+          <span class="arrow">→</span>
+        </a>
+        <a class="card" href="#9-媒体管理">
+          <span class="icon">🖼</span>
+          <span class="body"><h3>9. 媒体管理</h3><p>照片 / 视频浏览、筛选、下载与删除。</p></span>
+          <span class="arrow">→</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- 分组 4：空间与智能 -->
+    <div class="group">
+      <div class="group-label">🧠 空域管控与智能功能</div>
+      <div class="card-grid">
+        <a class="card" href="#10-空域管理">
+          <span class="icon">🛰</span>
+          <span class="body"><h3>10. 空域管理</h3><p>电子围栏、禁飞区、作业区在 3D 地图上的可视化管控。</p></span>
+          <span class="arrow">→</span>
+        </a>
+        <a class="card" href="#11-模型库">
+          <span class="icon">🧊</span>
+          <span class="body"><h3>11. 模型库</h3><p>三维重建任务管理、正射 / Mesh / 点云模型浏览。</p></span>
+          <span class="arrow">→</span>
+        </a>
+        <a class="card" href="#12-ai助手">
+          <span class="icon">🤖</span>
+          <span class="body"><h3>12. AI 助手</h3><p>自然语言交互，智能设备查询、任务下发与数据汇总。</p></span>
+          <span class="arrow">→</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- 第 1 章：平台概述 -->
+  <!-- ========================================================= -->
+  <section class="chapter" id="1-平台概述">
+    <div class="chapter-head">
+      <div class="num">01</div>
+      <h2>平台概述</h2>
+      <p class="lead">DJI 大疆上云 API 2 无人机管理平台是基于 <strong>FlightHub PaaS SDK</strong> 构建的全功能无人机运营管理系统，为 ISV（独立软件供应商）提供一站式专业机队管理能力。平台涵盖设备接入、实时监控、航线规划、任务调度、媒体管理、空域管控与三维重建等完整业务闭环。</p>
+    </div>
+
+    <h3><span class="dot">◆</span>核心能力一览</h3>
+    <p>平台将碎片化的无人机运营能力整合为统一的管理视图，让运营人员无需关心底层 SDK 细节，即可完成从设备接入到数据成果的全流程操作。</p>
+
+    <div class="feat-grid">
+      <div class="feat"><div class="f-ico">📊</div><strong>数据看板</strong><p>运营数据总览，资产统计、任务分布与飞行数据可视化。</p></div>
+      <div class="feat"><div class="f-ico">📺</div><strong>直播大屏</strong><p>多路实时视频流监控，支持多种布局与多机同屏。</p></div>
+      <div class="feat"><div class="f-ico">📡</div><strong>设备管理</strong><p>机场 / 飞行器列表、在线状态、固件与维保管理。</p></div>
+      <div class="feat"><div class="f-ico">🎛</div><strong>驾驶舱</strong><p>实时飞行监控、遥控操作、视频画面与飞行仪表。</p></div>
+      <div class="feat"><div class="f-ico">🗺</div><strong>航线编辑器</strong><p>航线库管理、可视化航线创建 / 编辑与贴近摄影规划。</p></div>
+      <div class="feat"><div class="f-ico">📋</div><strong>任务管理</strong><p>飞行任务创建、执行、回放与状态跟踪。</p></div>
+      <div class="feat"><div class="f-ico">🖼</div><strong>媒体管理</strong><p>照片 / 视频浏览、筛选与下载归档。</p></div>
+      <div class="feat"><div class="f-ico">🛰</div><strong>空域管理</strong><p>电子围栏、禁飞区、作业区可视化管理与同步。</p></div>
+      <div class="feat"><div class="f-ico">🧊</div><strong>模型库</strong><p>三维重建任务管理与正射 / 三维模型浏览。</p></div>
+      <div class="feat"><div class="f-ico">🤖</div><strong>AI 助手</strong><p>自然语言交互，智能设备查询与任务下发。</p></div>
+    </div>
+
+    <h3><span class="dot">◆</span>顶部导航栏</h3>
+    <p>平台顶部为统一导航栏，集中展示所有功能模块入口，实现「一处进入、全站可达」的操作体验：</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th style="width:50%">导航入口</th><th>定位</th></tr></thead>
+      <tbody>
+        <tr><td><strong>数据看板</strong> ｜ 直播大屏 ｜ 设备管理 ｜ 驾驶舱</td><td>运营监控与设备控制核心入口</td></tr>
+        <tr><td><strong>航线编辑器</strong> ｜ 任务管理</td><td>飞行任务规划与调度</td></tr>
+        <tr><td><strong>媒体管理</strong> ｜ 空域管理 ｜ 模型库</td><td>数据成果与飞行空间管理</td></tr>
+        <tr><td><strong>右上角</strong>：AI 助手 ｜ 用户菜单</td><td>智能交互与账号设置 / 退出</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="callout info">
+      <span class="ico">💡</span>
+      <div><strong>使用提示</strong>本平台各模块相互打通 —— 例如在「设备管理」中可一键进入某台设备的「驾驶舱」，在「任务管理」中可直接关联「航线库」航线执行任务。建议按本文档章节顺序浏览，建立整体认知。</div>
+    </div>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- 第 2 章：登录与账号管理 -->
+  <!-- ========================================================= -->
+  <section class="chapter" id="2-登录与账号">
+    <div class="chapter-head">
+      <div class="num">02</div>
+      <h2>登录与账号管理</h2>
+      <p class="lead">平台提供完善的注册、登录与基于角色（RBAC）的权限体系。<strong>系统中第一个注册的用户将自动成为管理员（admin）</strong>，拥有用户管理权限。</p>
+    </div>
+
+    <h3><span class="dot">◆</span>2.1 登录</h3>
+    <p>访问平台地址后进入登录页面。登录是进入平台所有功能的前提，安全会话通过 JWT 令牌维持。</p>
+    <div class="screenshot"><img src="./登陆页.png" alt="登录页"><div class="caption">登录页</div></div>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><span class="c">输入<strong>用户名</strong></span></div>
+      <div class="step"><span class="n">2</span><span class="c">输入<strong>密码</strong>（出于安全考虑，密码输入框会掩码显示）</span></div>
+      <div class="step"><span class="n">3</span><span class="c">点击红色<strong>「登录」</strong>按钮提交</span></div>
+    </div>
+    <p>如尚未注册，点击登录表单下方的<strong>「创建新账号」</strong>即可进入注册页面。</p>
+
+    <h3><span class="dot">◆</span>2.2 注册账号</h3>
+    <div class="screenshot"><img src="./创建账号.png" alt="注册页"><div class="caption">注册页</div></div>
+    <p>注册页面收集账号基础信息，字段说明如下：</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>字段</th><th>是否必填</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>用户名</td><td><span class="tag red">必填</span></td><td>3~64 个字符，用于登录。</td></tr>
+        <tr><td>昵称</td><td><span class="tag gray">可选</span></td><td>平台内展示的显示名称。</td></tr>
+        <tr><td>邮箱</td><td><span class="tag gray">可选</span></td><td>用于密码找回。</td></tr>
+        <tr><td>密码</td><td><span class="tag red">必填</span></td><td>至少 8 位，建议使用大小写字母 + 数字组合。</td></tr>
+        <tr><td>确认密码</td><td><span class="tag red">必填</span></td><td>需与密码保持一致。</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="callout info">
+      <span class="ico">👑</span>
+      <div><strong>首个用户自动成为管理员</strong>系统部署后，第一个成功注册的用户将被自动授予 admin 角色，可访问用户管理页面。后续注册用户默认为普通用户（user）。</div>
+    </div>
+
+    <h3><span class="dot">◆</span>2.3 用户管理入口</h3>
+    <p>管理员登录后，点击右上角<strong>用户头像</strong>展开下拉菜单，选择「用户管理」进入管理页面。</p>
+    <div class="screenshot"><img src="./用户管理入口.png" alt="用户管理入口"><div class="caption">用户管理入口</div></div>
+    <p><strong>用户菜单选项：</strong></p>
+    <ul class="list">
+      <li><strong>用户管理</strong> — 仅管理员可见，进入用户管理页面。</li>
+      <li><strong>主题色切换</strong> — 快速切换平台主题外观。</li>
+      <li><strong>退出登录</strong> — 结束当前会话，返回登录页。</li>
+    </ul>
+
+    <h3><span class="dot">◆</span>2.4 用户管理页面</h3>
+    <div class="screenshot"><img src="./用户管理页面.png" alt="用户管理页面"><div class="caption">用户管理页面</div></div>
+    <p>管理员可在此页面对平台所有用户进行集中管理，支持的角色与操作如下：</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>操作</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Reset Pwd</strong></td><td>重置指定用户的密码。</td></tr>
+        <tr><td><strong>设为 Admin</strong></td><td>将普通用户提升为管理员。</td></tr>
+        <tr><td><strong>取消 Admin</strong></td><td>撤销管理员权限，降级为普通用户。</td></tr>
+        <tr><td><strong>Delete</strong></td><td>删除用户（操作不可恢复，请谨慎）。</td></tr>
+        <tr><td><strong>修改密码</strong></td><td>修改自己的密码（仅当前用户行可见）。</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p><strong>角色标识：</strong></p>
+    <ul class="list">
+      <li><span class="tag red">管理员</span> 红色标签，拥有用户管理权限。</li>
+      <li><span class="tag gray">用户</span> 灰色标签，普通用户权限。</li>
+    </ul>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- 第 3 章：数据看板 -->
+  <!-- ========================================================= -->
+  <section class="chapter" id="3-数据看板">
+    <div class="chapter-head">
+      <div class="num">03</div>
+      <h2>数据看板</h2>
+      <p class="lead">数据看板为系统<strong>首页</strong>，是运营人员进入平台后的第一屏，提供机队运营数据的全局概览，帮助快速掌握整体运行态势。</p>
+    </div>
+    <div class="screenshot"><img src="./数据看板.png" alt="数据看板"><div class="caption">数据看板首页</div></div>
+
+    <h3><span class="dot">◆</span>3.1 左侧 — 资产统计</h3>
+    <p>资产统计面板以卡片形式展示平台核心资产的数量与状态分布：</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>数据项</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><strong>机场状态</strong></td><td>空闲 / 作业 / 调试 / 离线的数量及占比。</td></tr>
+        <tr><td><strong>飞行器</strong></td><td>在线 / 离线飞行器数量。</td></tr>
+        <tr><td><strong>中继站</strong></td><td>中继站数量。</td></tr>
+        <tr><td><strong>航线总数</strong></td><td>已创建的航线条数。</td></tr>
+        <tr><td><strong>人员总数</strong></td><td>平台注册用户数。</td></tr>
+        <tr><td><strong>数据成果</strong></td><td>媒体数、模型数、报告数的汇总。</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3><span class="dot">◆</span>3.2 中央 — 地图视图</h3>
+    <p>卫星影像地图展示所有设备（机场、飞行器）的地理分布位置。设备标记实时更新在线状态，运营人员可快速定位任意设备的地理位置，并直观判断其是否在线。</p>
+
+    <h3><span class="dot">◆</span>3.3 右侧 — 任务与飞行数据</h3>
+    <ul class="list">
+      <li><strong>任务分布</strong> — 柱状图展示计划任务和手飞任务的时间分布。</li>
+      <li><strong>执行结果</strong> — 折线图展示任务执行 成功 / 挂起 / 失败 的趋势。</li>
+      <li><strong>飞行数据</strong> — 统计飞行次数、飞行时长、飞行里程。</li>
+    </ul>
+
+    <h3><span class="dot">◆</span>3.4 时间筛选</h3>
+    <p>支持按时间范围切换数据展示，满足不同的运营分析周期：</p>
+    <p><span class="tag blue">本周</span> <span class="tag blue">近一周</span> <span class="tag blue">近一月</span> <span class="tag blue">近半年</span> <span class="tag blue">近一年</span></p>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- 第 4 章：直播大屏 -->
+  <!-- ========================================================= -->
+  <section class="chapter" id="4-直播大屏">
+    <div class="chapter-head">
+      <div class="num">04</div>
+      <h2>直播大屏</h2>
+      <p class="lead">直播大屏用于<strong>实时查看多台设备的视频流画面</strong>，适合指挥中心、多机协同等场景，支持多种画面布局与多机同屏监看。</p>
+    </div>
+    <div class="screenshot"><img src="./直播大屏.png" alt="直播大屏"><div class="caption">直播大屏</div></div>
+
+    <h3><span class="dot">◆</span>4.1 布局设置</h3>
+    <p>根据监看设备数量与屏幕尺寸，可在画面区上方切换多种布局模式：</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>布局类型</th><th>可选数量</th></tr></thead>
+      <tbody>
+        <tr><td><strong>普通布局</strong></td><td>1 / 4 / 9 / 16 / 25</td></tr>
+        <tr><td><strong>L 型布局</strong></td><td>6 / 8 / 13</td></tr>
+        <tr><td><strong>包围布局</strong></td><td>13</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3><span class="dot">◆</span>4.2 画面设置</h3>
+    <ul class="list">
+      <li><strong>OSD 信息</strong> — 开关切换，在视频画面上叠加飞行参数（高度、速度、坐标等）。</li>
+      <li><strong>画面显示</strong> — 自适应 / 填充模式，适配不同的视频宽高比。</li>
+    </ul>
+
+    <h3><span class="dot">◆</span>4.3 添加播放器</h3>
+    <p>在左侧面板底部，可通过以下两种方式添加视频源：</p>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><span class="c">输入设备 SN 并点击<strong>「添加」</strong></span></div>
+      <div class="step"><span class="n">2</span><span class="c">或从<strong>「在线设备」</strong>列表中选择设备直接查看</span></div>
+    </div>
+
+    <h3><span class="dot">◆</span>4.4 视频画面操作</h3>
+    <p>每个视频窗口提供独立的控制菜单，支持：</p>
+    <ul class="list">
+      <li><strong>设置</strong> — 画质 / 码流切换。</li>
+      <li><strong>刷新</strong> — 重新拉流，解决画面卡顿。</li>
+      <li><strong>全屏</strong> — 单窗口全屏查看。</li>
+      <li><strong>关闭</strong> — 移除当前播放器。</li>
+    </ul>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- 第 5 章：设备管理 -->
+  <!-- ========================================================= -->
+  <section class="chapter" id="5-设备管理">
+    <div class="chapter-head">
+      <div class="num">05</div>
+      <h2>设备管理</h2>
+      <p class="lead">设备管理页面集中展示平台下所有已接入的<strong>机场</strong>与<strong>飞行器</strong>信息，是设备接入后的统一管理入口，支持状态监控、固件管理与维保。</p>
+    </div>
+    <div class="screenshot"><img src="./设备管理.png" alt="设备管理"><div class="caption">设备管理页面</div></div>
+
+    <h3><span class="dot">◆</span>5.1 设备分类</h3>
+    <p>页面顶部提供 Tab 切换，按设备类型分类浏览：</p>
+    <ul class="list">
+      <li><strong>机场</strong> — DJI Dock 3、O4 地面站等网关设备。</li>
+      <li><strong>飞行器</strong> — M4TD、M4D、M5TD 等无人机。</li>
+    </ul>
+
+    <h3><span class="dot">◆</span>5.2 设备列表字段</h3>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>字段</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><strong>设备型号</strong></td><td>Dock 3、O4 地面站等设备型号。</td></tr>
+        <tr><td><strong>设备 SN</strong></td><td>设备唯一序列号。</td></tr>
+        <tr><td><strong>设备名称</strong></td><td>自定义名称或默认 SN。</td></tr>
+        <tr><td><strong>固件版本</strong></td><td>当前固件版本号。</td></tr>
+        <tr><td><strong>固件升级</strong></td><td>待升级 / 无需升级状态。</td></tr>
+        <tr><td><strong>在线状态</strong></td><td>绿色圆点 = 在线。</td></tr>
+        <tr><td><strong>在线时间</strong></td><td>最近一次上线时间。</td></tr>
+        <tr><td><strong>操作</strong></td><td>详情、驾驶舱入口等。</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3><span class="dot">◆</span>5.3 功能入口</h3>
+    <p>页面上方提供设备运维相关快捷功能入口：</p>
+    <ul class="list">
+      <li><strong>设备定损与反馈</strong></li>
+      <li><strong>维保看板</strong></li>
+      <li><strong>固件管理</strong></li>
+      <li><strong>行业无忧</strong></li>
+    </ul>
+
+    <h3><span class="dot">◆</span>5.4 搜索与显示</h3>
+    <ul class="list">
+      <li>支持按<strong>设备 SN</strong> 或<strong>设备名称</strong>搜索。</li>
+      <li>「显示设置」可自定义列表显示字段。</li>
+      <li>分页浏览，默认 50 条 / 页。</li>
+    </ul>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- 第 6 章：驾驶舱 -->
+  <!-- ========================================================= -->
+  <section class="chapter" id="6-驾驶舱">
+    <div class="chapter-head">
+      <div class="num">06</div>
+      <h2>驾驶舱</h2>
+      <p class="lead">驾驶舱是平台<strong>核心功能页面</strong>，提供完整的实时飞行监控与操控能力，包括地图轨迹、辅助影像、实时画面与飞行仪表，是执行飞行任务时的「主控台」。</p>
+    </div>
+
+    <h3><span class="dot">◆</span>6.1 选择设备</h3>
+    <p>进入驾驶舱前需先选择一台<strong>在线机场设备</strong>，驾驶舱将围绕该设备及其关联飞行器展开监控。</p>
+    <div class="screenshot"><img src="./驾驶舱设备列表.png" alt="驾驶舱设备列表"><div class="caption">驾驶舱设备列表</div></div>
+    <ul class="list">
+      <li>左侧列出所有<strong>在线机场</strong>及其关联飞行器。</li>
+      <li>显示设备 SN、型号、在线状态。</li>
+      <li>点击<strong>「驾驶舱」</strong>按钮进入该设备的实时控制界面。</li>
+      <li>点击<strong>「设备小窗」</strong>可快速查看设备监控画面。</li>
+    </ul>
+
+    <h3><span class="dot">◆</span>6.2 飞行监控</h3>
+    <div class="screenshot"><img src="./驾驶舱页面.png" alt="驾驶舱页面"><div class="caption">驾驶舱页面</div></div>
+    <p>驾驶舱页面采用多区域布局，各区域职责如下：</p>
+
+    <h4>左上 — 地图视图</h4>
+    <ul class="list">
+      <li>卫星地图展示设备位置和飞行轨迹。</li>
+      <li>支持 2D / 3D 视角切换。</li>
+      <li>显示机场、飞行器、航点等标记。</li>
+    </ul>
+
+    <h4>左下 — 辅助影像</h4>
+    <ul class="list">
+      <li>机场摄像头画面（红外 / 可见光）。</li>
+    </ul>
+
+    <h4>右侧 — 主画面</h4>
+    <ul class="list">
+      <li>飞行器实时视频画面。</li>
+      <li>广角 / 变焦镜头切换。</li>
+      <li>相机参数显示（ISO、快门、光圈等）。</li>
+    </ul>
+
+    <h4>底部 — 飞行仪表</h4>
+    <ul class="list">
+      <li>罗盘与航向指示。</li>
+      <li>速度（SPD）、高度（ALT / ASL / AGL）。</li>
+      <li>飞行距离、飞行时间。</li>
+      <li>RTK 信号状态、电池电量。</li>
+    </ul>
+
+    <h4>右下 — 操控按钮</h4>
+    <ul class="list">
+      <li><strong>返航</strong> — 一键返回起飞点 / 机场。</li>
+      <li><strong>紧急降落</strong> — 触发紧急降落流程。</li>
+      <li><strong>急停</strong> <kbd>Space</kbd> — 紧急停止电机。</li>
+    </ul>
+
+    <div class="callout warn">
+      <span class="ico">⚠️</span>
+      <div><strong>急停操作提示</strong>急停（Space）会立即停止飞行动作，属于高风险操作，仅在出现安全隐患时使用。执行前请确认周边环境安全。</div>
+    </div>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- 第 7 章：航线编辑器 -->
+  <!-- ========================================================= -->
+  <section class="chapter" id="7-航线编辑器">
+    <div class="chapter-head">
+      <div class="num">07</div>
+      <h2>航线编辑器</h2>
+      <p class="lead">航线编辑器提供从<strong>航线库管理</strong>到<strong>3D 可视化航线规划</strong>的完整能力，支持贴近摄影、面状、航点等多种航线类型，是精细化作业的核心工具。</p>
+    </div>
+
+    <h3><span class="dot">◆</span>7.1 航线库</h3>
+    <div class="screenshot"><img src="./航线编辑器列表.png" alt="航线编辑器列表"><div class="caption">航线库列表</div></div>
+    <p>航线库页面管理所有已创建的航线文件，列表主要字段如下：</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>字段</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td colspan="2">航线名称、类型、航点数、距离、机型、负载、更新时间</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p><strong>航线类型</strong>（彩色标签）：</p>
+    <ul class="list">
+      <li><span class="tag purple">贴近摄影航线</span> 精细化倾斜摄影建模。</li>
+      <li><span class="tag blue">面状航线</span> 区域覆盖式测绘。</li>
+      <li><span class="tag green">航点航线</span> 逐点巡航巡检。</li>
+    </ul>
+    <p><strong>操作按钮：</strong></p>
+    <ul class="list">
+      <li><strong>+ 创建航线</strong> — 新建航线。</li>
+      <li><strong>导入</strong> — 导入 KMZ 航线文件。</li>
+      <li><strong>导出</strong> — 导出选中航线。</li>
+      <li><strong>拼接航线</strong> — 合并多条航线。</li>
+      <li><strong>删除</strong> — 批量删除。</li>
+    </ul>
+    <p>同时支持按<strong>机型、负载</strong>筛选，按<strong>名称</strong>搜索。</p>
+
+    <h3><span class="dot">◆</span>7.2 创建新航线</h3>
+    <div class="screenshot"><img src="./创建航线.png" alt="创建航线"><div class="caption">创建航线对话框</div></div>
+    <p>点击「+ 创建航线」后弹出配置对话框，按步骤完成：</p>
+
+    <h4>第 1 步 — 选择航线类型</h4>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>分类</th><th>航线类型</th></tr></thead>
+      <tbody>
+        <tr><td><strong>巡逻巡检航线</strong></td><td>航点航线、巡逻航线</td></tr>
+        <tr><td><strong>测绘航线</strong></td><td>面状航线、带状航线</td></tr>
+        <tr><td><strong>精细化测绘航线</strong></td><td>斜面航线、几何体航线、贴近摄影航线</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h4>第 2 步 — 选择飞行器</h4>
+    <ul class="list">
+      <li>经纬 M30 系列</li>
+      <li>Mavic 3 行业系列</li>
+      <li>Matrice 3D 系列</li>
+      <li>Matrice 4 行业系列</li>
+      <li>Matrice 4D 系列</li>
+      <li>Matrice 400</li>
+    </ul>
+
+    <h4>第 3 步 — 选择型号</h4>
+    <p>例如：经纬 M30 / 经纬 M30 T。</p>
+
+    <h4>第 4 步 — 输入航线名称</h4>
+    <p>输入航线名称后点击<strong>「确定」</strong>进入编辑器。</p>
+
+    <h3><span class="dot">◆</span>7.3 航线编辑</h3>
+    <div class="screenshot"><img src="./航线遍及.png" alt="航线编辑"><div class="caption">航线编辑界面</div></div>
+    <p>进入航线编辑器后，可在 3D 地图上进行航线规划：</p>
+    <ul class="list">
+      <li><strong>左侧参数面板</strong> — 选择镜头（广角 / 红外）、GSD 分辨率设置（cm / pixel）、相对被摄面距离、安全起飞高度、测区顶部 / 底部高度（ASL）。</li>
+      <li><strong>地图区域</strong> — 在地图上绘制航线区域，蓝色线条显示规划航线路径，航点标记。</li>
+      <li><strong>右上</strong> — 测区绘制工具。</li>
+    </ul>
+
+    <h3><span class="dot">◆</span>7.4 贴近摄影流程</h3>
+    <div class="screenshot"><img src="./修改航线列表.png" alt="贴近摄影流程"><div class="caption">贴近摄影流程</div></div>
+    <p>贴近摄影航线遵循 4 步流程：</p>
+    <ul class="list">
+      <li><strong>创建粗模</strong> — 开启贴近摄影粗模重建开关，生成粗模。</li>
+      <li><strong>选择粗模</strong> — 选择目标粗模，调整点云粒度查看。</li>
+      <li><strong>画测区，生成航线</strong> — 在粗模上框选测绘区域。</li>
+      <li><strong>通过参数页面调整航线参数</strong>。</li>
+    </ul>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- 第 8 章：任务管理 -->
+  <!-- ========================================================= -->
+  <section class="chapter" id="8-任务管理">
+    <div class="chapter-head">
+      <div class="num">08</div>
+      <h2>任务管理</h2>
+      <p class="lead">任务管理页面展示所有飞行任务及其执行状态，支持任务的创建、执行、暂停 / 取消与轨迹回放，是飞行调度的核心入口。</p>
+    </div>
+
+    <h3><span class="dot">◆</span>8.1 任务列表</h3>
+    <div class="screenshot"><img src="./任务管理列表.png" alt="任务管理列表"><div class="caption">任务管理列表</div></div>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>字段</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><strong>任务名称</strong></td><td>自定义任务名称。</td></tr>
+        <tr><td><strong>设备 SN</strong></td><td>执行任务的设备序列号。</td></tr>
+        <tr><td><strong>状态</strong></td><td><span class="tag green">成功</span> <span class="tag red">失败</span> <span class="tag blue">执行中</span> <span class="tag orange">已暂停</span> 待执行 已取消</td></tr>
+        <tr><td><strong>类型</strong></td><td>即时 / 定时。</td></tr>
+        <tr><td><strong>创建时间</strong></td><td>任务创建时间。</td></tr>
+        <tr><td><strong>操作</strong></td><td>回放 / 暂停 / 取消 / 执行。</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p><strong>状态与操作对应：</strong></p>
+    <ul class="list">
+      <li>成功 / 失败 → <strong>回放</strong></li>
+      <li>执行中 → <strong>暂停</strong> / <strong>取消</strong></li>
+      <li>待执行 → <strong>执行</strong></li>
+    </ul>
+    <p>支持按状态筛选，点击「+ 新建任务」创建任务。</p>
+
+    <h3><span class="dot">◆</span>8.2 新建任务</h3>
+    <div class="screenshot"><img src="./新建任务.png" alt="新建任务"><div class="caption">新建任务</div></div>
+    <p>新建任务可配置以下参数：</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>配置</th><th>选项 / 说明</th></tr></thead>
+      <tbody>
+        <tr><td><strong>计划名称</strong></td><td>自定义输入。</td></tr>
+        <tr><td><strong>任务类型</strong></td><td>普通任务 / 蛙跳任务 / 手飞任务。</td></tr>
+        <tr><td><strong>执行航线</strong></td><td>从航线库选择。</td></tr>
+        <tr><td><strong>选择设备</strong></td><td>从在线设备选择。</td></tr>
+        <tr><td><strong>多模态识别</strong></td><td>开 / 关。</td></tr>
+        <tr><td><strong>任务精度</strong></td><td>高精度 RTK / GNSS。</td></tr>
+        <tr><td><strong>任务策略</strong></td><td>立即 / 单次定时 / 重复定时 / 连续执行。</td></tr>
+        <tr><td><strong>自动断点续飞</strong></td><td>开 / 关。</td></tr>
+        <tr><td><strong>智能规划最佳返航路线</strong></td><td>开 / 关。</td></tr>
+        <tr><td><strong>最低返航高度</strong></td><td>相对机场，默认 100m。</td></tr>
+        <tr><td><strong>航线飞行中失联</strong></td><td>返航 / 继续执行。</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3><span class="dot">◆</span>8.3 任务回放</h3>
+    <div class="screenshot"><img src="./任务回放.png" alt="任务回放"><div class="caption">任务回放</div></div>
+    <p>任务执行完成后可查看回放：</p>
+    <ul class="list">
+      <li><strong>左侧 — 任务详情</strong>：基本信息（任务名称、类型、关联航线、创建 / 开始 / 结束时间）、架次信息（飞行器、飞行距离、飞行时长）。</li>
+      <li><strong>地图区域</strong>：在 3D 地图上回放飞行轨迹，标注航点位置。</li>
+    </ul>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- 第 9 章：媒体管理 -->
+  <!-- ========================================================= -->
+  <section class="chapter" id="9-媒体管理">
+    <div class="chapter-head">
+      <div class="num">09</div>
+      <h2>媒体管理</h2>
+      <p class="lead">媒体管理页面用于<strong>浏览和管理无人机拍摄的照片与视频文件</strong>，支持按类型、设备与时间范围筛选，并提供下载与删除能力。</p>
+    </div>
+    <div class="screenshot"><img src="./媒体管理列表.png" alt="媒体管理列表"><div class="caption">媒体管理列表</div></div>
+
+    <h3><span class="dot">◆</span>9.1 筛选条件</h3>
+    <p><strong>左侧筛选面板：</strong></p>
+    <ul class="list">
+      <li><strong>媒体类型</strong> — 全部 / 照片 / 视频。</li>
+      <li><strong>设备</strong> — 输入设备 SN 筛选。</li>
+      <li><strong>日期范围</strong> — 设置起止日期。</li>
+    </ul>
+
+    <h3><span class="dot">◆</span>9.2 文件列表</h3>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>字段</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><strong>文件名</strong></td><td>DJI 标准命名格式（如 <code>DJI_20260703122401_0001_V</code>）。</td></tr>
+        <tr><td><strong>类型</strong></td><td>照片 / 视频。</td></tr>
+        <tr><td><strong>大小</strong></td><td>文件大小。</td></tr>
+        <tr><td><strong>设备</strong></td><td>拍摄设备 SN。</td></tr>
+        <tr><td><strong>创建时间</strong></td><td>拍摄时间。</td></tr>
+        <tr><td><strong>操作</strong></td><td>下载 / 删除。</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3><span class="dot">◆</span>9.3 分页</h3>
+    <ul class="list">
+      <li>默认每页 50 条。</li>
+      <li>显示总文件数（如「共 1967 个文件」）。</li>
+      <li>支持翻页浏览。</li>
+    </ul>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- 第 10 章：空域管理 -->
+  <!-- ========================================================= -->
+  <section class="chapter" id="10-空域管理">
+    <div class="chapter-head">
+      <div class="num">10</div>
+      <h2>空域管理</h2>
+      <p class="lead">空域管理在 <strong>Cesium 3D 地图</strong>上可视化展示和管理飞行区域限制，通过电子围栏、禁飞区与作业区，为飞行作业划定清晰的安全边界。</p>
+    </div>
+
+    <h3><span class="dot">◆</span>10.1 空域列表</h3>
+    <div class="screenshot"><img src="./空域管理.png" alt="空域管理"><div class="caption">空域管理</div></div>
+    <ul class="list">
+      <li><strong>左侧面板</strong>：类型筛选 / 状态筛选、区域名称搜索、已创建的区域列表（带颜色指示）。</li>
+      <li><strong>地图视图</strong>：绿色区域 = 作业区（允许飞行）、红色区域 = 限飞区（禁止飞行）、橙色区域 = 禁降区（禁止降落）。</li>
+    </ul>
+
+    <h3><span class="dot">◆</span>10.2 创建空域</h3>
+    <div class="screenshot"><img src="./空域创建.png" alt="空域创建"><div class="caption">空域创建</div></div>
+    <p>点击右上角编辑按钮后，可选择创建的区域类型和形状：</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>区域类型</th><th>形状选项</th><th>颜色标识</th></tr></thead>
+      <tbody>
+        <tr><td><strong>作业区</strong></td><td>多边形 / 圆形</td><td><span class="tag green">绿色</span></td></tr>
+        <tr><td><strong>限飞区</strong></td><td>多边形 / 圆形</td><td><span class="tag red">红色</span></td></tr>
+        <tr><td><strong>禁降区</strong></td><td>多边形</td><td><span class="tag orange">橙色</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p><strong>操作步骤：</strong></p>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><span class="c">选择区域类型和形状。</span></div>
+      <div class="step"><span class="n">2</span><span class="c">在地图上点击绘制区域边界。</span></div>
+      <div class="step"><span class="n">3</span><span class="c">设置区域名称和参数。</span></div>
+      <div class="step"><span class="n">4</span><span class="c">保存并同步到设备。</span></div>
+    </div>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- 第 11 章：模型库 -->
+  <!-- ========================================================= -->
+  <section class="chapter" id="11-模型库">
+    <div class="chapter-head">
+      <div class="num">11</div>
+      <h2>模型库</h2>
+      <p class="lead">模型库管理<strong>三维重建的成果文件</strong>，支持正射影像、三维 Mesh 与点云模型，并提供重建任务的全流程管理。</p>
+    </div>
+
+    <h3><span class="dot">◆</span>11.1 模型列表</h3>
+    <div class="screenshot"><img src="./模型列表.png" alt="模型列表"><div class="caption">模型列表</div></div>
+    <ul class="list">
+      <li><strong>左侧导航</strong>：资源库（模型、二维模型、三维模型）、重建任务。</li>
+      <li><strong>模型卡片</strong>：网格视图 / 列表视图切换、显示模型名称和创建时间、支持导入、创建文件夹、按名称搜索、筛选。</li>
+    </ul>
+
+    <h3><span class="dot">◆</span>11.2 新建模型重建</h3>
+    <div class="screenshot"><img src="./模型重建.png" alt="模型重建"><div class="caption">模型重建</div></div>
+    <p>配置步骤：</p>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><span class="c"><strong>模型名称</strong> — 自动生成时间戳命名，可修改。</span></div>
+      <div class="step"><span class="n">2</span><span class="c"><strong>选择数据</strong> — 按航线选择（从已执行的航线任务中选择）或按文件夹选择（手动输入媒体文件夹 UUID）。</span></div>
+      <div class="step"><span class="n">3</span><span class="c"><strong>像控点</strong> — 开 / 关。</span></div>
+      <div class="step"><span class="n">4</span><span class="c"><strong>模型成果</strong> — 二维（正射）/ 三维（Mesh）。</span></div>
+      <div class="step"><span class="n">5</span><span class="c"><strong>兴趣区域</strong> — 开 / 关。</span></div>
+      <div class="step"><span class="n">6</span><span class="c"><strong>坐标系选择</strong> — WGS 84 EPSG:4326 等。</span></div>
+      <div class="step"><span class="n">7</span><span class="c"><strong>模型存储位置</strong> — 云端建模。</span></div>
+    </div>
+    <p>配置完成后点击<strong>「开始重建」</strong>提交任务。</p>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- 第 12 章：AI 助手 -->
+  <!-- ========================================================= -->
+  <section class="chapter" id="12-ai助手">
+    <div class="chapter-head">
+      <div class="num">12</div>
+      <h2>AI 助手（Copilot）</h2>
+      <p class="lead">平台内置 AI 助手（Copilot），通过<strong>自然语言交互</strong>提供智能运维能力，让复杂的设备查询、任务下发与数据汇总变得简单直接。</p>
+    </div>
+    <div class="screenshot"><img src="./Copilot.png" alt="AI 助手"><div class="caption">AI 助手 Copilot</div></div>
+
+    <h3><span class="dot">◆</span>12.1 入口</h3>
+    <p>点击顶部导航栏右侧<strong>「AI 助手」</strong>按钮，打开右侧 Copilot 面板。</p>
+
+    <h3><span class="dot">◆</span>12.2 功能特性</h3>
+    <div class="feat-grid">
+      <div class="feat"><div class="f-ico">🎯</div><strong>意图驱动</strong><p>自然语言描述需求，AI 自动执行操作。</p></div>
+      <div class="feat"><div class="f-ico">📡</div><strong>设备查询</strong><p>询问设备在线状态、型号信息。</p></div>
+      <div class="feat"><div class="f-ico">📋</div><strong>任务下发</strong><p>通过对话创建和管理飞行任务。</p></div>
+      <div class="feat"><div class="f-ico">📊</div><strong>数据汇总</strong><p>自动聚合设备、航线、任务等运营数据。</p></div>
+      <div class="feat"><div class="f-ico">💬</div><strong>智能提示</strong><p>根据设备状态给出注意事项和建议。</p></div>
+    </div>
+
+    <h3><span class="dot">◆</span>12.3 使用示例</h3>
+    <p>在对话框中输入自然语言指令即可，例如：</p>
+    <ul class="list">
+      <li>「查看当前在线设备」</li>
+      <li>「帮我查看惠州 142 号机场的状态」</li>
+      <li>「创建一个巡检任务」</li>
+    </ul>
+    <p>AI 助手会以结构化表格返回结果，并提供操作建议。</p>
+
+    <h3><span class="dot">◆</span>12.4 启用条件</h3>
+    <p>AI 助手需要后端配置以下环境变量：</p>
+    <ul class="list">
+      <li><code>FH_CHAT_ENABLED=true</code> — 启用 Chat 功能。</li>
+      <li><code>SPRING_AI_OPENAI_API_KEY</code>（或 Anthropic Key）— AI 模型密钥。</li>
+      <li><code>FH_CHAT_MCP_URL</code> — MCP Server 地址。</li>
+    </ul>
+  </section>
+
+  <!-- ===== 页脚 ===== -->
+  <footer>
+    <div class="links">
+      <a href="#toc">返回目录</a>
+    </div>
+    <p>DJI 大疆上云 API 2 · 无人机管理平台使用说明 · v1.0 · 2026-08-08</p>
+    <p>如有使用问题，请联系平台管理员。</p>
+  </footer>
+
+</div>
+
+<!-- 回到顶部 -->
+<button class="backtop" id="backtop" title="回到顶部">↑</button>
+
+<script>
+  // 回到顶部按钮
+  const backtop = document.getElementById('backtop');
+  window.addEventListener('scroll', function () {
+    if (window.scrollY > 400) {
+      backtop.classList.add('show');
+    } else {
+      backtop.classList.remove('show');
+    }
+  });
+  backtop.addEventListener('click', function () {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+</script>
+
+</body>
+</html>

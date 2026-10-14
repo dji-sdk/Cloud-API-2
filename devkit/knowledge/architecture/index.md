@@ -9,7 +9,7 @@ last_updated: 2026-08-05
 
 # Architecture
 
-本模块描述 FlightHub PaaS SDK 的架构设计理念和核心模式。
+本模块描述 DJI CloudAPI2 SDK 的架构设计理念和核心模式。
 
 ## 包含内容
 

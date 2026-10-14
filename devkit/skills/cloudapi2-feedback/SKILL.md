@@ -1,14 +1,14 @@
 ---
 name: cloudapi2-feedback
 description: |
-  DJI FlightHub PaaS SDK 问题反馈助手。把用户的口语问题变成结构化 GitHub issue，走完「采集→脱敏→确认→提交」闭环。支持 4 类反馈：问题（Bug）、需求、咨询、其他。
+  DJI CloudAPI2 SDK 问题反馈助手。把用户的口语问题变成结构化 GitHub issue，走完「采集→脱敏→确认→提交」闭环。支持 4 类反馈：问题（Bug）、需求、咨询、其他。
   触发词：反馈、我要反馈、反馈问题、反馈一下、提个 issue、报个问题、提交问题、issue 提交、提交 GitHub、report a bug、file an issue、submit feedback、提个需求、有个建议、想咨询一下。
   不触发：有明确错误码的排障（走 troubleshooting）、新功能开发（走对应业务 Skill）、Jira issue 分析（走 issue-analyzer）。
 version: 1.0.0
 author: DJI CloudAPI2 Team
 ---
 
-# DJI FlightHub PaaS SDK 问题反馈助手
+# DJI CloudAPI2 SDK 问题反馈助手
 
 ## 这是什么
 

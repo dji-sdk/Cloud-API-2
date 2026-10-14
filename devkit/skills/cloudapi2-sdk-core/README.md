@@ -1,6 +1,6 @@
-# DJI FlightHub SDK Skill
+# DJI CloudAPI2 SDK Skill
 
-为 AI Agent 提供 DJI FlightHub Java SDK 的专业接入能力包。安装后，AI 在你编写 FlightHub SDK 集成代码时**自动加载**，确保生成的代码遵循 5 条核心安全规则。
+为 AI Agent 提供 DJI CloudAPI2 Java SDK 的专业接入能力包。安装后，AI 在你编写 DJI CloudAPI2 SDK 集成代码时**自动加载**，确保生成的代码遵循 5 条核心安全规则。
 
 ## 能力
 
@@ -34,7 +34,7 @@ cp -r skills/cloudapi2-sdk-core .github/skills/
 ### 验证安装成功
 
 安装后在 AI 助手中输入以下任一关键词，Skill 应自动触发：
-- "集成 FlightHub SDK"
+- "集成 DJI CloudAPI2 SDK"
 - "初始化 FlightHubSDK"
 - "订阅无人机 OSD"
 - "让无人机返航"
@@ -50,7 +50,7 @@ cp -r skills/cloudapi2-sdk-core .github/skills/
 
 Skill 安装后**无需手动调用**。当你的对话涉及以下场景时，AI 会自动加载 Skill：
 
-- 集成 / 接入 FlightHub SDK（Java）
+- 集成 / 接入 DJI CloudAPI2 SDK（Java）
 - 监听无人机或机场状态
 - 控制无人机（起飞、降落、返航、急停）
 - 开始 / 停止直播流
@@ -63,7 +63,7 @@ Skill 安装后**无需手动调用**。当你的对话涉及以下场景时，A
 #### 场景 1：初始化 SDK
 
 ```
-你：帮我在 Spring Boot 项目中初始化 FlightHub SDK
+你：帮我在 Spring Boot 项目中初始化 DJI CloudAPI2 SDK
 
 AI：（自动加载 Skill）
 → 生成 @Configuration + @PostConstruct 代码
@@ -148,7 +148,7 @@ cloudapi2-sdk-core/
 
 ## 适用版本
 
-- **SDK**: FlightHub Java SDK v0.8.0+
+- **SDK**: DJI CloudAPI2 Java SDK v0.8.0+
 - **框架**: Spring Boot 2.x / 3.x
 - **IDE**: Claude Code / Cursor / GitHub Copilot / 任何支持 Agent Skills 的工具
 - **最后更新**: 2026-06

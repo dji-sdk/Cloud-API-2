@@ -1,6 +1,6 @@
 # DJI Cloud API 2.0 MCP Server
 
-**DJI FlightHub PaaS SDK 的 MCP（Model Context Protocol）封装**  
+**DJI CloudAPI2 SDK 的 MCP（Model Context Protocol）封装**  
 让 AI Agent 通过自然语言直接操控无人机与机场，无需手写一行 SDK 代码。
 
 ---
@@ -25,7 +25,7 @@
 
 ## 这是什么
 
-FlightHub MCP Server 是一个符合 [MCP 规范（2025-06-18）](https://modelcontextprotocol.io/) 的 Java 服务，通过 **JSON-RPC over SSE** 将 DJI FlightHub PaaS SDK 的能力暴露给任何 MCP 兼容的 AI 工具（Claude Code、Cursor、Claude Desktop 等）。
+DJI CloudAPI2 MCP Server 是一个符合 [MCP 规范（2025-06-18）](https://modelcontextprotocol.io/) 的 Java 服务，通过 **JSON-RPC over SSE** 将 DJI CloudAPI2 SDK 的能力暴露给任何 MCP 兼容的 AI 工具（Claude Code、Cursor、Claude Desktop 等）。
 
 ```
 ┌─────────────────────┐         JSON-RPC          ┌─────────────────────────┐
@@ -34,12 +34,12 @@ FlightHub MCP Server 是一个符合 [MCP 规范（2025-06-18）](https://modelc
 └─────────────────────┘                            └────────────┬────────────┘
                                                                 │  JNI / SDK
                                                    ┌────────────▼────────────┐
-                                                   │  FlightHub PaaS SDK     │
+                                                   │  DJI CloudAPI2 SDK     │
                                                    │  (Linux x86_64 native)  │
                                                    └────────────┬────────────┘
                                                                 │  HTTPS/WebSocket
                                                    ┌────────────▼────────────┐
-                                                   │  FlightHub 云端平台      │
+                                                   │  DJI CloudAPI2 云端平台      │
                                                    │  (工作空间 / 设备 / 任务) │
                                                    └────────────┬────────────┘
                                                                 │  4G/5G/RC
@@ -52,7 +52,7 @@ FlightHub MCP Server 是一个符合 [MCP 规范（2025-06-18）](https://modelc
 
 - AI 辅助巡检调度：用自然语言描述巡检路线，Agent 自动生成航线并执行飞行任务
 - 无人机状态监控：AI 持续查询设备遥测，异常时自动触发告警或返航
-- 开发与调试加速：开发者在 IDE 中直接对话 FlightHub，无需切换控制台
+- 开发与调试加速：开发者在 IDE 中直接对话 DJI CloudAPI2，无需切换控制台
 
 ---
 
@@ -61,8 +61,8 @@ FlightHub MCP Server 是一个符合 [MCP 规范（2025-06-18）](https://modelc
 | 条件 | 说明 | 获取方式 |
 |------|------|---------|
 | **DJI 开发者账户** | 注册 DJI 开发者平台 | [developer.dji.com](https://developer.dji.com) |
-| **FlightHub PaaS 接入权限** | 企业 API 权限 + 工作空间 | 联系 DJI 企业技术支持申请 |
-| **工作空间凭证** | 服务地址 / 访问令牌 / 工作空间 UUID | 登录 FlightHub 管理控制台获取 |
+| **DJI CloudAPI2 接入权限** | 企业 API 权限 + 工作空间 | 联系 DJI 企业技术支持申请 |
+| **工作空间凭证** | 服务地址 / 访问令牌 / 工作空间 UUID | 登录 DJI CloudAPI2 管理控制台获取 |
 
 > MCP Server 由平台侧统一部署，用户无需本地编译或运行任何进程。
 
@@ -81,7 +81,7 @@ claude mcp add --transport sse --scope user \
   https://<mcp-server-host>/pf-devkit/ai-plugin/mcp/sse
 ```
 
-执行后重启 Claude Code，在对话中输入「连接 FlightHub」验证。
+执行后重启 Claude Code，在对话中输入「连接 DJI CloudAPI2」验证。
 
 ### Cursor
 
@@ -114,14 +114,14 @@ claude mcp add --transport sse --scope user \
 |------|------|
 | `dji-cloud-api2` | MCP Server 注册名称 |
 | `https://<mcp-server-host>/sse` | 平台分配的 SSE 端点 URL |
-| `Authorization: Bearer <token>` | 鉴权令牌（从 FlightHub 控制台获取） |
+| `Authorization: Bearer <token>` | 鉴权令牌（从 DJI CloudAPI2 控制台获取） |
 
 ### 验证
 
 配置完成后在 AI 工具中输入：
 
 ```
-连接 FlightHub
+连接 DJI CloudAPI2
 ```
 
 AI 应调用 `fh_connect` 并返回 session 信息，确认连接成功。
@@ -165,7 +165,7 @@ fh_connect                           ← 必须第一步
 
 ## 工具目录（51 个）
 
-> 此处为工具速查清单（安全等级 / 功能概述）。参数说明、返回值结构和调用示例见 → **[MCP 工具使用手册](../docs/mcp-tools-guide.md)**
+> 此处为工具速查清单（安全等级 / 功能概述）。
 > - **L0** 只读操作，无需确认
 > - **L1** 可逆操作，需要 `confirm=true` 或人工弹窗确认
 > - **L2** 飞行操作，需要飞行控制权 + DRC 链路 + 确认
@@ -291,7 +291,7 @@ fh_connect                           ← 必须第一步
 
 ## 安全机制
 
-FlightHub MCP Server 实现了多层安全防护，防止 AI Agent 执行未经授权或危险的飞行操作。
+DJI CloudAPI2 MCP Server 实现了多层安全防护，防止 AI Agent 执行未经授权或危险的飞行操作。
 
 ### 四级安全模型
 
@@ -338,7 +338,7 @@ AI 调用 fh_takeoff →
 
 ## ⚠️ 安全声明（Demo 项目已知风险）
 
-本仓库为 **Demo 演示项目**，用于展示 FlightHub PaaS SDK 的 AI Agent 接入能力，
+本仓库为 **Demo 演示项目**，用于展示 DJI CloudAPI2 SDK 的 AI Agent 接入能力，
 **不得直接用于生产环境**。
 
 > This repository is a **DEMO project**. Do NOT deploy directly to production.
@@ -369,7 +369,7 @@ ISV 在生产环境使用前**必须自行补充对应安全措施**；未处理
 
 | 变量 | 必填 | 默认值 | 说明 |
 |------|------|--------|------|
-| `FH_SERVER_ADDRESS` | **是** | — | FlightHub 服务器地址（如 `https://your-server.com`） |
+| `FH_SERVER_ADDRESS` | **是** | — | DJI CloudAPI2 服务器地址（如 `https://your-server.com`） |
 | `FH_SERVER_PORT` | 否 | `443` | 服务器端口 |
 | `FH_ACCESS_TOKEN` | 是* | — | 工作空间访问令牌（真实模式必填，须在服务启动前通过环境变量预设） |
 | `FH_WORKSPACE_UUID` | 是* | — | 工作空间绑定 UUID（真实模式必填，须在服务启动前通过环境变量预设） |
@@ -399,7 +399,7 @@ MCP Server 由平台侧统一部署（Docker + SSE），用户无需关注部署
 | **生产环境** | Docker 容器 + SSE 模式，参考 `docker-compose.yml` |
 | **测试环境** | 同上，启用 `FH_MOCK=true` 返回模拟数据 |
 
-> 容器规格、docker-compose 配置、健康检查命令和 SDK 原生库依赖清单详见 → **[Docker 部署指南](docs/docker-deployment.md)**
+> 容器规格、docker-compose 配置、健康检查命令和 SDK 原生库依赖清单详见 `docker-compose.yml` 和 `.env.example`。
 
 > **注意**：`.gitlab-ci.yml` 中的 `privatization-build-wibu-*` stage 为 DJI 内部私有化构建专用（依赖内部 Harbor 镜像和 Wibu AxProtector 工具链），外部 ISV fork 后**无法使用且可安全跳过**，不影响标准构建和部署流程。
 
@@ -442,7 +442,7 @@ mcp/
 4. 编写测试类，覆盖：无 session / 参数缺失 / Mock 模式正常返回
 5. 编译（`mvn clean package -DskipTests`）+ 全量测试（`mvn test`）
 
-> Spring 会自动扫描并注册所有 `AbstractMcpTool` 实现 Bean，无需手动编辑注册表。完整的 9 步流程（含 Checkstyle 检查、STATUS.md 更新、MR 规范）详见 → **[工具版本与更新指南](docs/tool-versioning.md)**
+> Spring 会自动扫描并注册所有 `AbstractMcpTool` 实现 Bean，无需手动编辑注册表。
 
 ```java
 @Component
@@ -510,7 +510,7 @@ SSE 端点默认：`http://localhost:8080/pf-devkit/ai-plugin/mcp/sse`
 
 | 限制 | 说明 |
 |------|------|
-| **Linux x86_64 专属** | FlightHub SDK JNI 原生库仅提供 Linux x86_64 版本，服务端必须在对应平台运行（Docker 解决）。Mock 模式无此限制。 |
+| **Linux x86_64 专属** | DJI CloudAPI2 SDK JNI 原生库仅提供 Linux x86_64 版本，服务端必须在对应平台运行（Docker 解决）。Mock 模式无此限制。 |
 | **单 workspace** | 当前一个 MCP Server 实例对应一个工作空间。多 workspace 场景需要运行多个实例。 |
 | **单活跃 session** | SessionManager 当前只维护一个活跃 session，多客户端并发连接会共享同一个 SDK 实例。 |
 | **待开发 SDK 模块** | 以下 SDK 模块尚未覆盖：组织管理（OrgModule）、地图元素（MapElementModule）、通知告警、用户管理、AI 识别（AiModule）等（参见 docs/STATUS.md）。 |
@@ -523,7 +523,7 @@ SSE 端点默认：`http://localhost:8080/pf-devkit/ai-plugin/mcp/sse`
 |------|------|
 | **GitHub Issues** | 报告 Bug 或提交功能建议 |
 | **DJI 开发者论坛** | [sdk-forum.dji.com](https://sdk-forum.dji.com) — SDK 技术问题 |
-| **DJI 企业技术支持** | FlightHub PaaS 接入权限、SDK 授权、账户问题，请联系 DJI 商务 |
+| **DJI 企业技术支持** | DJI CloudAPI2 接入权限、SDK 授权、账户问题，请联系 DJI 商务 |
 
 > 提交 Issue 时请附上：MCP Server 版本、错误日志（如有）、复现步骤。
 
@@ -537,9 +537,4 @@ MIT
 
 ## 相关文档
 
-| 文档 | 说明 |
-|------|------|
-| **[MCP 工具使用手册](../docs/mcp-tools-guide.md)** | 每个工具的参数、返回值结构、调用示例和注意事项 |
-| **[工具版本与更新指南](docs/tool-versioning.md)** | 当前版本工具清单、版本机制说明、新增/修改工具的完整流程 |
-| **[开发状态跟踪](docs/STATUS.md)** | 各里程碑完成情况、已知缺口、MR 历史 |
-| **[Docker 部署指南](docs/docker-deployment.md)** | 生产环境部署、健康检查、日志配置 |
+（以下文档待补充，当前不可用）
