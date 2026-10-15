@@ -6,6 +6,16 @@ body:
   - type: markdown
     attributes:
       value: |
+        ### 提交前请先确认 🔍
+        为帮助你更快定位与解决问题，提交 issue 前请先：
+        - 📖 查阅 [项目 README 与文档](https://github.com/dji-sdk/Cloud-API-2#readme)
+        - 🔎 搜索 [已有 issue（含已关闭）](https://github.com/dji-sdk/Cloud-API-2/issues?q=is%3Aissue)，确认是否已有相同或类似问题
+
+        很多问题在文档或历史 issue 中已有解答，可以更快得到答复。
+
+  - type: markdown
+    attributes:
+      value: |
         感谢反馈。带 **\*** 为必填。请尽量补全版本号与日志下载链接，便于研发快速定位。
         > 说明：若为「SDK」类问题，**SDK 版本号**与**日志下载链接**为必填。
 
