@@ -1,0 +1,58 @@
+# Auto detect text files and ensure LF line endings in the repo
+* text=auto eol=lf
+
+# Shell scripts must always use LF (CRLF breaks shebang on Linux/Docker)
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Docker files must use LF
+Dockerfile* text eol=lf
+docker-compose*.yml text eol=lf
+docker-entrypoint* text eol=lf
+.dockerignore text eol=lf
+
+# Build files
+Makefile text eol=lf
+*.mk text eol=lf
+
+# Source code
+*.java text eol=lf
+*.kt text eol=lf
+*.py text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.vue text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.html text eol=lf
+*.xml text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.properties text eol=lf
+*.gradle text eol=lf
+*.cfg text eol=lf
+*.conf text eol=lf
+*.env text eol=lf
+*.env.example text eol=lf
+
+# Binary files (no line ending conversion)
+*.jar binary
+*.so binary
+*.dylib binary
+*.dll binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.kmz binary
+*.kml binary

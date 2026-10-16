@@ -3,6 +3,16 @@ description: 使用方式、接入方案、能力边界等咨询
 title: "[咨询] "
 labels: ["type/question"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 提交前请先确认 🔍
+        为帮助你更快定位与解决问题，提交 issue 前请先：
+        - 📖 查阅 [项目 README 与文档](https://github.com/dji-sdk/Cloud-API-2#readme)
+        - 🔎 搜索 [已有 issue（含已关闭）](https://github.com/dji-sdk/Cloud-API-2/issues?q=is%3Aissue)，确认是否已有相同或类似问题
+
+        很多问题在文档或历史 issue 中已有解答，可以更快得到答复。
+
   - type: input
     id: company
     attributes:

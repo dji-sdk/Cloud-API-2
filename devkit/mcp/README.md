@@ -1,6 +1,6 @@
-# DJI Cloud API 2.0 MCP Server
+# DJI Cloud API 2 MCP Server
 
-**DJI CloudAPI2 SDK 的 MCP（Model Context Protocol）封装**  
+**DJI Cloud API 2 SDK 的 MCP（Model Context Protocol）封装**  
 让 AI Agent 通过自然语言直接操控无人机与机场，无需手写一行 SDK 代码。
 
 ---
@@ -11,7 +11,7 @@
 - [前置条件](#前置条件)
 - [快速开始](#快速开始一键接入)
 - [调用流程](#调用流程)
-- [工具目录（51 个）](#工具目录51-个)
+- [工具目录（57 个）](#工具目录57-个)
 - [安全机制](#安全机制)
 - [配置参考](#配置参考)
 - [部署方案](#部署方案)
@@ -25,21 +25,21 @@
 
 ## 这是什么
 
-DJI CloudAPI2 MCP Server 是一个符合 [MCP 规范（2025-06-18）](https://modelcontextprotocol.io/) 的 Java 服务，通过 **JSON-RPC over SSE** 将 DJI CloudAPI2 SDK 的能力暴露给任何 MCP 兼容的 AI 工具（Claude Code、Cursor、Claude Desktop 等）。
+DJI Cloud API 2 MCP Server 是一个符合 [MCP 规范（2025-06-18）](https://modelcontextprotocol.io/) 的 Java 服务，通过 **JSON-RPC over SSE** 将 DJI Cloud API 2 SDK 的能力暴露给任何 MCP 兼容的 AI 工具（Claude Code、Cursor、Claude Desktop 等）。
 
 ```
 ┌─────────────────────┐         JSON-RPC          ┌─────────────────────────┐
-│   AI Agent / LLM    │ ◀────────────────────────▶ │  DJI Cloud API 2.0      │
+│   AI Agent / LLM    │ ◀────────────────────────▶ │  DJI Cloud API 2        │
 │  (Claude / Cursor)  │      SSE transport         │  MCP Server (Java 17)   │
 └─────────────────────┘                            └────────────┬────────────┘
                                                                 │  JNI / SDK
                                                    ┌────────────▼────────────┐
-                                                   │  DJI CloudAPI2 SDK     │
+                                                   │  DJI Cloud API 2 SDK    │
                                                    │  (Linux x86_64 native)  │
                                                    └────────────┬────────────┘
                                                                 │  HTTPS/WebSocket
                                                    ┌────────────▼────────────┐
-                                                   │  DJI CloudAPI2 云端平台      │
+                                                   │  DJI Cloud API 2 云端平台    │
                                                    │  (工作空间 / 设备 / 任务) │
                                                    └────────────┬────────────┘
                                                                 │  4G/5G/RC
@@ -52,7 +52,7 @@ DJI CloudAPI2 MCP Server 是一个符合 [MCP 规范（2025-06-18）](https://mo
 
 - AI 辅助巡检调度：用自然语言描述巡检路线，Agent 自动生成航线并执行飞行任务
 - 无人机状态监控：AI 持续查询设备遥测，异常时自动触发告警或返航
-- 开发与调试加速：开发者在 IDE 中直接对话 DJI CloudAPI2，无需切换控制台
+- 开发与调试加速：开发者在 IDE 中直接对话 DJI Cloud API 2，无需切换控制台
 
 ---
 
@@ -61,8 +61,8 @@ DJI CloudAPI2 MCP Server 是一个符合 [MCP 规范（2025-06-18）](https://mo
 | 条件 | 说明 | 获取方式 |
 |------|------|---------|
 | **DJI 开发者账户** | 注册 DJI 开发者平台 | [developer.dji.com](https://developer.dji.com) |
-| **DJI CloudAPI2 接入权限** | 企业 API 权限 + 工作空间 | 联系 DJI 企业技术支持申请 |
-| **工作空间凭证** | 服务地址 / 访问令牌 / 工作空间 UUID | 登录 DJI CloudAPI2 管理控制台获取 |
+| **DJI Cloud API 2 接入权限** | 企业 API 权限 + 工作空间 | 联系 DJI 企业技术支持申请 |
+| **工作空间凭证** | 服务地址 / 访问令牌 / 工作空间 UUID | 登录 DJI Cloud API 2 管理控制台获取 |
 
 > MCP Server 由平台侧统一部署，用户无需本地编译或运行任何进程。
 
@@ -81,7 +81,7 @@ claude mcp add --transport sse --scope user \
   https://<mcp-server-host>/pf-devkit/ai-plugin/mcp/sse
 ```
 
-执行后重启 Claude Code，在对话中输入「连接 DJI CloudAPI2」验证。
+执行后重启 Claude Code，在对话中输入「连接 DJI Cloud API 2」验证。
 
 ### Cursor
 
@@ -114,14 +114,14 @@ claude mcp add --transport sse --scope user \
 |------|------|
 | `dji-cloud-api2` | MCP Server 注册名称 |
 | `https://<mcp-server-host>/sse` | 平台分配的 SSE 端点 URL |
-| `Authorization: Bearer <token>` | 鉴权令牌（从 DJI CloudAPI2 控制台获取） |
+| `Authorization: Bearer <token>` | 鉴权令牌（从 DJI Cloud API 2 控制台获取） |
 
 ### 验证
 
 配置完成后在 AI 工具中输入：
 
 ```
-连接 DJI CloudAPI2
+连接 DJI Cloud API 2
 ```
 
 AI 应调用 `fh_connect` 并返回 session 信息，确认连接成功。
@@ -163,7 +163,7 @@ fh_connect                           ← 必须第一步
 
 ---
 
-## 工具目录（51 个）
+## 工具目录（57 个）
 
 > 此处为工具速查清单（安全等级 / 功能概述）。
 > - **L0** 只读操作，无需确认
@@ -189,7 +189,7 @@ fh_connect                           ← 必须第一步
 | `fh_device_manage` | 设备详情 / 重命名 / 解绑 / HMS 健康告警查询 | L0~L1 |
 | `fh_dock_control` | 控制机场：开/关舱盖、启/停充电、开/关补光灯 | L1 |
 
-### 航线任务（4 个）
+### 航线任务（5 个）
 
 | 工具 | 说明 | 安全等级 |
 |------|------|----------|
@@ -197,8 +197,9 @@ fh_connect                           ← 必须第一步
 | `fh_wayline_execute` | 执行已创建的航线任务，触发设备起飞和执行 | L2 |
 | `fh_wayline_control` | 控制执行中的航线任务：暂停 / 恢复 / 取消 | L2 |
 | `fh_wayline_status` | 查询航线任务详情或任务列表（支持状态过滤） | L0 |
+| `fh_wayline_recommend` | 根据任务需求推荐航线参数（高度、速度、航点间距等） | L0 |
 
-### 实时指挥 DRC（13 个）
+### 实时指挥 DRC（14 个）
 
 | 工具 | 说明 | 安全等级 |
 |------|------|----------|
@@ -212,7 +213,8 @@ fh_connect                           ← 必须第一步
 | `fh_poi` | 环绕飞行：围绕兴趣点以指定半径/速度/方向持续环绕 | L2 |
 | `fh_stick_move` | 受限摇杆控制：方向 + 时长 + 速度百分比（内部 50ms 循环） | L2 |
 | `fh_emergency_stop` | 紧急停止（不可逆，需要强制提供 reason 用于审计） | L3 |
-| `fh_payload` | 负载控制：相机拍照/录像/变焦、云台旋转/指向、喊话器 TTS/播报、探照灯 | L1 |
+| `fh_payload_acquire` | 负载控制权获取：相机拍照/录像/变焦、云台旋转/指向 | L1 |
+| `fh_payload_release` | 负载控制权释放（操作完成后必须调用） | L1 |
 | `fh_live_start` | 直播推流控制：开始 / 停止 / 画质切换（支持无人机和机场） | L1 |
 | `fh_osd_snapshot` | OSD 实时遥测快照：位置 / 姿态 / 电量 / GPS 信号 / 风速（比 drone_snapshot 更丰富） | L0 |
 
@@ -287,11 +289,20 @@ fh_connect                           ← 必须第一步
 |------|------|----------|
 | `fh_terra` | DJI Terra 三维重建：任务管理、点云/模型生成、进度查询 | L0~L1 |
 
+### 模拟器（4 个）
+
+| 工具 | 说明 | 安全等级 |
+|------|------|----------|
+| `sim_device` | 模拟设备管理：list / create / update / delete / start / stop / batch_create / batch_delete | L0~L1 |
+| `sim_flight_state` | 飞行状态注入：驱动模拟无人机物理引擎（状态注入 / 事件注入 / 飞行状态更新） | L0~L1 |
+| `sim_hms` | 模拟 HMS 故障注入：注入 / 批量注入 / 清除 / 查询预置故障码 | L0~L1 |
+| `sim_recording` | MQTT 流量录制：录制模拟设备真实流量并转为可复用的响应模板 | L0~L1 |
+
 ---
 
 ## 安全机制
 
-DJI CloudAPI2 MCP Server 实现了多层安全防护，防止 AI Agent 执行未经授权或危险的飞行操作。
+DJI Cloud API 2 MCP Server 实现了多层安全防护，防止 AI Agent 执行未经授权或危险的飞行操作。
 
 ### 四级安全模型
 
@@ -338,7 +349,7 @@ AI 调用 fh_takeoff →
 
 ## ⚠️ 安全声明（Demo 项目已知风险）
 
-本仓库为 **Demo 演示项目**，用于展示 DJI CloudAPI2 SDK 的 AI Agent 接入能力，
+本仓库为 **Demo 演示项目**，用于展示 DJI Cloud API 2 SDK 的 AI Agent 接入能力，
 **不得直接用于生产环境**。
 
 > This repository is a **DEMO project**. Do NOT deploy directly to production.
@@ -369,7 +380,7 @@ ISV 在生产环境使用前**必须自行补充对应安全措施**；未处理
 
 | 变量 | 必填 | 默认值 | 说明 |
 |------|------|--------|------|
-| `FH_SERVER_ADDRESS` | **是** | — | DJI CloudAPI2 服务器地址（如 `https://your-server.com`） |
+| `FH_SERVER_ADDRESS` | **是** | — | DJI Cloud API 2 服务器地址（如 `https://your-server.com`） |
 | `FH_SERVER_PORT` | 否 | `443` | 服务器端口 |
 | `FH_ACCESS_TOKEN` | 是* | — | 工作空间访问令牌（真实模式必填，须在服务启动前通过环境变量预设） |
 | `FH_WORKSPACE_UUID` | 是* | — | 工作空间绑定 UUID（真实模式必填，须在服务启动前通过环境变量预设） |
@@ -421,7 +432,7 @@ mcp/
 │   ├── sdk/               # SDK 服务层（SdkService / SdkCallbackBridge）
 │   ├── security/          # 安全等级（SecurityLevel）
 │   ├── session/           # 会话管理（SessionContext / SessionManager）
-│   ├── tools/             # 51 个 MCP Tool 实现（按业务模块分包）
+│   ├── tools/             # 57 个 MCP Tool 实现（按业务模块分包）
 │   │   ├── AbstractMcpTool.java   # 基类：参数解析、错误响应、确认门控
 │   │   ├── connect/       # fh_connect, fh_session_info, fh_ops
 │   │   ├── device/        # fh_device_list, fh_drone/dock_snapshot, 等
@@ -510,7 +521,7 @@ SSE 端点默认：`http://localhost:8080/pf-devkit/ai-plugin/mcp/sse`
 
 | 限制 | 说明 |
 |------|------|
-| **Linux x86_64 专属** | DJI CloudAPI2 SDK JNI 原生库仅提供 Linux x86_64 版本，服务端必须在对应平台运行（Docker 解决）。Mock 模式无此限制。 |
+| **Linux x86_64 专属** | DJI Cloud API 2 SDK JNI 原生库仅提供 Linux x86_64 版本，服务端必须在对应平台运行（Docker 解决）。Mock 模式无此限制。 |
 | **单 workspace** | 当前一个 MCP Server 实例对应一个工作空间。多 workspace 场景需要运行多个实例。 |
 | **单活跃 session** | SessionManager 当前只维护一个活跃 session，多客户端并发连接会共享同一个 SDK 实例。 |
 | **待开发 SDK 模块** | 以下 SDK 模块尚未覆盖：组织管理（OrgModule）、地图元素（MapElementModule）、通知告警、用户管理、AI 识别（AiModule）等（参见 docs/STATUS.md）。 |
@@ -523,7 +534,7 @@ SSE 端点默认：`http://localhost:8080/pf-devkit/ai-plugin/mcp/sse`
 |------|------|
 | **GitHub Issues** | 报告 Bug 或提交功能建议 |
 | **DJI 开发者论坛** | [sdk-forum.dji.com](https://sdk-forum.dji.com) — SDK 技术问题 |
-| **DJI 企业技术支持** | DJI CloudAPI2 接入权限、SDK 授权、账户问题，请联系 DJI 商务 |
+| **DJI 企业技术支持** | DJI Cloud API 2 接入权限、SDK 授权、账户问题，请联系 DJI 商务 |
 
 > 提交 Issue 时请附上：MCP Server 版本、错误日志（如有）、复现步骤。
 
