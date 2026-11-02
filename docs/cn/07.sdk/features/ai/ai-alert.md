@@ -36,9 +36,9 @@ AiAlertModule aiAlertModule = workspace.getAIAlertModule();
 | 算法级阈值配置 | `getAlgorithmSetting(param, cb)` | 异步回调 | 读取算法级阈值配置。入参 `GetAiAlertAlgorithmSettingParam`，回调返回 `GetAiAlertAlgorithmSettingResult` |
 | 告警数据查询 | `getAiAlertFlights(param, cb)` | 异步回调 | 查询告警架次统计（分页）。入参 `GetAiAlertFlightsParam`，回调返回 `GetAiAlertFlightsResult` |
 | 告警数据查询 | `getAiAlertRecords(param, cb)` | 异步回调 | 查询告警明细记录（按 `flight_id` 分组，分页）。入参 `GetAiAlertRecordsParam`，回调返回 `GetAiAlertRecordsResult` |
-| 实时告警推送 | `listenAiAlertRecords(deviceSn, cb)` | 订阅/回调 | 监听告警记录推送（增量更新 + 未读通知）。回调类型 `AiAlertRecordsNotifyCallback`，返回 `listenId`（< 0 表示失败） |
-| 实时告警推送 | `cancelListenAiAlertRecords(listenId)` | 同步 | 取消监听告警记录推送，传入 `listenAiAlertRecords()` 返回的 `listenId` |
-| 告警记录管理 | `deleteAiAlertRecord(param, cb)` | 异步回调 | 删除告警记录。`alertUuid` 非空时精确删除，为空时按 `flightId` 批量删除该架次全部记录 |
+| 实时告警推送<br><span style="display:inline-block;padding:0 6px;border-radius:4px;background:#1f2328;color:#fff;font-size:12px;font-weight:600">暂未支持</span> | `listenAiAlertRecords(deviceSn, cb)` | 订阅/回调 | 监听告警记录推送（增量更新 + 未读通知）。回调类型 `AiAlertRecordsNotifyCallback`，返回 `listenId`（< 0 表示失败）。该接口后续即将支持。 |
+| 实时告警推送<br><span style="display:inline-block;padding:0 6px;border-radius:4px;background:#1f2328;color:#fff;font-size:12px;font-weight:600">暂未支持</span> | `cancelListenAiAlertRecords(listenId)` | 同步 | 取消监听告警记录推送，传入 `listenAiAlertRecords()` 返回的 `listenId`。该接口后续即将支持。 |
+| 告警记录管理<br><span style="display:inline-block;padding:0 6px;border-radius:4px;background:#1f2328;color:#fff;font-size:12px;font-weight:600">暂未支持</span> | `deleteAiAlertRecord(param, cb)` | 异步回调 | 删除告警记录。`alertUuid` 非空时精确删除，为空时按 `flightId` 批量删除该架次全部记录。该接口后续即将支持。 |
 
 ---
 
