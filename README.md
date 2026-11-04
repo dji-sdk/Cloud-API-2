@@ -9,6 +9,16 @@
 
 上云 API 2 是面向 DJI 硬件生态的开放 PaaS 产品。以免费、DJI 原厂能力开放、原生易集成为设计目标，一体化提供二次开发 SDK、前端组件、AI Plugin 与 AI Coding 脚手架、设备模拟器、调试工具、开源 Demo 等开放能力，助力软件集成商与开发者更高效地基于 DJI 硬件完成二次开发与垂直行业的解决方案交付。
 
+> ### 📣 活动 🆕 首届开发者工作坊 · 报名开启
+>
+> 11 月走进**南京（11/17）、成都（11/23）、北京（11/27）、深圳（11/30）**四城。大疆工程师全天现场授课，AI 编程实战 + 四大实操课题，一天上手机场应用全栈开发。
+>
+> 免费参加，席位有限（南京场最多 2 人/家，其余场最多 3 人/家）。
+>
+> **👉 [查看活动详情与报名](https://github.com/dji-sdk/Cloud-API-2/discussions/352)**
+>
+> 📝 也可直接前往大疆开发者「学习中心 · 活动中心」，完成实名认证后按城市场次报名：**[直达报名入口](https://developer.dji.com/cn/learning-center/activity/)**
+
 ## 📋 关键特性
 
 1. **免费开放**：上云 API 2 License 完全免费，不限设备台数，在 [DJI 开发者平台](https://developer.dji.com/) 几步即可完成申请。
@@ -33,6 +43,7 @@
 1. [使用上云 API 2 设备模拟器](./docs/cn/03.simulator.md)
 2. [使用上云 API 2 AI Plugin 加速集成](./docs/cn/05.ai-plugin.md)
 3. [使用上云 API 2 二次开发 Demo](./docs/cn/09.demo/00.index.md)
+4. [进入学习中心了解更多](https://developer.dji.com/cn/learning-center/)
 
 ## 📦 下载中心
 
