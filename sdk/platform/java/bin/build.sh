@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 # Flight Hub Java SDK 构建脚本
 # 作者: DJI
 # 版本: 1.0
@@ -31,7 +34,7 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# BIN-P0-01: macOS 上必须使用系统自带的 strip 并 ad-hoc 重签, 否则:
+# macOS 上必须使用系统自带的 strip 并 ad-hoc 重签, 否则:
 #   1) PATH 中若存在 Homebrew binutils 的 GNU strip, 会破坏 Mach-O dylib
 #      (丢失 LC_ID_DYLIB、损坏段布局), 导致 dyld 拒绝加载;
 #   2) dylib 只能用 -x (仅移除本地符号) , 不能全 strip, 否则丢导出符号 JVM 无法解析;
@@ -50,22 +53,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLATFORM_JAVA_DIR="$(dirname "$SCRIPT_DIR")"
 ROOT_DIR="$(dirname "$(dirname "$PLATFORM_JAVA_DIR")")"
 
-# 并行度：上层 export 的 FHSDK_JOBS / FHSDK_MAX_JOBS，否则满核
-fhsdk_detect_cores() {
-    local c
-    c="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
-    case "$c" in ""|*[!0-9]*) c=4 ;; esac
-    echo "$c"
-}
-fhsdk_resolve_jobs() {
-    if [ -n "${FHSDK_JOBS:-}" ] && [ "$FHSDK_JOBS" -gt 0 ] 2>/dev/null; then
-        echo "$FHSDK_JOBS"
-    elif [ -n "${FHSDK_MAX_JOBS:-}" ] && [ "$FHSDK_MAX_JOBS" -gt 0 ] 2>/dev/null; then
-        echo "$FHSDK_MAX_JOBS"
+# 构建资源门控（并行度 + nice 包装），详见 scripts/README.md。
+# 并行度只有两个来源：上层 scripts/build_java.sh 按必传的 -j 定版后 export 的 FHSDK_MAX_JOBS，
+# 或本脚本脱离整仓单独跑时的保守默认 4（宁可慢，也别把机器压到 SSH 断连）。
+fhsdk_resolve_jobs() { echo "${FHSDK_MAX_JOBS:-4}"; }
+# 仅供日志：如实说明上面那个值的来源，便于从构建日志判断上层 -j 有没有透传进来
+fhsdk_jobs_origin()  {
+    if [ -n "${FHSDK_MAX_JOBS:-}" ]; then
+        echo "继承上层 FHSDK_MAX_JOBS"
     else
-        fhsdk_detect_cores
+        echo "本脚本默认 4（未继承 FHSDK_MAX_JOBS）"
     fi
 }
+fhsdk_load_limit()   { echo 0; }
+fhsdk_nice()         { if [ "${FHSDK_NICE:-15}" = "0" ]; then "$@"; else nice -n "${FHSDK_NICE:-15}" "$@"; fi; }
 
 BUILD_DIR_DEBUG="$PLATFORM_JAVA_DIR/build_java_debug"
 BUILD_DIR_RELEASE="$PLATFORM_JAVA_DIR/build_java_release"
@@ -103,9 +104,10 @@ get_platform() {
     local ARCH=$(uname -m)
     
     case "$OS" in
-        Linux*)     
+        Linux*)
             case "$ARCH" in
                 x86_64) echo "linux-x86_64" ;;
+                aarch64) echo "linux-aarch64" ;;
                 *) echo "linux-unknown" ;;
             esac
             ;;
@@ -131,6 +133,14 @@ check_third_party_libs() {
                 "$THIRD_PARTIES_DIR/openssl_1_1_1/lib/linux/x86_64/libcrypto.so.1.1"
                 "$THIRD_PARTIES_DIR/openssl_1_1_1/lib/linux/x86_64/libssl.so.1.1"
                 "$THIRD_PARTIES_DIR/websockets/lib/linux/x86_64/libwebsockets.so.12"
+            )
+            ;;
+        linux-aarch64)
+            local libs=(
+                "$THIRD_PARTIES_DIR/paho_mqtt_c/lib/linux/aarch64/libpaho-mqtt3as.so.1"
+                "$THIRD_PARTIES_DIR/openssl_1_1_1/lib/linux/aarch64/libcrypto.so.1.1"
+                "$THIRD_PARTIES_DIR/openssl_1_1_1/lib/linux/aarch64/libssl.so.1.1"
+                "$THIRD_PARTIES_DIR/websockets/lib/linux/aarch64/libwebsockets.so.12"
             )
             ;;
             macosx-arm64)
@@ -324,6 +334,7 @@ build_cpp_library() {
     case "$platform_for_preset" in
         macosx-arm64) preset="macos-arm64-${bt_lower}" ;;
         linux-x86_64) preset="linux-x86_64-${bt_lower}" ;;
+        linux-aarch64) preset="linux-aarch64-${bt_lower}" ;;
         *)
             log_error "没有对应的 CMake preset: $platform_for_preset"
             return 1
@@ -348,10 +359,22 @@ build_cpp_library() {
         return 1
     fi
     
-    # 编译：默认满核；可用 FHSDK_JOBS / -j 覆盖
+    # 编译
+    # 资源门控：上层 scripts/build_java.sh 已把 -j 定版结果 export 成 FHSDK_MAX_JOBS，这里直接沿用；
+    # 单独跑本脚本时退化为保守默认 4。改造前是写死的 nproc-1（本机 = 19）且不带 nice，
+    # 19 个 g++ 与 sshd 同处 nice 0 抢 20 核 + 抢内存，实测能把 SSH 挤断。
     PARALLEL_JOBS=$(fhsdk_resolve_jobs)
-    log_info "编译并行度: $PARALLEL_JOBS"
-    make -j"$PARALLEL_JOBS"
+    LOAD_LIMIT=$(fhsdk_load_limit)
+
+    log_info "编译并行度: $PARALLEL_JOBS ($(fhsdk_jobs_origin)) | nice: ${FHSDK_NICE:-15} | 负载上限: $LOAD_LIMIT"
+
+    # -l 是次级兜底：load average 是 1 分钟 EMA，反应滞后，不能当主控，主控是 -j 的上限。
+    # fhsdk_nice 把整条编译链降到 nice 15（只调 CPU 优先级，不含 ionice）；niceness 会被 make 派生的 g++ 继承。
+    if [ "$LOAD_LIMIT" -gt 0 ] 2>/dev/null; then
+        fhsdk_nice make -j"$PARALLEL_JOBS" -l "$LOAD_LIMIT"
+    else
+        fhsdk_nice make -j"$PARALLEL_JOBS"
+    fi
     
     if [ $? -eq 0 ]; then
         log_success "C++库构建成功 ($build_type)"
@@ -361,7 +384,7 @@ build_cpp_library() {
         local lib_platform_dir="$LIB_DIR/$platform"
         mkdir -p "$lib_platform_dir"
 
-        # C-01: 每次构建前清空 lib_platform_dir 里的 native 产物,
+        # 每次构建前清空 lib_platform_dir 里的 native 产物,
         # 避免历史遗留 so/dylib (含已关闭的 Volc/Agora native) 被后续 gradle 打进 jar.
         # 仅清 .so / .so.* / .dylib, 不动子目录或其他文件.
         log_info "清理 $lib_platform_dir 里的历史 native 产物..."
@@ -375,7 +398,7 @@ build_cpp_library() {
                 strip "$lib_platform_dir/libflighthubsdk_jni.so"
             fi
 
-            # BIN-P0-04: 清除嵌入的 CI/开发路径。-ffile-prefix-map 只重写本次编译新产生的
+            # 清除嵌入的 CI/开发路径。-ffile-prefix-map 只重写本次编译新产生的
             # 调试段/rodata; 但 OpenSSL 1.1.1 等预编译静态库里已在 .rodata 段固化的 __FILE__
             # 路径（比如 "/home/jenkins/code_base/..."）无法通过编译选项清除,strip 也不动
             # rodata。用等长二进制替换直接把敏感前缀改成中性占位, 不影响段布局与运行时行为。
@@ -384,7 +407,7 @@ build_cpp_library() {
 import sys
 p = sys.argv[1]
 mapping = [
-    # BUILD-01: 映射目标统一为 /opt/vendor__(13 字符等长)。
+    # 映射目标统一为 /opt/vendor__(13 字符等长)。
     # 原目标 /build/vendor 会使本清理"制造"出与上游流水线相同的伪路径前缀,
     # 与随包 4 个 .so 的清理映射冲突, 故一并统一。
     (b'/home/jenkins', b'/opt/vendor__'),  # 等长 13 字符, 清 CI 前缀
@@ -398,12 +421,12 @@ for old, new in mapping:
     n = data.count(old)
     if n:
         data = data.replace(old, new)
-        print(f'BIN-P0-04: 替换 {old.decode()} -> {new.decode()}: {n} 处')
+        print(f'替换 {old.decode()} -> {new.decode()}: {n} 处')
 with open(p, 'wb') as f:
     f.write(data)
 PY
             else
-                log_warning "BIN-P0-04: 未找到 python3, 跳过嵌入路径清理"
+                log_warning "未找到 python3, 跳过嵌入路径清理"
             fi
 
             log_info "已复制libflighthubsdk_jni.so到 $lib_platform_dir/"
@@ -457,7 +480,7 @@ PY
                     fi
                 done
                 
-                # BIN-P0-02: 修复 OpenSSL 绝对路径依赖, 并把 OpenSSL dylib 打进产物目录。
+                # 修复 OpenSSL 绝对路径依赖, 并把 OpenSSL dylib 打进产物目录。
                 # 目标: 消除 /opt/homebrew/lib/libssl.3.dylib 等 Homebrew 绝对路径, 使 jar
                 # 可在任意 macOS (无 Homebrew) 上加载。方案: 依赖改为 @loader_path/, 且把
                 # OpenSSL 实体 dylib cp 到 $lib_platform_dir/, 与 jni.dylib 同目录一起入 jar。
@@ -529,7 +552,7 @@ PY
                     strip "$lib_platform_dir/libpaho-mqtt3as.so.1" || true
                     log_info "已复制libpaho-mqtt3as.so.1到 $lib_platform_dir/"
                 fi
-                
+
                 if [ -f "$THIRD_PARTIES_DIR/openssl_1_1_1/lib/linux/x86_64/libcrypto.so.1.1" ]; then
                     cp "$THIRD_PARTIES_DIR/openssl_1_1_1/lib/linux/x86_64/libcrypto.so.1.1" "$lib_platform_dir/"
                     strip "$lib_platform_dir/libcrypto.so.1.1" || true
@@ -555,8 +578,8 @@ PY
                 fi
                 
                 # 火山引擎 RTC SDK 动态库 (Linux)
-                # C-01 (ES320 v3.6): Volc RTC 已在 CMake 关闭 (BUILD_WITH_VOLC_USER_FULL=OFF);
-                # 本段保留代码结构以便未来重启, 打包时通过 gate 跳过. 恢复: 把 `false` 改回 `[ -d "$volc_lib_dir" ]`.
+                # Volc RTC 已在 CMake 关闭 (BUILD_WITH_VOLC_USER_FULL=OFF);
+                # 本段为预留逻辑, 当前构建不启用, 打包时通过 gate 跳过.
                 local volc_lib_dir="$THIRD_PARTIES_DIR/volc_engine_rtc_full/lib/linux-x86_64"
                 if false; then
                     log_info "复制火山引擎 RTC SDK 动态库 (Linux)..."
@@ -600,7 +623,7 @@ PY
                 fi
 
                 # 声网 Agora RTC SDK 动态库 (Linux x86_64)
-                # C-01: Agora RTC 已在 CMake 关闭 (BUILD_WITH_AGORA_USER=OFF); 恢复方式同上.
+                # Agora RTC 已在 CMake 关闭 (BUILD_WITH_AGORA_USER=OFF).
                 local agora_lib_dir="$THIRD_PARTIES_DIR/agora/linux/x86_64/agora_sdk"
                 if false; then
                     log_info "复制声网 Agora RTC SDK 动态库 (Linux x86_64)..."
@@ -675,6 +698,59 @@ PY
                     log_warning "未找到 DRTC SDK 动态库目录: $drtc_lib_dir"
                 fi
                 ;;
+            linux-aarch64)
+                # Linux aarch64（麒麟 V10 ARM 目标）
+                # DRTC/Volc/Agora aarch64 未就位；当前只复制核心动态库
+                if [ -f "$THIRD_PARTIES_DIR/paho_mqtt_c/lib/linux/aarch64/libpaho-mqtt3as.so.1" ]; then
+                    cp "$THIRD_PARTIES_DIR/paho_mqtt_c/lib/linux/aarch64/libpaho-mqtt3as.so.1" "$lib_platform_dir/"
+                    strip "$lib_platform_dir/libpaho-mqtt3as.so.1" || true
+                    log_info "已复制libpaho-mqtt3as.so.1到 $lib_platform_dir/ (aarch64)"
+                fi
+                if [ -f "$THIRD_PARTIES_DIR/openssl_1_1_1/lib/linux/aarch64/libcrypto.so.1.1" ]; then
+                    cp "$THIRD_PARTIES_DIR/openssl_1_1_1/lib/linux/aarch64/libcrypto.so.1.1" "$lib_platform_dir/"
+                    strip "$lib_platform_dir/libcrypto.so.1.1" || true
+                    log_info "已复制libcrypto.so.1.1到 $lib_platform_dir/ (aarch64)"
+                fi
+                if [ -f "$THIRD_PARTIES_DIR/openssl_1_1_1/lib/linux/aarch64/libssl.so.1.1" ]; then
+                    cp "$THIRD_PARTIES_DIR/openssl_1_1_1/lib/linux/aarch64/libssl.so.1.1" "$lib_platform_dir/"
+                    strip "$lib_platform_dir/libssl.so.1.1" || true
+                    log_info "已复制libssl.so.1.1到 $lib_platform_dir/ (aarch64)"
+                fi
+                if [ -f "$THIRD_PARTIES_DIR/websockets/lib/linux/aarch64/libwebsockets.so.12" ]; then
+                    cp "$THIRD_PARTIES_DIR/websockets/lib/linux/aarch64/libwebsockets.so.12" "$lib_platform_dir/"
+                    strip "$lib_platform_dir/libwebsockets.so.12" || true
+                    log_info "已复制libwebsockets.so.12到 $lib_platform_dir/ (aarch64)"
+                fi
+
+                # DRTC user SDK 动态库 (Linux aarch64)
+                local drtc_lib_dir="$THIRD_PARTIES_DIR/libdrtc/lib/linux/aarch64"
+                if [ -d "$drtc_lib_dir" ]; then
+                    log_info "复制 DRTC user SDK 动态库 (Linux aarch64)..."
+                    if [ -f "$drtc_lib_dir/libdrpc.so" ]; then
+                        cp "$drtc_lib_dir/libdrpc.so" "$lib_platform_dir/"
+                        strip "$lib_platform_dir/libdrpc.so" || true
+                        log_info "已复制libdrpc.so到 $lib_platform_dir/ (aarch64)"
+                    fi
+                    if [ -f "$drtc_lib_dir/libdrtc_device_sdk.so" ]; then
+                        cp "$drtc_lib_dir/libdrtc_device_sdk.so" "$lib_platform_dir/"
+                        strip "$lib_platform_dir/libdrtc_device_sdk.so" || true
+                        log_info "已复制libdrtc_device_sdk.so到 $lib_platform_dir/ (aarch64)"
+                    fi
+                    if command -v patchelf >/dev/null 2>&1; then
+                        log_info "为 DRTC user SDK 动态库设置 RPATH (aarch64)..."
+                        if [ -f "$lib_platform_dir/libdrpc.so" ]; then
+                            patchelf --set-rpath '$ORIGIN' "$lib_platform_dir/libdrpc.so" 2>/dev/null || true
+                        fi
+                        if [ -f "$lib_platform_dir/libdrtc_device_sdk.so" ]; then
+                            patchelf --set-rpath '$ORIGIN' "$lib_platform_dir/libdrtc_device_sdk.so" 2>/dev/null || true
+                        fi
+                    else
+                        log_warning "patchelf 未安装，无法设置 RPATH (aarch64 DRTC)"
+                    fi
+                else
+                    log_warning "未找到 DRTC SDK 动态库目录: $drtc_lib_dir"
+                fi
+                ;;
         macosx-arm64)
             # macOS ARM64 平台
             # macOS 使用系统 OpenSSL，不需要复制 OpenSSL 库
@@ -707,7 +783,7 @@ PY
             done
             
             # 火山引擎 RTC SDK (macOS ARM64)
-            # C-01: Volc RTC 已关闭; 恢复方式同上.
+            # Volc RTC 未包含在本构建中.
             # 从 Framework 中提取二进制文件，创建 .dylib 供 Java 加载
             # 注意：不需要复制整个 Framework 目录，只需要提取 dylib 文件即可
             local volc_lib_dir="$THIRD_PARTIES_DIR/volc_engine_rtc_full/lib/macosx/arm64"
@@ -875,16 +951,16 @@ PY
 
         # BUILD-01 止血: 清除随包 .so 内嵌的构建机路径(等长二进制替换, 不改段布局)。
         # 残留来源: libdrtc 上游预编译流水线未加 -ffile-prefix-map(/build/vendor
-        # 共 241 处 + libcrypto 残留 /home/jenkins 1 处 + PPE 库 /home/jenkins 3 处)。
+        # 共 241 处 + libcrypto 残留 /home/jenkins 1 处)。
         # 上游根治已转 4.3 登记, 仓库侧以本清理冻结恶化; 发布后以 strings 复核应归零。
-        # 扫描 lib_platform_dir 下所有 .so（含 ppe/ 子目录），避免新增库遗漏。
+        # 扫描 lib_platform_dir 下所有 .so（含子目录），避免新增库遗漏。
         if [ "$platform" = "linux-x86_64" ] && command -v python3 >/dev/null 2>&1; then
             python3 - "$lib_platform_dir" <<'PY'
 import os, sys, glob
 lib_dir = sys.argv[1]
 mapping = [
     (b'/build/vendor', b'/opt/vendor__'),  # 等长 13 字符, 上游流水线前缀
-    (b'/home/jenkins', b'/opt/vendor__'),  # 等长 13 字符, libcrypto/PPE 残留
+    (b'/home/jenkins', b'/opt/vendor__'),  # 等长 13 字符, libcrypto 残留
     (b'/code_base',    b'/opensrc__'),     # 等长 10 字符
 ]
 so_files = glob.glob(os.path.join(lib_dir, '*.so*')) + \
@@ -902,7 +978,7 @@ for p in sorted(set(so_files)):
         n = data.count(old)
         if n:
             data = data.replace(old, new)
-            print(f'BUILD-01: {name}: {old.decode()} -> {new.decode()}: {n} 处')
+            print(f'{name}: {old.decode()} -> {new.decode()}: {n} 处')
             changed = True
     assert len(data) == size_before, f'{name}: 替换后长度变化!'
     if changed:
@@ -929,7 +1005,10 @@ build_java_sdk() {
     
     # 构建SDK项目
     log_info "构建SDK项目..."
-    ./gradlew :flight_hub_sdk:clean :flight_hub_sdk:build :flight_hub_sdk:publishToMavenLocal \
+    # --max-workers 与编译并行度对齐：Gradle 默认取 nproc（本机 20），会再叠一层并发到已经吃紧的机器上。
+    # 注意 fhsdk_nice 的作用域：daemon 由本次 launcher fork 出来，会继承 nice 15 并常驻。
+    # scripts/build_java.sh 收尾会 --stop 掉它，所以不会污染后续的交互式开发构建。
+    fhsdk_nice ./gradlew :flight_hub_sdk:clean :flight_hub_sdk:build :flight_hub_sdk:publishToMavenLocal \
         --max-workers="$(fhsdk_resolve_jobs)"
     
     if [ $? -eq 0 ]; then

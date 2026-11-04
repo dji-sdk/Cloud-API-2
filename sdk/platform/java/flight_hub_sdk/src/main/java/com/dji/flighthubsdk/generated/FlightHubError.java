@@ -119,6 +119,10 @@ public class FlightHubError {
     return new FlightHubError(flighthubsdkmoduleJNI.FlightHubError_from_server(server_code, msg), true);
   }
 
+  public static FlightHubError from_parse_error(int http_code, String parse_err) {
+    return new FlightHubError(flighthubsdkmoduleJNI.FlightHubError_from_parse_error(http_code, parse_err), true);
+  }
+
   public static String me_error_to_string(int me_error_code) {
     return flighthubsdkmoduleJNI.FlightHubError_me_error_to_string(me_error_code);
   }

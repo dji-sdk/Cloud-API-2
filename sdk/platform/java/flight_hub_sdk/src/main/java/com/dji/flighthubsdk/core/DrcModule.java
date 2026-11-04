@@ -188,8 +188,10 @@ public class DrcModule {
     public void drcRtcQualityTest(FlightHubCallback.ResultCallbackWithError callback) {
         com.dji.flighthubsdk.generated.RtcQualityTestParams params = null;
         try {
-            // RtcQualityTestParams is built with defaults (empty test)
+            // 设备仅在 is_need_ack=true 时回包；底层按等待回包下发，保持 false 会 3s 超时。
             params = new com.dji.flighthubsdk.generated.RtcQualityTestParams();
+            params.setIs_need_ack(true);
+            params.setTimestamp(System.currentTimeMillis());
             int id = generateActionCallbackId();
             com.dji.flighthubsdk.generated.ResultCallbackWithError swigCb =
                 new com.dji.flighthubsdk.generated.ResultCallbackWithError() {

@@ -108,6 +108,14 @@ public class TerraBuildModelFileItem {
     return (cPtr == 0) ? null : new IntVector(cPtr, false);
   }
 
+  public void setPreview_url(String value) {
+    flighthubsdkmoduleJNI.TerraBuildModelFileItem_preview_url_set(swigCPtr, this, value);
+  }
+
+  public String getPreview_url() {
+    return flighthubsdkmoduleJNI.TerraBuildModelFileItem_preview_url_get(swigCPtr, this);
+  }
+
   public void setThumbnail_url(String value) {
     flighthubsdkmoduleJNI.TerraBuildModelFileItem_thumbnail_url_set(swigCPtr, this, value);
   }

@@ -67,6 +67,11 @@ MeErrorCode MqttClient::ConnectParamsConfig(const std::string& host, const std::
     return ME_NO_ERROR;
 }
 
+void MqttClient::SetGatewaySn(const std::string& gateway_sn) {
+    gateway_sn_ = gateway_sn;
+    LOG_INFO("[MqttClient-%s] SetGatewaySn, gateway_sn: %s", log_tag_.c_str(), gateway_sn_.c_str());
+}
+
 /*---------------------- observe ------------------*/
 ListenIdCode MqttClient::Observe(const std::shared_ptr<ObserveCallback>& callback) {
     return scheduler_->AddObserve(callback);

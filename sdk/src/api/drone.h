@@ -15,6 +15,7 @@
 #include "poi_module.h"
 #include "in_flight_wayline_module.h"
 #include "takeoff_module.h"
+#include "ground_flight_module.h"
 #include "flight_control_module.h"
 #include "control_auth_module.h"
 #include "drc_module.h"
@@ -23,6 +24,9 @@
 #include "onboard_ai_module.h"
 #include "drone_osd_module.h"
 #include "psdk_control_module.h"
+#include "esdk_control_module.h"
+#include "flight_task_media_upload_module.h"
+#include "airsense_warning_module.h"
 #include "camera_control_module.h"
 #include "ai_box_module.h"
 
@@ -32,6 +36,7 @@ class IDeviceStateModule;
 class IDeviceHMSModule;
 class IDeviceDebugModule;
 class ILiveDeviceModule;
+class IAirsenseWarningModule;
 
 /// @brief 飞行器模块接口，提供直播、负载控制、飞行控制、OSD 数据监听等功能。
 class IDrone {
@@ -58,6 +63,11 @@ public:
     /// @brief 获取一键起飞模块
     virtual std::shared_ptr<ITakeoffModule> getTakeoffModule() = 0;
 
+    /// @brief 获取舱外起降模块（舱外起飞 / 降落回机场）
+    /// [舱外起飞降落机场] 该功能目前机场3(EA230)高版本固件支持(比如 17.7.x), 如需此功能请升级固件版本.
+    /// 特别注意: 官方固件未承诺支持前, 本模块接口不作为正式接口使用。
+    virtual std::shared_ptr<IGroundFlightModule> getGroundFlightModule() = 0;
+
     /// @brief 获取飞控指令模块（紧急停/降落、返航、摇杆）
     virtual std::shared_ptr<IFlightControlModule> getFlightControlModule() = 0;
 
@@ -78,6 +88,12 @@ public:
 
     /// @brief 获取 PSDK 控制模块（探照灯/喊话器/Widget）
     virtual std::shared_ptr<IPsdkControlModule> getPsdkControlModule() = 0;
+
+    /// @brief 获取 ESDK 控制模块（ESDK 自定义数据透传）
+    virtual std::shared_ptr<IEsdkControlModule> getEsdkControlModule() = 0;
+
+    /// @brief 获取飞行任务媒体上传模块（媒体优先上传/最高优先级上传监听）
+    virtual std::shared_ptr<IFlightTaskMediaUploadModule> getFlightTaskMediaUploadModule() = 0;
 
     /// @brief 获取相机/云台控制模块
     virtual std::shared_ptr<ICameraControlModule> getCameraControlModule() = 0;
@@ -117,6 +133,9 @@ public:
 
     /// @brief 获取设备 HMS 实时推送模块
     virtual std::shared_ptr<IDeviceHMSModule> getDeviceHMSModule() = 0;
+
+    /// @brief 获取 AirSense（ADS-B）民航飞机告警实时推送模块
+    virtual std::shared_ptr<IAirsenseWarningModule> getAirsenseWarningModule() = 0;
 
     /// @brief 获取设备调试模块
     virtual std::shared_ptr<IDeviceDebugModule> getDeviceDebugModule() = 0;

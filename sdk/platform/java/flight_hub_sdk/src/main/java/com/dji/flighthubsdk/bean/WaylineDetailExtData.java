@@ -18,6 +18,7 @@ public final class WaylineDetailExtData {
     private List<String> modelFileObjectKeys = new ArrayList<>();
     private List<String> elevationFileObjectKeys = new ArrayList<>();
     private long contentLength;
+    private List<WaylineExtDataModel> models = new ArrayList<>();
 
     public WaylineDetailExtData() {
     }
@@ -54,6 +55,9 @@ public final class WaylineDetailExtData {
     /** 航线文件大小（字节） */
     public long getContentLength() { return contentLength; }
 
+    /** 贴近摄影模型信息列表 */
+    public List<WaylineExtDataModel> getModels() { return models; }
+
     /** @param kmzWithoutResObjectKey 不含资源的 KMZ 对象 Key */
     public void setKmzWithoutResObjectKey(String kmzWithoutResObjectKey) {
         this.kmzWithoutResObjectKey = kmzWithoutResObjectKey;
@@ -89,6 +93,11 @@ public final class WaylineDetailExtData {
         this.contentLength = contentLength;
     }
 
+    /** @param models 贴近摄影模型信息列表 */
+    public void setModels(List<WaylineExtDataModel> models) {
+        this.models = models != null ? models : new ArrayList<>();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -100,13 +109,14 @@ public final class WaylineDetailExtData {
                 && Objects.equals(targetAreaFileObjectKey, that.targetAreaFileObjectKey)
                 && Objects.equals(businessFileObjectKey, that.businessFileObjectKey)
                 && Objects.equals(modelFileObjectKeys, that.modelFileObjectKeys)
-                && Objects.equals(elevationFileObjectKeys, that.elevationFileObjectKeys);
+                && Objects.equals(elevationFileObjectKeys, that.elevationFileObjectKeys)
+                && Objects.equals(models, that.models);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(kmzWithoutResObjectKey, kmzWithoutResMd5, targetAreaFileObjectKey,
-                businessFileObjectKey, modelFileObjectKeys, elevationFileObjectKeys, contentLength);
+                businessFileObjectKey, modelFileObjectKeys, elevationFileObjectKeys, contentLength, models);
     }
 
     @Override
@@ -119,6 +129,7 @@ public final class WaylineDetailExtData {
                 + ", modelFileObjectKeys=" + modelFileObjectKeys
                 + ", elevationFileObjectKeys=" + elevationFileObjectKeys
                 + ", contentLength=" + contentLength
+                + ", models=" + models
                 + '}';
     }
 }

@@ -9,7 +9,7 @@ import java.util.Objects;
 
 /**
  * 模型显示地图 WS 推送消息
- * topic: topic_media_file_show_on_map（来自 file-storage BatchShowOnMap）
+ * topic: topic_media_file_show_on_map（来自云端媒体服务 BatchShowOnMap）
  */
 public final class TerraMediaFileShowOnMapMsg {
 

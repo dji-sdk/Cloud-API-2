@@ -13,7 +13,7 @@ public class LiveSyncCreateParams {
     private String cameraIndex = "";
     /** 视频流类型 */
     private String videoType = "";
-    /** 视频质量 */
+    /** 视频质量等级：0=自适应 1=标清 4=超清 */
     private int videoQuality = 0;
     /** 推流协议：rtmp / gb28181 / rtsp */
     private String schema = "";
@@ -34,7 +34,9 @@ public class LiveSyncCreateParams {
     public String getVideoType() { return videoType; }
     public void setVideoType(String v) { this.videoType = v != null ? v : ""; }
 
+    /** 视频质量等级：0=自适应 1=标清 4=超清 */
     public int getVideoQuality() { return videoQuality; }
+    /** 视频质量等级：0=自适应 1=标清 4=超清 */
     public void setVideoQuality(int v) { this.videoQuality = v; }
 
     public String getSchema() { return schema; }

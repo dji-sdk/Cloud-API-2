@@ -11,7 +11,7 @@ namespace flight_hub_sdk {
 
 class OnboardAiModuleImpl : public IOnboardAiModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit OnboardAiModuleImpl(std::shared_ptr<AICtrlMgr> ai_ctrl_mgr);
+    explicit OnboardAiModuleImpl(std::shared_ptr<AICtrlMgr> ai_ctrl_mgr, int session_id);
     ~OnboardAiModuleImpl() override = default;
 
     int listenAIDataInfo(const std::function<void(const AiDataInfo& state)>& callback) override;
@@ -39,6 +39,7 @@ public:
     void cancelListenDrcAIAlarmState(int listen_id) override;
 
 private:
+    int session_id_;
     std::shared_ptr<AICtrlMgr> ai_ctrl_mgr_;
 };
 

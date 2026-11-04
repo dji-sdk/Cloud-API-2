@@ -14,10 +14,11 @@
 
 namespace flight_hub_sdk {
 
-DrcLinkMgr::DrcLinkMgr(std::string sn, std::string gateway_sn, std::shared_ptr<message_engine::IMessageEngine> message_engine, int drone_instance_id) : sn_(sn), gateway_sn_(gateway_sn), message_engine_(message_engine) {
+DrcLinkMgr::DrcLinkMgr(std::string sn, std::string gateway_sn, std::shared_ptr<message_engine::IMessageEngine> message_engine, int drone_instance_id, int session_id)
+    : sn_(sn), gateway_sn_(gateway_sn), message_engine_(message_engine), session_id_(session_id) {
     instance_id_ = drone_instance_id;
     log_tag_ = sn_ + "#" + std::to_string(instance_id_);
-    LOG_INFO("[DrcLinkMgr] created, instance_id: %d, sn: %s, gateway_sn: %s", instance_id_, sn_.c_str(), gateway_sn_.c_str());
+    LOG_INFO("[DrcLinkMgr] created, instance_id: %d, sn: %s, gateway_sn: %s, session_id: %d", instance_id_, sn_.c_str(), gateway_sn_.c_str(), session_id_);
     initDelayInfoListening();
     initCountDownInfoListening();
 }
@@ -56,23 +57,23 @@ void DrcLinkMgr::connectDrcLink(const std::function<void(FlightHubSdkErrorCode e
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_CONNECT_LINK, err, "[DrcLinkMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_CONNECT_LINK, err, session_id_, "[DrcLinkMgr]");
 
             callback(err.error_code);
             return;
         }
-        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: provider  %s", log_tag_.c_str(), open_data_channel_response.data_channel.provider.c_str());
+        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: provider  %s", log_tag_.c_str(), open_data_channel_response.rt_channel.provider.c_str());
 
         // 建链后续按 provider 分流到 MQTT/RTC/DRTC, 投递点散落在多个私有函数里; 故在此把 callback 包一层,
         // 任何一条路径回投递前先埋点, 保证每次建链结果恰好上报一次且都在 callback 之前。
-        auto report_callback = [callback](FlightHubSdkErrorCode err_code) -> void {
+        auto report_callback = [this, callback](FlightHubSdkErrorCode err_code) -> void {
             auto connect_err = FlightHubError::from_sdk(err_code);
 
             // 埋点: 连接 DRC 链路; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_CONNECT_LINK, connect_err, "[DrcLinkMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_CONNECT_LINK, connect_err, session_id_, "[DrcLinkMgr]");
 
             callback(err_code);
         };
@@ -81,26 +82,32 @@ void DrcLinkMgr::connectDrcLink(const std::function<void(FlightHubSdkErrorCode e
             WeakDummyReturn(p);
             onRecvOpenDataChannelResponse(open_data_channel_response, report_callback);
         });
-    });
+    }, session_id_);
 }
 
 void DrcLinkMgr::onRecvOpenDataChannelResponse(const OpenDataChannelResponse& open_data_channel_response, const std::function<void(FlightHubSdkErrorCode err_code)> callback) {
-    if (open_data_channel_response.data_channel.provider == "mqtt_broker") {
-        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: %s", log_tag_.c_str(), open_data_channel_response.data_channel.config.addr.c_str());
-        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: client_id: %s", log_tag_.c_str(), open_data_channel_response.data_channel.config.client_id.c_str());
-        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: default_frequency: %s", log_tag_.c_str(), open_data_channel_response.data_channel.config.default_frequency.c_str());
-        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: method_frequency: %s", log_tag_.c_str(), open_data_channel_response.data_channel.config.method_frequency.c_str());
-        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: expire_time: %s", log_tag_.c_str(), open_data_channel_response.data_channel.config.expire_time.c_str());
-        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: up_topic: %s", log_tag_.c_str(), open_data_channel_response.data_channel.config.up_topic.c_str());
-        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: down_topic: %s", log_tag_.c_str(), open_data_channel_response.data_channel.config.down_topic.c_str());
+    if (open_data_channel_response.rt_channel.provider.empty()) {
+        LOG_ERROR("[DrcLinkMgr][%s] rt_channel missing or empty provider", log_tag_.c_str());
+        callback(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED);
+        return;
+    }
+
+    if (open_data_channel_response.rt_channel.provider == "mqtt_broker") {
+        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: %s", log_tag_.c_str(), open_data_channel_response.rt_channel.config.addr.c_str());
+        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: client_id: %s", log_tag_.c_str(), open_data_channel_response.rt_channel.config.client_id.c_str());
+        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: default_frequency: %s", log_tag_.c_str(), open_data_channel_response.rt_channel.config.default_frequency.c_str());
+        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: method_frequency: %s", log_tag_.c_str(), open_data_channel_response.rt_channel.config.method_frequency.c_str());
+        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: expire_time: %s", log_tag_.c_str(), open_data_channel_response.rt_channel.config.expire_time.c_str());
+        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: up_topic: %s", log_tag_.c_str(), open_data_channel_response.rt_channel.config.up_topic.c_str());
+        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: down_topic: %s", log_tag_.c_str(), open_data_channel_response.rt_channel.config.down_topic.c_str());
         // 设置mqtt_link的method路由表
         message_engine_->getTransportManager()->AddMethodRouterMap(method_router_map_v2_message_mqtt_link);
         onRecvDataChannelResponseWithMqtt(open_data_channel_response, callback);
-    } else if (open_data_channel_response.data_channel.provider == "volc_rtc") {
+    } else if (open_data_channel_response.rt_channel.provider == "volc_rtc") {
 #ifdef BUILD_WITH_VOLC_USER
-        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: room_id: %s", log_tag_.c_str(), open_data_channel_response.data_channel.config.room_id.c_str());
-        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: user_id: %s", log_tag_.c_str(), open_data_channel_response.data_channel.config.user_id.c_str());
-        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: expire_time: %s", log_tag_.c_str(), open_data_channel_response.data_channel.config.expire_time.c_str());
+        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: room_id: %s", log_tag_.c_str(), open_data_channel_response.rt_channel.config.room_id.c_str());
+        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: user_id: %s", log_tag_.c_str(), open_data_channel_response.rt_channel.config.user_id.c_str());
+        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse: expire_time: %s", log_tag_.c_str(), open_data_channel_response.rt_channel.config.expire_time.c_str());
         message_engine_->getTransportManager()->AddMethodRouterMap(method_router_map_v2_message_rtc_link);
         onRecvDataChannelResponseWithRTC(open_data_channel_response, callback);
 #else
@@ -111,13 +118,13 @@ void DrcLinkMgr::onRecvOpenDataChannelResponse(const OpenDataChannelResponse& op
                   log_tag_.c_str());
         callback(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED);
 #endif
-    } else if (open_data_channel_response.data_channel.provider == "drtc_rtc" ||
-               open_data_channel_response.data_channel.provider == "drtc") {
-        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse DRTC: room_id: %s, client_id: %s", log_tag_.c_str(), open_data_channel_response.data_channel.config.room_id.c_str(), open_data_channel_response.data_channel.config.client_id.c_str());
+    } else if (open_data_channel_response.rt_channel.provider == "drtc_rtc" ||
+               open_data_channel_response.rt_channel.provider == "drtc") {
+        LOG_INFO("[DrcLinkMgr][%s] OpenDataChannelResponse DRTC: room_id: %s, client_id: %s", log_tag_.c_str(), open_data_channel_response.rt_channel.config.room_id.c_str(), open_data_channel_response.rt_channel.config.client_id.c_str());
         message_engine_->getTransportManager()->AddMethodRouterMap(method_router_map_v2_message_rtc_link);
         onRecvDataChannelResponseWithDRTC(open_data_channel_response, callback);
     } else {
-        LOG_ERROR("[DrcLinkMgr][%s] Unsupported provider: %s", log_tag_.c_str(), open_data_channel_response.data_channel.provider.c_str());
+        LOG_ERROR("[DrcLinkMgr][%s] Unsupported provider: %s", log_tag_.c_str(), open_data_channel_response.rt_channel.provider.c_str());
         callback(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED);
     }
 }
@@ -128,7 +135,7 @@ void DrcLinkMgr::onRecvDataChannelResponseWithDRTC(const OpenDataChannelResponse
         callback(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED);
         return;
     }
-    const auto& config = open_data_channel_response.data_channel.config;
+    const auto& config = open_data_channel_response.rt_channel.config;
     message_engine::ChannelInfo channel_info;
     channel_info.type_ = message_engine::ChannelType::RealTime;
     channel_info.provider_type_ = message_engine::ChannelProviderType::DRTC;
@@ -164,12 +171,12 @@ void DrcLinkMgr::onRecvDataChannelResponseWithRTC(const OpenDataChannelResponse&
     message_engine::ChannelInfo channel_info;
     channel_info.type_ = message_engine::ChannelType::RealTime;
     channel_info.provider_type_ = message_engine::ChannelProviderType::VolcEngine;
-    channel_info.app_id_ = open_data_channel_response.data_channel.config.app_id;
-    channel_info.channel_name_ = open_data_channel_response.data_channel.config.room_id;
-    channel_info.user_id_ = open_data_channel_response.data_channel.config.user_id;
+    channel_info.app_id_ = open_data_channel_response.rt_channel.config.app_id;
+    channel_info.channel_name_ = open_data_channel_response.rt_channel.config.room_id;
+    channel_info.user_id_ = open_data_channel_response.rt_channel.config.user_id;
     channel_info.log_path_ = "";
     WeakDummy(p);
-    rtc_client_manager->AddChannel(channel_info, open_data_channel_response.data_channel.config.token,
+    rtc_client_manager->AddChannel(channel_info, open_data_channel_response.rt_channel.config.token,
                 [channel_info, this, callback, p](const bool& is_succeed, const int& elapsed_time_ms, const int& error_code, const std::string& message) {
                 WeakDummyReturn(p);
                 LOG_INFO("[DrcLinkMgr][%s] onRecvDataChannelResponseWithRTC JoinChannel channel_name %s, succeed %d, elapsed_time_ms %d, error_code %d, message %s", log_tag_.c_str(), channel_info.channel_name_.c_str(),
@@ -189,12 +196,12 @@ void DrcLinkMgr::onRecvDataChannelResponseWithMqtt(const OpenDataChannelResponse
         return;
     }
 
-    const auto topic_info = ResolveDrcMqttTopics(open_data_channel_response.data_channel.config, gateway_sn_);
+    const auto topic_info = ResolveDrcMqttTopics(open_data_channel_response.rt_channel.config, gateway_sn_);
     if (!topic_info.ok) {
         LOG_ERROR("[DrcLinkMgr][%s] ResolveDrcMqttTopics failed, up=%s down=%s",
                   log_tag_.c_str(),
-                  open_data_channel_response.data_channel.config.up_topic.c_str(),
-                  open_data_channel_response.data_channel.config.down_topic.c_str());
+                  open_data_channel_response.rt_channel.config.up_topic.c_str(),
+                  open_data_channel_response.rt_channel.config.down_topic.c_str());
         callback(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED);
         return;
     }
@@ -212,12 +219,14 @@ void DrcLinkMgr::onRecvDataChannelResponseWithMqtt(const OpenDataChannelResponse
             return;
         }
         mqtt_client->ConnectParamsConfig(
-            open_data_channel_response.data_channel.config.addr, 
-            open_data_channel_response.data_channel.config.username, 
-            open_data_channel_response.data_channel.config.password, 
-            open_data_channel_response.data_channel.config.client_id, 
+            open_data_channel_response.rt_channel.config.addr,
+            open_data_channel_response.rt_channel.config.username,
+            open_data_channel_response.rt_channel.config.password,
+            open_data_channel_response.rt_channel.config.client_id,
             topic_info.topic_sn
         );
+        // services 下行命令 topic 需网关(机场)SN, product_sn_ 是无人机SN, 单独注入 gateway_sn
+        mqtt_client->SetGatewaySn(gateway_sn_);
         // 添加连接状态回调，确保能收到连接状态变化通知
         WeakDummy(p);
         mqtt_client->AddConnectStateCallback([this, p](const message_engine::MQTT_CONNECT_STATUS& state) {
@@ -252,13 +261,15 @@ void DrcLinkMgr::onRecvDataChannelResponseWithMqtt(const OpenDataChannelResponse
 
     // Set connect params
     mqtt_client->ConnectParamsConfig(
-        open_data_channel_response.data_channel.config.addr, 
-        open_data_channel_response.data_channel.config.username, 
-        open_data_channel_response.data_channel.config.password, 
-        open_data_channel_response.data_channel.config.client_id, 
+        open_data_channel_response.rt_channel.config.addr,
+        open_data_channel_response.rt_channel.config.username,
+        open_data_channel_response.rt_channel.config.password,
+        open_data_channel_response.rt_channel.config.client_id,
         topic_info.topic_sn
     );
-    
+    // services 下行命令 topic 需网关(机场)SN, product_sn_ 是无人机SN, 单独注入 gateway_sn
+    mqtt_client->SetGatewaySn(gateway_sn_);
+
     // Add connect state callback
     WeakDummy(p);
     mqtt_client->AddConnectStateCallback([this, callback, p](const message_engine::MQTT_CONNECT_STATUS& state) {
@@ -415,7 +426,7 @@ void DrcLinkMgr::disconnectDrcLink(const std::function<void(FlightHubSdkErrorCod
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DRC_DISCONNECT_LINK, state_err, "[DrcLinkMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_DRC_DISCONNECT_LINK, state_err, session_id_, "[DrcLinkMgr]");
 
         callback(state_err.error_code);
         return;
@@ -431,7 +442,7 @@ void DrcLinkMgr::disconnectDrcLink(const std::function<void(FlightHubSdkErrorCod
     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-    report_beacon_event_helper(kBeaconReportEvent_DRC_DISCONNECT_LINK, success_err, "[DrcLinkMgr]");
+    report_beacon_event_helper(kBeaconReportEvent_DRC_DISCONNECT_LINK, success_err, session_id_, "[DrcLinkMgr]");
 
     callback(success_err.error_code);
 }
@@ -501,6 +512,18 @@ void DrcLinkMgr::drcRtcQualityTest(const RtcQualityTestParams& params, const std
     msg->msg.timestamp = params.timestamp;
     msg->msg.is_need_ack = params.is_need_ack;
     msg->msg.is_test_end = params.is_test_end;
+    if (!params.is_need_ack) {
+        // is_need_ack=false 表示设备不回包，不能注册 response callback，否则必然超时。
+        auto err = message_engine_->getCloudMessageManager()->SendDrcDrcRtcQualityTestSouthbound(msg, nullptr);
+        auto result = (err == message_engine::MeErrorCode::ME_NO_ERROR)
+            ? FlightHubError::success()
+            : FlightHubError::from_drc(err);
+
+        report_beacon_event_helper(kBeaconReportEvent_DRC_RTC_QUALITY_TEST, result, session_id_, "[DrcLinkMgr]");
+
+        callback(result);
+        return;
+    }
     WeakDummy(p);
     auto err = message_engine_->getCloudMessageManager()->SendDrcDrcRtcQualityTestSouthbound(msg, [callback, this, p](int error_code, const std::shared_ptr<message_engine::DrcReplyDrcRtcQualityTestNorthbound>& msg) {
         WeakDummyReturn(p);
@@ -512,7 +535,7 @@ void DrcLinkMgr::drcRtcQualityTest(const RtcQualityTestParams& params, const std
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_RTC_QUALITY_TEST, drc_err, "[DrcLinkMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_RTC_QUALITY_TEST, drc_err, session_id_, "[DrcLinkMgr]");
 
             callback(drc_err);
         } else if (!msg || msg->msg.result != 0) {
@@ -522,7 +545,7 @@ void DrcLinkMgr::drcRtcQualityTest(const RtcQualityTestParams& params, const std
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_RTC_QUALITY_TEST, reply_err, "[DrcLinkMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_RTC_QUALITY_TEST, reply_err, session_id_, "[DrcLinkMgr]");
 
             callback(reply_err);
         } else {
@@ -532,7 +555,7 @@ void DrcLinkMgr::drcRtcQualityTest(const RtcQualityTestParams& params, const std
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_RTC_QUALITY_TEST, success_err, "[DrcLinkMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_RTC_QUALITY_TEST, success_err, session_id_, "[DrcLinkMgr]");
 
             callback(success_err);
         }
@@ -544,7 +567,7 @@ void DrcLinkMgr::drcRtcQualityTest(const RtcQualityTestParams& params, const std
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DRC_RTC_QUALITY_TEST, link_err, "[DrcLinkMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_DRC_RTC_QUALITY_TEST, link_err, session_id_, "[DrcLinkMgr]");
 
         callback(link_err);
     }

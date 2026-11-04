@@ -175,6 +175,40 @@ public class GetWaylineDetailResult {
     return (cPtr == 0) ? null : new StringStringUnorderedMap(cPtr, false);
   }
 
+  public void setWayline_point_nums(int value) {
+    flighthubsdkmoduleJNI.GetWaylineDetailResult_wayline_point_nums_set(swigCPtr, this, value);
+  }
+
+  public int getWayline_point_nums() {
+    return flighthubsdkmoduleJNI.GetWaylineDetailResult_wayline_point_nums_get(swigCPtr, this);
+  }
+
+  public void setObstacles(WaylineObstacleVector value) {
+    flighthubsdkmoduleJNI.GetWaylineDetailResult_obstacles_set(swigCPtr, this, WaylineObstacleVector.getCPtr(value), value);
+  }
+
+  public WaylineObstacleVector getObstacles() {
+    long cPtr = flighthubsdkmoduleJNI.GetWaylineDetailResult_obstacles_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new WaylineObstacleVector(cPtr, false);
+  }
+
+  public void setElevation_uuid(String value) {
+    flighthubsdkmoduleJNI.GetWaylineDetailResult_elevation_uuid_set(swigCPtr, this, value);
+  }
+
+  public String getElevation_uuid() {
+    return flighthubsdkmoduleJNI.GetWaylineDetailResult_elevation_uuid_get(swigCPtr, this);
+  }
+
+  public void setCollision_positions(WaylineCollisionEventVector value) {
+    flighthubsdkmoduleJNI.GetWaylineDetailResult_collision_positions_set(swigCPtr, this, WaylineCollisionEventVector.getCPtr(value), value);
+  }
+
+  public WaylineCollisionEventVector getCollision_positions() {
+    long cPtr = flighthubsdkmoduleJNI.GetWaylineDetailResult_collision_positions_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new WaylineCollisionEventVector(cPtr, false);
+  }
+
   public GetWaylineDetailResult() {
     this(flighthubsdkmoduleJNI.new_GetWaylineDetailResult(), true);
   }

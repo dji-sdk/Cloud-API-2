@@ -19,7 +19,8 @@ public final class GetMediaUploadStsParams {
      * 构造 GetMediaUploadStsParams。
      *
      * @param filePath 文件路径
-     * @param expire 凭证有效期（秒）
+     * @param expire 凭证有效期（秒），默认/最大 3600。注意：后端 STS 对有效期有合法下限，过小的值（如 600）
+     *               会被拒绝并返回 serverCode 200612（invalid token expiry），建议使用默认值 3600。
      * @param sn 设备序列号
      * @param module 业务模块类型
      */

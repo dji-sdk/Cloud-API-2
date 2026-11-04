@@ -7,12 +7,13 @@
 #include "bll/manager/payload_ctrl_mgr/payload_ctrl_mgr.h"
 #include "common/util/async_capture_protect.h"
 #include <unordered_map>
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class CameraControlModuleImpl : public ICameraControlModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit CameraControlModuleImpl(std::shared_ptr<PayloadCtrlMgr> payload_ctrl_mgr);
+    explicit CameraControlModuleImpl(std::shared_ptr<PayloadCtrlMgr> payload_ctrl_mgr, int session_id);
     ~CameraControlModuleImpl() override = default;
 
     void drcSwitchLiveLens(const SwitchLiveLensParams& params, const std::function<void(FlightHubError)>& callback) override;
@@ -146,6 +147,7 @@ public:
     void cancelListenDroneCameraWatermarkSettings(int listen_id) override;
 
 private:
+    int session_id_;
     std::shared_ptr<PayloadCtrlMgr> payload_ctrl_mgr_;
 
     // NC push 订阅：user_listen_id ↔ nc_listen_id 映射（本模块无独立 sn_ 成员，借助 payload_ctrl_mgr_->getDroneSn()）

@@ -9,6 +9,7 @@
 #include <Common.h>
 #include <base/common/logger.h>
 #include <chrono>
+#include <map>
 
 #include "SDKFactory.h"
 #include "common/executors/executors.h"
@@ -17,6 +18,17 @@
 namespace flight_hub_sdk {
 
 constexpr auto kWebsocketRetryInterval = 1000; // websocket 断连重连间隔 ms
+
+std::map<std::string, std::string> NotificationCenter::headersToMap(
+    const std::vector<HeaderKeyValue>& headers) {
+    std::map<std::string, std::string> result;
+    for (const auto& kv : headers) {
+        if (!kv.key.empty()) {
+            result[kv.key] = kv.value;
+        }
+    }
+    return result;
+}
 
 // 内部 WebSocket 事件监听器实现
 class NotificationCenter::InternalWebsocketEventListener : public notification_center::WebsocketEvent, public drc_sdk::common::AsyncCaptureProtect{
@@ -102,11 +114,6 @@ NotificationCenter::~NotificationCenter() {
     notification_center::SDKFactory::destroySDKManager(sdk_manager_);
 }
 
-NotificationCenter* NotificationCenter::getInstance() {
-    static NotificationCenter instance;
-    return &instance;
-}
-
 uint64_t NotificationCenter::setConnectionCallback(const std::function<void(bool connected)>& callback) {
     uint64_t callback_id;
     bool current_connected;
@@ -138,9 +145,11 @@ void NotificationCenter::removeConnectionCallback(uint64_t id) {
     }
 }
 
-bool NotificationCenter::initialize(const std::string& log_path, int log_level, bool log_to_console, const std::string& websocket_url, const std::map<std::string, std::string>& websocket_auth_headers, bool verify_ssl, const std::string& ssl_ca_path) {
-    LOG_INFO("[NotificationCenter] initialize, url: %s, log_level: %d, log_path: %s",
-             websocket_url.c_str(), log_level, log_path.c_str());
+bool NotificationCenter::initialize(const std::string& websocket_url,
+                                    const std::vector<HeaderKeyValue>& websocket_auth_headers,
+                                    bool verify_ssl,
+                                    const std::string& ssl_ca_path) {
+    LOG_INFO("[NotificationCenter] initialize, url: %s", websocket_url.c_str());
 
     websocket_url_ = websocket_url;
 
@@ -150,16 +159,12 @@ bool NotificationCenter::initialize(const std::string& log_path, int log_level, 
         return false;
     }
 
-    // 准备初始化信息
+    const auto auth_headers_map = headersToMap(websocket_auth_headers);
+
+    // 默认 SdkInitializeInfo：FHSDK 已 InitializePlog 时 NCSDK 侧重入直接 return
     notification_center::SdkInitializeInfo init_info;
-    init_info.log_path = log_path;
-    init_info.log_level = static_cast<notification_center::SdkLogLevel>(log_level);
-    init_info.log_to_console = log_to_console;
-    // WSS TLS 证书验证配置透传(verify_ssl 安全默认开启)
     init_info.verify_ssl = verify_ssl;
     init_info.ssl_ca_path = ssl_ca_path;
-
-    // 初始化 SDK
     sdk_manager_->init(init_info);
 
     if (!sdk_manager_->isInit()) {
@@ -172,8 +177,8 @@ bool NotificationCenter::initialize(const std::string& log_path, int log_level, 
     // 创建并设置 WebSocket 事件监听器
     websocket_listener_ = std::make_shared<InternalWebsocketEventListener>(this);
     sdk_manager_->setWebsocketEventListener(websocket_listener_);
-    sdk_manager_->setWebSocketAuthHeaders(websocket_auth_headers);
-    LOG_INFO("[NotificationCenter] websocket auth headers 已下发，数量: %zu", websocket_auth_headers.size());
+    sdk_manager_->setWebSocketAuthHeaders(auth_headers_map);
+    LOG_INFO("[NotificationCenter] websocket auth headers 已下发，数量: %zu", auth_headers_map.size());
 
     // 连接到 WebSocket 服务器，转换到 CONNECTING 状态
     if (tryTransition(NotificationCenterState::INITIALIZED, NotificationCenterState::CONNECTING)) {
@@ -186,13 +191,14 @@ bool NotificationCenter::initialize(const std::string& log_path, int log_level, 
     return true;
 }
 
-void NotificationCenter::setWebSocketAuthHeaders(const std::map<std::string, std::string>& headers) {
+void NotificationCenter::setWebSocketAuthHeaders(const std::vector<HeaderKeyValue>& headers) {
     if (!sdk_manager_) {
         LOG_WARN("[NotificationCenter] setWebSocketAuthHeaders skipped: sdk_manager is null");
         return;
     }
-    sdk_manager_->setWebSocketAuthHeaders(headers);
-    LOG_INFO("[NotificationCenter] setWebSocketAuthHeaders: applied %zu header(s)", headers.size());
+    const auto headers_map = headersToMap(headers);
+    sdk_manager_->setWebSocketAuthHeaders(headers_map);
+    LOG_INFO("[NotificationCenter] setWebSocketAuthHeaders: applied %zu header(s)", headers_map.size());
 }
 
 void NotificationCenter::setWebSocket(notification_center::WebSocketBase* ws) {
@@ -234,7 +240,13 @@ void NotificationCenter::cleanup() {
     // 清理资源
     websocket_listener_.reset();
 
-    LOG_INFO("[NotificationCenter] 资源清理完成");
+    // 销毁 SDKManager 以关闭 WS 连接
+    if (sdk_manager_) {
+        notification_center::SDKFactory::destroySDKManager(sdk_manager_);
+        sdk_manager_ = notification_center::SDKFactory::createSDKManager();
+    }
+
+    LOG_INFO("[NotificationCenter] 资源清理完成（WS 已断开）");
 }
 
 void NotificationCenter::reconnect() {

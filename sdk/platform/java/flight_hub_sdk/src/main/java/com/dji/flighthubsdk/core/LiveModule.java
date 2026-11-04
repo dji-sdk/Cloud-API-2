@@ -441,7 +441,12 @@ public class LiveModule {
     }
 
     /**
-     * 订阅 AI 检测 SEI 信息（目标检测框）
+     * 订阅 AI 检测 SEI 信息（目标检测框）。
+     * <p>回调中的每个 {@link com.dji.flighthubsdk.bean.AiDetectionTarget} 携带来源字段：
+     * {@link com.dji.flighthubsdk.bean.AiDetectionTarget#getModelIndex()}（协议 model_index）、
+     * {@link com.dji.flighthubsdk.bean.AiDetectionTarget#getFrameSource()}（协议 frame_source）、
+     * {@link com.dji.flighthubsdk.bean.AiDetectionTarget#getModelInfoType()}（协议 model_info_type）。</p>
+     *
      * @param callback AI SEI 信息回调
      * @return 监听 ID，用于取消订阅
      * @implNote 链路: SDK 内部 | 从直播帧 SEI NAL 中解析 AI 检测数据

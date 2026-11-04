@@ -55,10 +55,10 @@ static void emscripten_get_wrapper(void *args) {
     auto fetch_param_cache = static_cast<FetchParamCache*>(args);
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
-    strcpy(attr.requestMethod, "GET");
+    snprintf(attr.requestMethod, sizeof(attr.requestMethod), "%s", "GET");
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
     attr.onsuccess = on_success;
-    attr.onerror = on_error;    
+    attr.onerror = on_error;
     const char* headers_fetch[fetch_param_cache->headers.size() * 2 + 1];
     for (size_t i = 0; i < fetch_param_cache->headers.size(); i++) {
         headers_fetch[i * 2] = fetch_param_cache->headers[i].key.c_str();
@@ -79,7 +79,7 @@ static void emscripten_post_wrapper(void *args) {
     auto fetch_param_cache = static_cast<FetchParamCache*>(args);
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
-    strcpy(attr.requestMethod, "POST");
+    snprintf(attr.requestMethod, sizeof(attr.requestMethod), "%s", "POST");
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
     attr.onsuccess = on_success;
     attr.onerror = on_error;
@@ -106,7 +106,7 @@ static void emscripten_put_wrapper(void *args) {
     auto fetch_param_cache = static_cast<FetchParamCache*>(args);
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
-    strcpy(attr.requestMethod, "PUT");
+    snprintf(attr.requestMethod, sizeof(attr.requestMethod), "%s", "PUT");
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
     attr.onsuccess = on_success;
     attr.onerror = on_error;
@@ -132,7 +132,7 @@ static void emscripten_delete_wrapper(void *args) {
     auto fetch_param_cache = static_cast<FetchParamCache*>(args);
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
-    strcpy(attr.requestMethod, "DELETE");
+    snprintf(attr.requestMethod, sizeof(attr.requestMethod), "%s", "DELETE");
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
     attr.onsuccess = on_success;
     attr.onerror = on_error;
@@ -280,7 +280,7 @@ static void emscripten_get_wrapper_with_status(void *args) {
     auto cache = static_cast<FetchParamCacheWithStatus*>(args);
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
-    strcpy(attr.requestMethod, "GET");
+    snprintf(attr.requestMethod, sizeof(attr.requestMethod), "%s", "GET");
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
     attr.onsuccess = on_success_with_status;
     attr.onerror = on_error_with_status;
@@ -301,7 +301,7 @@ static void emscripten_post_wrapper_with_status(void *args) {
     auto cache = static_cast<FetchParamCacheWithStatus*>(args);
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
-    strcpy(attr.requestMethod, "POST");
+    snprintf(attr.requestMethod, sizeof(attr.requestMethod), "%s", "POST");
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
     attr.onsuccess = on_success_with_status;
     attr.onerror = on_error_with_status;
@@ -324,7 +324,7 @@ static void emscripten_put_wrapper_with_status(void *args) {
     auto cache = static_cast<FetchParamCacheWithStatus*>(args);
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
-    strcpy(attr.requestMethod, "PUT");
+    snprintf(attr.requestMethod, sizeof(attr.requestMethod), "%s", "PUT");
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
     attr.onsuccess = on_success_with_status;
     attr.onerror = on_error_with_status;
@@ -347,7 +347,7 @@ static void emscripten_delete_wrapper_with_status(void *args) {
     auto cache = static_cast<FetchParamCacheWithStatus*>(args);
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
-    strcpy(attr.requestMethod, "DELETE");
+    snprintf(attr.requestMethod, sizeof(attr.requestMethod), "%s", "DELETE");
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
     attr.onsuccess = on_success_with_status;
     attr.onerror = on_error_with_status;

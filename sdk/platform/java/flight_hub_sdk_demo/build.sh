@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 # Flight Hub Java SDK Demo 构建脚本
 # 作者: DJI
 # 版本: 1.0

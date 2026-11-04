@@ -13,8 +13,8 @@ public class AIInsideDeviceItem {
     private String completeMachineSn = "";
     /** 机场是否在线 */
     private boolean deviceOnlineStatus;
-    /** 机场工作状态码 */
-    private int deviceWorkingStatus;
+    /** 机场工作状态码（设备物模型 mode_code）：0=待机, 1=本地调试, 2=远程调试, 3=OTA升级, 4=飞行任务, 5=未标定, 7=本地停止 */
+    private double deviceWorkingStatus;
     /** 机场当前算法操作进度 */
     private AIInsideOperateProgress operateAiModel;
     /** 机场关联的飞机信息 */
@@ -46,11 +46,11 @@ public class AIInsideDeviceItem {
     /** @param v 机场是否在线 */
     public void setDeviceOnlineStatus(boolean v) { this.deviceOnlineStatus = v; }
 
-    /** 机场工作状态码 */
-    public int getDeviceWorkingStatus() { return deviceWorkingStatus; }
+    /** 机场工作状态码（设备物模型 mode_code）：0=待机, 1=本地调试, 2=远程调试, 3=OTA升级, 4=飞行任务, 5=未标定, 7=本地停止 */
+    public double getDeviceWorkingStatus() { return deviceWorkingStatus; }
 
-    /** @param v 机场工作状态码 */
-    public void setDeviceWorkingStatus(int v) { this.deviceWorkingStatus = v; }
+    /** @param v 机场工作状态码（设备物模型 mode_code）：0=待机, 1=本地调试, 2=远程调试, 3=OTA升级, 4=飞行任务, 5=未标定, 7=本地停止 */
+    public void setDeviceWorkingStatus(double v) { this.deviceWorkingStatus = v; }
 
     /** 机场当前算法操作进度 */
     public AIInsideOperateProgress getOperateAiModel() { return operateAiModel; }

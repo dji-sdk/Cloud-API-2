@@ -15,7 +15,7 @@ import com.dji.flighthubsdk.bean.LiveInfo;
 import com.dji.flighthubsdk.util.Logger;
 
 /**
- * 机场模块接口，提供直播、录制、设备状态监听、设备控制、进离场航线等功能。
+ * 机场模块接口，提供直播、录制、设备状态监听、设备控制等功能。
  * <p>通过 {@code FlightHubSDK.getDockInstance()} 获取实例。</p>
  */
 public class Dock {
@@ -28,7 +28,6 @@ public class Dock {
     private DeviceStateModule deviceStateModule;
     private DeviceHMSModule deviceHmsModule;
     private LiveDeviceModule liveDeviceModule;
-    private DeployModule deployModule;
     private DockOsdModule dockOsdModule;
     private DockControlModule dockControlModule;
 
@@ -48,7 +47,7 @@ public class Dock {
     }
 
     /**
-     * 获取直播模块（按 LiveInfo 区分不同摄像头/视频流）
+     * 获取直播模块（按 payload_index + video_id 区分不同摄像头/视频流）
      * @param params 直播信息（SN、摄像头、视频流标识）
      * @return 直播模块实例
      */
@@ -60,13 +59,14 @@ public class Dock {
         com.dji.flighthubsdk.generated.LiveInfo nativeInfo = null;
         try {
             nativeInfo = FlightHubSdkConvert.toNativeLiveInfo(params);
-            if (liveModuleRef.containsKey(params.getPayloadIndex())) {
-                return liveModuleRef.get(params.getPayloadIndex());
+            String cacheKey = LiveCacheKey.of(params);
+            if (liveModuleRef.containsKey(cacheKey)) {
+                return liveModuleRef.get(cacheKey);
             }
             LiveModule liveModule = new LiveModule(this.dock.getLiveStream(nativeInfo), this.sn);
             if (liveModule != null) {
-                Logger.info("Dock", "[" + sn + "] GetLiveStream: live module created, payload_index: " + params.getPayloadIndex());
-                liveModuleRef.put(params.getPayloadIndex(), liveModule);
+                Logger.info("Dock", "[" + sn + "] GetLiveStream: live module created, key: " + cacheKey);
+                liveModuleRef.put(cacheKey, liveModule);
                 return liveModule;
             }
             Logger.warn("Dock", "GetLiveStream error: live module not found");
@@ -79,7 +79,7 @@ public class Dock {
     }
 
     /**
-     * 获取录制模块（按 LiveInfo 区分不同摄像头/视频流）
+     * 获取录制模块（按 payload_index + video_id 区分不同摄像头/视频流）
      * @param params 直播信息
      * @return 录制模块实例
      */
@@ -91,17 +91,18 @@ public class Dock {
         com.dji.flighthubsdk.generated.LiveInfo nativeInfo = null;
         try {
             nativeInfo = FlightHubSdkConvert.toNativeLiveInfo(params);
-            if (liveRecordModuleRef.containsKey(params.getPayloadIndex())) {
-                return liveRecordModuleRef.get(params.getPayloadIndex());
+            String cacheKey = LiveCacheKey.of(params);
+            if (liveRecordModuleRef.containsKey(cacheKey)) {
+                return liveRecordModuleRef.get(cacheKey);
             }
             com.dji.flighthubsdk.generated.ILiveRecordModule raw = this.dock.getLiveRecord(nativeInfo);
             if (raw == null) {
-                Logger.warn("Dock", "getLiveRecord: module is null, payload_index: " + params.getPayloadIndex());
+                Logger.warn("Dock", "getLiveRecord: module is null, key: " + cacheKey);
                 return null;
             }
             LiveRecordModule liveRecordModule = new LiveRecordModule(raw, this.sn);
-            liveRecordModuleRef.put(params.getPayloadIndex(), liveRecordModule);
-            Logger.info("Dock", "[" + sn + "] getLiveRecord: live record module created, payload_index: " + params.getPayloadIndex());
+            liveRecordModuleRef.put(cacheKey, liveRecordModule);
+            Logger.info("Dock", "[" + sn + "] getLiveRecord: live record module created, key: " + cacheKey);
             return liveRecordModule;
         } finally {
             if (nativeInfo != null) {
@@ -121,19 +122,6 @@ public class Dock {
             }
         }
         return liveDeviceModule;
-    }
-
-    /**
-     * 获取部署/踏勘模块
-     */
-    public synchronized DeployModule getDeployModule() {
-        if (deployModule == null) {
-            com.dji.flighthubsdk.generated.IDeployModule module = dock.getDeployModule();
-            if (module != null) {
-                deployModule = new DeployModule(module);
-            }
-        }
-        return deployModule;
     }
 
     /**

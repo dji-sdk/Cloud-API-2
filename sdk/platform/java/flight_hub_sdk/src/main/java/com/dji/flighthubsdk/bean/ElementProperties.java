@@ -14,6 +14,10 @@ public final class ElementProperties {
     private boolean isTransparent;
     private int fontSize;
     private int icon;
+    private String iconUrl = "";
+    private int width;
+    private int startCap;
+    private int endCap;
 
     public ElementProperties() {
     }
@@ -66,6 +70,22 @@ public final class ElementProperties {
         this.icon = icon;
     }
 
+    /** 图标 URL */
+    public String getIconUrl() { return iconUrl; }
+    public void setIconUrl(String iconUrl) { this.iconUrl = iconUrl != null ? iconUrl : ""; }
+
+    /** 线宽 */
+    public int getWidth() { return width; }
+    public void setWidth(int width) { this.width = width; }
+
+    /** 起点端样式 */
+    public int getStartCap() { return startCap; }
+    public void setStartCap(int startCap) { this.startCap = startCap; }
+
+    /** 终点端样式 */
+    public int getEndCap() { return endCap; }
+    public void setEndCap(int endCap) { this.endCap = endCap; }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -73,14 +93,20 @@ public final class ElementProperties {
         ElementProperties that = (ElementProperties) o;
         return clampToGround == that.clampToGround && is3d == that.is3d
                 && isTransparent == that.isTransparent && fontSize == that.fontSize
-                && icon == that.icon && Objects.equals(color, that.color);
+                && icon == that.icon && width == that.width
+                && startCap == that.startCap && endCap == that.endCap
+                && Objects.equals(color, that.color)
+                && Objects.equals(iconUrl, that.iconUrl);
     }
 
     @Override
-    public int hashCode() { return Objects.hash(color, clampToGround, is3d, isTransparent, fontSize, icon); }
+    public int hashCode() { return Objects.hash(color, clampToGround, is3d, isTransparent, fontSize, icon, iconUrl, width, startCap, endCap); }
 
     @Override
     public String toString() {
-        return "ElementProperties{color='" + color + "', icon=" + icon + ", is3d=" + is3d + '}';
+        return "ElementProperties{color='" + color + "', icon=" + icon
+                + ", iconUrl='" + iconUrl + "', width=" + width
+                + ", startCap=" + startCap + ", endCap=" + endCap
+                + ", is3d=" + is3d + '}';
     }
 }

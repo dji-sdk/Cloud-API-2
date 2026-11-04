@@ -98,6 +98,14 @@ public class ITerraBuildModule {
     flighthubsdkmoduleJNI.ITerraBuildModule_batchDeleteModelFilesWrapper(swigCPtr, this, IntVector.getCPtr(file_ids), file_ids, ResultCallback.getCPtr(callback), callback);
   }
 
+  public void deleteModelFileWithResultWrapper(int file_id, TerraDeleteModelFilesCallback callback) {
+    flighthubsdkmoduleJNI.ITerraBuildModule_deleteModelFileWithResultWrapper(swigCPtr, this, file_id, TerraDeleteModelFilesCallback.getCPtr(callback), callback);
+  }
+
+  public void batchDeleteModelFilesWithResultWrapper(IntVector file_ids, TerraDeleteModelFilesCallback callback) {
+    flighthubsdkmoduleJNI.ITerraBuildModule_batchDeleteModelFilesWithResultWrapper(swigCPtr, this, IntVector.getCPtr(file_ids), file_ids, TerraDeleteModelFilesCallback.getCPtr(callback), callback);
+  }
+
   public void createPanoramaWrapper(String name, StringVector folder_uuids, String wkt, boolean is_shown_on_map, TerraBuildCreatePanoramaCallback callback) {
     flighthubsdkmoduleJNI.ITerraBuildModule_createPanoramaWrapper(swigCPtr, this, name, StringVector.getCPtr(folder_uuids), folder_uuids, wkt, is_shown_on_map, TerraBuildCreatePanoramaCallback.getCPtr(callback), callback);
   }

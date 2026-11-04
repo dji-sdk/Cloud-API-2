@@ -6,6 +6,7 @@
 #include "message.h"
 #include "device_capability.h"
 
+#include <array>
 #include <string>
 #include <string_view>
 #include <set>
@@ -15,14 +16,22 @@
 
 namespace flight_hub_sdk {
     // 通过 domain、type、sub_type 可以唯一地确定一款设备(可以为飞行器、负载、遥控器等);
-    // todo: add more here;  
+    // todo: add more here;
     // C++17 安全、零开销、无 SSO 依赖;
+    //
+    // 【新增机型 checklist】
+    //   1. 在下方对应分组内新增 kModelKey_x_y_z 常量(取值以后端 device_model_enums 表为准);
+    //   2. 在下方(本命名空间内、class 定义之前)的 kAllModelKeys 中登记该常量;
+    //   3. 仅当该机型确有"不支持的 Feature"时, 才需要到 device_capability_mgr.cpp 里追加黑名单;
+    //      没有黑名单的机型无需改动 .cpp —— 能力表会用 kAllModelKeys 自动打底;
 
     /* 机场系列(class: airport); */
     /// 机场 DOCK 1~3;
-    inline constexpr std::string_view kModelKey_3_1_0 = "3-1-0";       // DJI Dock 1 (class: "airport");
-    inline constexpr std::string_view kModelKey_3_2_0 = "3-2-0";       // DJI Dock 2 (class: "airport");
-    inline constexpr std::string_view kModelKey_3_3_0 = "3-3-0";       // DJI Dock 3 (class: "airport");
+    inline constexpr std::string_view kModelKey_3_1_0 = "3-1-0";       // DJI Dock 1 (class: "airport");                DevelopCode: "ea210";
+    inline constexpr std::string_view kModelKey_3_2_0 = "3-2-0";       // DJI Dock 2 (class: "airport");                DevelopCode: "ea220d";
+    inline constexpr std::string_view kModelKey_3_3_0 = "3-3-0";       // DJI Dock 3 (class: "airport");                DevelopCode: "ea230d";
+    /// DevelopCode: "ei200";
+    inline constexpr std::string_view kModelKey_3_4_0 = "3-4-0";       // D-RTK 3 (Inside Edition) (class: "airport");  DevelopCode: "ei200";
 
     /* 飞机系列(class: drone); */
     /// Matrice 300 RTK, 经纬 300 RTK 飞机;
@@ -56,7 +65,7 @@ namespace flight_hub_sdk {
     inline constexpr std::string_view kModelKey_0_91_1 = "0-91-1";     // Matrice 3TD(M3TD) (class: "drone");
 
     /// wa345e, wa345t;
-    inline constexpr std::string_view kModelKey_0_99_0 = "0-99-0";     // DJI Matrice 4 系列（M4E 相机）(class: "drone");  DevelopCode: "wa345";
+    inline constexpr std::string_view kModelKey_0_99_0 = "0-99-0";     // DJI Matrice 4 系列（M4E 相机）(class: "drone");  DevelopCode: "wa345e";
     inline constexpr std::string_view kModelKey_0_99_1 = "0-99-1";     // DJI Matrice 4 系列（M4T 相机）(class: "drone");  DevelopCode: "wa345t";
 
     /// ea230e, ea230t;
@@ -71,13 +80,22 @@ namespace flight_hub_sdk {
     // Matrice 400; 搭配 DJI RC Plus 2+ DJI Pilot 2 使用;
     inline constexpr std::string_view kModelKey_0_103_0 = "0-103-0";   // Matrice 400 (class: "drone");  DevelopCode: "pm440";
 
+    /// pm355;
+    // 搭配 rc710 遥控器使用;
+    inline constexpr std::string_view kModelKey_0_139_0 = "0-139-0";   // pm355 (class: "drone");  DevelopCode: "pm355";
+
+
     /* 中继 (class: "relay") */
     inline constexpr std::string_view kModelKey_6_600_0 = "6-600-0";   // Relay(比如 D-RTK 3) (class: "relay");
+    /// DevelopCode: "ea610relay";
+    inline constexpr std::string_view kModelKey_6_610_0 = "6-610-0";   // EA610 中继(上报名 "O4 Ground Station") (class: "relay");  DevelopCode: "ea610relay";
 
-    /* 基站和关联的设备; */
-    inline constexpr std::string_view kModelKey_8_135_0 = "8-135-0";   // Base Station(比如 O4 Ground Station) (class: "base_station");
-    inline constexpr std::string_view kModelKey_0_130_0 = "0-130-0";   // ea340t drone (class: "drone");
-    inline constexpr std::string_view kModelKey_9_131_0 = "9-131-0";   // ea340d dock (class: "dock");
+    /* 基站/机库 和关联的设备; */
+    inline constexpr std::string_view kModelKey_8_135_0 = "8-135-0";   // Base Station(比如 O4 Ground Station) (class: "base_station");  DevelopCode: "ea610";
+    inline constexpr std::string_view kModelKey_0_130_0 = "0-130-0";   // ea340t 网联飞机(后端 Name 已更新为 "M5TD") (class: "drone");   DevelopCode: "ea340t";
+    inline constexpr std::string_view kModelKey_9_131_0 = "9-131-0";   // ea340d dock (class: "dock");   DevelopCode: "ea340d";
+    /// DevelopCode: "ea231d";
+    inline constexpr std::string_view kModelKey_9_116_0 = "9-116-0";   // ea231d dock (class: "dock");   DevelopCode: "ea231d";
 
     /* RC 设备; */
     /// DevelopCode: "rm500";
@@ -88,8 +106,45 @@ namespace flight_hub_sdk {
     inline constexpr std::string_view kModelKey_2_144_0 = "2-144-0";   // RC("DJI RC Pro 行业版", Mavic 3 行业系列) (class: "rc");
     /// DevelopCode: "rc701";
     inline constexpr std::string_view kModelKey_2_174_0 = "2-174-0";   // RC("DJI RC Plus 2", 搭配 DJI Matrice 4 系列) (class: "rc");
+    /// DevelopCode: "rc710";
+    inline constexpr std::string_view kModelKey_2_197_0 = "2-197-0";   // RC("rc710", 搭配 pm355) (class: "rc");  DevelopCode: "rc710";
 
 
+    /*
+     * SDK 已知机型全量清单(单一事实来源);
+     *
+     * 用途: DeviceCapabilityManager::unsupportedFeaturesTable() 以此清单打底,
+     *       保证"已声明的 model_key 必定已注册进能力表" —— 避免出现
+     *       "常量加了、能力表忘了加" 导致 checkUnsupported() 把已知机型误判成
+     *       FeatureStatus::NotFound(无效 model_key) 的问题;
+     *
+     * 约束: 上面每新增一个 kModelKey_x_y_z, 必须在此处同步登记;
+     */
+    inline constexpr std::array kAllModelKeys = {
+        /* 机场 (class: "airport"); */
+        kModelKey_3_1_0, kModelKey_3_2_0, kModelKey_3_3_0, kModelKey_3_4_0,
+
+        /* 飞机 (class: "drone"); */
+        kModelKey_0_60_0,
+        kModelKey_0_67_0, kModelKey_0_67_1,
+        kModelKey_0_77_0, kModelKey_0_77_1, kModelKey_0_77_2, kModelKey_0_77_3,
+        kModelKey_0_89_0,
+        kModelKey_0_91_0, kModelKey_0_91_1,
+        kModelKey_0_99_0, kModelKey_0_99_1,
+        kModelKey_0_100_0, kModelKey_0_100_1,
+        kModelKey_0_103_0,
+        kModelKey_0_130_0,
+        kModelKey_0_139_0,
+
+        /* 中继 (class: "relay"); */
+        kModelKey_6_600_0, kModelKey_6_610_0,
+
+        /* 基站/机库 (class: "base_station" / "dock"); */
+        kModelKey_8_135_0, kModelKey_9_116_0, kModelKey_9_131_0,
+
+        /* 遥控器 (class: "rc"); */
+        kModelKey_2_56_0, kModelKey_2_119_0, kModelKey_2_144_0, kModelKey_2_174_0, kModelKey_2_197_0
+    };
 
 
     /**
@@ -147,6 +202,8 @@ namespace flight_hub_sdk {
          *    检查 model_key 对应的 feature 的(不)支持状态;
          *    [ReadOnly] 允许多线程调用;
          *    该方法基于黑名单(不支持列表)设计，在黑名单语境下，"未配置(返回值 NotConfigured)" 实际意味着 "未被标记为不支持"。
+         *    能力表以 kAllModelKeys 打底, 故 SDK 已知机型至少返回 NotConfigured;
+         *    只有 kAllModelKeys 中不存在的 model_key(未知机型/非法值) 才返回 NotFound;
          * @param
          *    model_key, 设备 model_key;
          *    feature_id, 注册的 feature id;
@@ -190,7 +247,7 @@ namespace flight_hub_sdk {
         * 运行时由 DeviceListManager 拉取设备列表后填充;
         * 数据: DeviceSN --> ConciseModelInfo;
         */
-        mutable std::shared_mutex                         model_info_rw_mutex_; 
+        mutable std::shared_mutex                         model_info_rw_mutex_;
         std::unordered_map<std::string, ConciseModelInfo> model_info_lookup_;
 
 

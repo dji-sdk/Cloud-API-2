@@ -499,6 +499,82 @@ public class TerraBuildModule {
     }
 
     /**
+     * 删除单个模型文件（返回 lock_files）
+     * @param fileId 文件 ID
+     * @param callback 结果回调
+     * @implNote 链路: HTTP | DELETE /model/api/v1/files/{file_id}
+     */
+    public void deleteModelFileWithResult(int fileId, FlightHubCallback.TerraDeleteModelFilesCallback callback) {
+        try {
+            int id = generateActionCallbackId();
+            com.dji.flighthubsdk.generated.TerraDeleteModelFilesCallback swigCallback =
+                    new com.dji.flighthubsdk.generated.TerraDeleteModelFilesCallback() {
+                        @Override
+                        public void onTerraDeleteModelFiles(com.dji.flighthubsdk.generated.FlightHubError err,
+                                com.dji.flighthubsdk.generated.TerraDeleteModelFilesResult result) {
+                            try {
+                                if (callback != null) {
+                                    callback.onResult(FlightHubSdkConvert.toFlightHubError(err),
+                                            FlightHubSdkConvert.toTerraDeleteModelFilesResult(result));
+                                }
+                            } catch (Exception e) {
+                                Logger.error(TAG, "[deleteModelFileWithResult] callback error: " + e.getMessage(), e);
+                            } finally {
+                                deleteModelFileCallbackRef.remove(id);
+                            }
+                        }
+                    };
+            final CallbackRefContainer container = new CallbackRefContainer(swigCallback, callback);
+            synchronized (deleteModelFileCallbackRef) {
+                deleteModelFileCallbackRef.put(id, container);
+                this.terraBuildModule.deleteModelFileWithResultWrapper(fileId, swigCallback);
+            }
+        } catch (Exception e) {
+            Logger.error(TAG, "[deleteModelFileWithResult] error: " + e.getMessage(), e);
+            if (callback != null) try { callback.onResult(new com.dji.flighthubsdk.bean.FlightHubError(FlightHubSdkErrorCode.ERROR_OPERATION_FAILED), new com.dji.flighthubsdk.bean.TerraDeleteModelFilesResult()); } catch (Exception ex) { Logger.error(TAG, "error callback threw: " + ex.getMessage(), ex); }
+        }
+    }
+
+    /**
+     * 批量删除模型文件（返回 lock_files）
+     * @param fileIds 文件 ID 列表
+     * @param callback 结果回调
+     * @implNote 链路: HTTP | DELETE /model/api/v1/files?ids=1,2,3
+     */
+    public void batchDeleteModelFilesWithResult(java.util.List<Integer> fileIds, FlightHubCallback.TerraDeleteModelFilesCallback callback) {
+        try {
+            int id = generateActionCallbackId();
+            com.dji.flighthubsdk.generated.IntVector nativeFileIds = new com.dji.flighthubsdk.generated.IntVector();
+            if (fileIds != null) for (int fid : fileIds) nativeFileIds.add(fid);
+            com.dji.flighthubsdk.generated.TerraDeleteModelFilesCallback swigCallback =
+                    new com.dji.flighthubsdk.generated.TerraDeleteModelFilesCallback() {
+                        @Override
+                        public void onTerraDeleteModelFiles(com.dji.flighthubsdk.generated.FlightHubError err,
+                                com.dji.flighthubsdk.generated.TerraDeleteModelFilesResult result) {
+                            try {
+                                if (callback != null) {
+                                    callback.onResult(FlightHubSdkConvert.toFlightHubError(err),
+                                            FlightHubSdkConvert.toTerraDeleteModelFilesResult(result));
+                                }
+                            } catch (Exception e) {
+                                Logger.error(TAG, "[batchDeleteModelFilesWithResult] callback error: " + e.getMessage(), e);
+                            } finally {
+                                batchDeleteModelFilesCallbackRef.remove(id);
+                            }
+                        }
+                    };
+            final CallbackRefContainer container = new CallbackRefContainer(swigCallback, callback);
+            synchronized (batchDeleteModelFilesCallbackRef) {
+                batchDeleteModelFilesCallbackRef.put(id, container);
+                this.terraBuildModule.batchDeleteModelFilesWithResultWrapper(nativeFileIds, swigCallback);
+            }
+        } catch (Exception e) {
+            Logger.error(TAG, "[batchDeleteModelFilesWithResult] error: " + e.getMessage(), e);
+            if (callback != null) try { callback.onResult(new com.dji.flighthubsdk.bean.FlightHubError(FlightHubSdkErrorCode.ERROR_OPERATION_FAILED), new com.dji.flighthubsdk.bean.TerraDeleteModelFilesResult()); } catch (Exception ex) { Logger.error(TAG, "error callback threw: " + ex.getMessage(), ex); }
+        }
+    }
+
+    /**
      * 创建全景拼接任务
      * @param name 名称
      * @param folderUuids 文件夹 UUID 列表

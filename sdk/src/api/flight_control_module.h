@@ -40,6 +40,15 @@ public:
     /// @endinternal
     virtual void returnHome(const std::function<void(FlightHubError err)>& callback) = 0;
 
+    /// @brief 返航到指定机场（蛙跳/多机场任务，用于返航到非默认降落点的机场）
+    /// @param target_dock_sn 目标机场 SN
+    /// @param callback 结果回调
+    ///
+    /// @internal
+    /// 链路: HTTP | POST /control/api/v1/command-bus/non-realtime-cmd (method: return_specific_home，携带 home_dock_sn)
+    /// @endinternal
+    virtual void returnHome(const std::string& target_dock_sn, const std::function<void(FlightHubError err)>& callback) = 0;
+
     /// @brief 取消返航
     ///
     /// @internal
@@ -78,6 +87,20 @@ public:
     /// 链路: DRC | method: drc_follow_mouse_parameter_set
     /// @endinternal
     virtual void drcSetFollowMouseParameter(int speed, const std::function<void(FlightHubError)>& callback) = 0;
+
+    /// @brief 设置飞行速度
+    /// @param speed 飞行速度，单位 m/s。调用方常用档位：低速 5 / 默认 15 / 高速 21；
+    ///              协议接受连续值，档位仅为参考，SDK 不做范围校验（超限由设备侧拒绝）。
+    /// @param callback 结果回调
+    ///
+    /// 实时指令，不依附于任何飞行任务。注意与两个 HTTP 任务参数区分：
+    /// `speed_mode`（是否开启高速模式）与 `max_speed`（本次任务的速度上限）
+    /// 都只用于 HTTP 接口，与本接口无关。
+    ///
+    /// @internal
+    /// 链路: DRC | method: drc_set_flying_max_speed
+    /// @endinternal
+    virtual void drcSetFlyingMaxSpeed(double speed, const std::function<void(FlightHubError)>& callback) = 0;
 
     /// @brief 设置夜航灯状态
     /// @param night_lights_state 夜航灯状态（0=关 1=开）
@@ -179,6 +202,24 @@ public:
     /// @brief 取消订阅 DRC 降落伞信息推送
     /// @param listen_id 监听 ID
     virtual void cancelListenDrcParachuteInfo(int listen_id) = 0;
+
+    /// @brief 订阅 DRC 降落任务状态推送
+    /// @param callback 推送数据回调
+    /// @return 监听 ID，用于取消订阅
+    /// @note DrcLandingMissionState::landing_state 取值：
+    ///       0=初始空闲，1=等待参数同步，2=航向对齐，3=精准降落(有水平源)，4=无源降落(无水平源, 继续下降)，
+    ///       5=悬停微调(有水平源)，6=纯悬停(无水平源)，7=备降(有源)，8=备降(无源)，9=备降(用户 RC 接管)。
+    /// @note 该字段在协议侧拼作 cover_precent（协议设计如此，非笔误），对外 API 已更正为
+    ///       DrcLandingMissionState::cover_percent，转换在 SDK 内部完成，业务侧按正确拼写使用即可。
+    ///
+    /// @internal
+    /// 链路: DRC Northbound | method: landing_mission_state
+    /// @endinternal
+    virtual int listenDrcLandingMissionState(const std::function<void(const DrcLandingMissionState&)>& callback) = 0;
+
+    /// @brief 取消订阅 DRC 降落任务状态推送
+    /// @param listen_id 监听 ID
+    virtual void cancelListenDrcLandingMissionState(int listen_id) = 0;
 };
 
 } // namespace flight_hub_sdk

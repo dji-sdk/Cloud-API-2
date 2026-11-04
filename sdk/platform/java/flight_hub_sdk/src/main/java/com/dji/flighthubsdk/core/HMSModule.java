@@ -58,6 +58,25 @@ public class HMSModule {
      * @implNote 链路: HTTP | POST /device/api/v1/manager/hms
      */
     public void queryHistoryHMSData(HistoryHmsDataParam params, FlightHubCallback.QueryHistoryHMSDataCallback callback) {
+        // 前置校验: 后端该接口要求 sn 必填、create_time_begin/end 必填且 >0, 且 begin<=end
+        // (见 pf-device-service api/v1/hms/hms.go 的 binding:"required,gt=0" 与 list_hms.go 的时间范围校验)。
+        // 不合法时本地快速失败, 不发出 HTTP 请求(避免收到后端 400 "Invalid request parameters")。
+        if (params == null
+                || params.getSnList() == null || params.getSnList().isEmpty()
+                || params.getCreateTimeBegin() <= 0
+                || params.getCreateTimeEnd() <= 0
+                || params.getCreateTimeBegin() > params.getCreateTimeEnd()) {
+            Logger.error("HMSModule", "[queryHistoryHMSData] invalid param: snList="
+                    + (params == null ? "null" : params.getSnList())
+                    + ", createTimeBegin=" + (params == null ? 0L : params.getCreateTimeBegin())
+                    + ", createTimeEnd=" + (params == null ? 0L : params.getCreateTimeEnd()));
+            if (callback != null) {
+                callback.onResult(new com.dji.flighthubsdk.bean.FlightHubError(
+                        FlightHubSdkErrorCode.ERROR_INVALID_PARAM, 0, 0, 0,
+                        "create_time_begin/end 必填且需 >0, 且 begin<=end; sn 不能为空"), null);
+            }
+            return;
+        }
         try {
             int id = generateActionCallbackId();
             // 创建SWIG回调对象

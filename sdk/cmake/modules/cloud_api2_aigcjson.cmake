@@ -1,3 +1,6 @@
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 # 头文件库；不走上游 CMakeLists（避免默认开 test）。
 
 add_library(cloud_api2_aigcjson INTERFACE)

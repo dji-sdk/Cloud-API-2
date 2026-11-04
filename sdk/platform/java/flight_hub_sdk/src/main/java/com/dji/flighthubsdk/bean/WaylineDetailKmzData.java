@@ -50,6 +50,8 @@ public final class WaylineDetailKmzData {
     private List<String> accurateActionUuids;
     private List<String> actionUuids;
     private WaylineDetailSurveyAreaScope surveyAreaScope;
+    /** KMZ 数据 MD5 */
+    private String md5;
     public WaylineDetailKmzData() {
     }
 
@@ -224,6 +226,8 @@ public final class WaylineDetailKmzData {
     public List<String> getActionUuids() { return actionUuids; }
     /** 测区范围 */
     public WaylineDetailSurveyAreaScope getSurveyAreaScope() { return surveyAreaScope; }
+    /** KMZ 数据 MD5 */
+    public String getMd5() { return md5; }
 
     /**
      * 航线类型。枚举：0=航点航线(WAYPOINT), 1=面状航线/正射(MAPPING2D), 2=面状航线/倾斜(MAPPING3D),
@@ -429,6 +433,11 @@ public final class WaylineDetailKmzData {
         this.surveyAreaScope = surveyAreaScope;
     }
 
+    /** KMZ 数据 MD5 */
+    public void setMd5(String md5) {
+        this.md5 = md5;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -477,7 +486,8 @@ public final class WaylineDetailKmzData {
                 && Objects.equals(payloadTypesWithIndex, that.payloadTypesWithIndex)
                 && Objects.equals(accurateActionUuids, that.accurateActionUuids)
                 && Objects.equals(actionUuids, that.actionUuids)
-                && Objects.equals(surveyAreaScope, that.surveyAreaScope);
+                && Objects.equals(surveyAreaScope, that.surveyAreaScope)
+                && Objects.equals(md5, that.md5);
     }
 
     @Override
@@ -522,7 +532,8 @@ public final class WaylineDetailKmzData {
                 payloadTypesWithIndex,
                 accurateActionUuids,
                 actionUuids,
-                surveyAreaScope);
+                surveyAreaScope,
+                md5);
     }
 
     @Override
@@ -568,6 +579,7 @@ public final class WaylineDetailKmzData {
                 + ", accurateActionUuids=" + accurateActionUuids
                 + ", actionUuids=" + actionUuids
                 + ", surveyAreaScope=" + surveyAreaScope
+                + ", md5='" + md5 + '\''
                 + '}';
     }
 }

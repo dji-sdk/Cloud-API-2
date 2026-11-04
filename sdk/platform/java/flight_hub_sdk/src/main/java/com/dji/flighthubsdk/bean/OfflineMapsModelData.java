@@ -15,8 +15,8 @@ public final class OfflineMapsModelData {
     private long updatedTime;
     /** 模型信息; */
     private List<OfflineMapsModelInfoData> models;
-    /** 同步进度百分比; */
-    private int percent;
+    /** 同步进度百分比，支持小数; */
+    private double percent;
     /** 状态。枚举："finish"=完成; */
     private String status;
     /** 结果码; */
@@ -38,7 +38,7 @@ public final class OfflineMapsModelData {
             int id,
             long updatedTime,
             List<OfflineMapsModelInfoData> models,
-            int percent,
+            double percent,
             String status,
             int result) {
         this.id = id;
@@ -79,13 +79,13 @@ public final class OfflineMapsModelData {
         this.models = models;
     }
 
-    /** 同步进度百分比; */
-    public int getPercent() {
+    /** 同步进度百分比，支持小数; */
+    public double getPercent() {
         return percent;
     }
 
-    /** @param percent 同步进度百分比; */
-    public void setPercent(int percent) {
+    /** @param percent 同步进度百分比，支持小数; */
+    public void setPercent(double percent) {
         this.percent = percent;
     }
 
@@ -121,7 +121,7 @@ public final class OfflineMapsModelData {
         return id == that.id
                 && updatedTime == that.updatedTime
                 && Objects.equals(models, that.models)
-                && percent == that.percent
+                && Double.compare(that.percent, percent) == 0
                 && Objects.equals(status, that.status)
                 && result == that.result;
     }

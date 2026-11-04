@@ -1,3 +1,6 @@
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 set(_aws_dir "${CLOUD_API2_THIRD_PARTY}/aws-cpp-sdk-s3/lib/${CLOUD_API2_PLAT}")
 if(NOT EXISTS "${_aws_dir}")
     message(FATAL_ERROR "AWS SDK missing: ${_aws_dir}")

@@ -287,6 +287,22 @@ public class TaskDetail {
     return (cPtr == 0) ? null : new StringVector(cPtr, false);
   }
 
+  public void setCloud_to_cloud_id(String value) {
+    flighthubsdkmoduleJNI.TaskDetail_cloud_to_cloud_id_set(swigCPtr, this, value);
+  }
+
+  public String getCloud_to_cloud_id() {
+    return flighthubsdkmoduleJNI.TaskDetail_cloud_to_cloud_id_get(swigCPtr, this);
+  }
+
+  public void setFast_reconstruction(boolean value) {
+    flighthubsdkmoduleJNI.TaskDetail_fast_reconstruction_set(swigCPtr, this, value);
+  }
+
+  public boolean getFast_reconstruction() {
+    return flighthubsdkmoduleJNI.TaskDetail_fast_reconstruction_get(swigCPtr, this);
+  }
+
   public void setUpdated_at(String value) {
     flighthubsdkmoduleJNI.TaskDetail_updated_at_set(swigCPtr, this, value);
   }

@@ -18,6 +18,7 @@
 #include "bll/module/firmware_manage_module/firmware_manage_module_impl.h"
 #include "bll/module/psdk_resource_module/psdk_resource_module_impl.h"
 #include "bll/module/flash_led_module/flash_led_module_impl.h"
+#include "bll/module/auto_record_module/auto_record_module_impl.h"
 #include "bll/module/wayline_manage_module/wayline_manage_module_impl.h"
 #include "bll/module/ai_inside_manage_module/ai_inside_manage_module_impl.h"
 #include "bll/module/element_module/element_module_impl.h"
@@ -30,7 +31,7 @@ namespace flight_hub_sdk {
 
 class WorkspaceImpl : public IWorkspace, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    WorkspaceImpl();
+    explicit WorkspaceImpl(int session_id);
     ~WorkspaceImpl() override;
 
     // 获取缓存的设备列表
@@ -48,6 +49,7 @@ public:
     std::shared_ptr<IWaylineManageModule> getWaylineManageModule() override;
     std::shared_ptr<IPsdkResourceModule> getPsdkResourceModule() override;
     std::shared_ptr<IFlashLedModule> getFlashLedModule() override;
+    std::shared_ptr<IAutoRecordModule> getAutoRecordModule() override;
 
     std::shared_ptr<ITerraBuildModule> getTerraBuildModule() override;
     std::shared_ptr<IDiagnosisManagementModule> getDiagnosisManagementModule() override;
@@ -60,6 +62,7 @@ public:
     std::shared_ptr<ILiveSyncModule> getLiveSyncModule() override;
 
 private:
+    int session_id_;
     std::mutex device_manage_module_mutex_;
     std::shared_ptr<DeviceManageModuleImpl> device_manage_module_ = nullptr;
 
@@ -72,9 +75,13 @@ private:
     std::mutex flash_led_module_mutex_;
     std::shared_ptr<FlashLedModuleImpl> flash_led_module_ = nullptr;
 
+    std::mutex auto_record_module_mutex_;
+    std::shared_ptr<AutoRecordModuleImpl> auto_record_module_ = nullptr;
+
     std::mutex wayline_manage_module_mutex_;
     std::shared_ptr<WaylineManageModuleImpl> wayline_manage_module_ = nullptr;
 
+    std::mutex flight_task_module_mutex_;
     std::shared_ptr<FlightTaskModuleImpl> flight_task_module_ = nullptr;
 
     std::mutex media_service_module_mutex_;
@@ -86,7 +93,9 @@ private:
     std::mutex flight_task_record_module_mutex_;
     std::shared_ptr<FlightTaskRecordModuleImpl> flight_task_record_module_ = nullptr;
 
+    std::mutex log_management_module_mutex_;
     std::shared_ptr<LogManagementModuleImpl> log_management_module_ = nullptr;
+    std::mutex hms_module_mutex_;
     std::shared_ptr<HMSModuleImpl> hms_module_ = nullptr;
 
     std::mutex terra_build_module_mutex_;

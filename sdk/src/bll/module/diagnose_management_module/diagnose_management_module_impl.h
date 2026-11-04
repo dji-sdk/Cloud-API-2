@@ -23,7 +23,7 @@ namespace flight_hub_sdk {
   */
 class DiagnosisManagementModuleImpl : public IDiagnosisManagementModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit DiagnosisManagementModuleImpl();
+    explicit DiagnosisManagementModuleImpl(int session_id);
 
     // 析构函数;
     ~DiagnosisManagementModuleImpl();
@@ -60,6 +60,7 @@ public:
 
 
 private:
+    int session_id_;
 };
 
 } // namespace flight_hub_sdk

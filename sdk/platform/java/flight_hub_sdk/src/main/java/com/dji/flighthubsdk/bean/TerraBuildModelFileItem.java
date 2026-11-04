@@ -15,7 +15,11 @@ public final class TerraBuildModelFileItem {
     private int subFileType;
     private int state;
     private List<Integer> reconstructionType;
+    /** 后端返回的预览图 URL */
+    private String previewUrl = "";
+    /** 兼容字段，值等同 previewUrl */
     private String thumbnailUrl;
+    /** 兼容字段，列表接口不返回；ZIP URL 请走 getModelFileUrl */
     private String zipUrl;
     private String createdAt;
     private String updatedAt;
@@ -68,9 +72,11 @@ public final class TerraBuildModelFileItem {
     public int getState() { return state; }
     /** 重建类型。枚举：2=二维, 3=三维, 4=3DGS RGB, 6=全景, 7=激光雷达 */
     public List<Integer> getReconstructionType() { return reconstructionType; }
-    /** 缩略图 URL */
+    /** 后端返回的预览图 URL */
+    public String getPreviewUrl() { return previewUrl; }
+    /** 兼容字段，值等同 previewUrl */
     public String getThumbnailUrl() { return thumbnailUrl; }
-    /** 压缩包 URL */
+    /** 兼容字段，列表接口不返回 */
     public String getZipUrl() { return zipUrl; }
     /** 创建时间（ISO 8601） */
     public String getCreatedAt() { return createdAt; }
@@ -112,12 +118,17 @@ public final class TerraBuildModelFileItem {
         this.reconstructionType = reconstructionType;
     }
 
-    /** 缩略图 URL */
+    /** @param previewUrl 后端返回的预览图 URL */
+    public void setPreviewUrl(String previewUrl) {
+        this.previewUrl = previewUrl != null ? previewUrl : "";
+    }
+
+    /** @param thumbnailUrl 兼容字段，值等同 previewUrl */
     public void setThumbnailUrl(String thumbnailUrl) {
         this.thumbnailUrl = thumbnailUrl;
     }
 
-    /** 压缩包 URL */
+    /** @param zipUrl 兼容字段，列表接口不返回 */
     public void setZipUrl(String zipUrl) {
         this.zipUrl = zipUrl;
     }
@@ -148,6 +159,7 @@ public final class TerraBuildModelFileItem {
                 && subFileType == that.subFileType
                 && state == that.state
                 && Objects.equals(reconstructionType, that.reconstructionType)
+                && Objects.equals(previewUrl, that.previewUrl)
                 && Objects.equals(thumbnailUrl, that.thumbnailUrl)
                 && Objects.equals(zipUrl, that.zipUrl)
                 && Objects.equals(createdAt, that.createdAt)
@@ -164,6 +176,7 @@ public final class TerraBuildModelFileItem {
                 subFileType,
                 state,
                 reconstructionType,
+                previewUrl,
                 thumbnailUrl,
                 zipUrl,
                 createdAt,
@@ -180,6 +193,7 @@ public final class TerraBuildModelFileItem {
                 + ", subFileType=" + subFileType
                 + ", state=" + state
                 + ", reconstructionType=" + reconstructionType
+                + ", previewUrl='" + previewUrl + '\''
                 + ", thumbnailUrl='" + thumbnailUrl + '\''
                 + ", zipUrl='" + zipUrl + '\''
                 + ", createdAt='" + createdAt + '\''

@@ -15,6 +15,10 @@ public class AiAlertFlightItem {
     private int status;
     /** 架次开始时间（毫秒时间戳） */
     private long startTime;
+    /** 飞行任务类型。枚举：0=未知, 1=航线任务, 2=指令任务 */
+    private int flightTaskType;
+    /** 该架次是否已评论 */
+    private boolean isCommented;
 
     public AiAlertFlightItem() {}
 
@@ -42,4 +46,14 @@ public class AiAlertFlightItem {
     public long getStartTime() { return startTime; }
     /** @param startTime 架次开始时间（毫秒时间戳） */
     public void setStartTime(long v) { this.startTime = v; }
+
+    /** 飞行任务类型。枚举：0=未知, 1=航线任务, 2=指令任务 */
+    public int getFlightTaskType() { return flightTaskType; }
+    /** @param flightTaskType 飞行任务类型。枚举：0=未知, 1=航线任务, 2=指令任务 */
+    public void setFlightTaskType(int v) { this.flightTaskType = v; }
+
+    /** 该架次是否已评论 */
+    public boolean isCommented() { return isCommented; }
+    /** @param commented 该架次是否已评论 */
+    public void setCommented(boolean commented) { this.isCommented = commented; }
 }

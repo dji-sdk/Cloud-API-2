@@ -5,7 +5,16 @@ package com.dji.flighthubsdk.bean;
 
 
 import java.util.Objects;
-/** 固件兼容性版本范围规则（最小版本 / 最大版本） */
+
+/**
+ * 固件兼容性版本范围规则（最小版本 / 最大版本）。
+ *
+ * <p>该类型仅用于历史字段
+ * {@link FirmwareCompatibilityConfigItemResult#getRules()}；
+ * 当前后端 {@code firmware_compatible/config} 不返回 {@code rules}，
+ * 版本规则在 {@link FirmwareCompatibilityConfigItemResult#getValidates()}
+ * 中通过 {@code field=thing_version} 表达。
+ */
 public final class FirmwareCompatibilityRulesResult {
 
     private String minVersion;

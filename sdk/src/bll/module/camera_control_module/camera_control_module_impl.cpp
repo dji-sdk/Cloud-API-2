@@ -7,11 +7,12 @@
 #include "http_interface/http_interface.h"
 #include "notification_center/notification_center.h"
 #include <BusinessManager.h>
+#include "session/session_bm.h"
 
 using namespace flight_hub_sdk;
 
-CameraControlModuleImpl::CameraControlModuleImpl(std::shared_ptr<PayloadCtrlMgr> payload_ctrl_mgr)
-    : payload_ctrl_mgr_(std::move(payload_ctrl_mgr)) {
+CameraControlModuleImpl::CameraControlModuleImpl(std::shared_ptr<PayloadCtrlMgr> payload_ctrl_mgr, int session_id)
+    : payload_ctrl_mgr_(std::move(payload_ctrl_mgr)), session_id_(session_id) {
     LOG_INFO("[CameraControlModuleImpl] constructor");
 }
 
@@ -25,7 +26,7 @@ void CameraControlModuleImpl::drcSwitchLiveLens(const SwitchLiveLensParams& para
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SWITCH_LIVE_LENS, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SWITCH_LIVE_LENS, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -44,7 +45,7 @@ void CameraControlModuleImpl::drcSetPhotoStorageSettings(const SetPhotoStorageSe
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PHOTO_STORAGE_SETTINGS, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PHOTO_STORAGE_SETTINGS, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -63,7 +64,7 @@ void CameraControlModuleImpl::drcSetVideoStorageSettings(const SetVideoStorageSe
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_VIDEO_STORAGE_SETTINGS, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_VIDEO_STORAGE_SETTINGS, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -82,7 +83,7 @@ void CameraControlModuleImpl::drcSetNightSceneMode(const SetNightSceneModeParams
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_NIGHT_SCENE_MODE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_NIGHT_SCENE_MODE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -101,7 +102,7 @@ void CameraControlModuleImpl::drcTakePhoto(const std::string& payload_index, con
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_TAKE_PHOTO, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_TAKE_PHOTO, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -120,7 +121,7 @@ void CameraControlModuleImpl::drcSmartPhotoTakePhoto(const std::string& payload_
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SMART_PHOTO_TAKE_PHOTO, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SMART_PHOTO_TAKE_PHOTO, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -139,7 +140,7 @@ void CameraControlModuleImpl::drcStartRecord(const std::string& payload_index, c
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_START_RECORD, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_START_RECORD, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -158,7 +159,7 @@ void CameraControlModuleImpl::drcStopRecord(const std::string& payload_index, co
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_RECORD, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_RECORD, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -177,7 +178,7 @@ void CameraControlModuleImpl::drcZoomAtTarget(const ZoomAtTargetParams& params, 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_ZOOM_AT_TARGET, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_ZOOM_AT_TARGET, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -196,7 +197,7 @@ void CameraControlModuleImpl::drcSetFocalLength(const CameraFocalLengthParams& p
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_FOCAL_LENGTH, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_FOCAL_LENGTH, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -215,7 +216,7 @@ void CameraControlModuleImpl::drcSetLinkageZoom(const LinkageZoomParams& params,
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_LINKAGE_ZOOM, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_LINKAGE_ZOOM, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -234,7 +235,7 @@ void CameraControlModuleImpl::drcResetGimbal(const GimbalResetParams& params, co
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_RESET_GIMBAL, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_RESET_GIMBAL, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -253,7 +254,7 @@ void CameraControlModuleImpl::lookAtTarget(const LookAtTargetParams& params, con
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_LOOK_AT_TARGET, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_LOOK_AT_TARGET, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -272,7 +273,7 @@ void CameraControlModuleImpl::drcSendCameraScreenDrag(const CameraScreenDragPara
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SEND_CAMERA_SCREEN_DRAG, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SEND_CAMERA_SCREEN_DRAG, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -291,7 +292,7 @@ void CameraControlModuleImpl::drcStartPanorama(const PanoramaParam& params, cons
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_START_PANORAMA, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_START_PANORAMA, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -310,7 +311,7 @@ void CameraControlModuleImpl::drcStopPanorama(const std::string& payload_index, 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_PANORAMA, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_PANORAMA, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -347,7 +348,7 @@ void CameraControlModuleImpl::drcSetPhotoSize(const PhotoSizeParam& params, cons
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PHOTO_SIZE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PHOTO_SIZE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -366,7 +367,7 @@ void CameraControlModuleImpl::drcSetIntervalTakePhoto(const IntervalTakePhotoSet
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_INTERVAL_TAKE_PHOTO, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_INTERVAL_TAKE_PHOTO, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -385,7 +386,7 @@ void CameraControlModuleImpl::drcIntervalTakePhoto(const IntervalTakePhotoParam&
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_INTERVAL_TAKE_PHOTO, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_INTERVAL_TAKE_PHOTO, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -404,7 +405,7 @@ void CameraControlModuleImpl::drcStopTakePhoto(const std::string& payload_index,
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_TAKE_PHOTO, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_TAKE_PHOTO, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -441,7 +442,7 @@ void CameraControlModuleImpl::drcCameraAimAtTarget(const CameraAimParam& params,
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CAMERA_AIM_AT_TARGET, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CAMERA_AIM_AT_TARGET, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -460,7 +461,7 @@ void CameraControlModuleImpl::drcSwitchCameraMode(const SwitchCameraModeParams& 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SWITCH_CAMERA_MODE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SWITCH_CAMERA_MODE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -505,7 +506,7 @@ void CameraControlModuleImpl::cancelListenDrcCameraState(const std::string& payl
 }
 
 
-int CameraControlModuleImpl::listenDrcLiveviewWorldRegion(const std::string& payload_index, const std::function<void(const LiveviewWorldRegion& region)>& callback) {  
+int CameraControlModuleImpl::listenDrcLiveviewWorldRegion(const std::string& payload_index, const std::function<void(const LiveviewWorldRegion& region)>& callback) {
     if (!payload_ctrl_mgr_) {
         LOG_ERROR("[CameraControlModuleImpl] payload_ctrl_mgr_ is null");
         return -1;
@@ -792,7 +793,7 @@ void CameraControlModuleImpl::drcSetThermalGainMode(const ThermalGainModeSetPara
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_GAIN_MODE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_GAIN_MODE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -815,7 +816,7 @@ void CameraControlModuleImpl::drcSetCameraApertureValue(const CameraApertureValu
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_APERTURE_VALUE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_APERTURE_VALUE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -833,7 +834,7 @@ void CameraControlModuleImpl::drcSetCameraExposureMode(const CameraExposureModeS
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_EXPOSURE_MODE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_EXPOSURE_MODE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -851,7 +852,7 @@ void CameraControlModuleImpl::drcSetCameraExposureValue(const CameraExposureSetP
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_EXPOSURE_VALUE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_EXPOSURE_VALUE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -869,7 +870,7 @@ void CameraControlModuleImpl::drcSetCameraFocusMode(const CameraFocusModeSetPara
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_FOCUS_MODE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_FOCUS_MODE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -887,7 +888,7 @@ void CameraControlModuleImpl::drcSetCameraFocusValue(const CameraFocusValueSetPa
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_FOCUS_VALUE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_FOCUS_VALUE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -905,7 +906,7 @@ void CameraControlModuleImpl::drcSetCameraIso(const CameraIsoSetParams& params, 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_ISO, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_ISO, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -923,7 +924,7 @@ void CameraControlModuleImpl::drcSetCameraMechanicalShutter(const CameraMechanic
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_MECHANICAL_SHUTTER, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_MECHANICAL_SHUTTER, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -941,7 +942,7 @@ void CameraControlModuleImpl::drcCameraPointFocusAction(const CameraPointFocusAc
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CAMERA_POINT_FOCUS_ACTION, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CAMERA_POINT_FOCUS_ACTION, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -959,7 +960,7 @@ void CameraControlModuleImpl::drcSetCameraShutter(const CameraShutterSetParams& 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_SHUTTER, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_SHUTTER, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -977,7 +978,7 @@ void CameraControlModuleImpl::drcSetCameraWatermark(const CameraWatermarkParams&
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_WATERMARK, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_WATERMARK, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -995,7 +996,7 @@ void CameraControlModuleImpl::drcSetCameraDewarping(const CameraDewarpingSetPara
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_DEWARPING, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_DEWARPING, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1017,7 +1018,7 @@ void CameraControlModuleImpl::drcSetCameraScreenSplit(const CameraScreenSplitPar
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_SCREEN_SPLIT, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_SCREEN_SPLIT, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1035,7 +1036,7 @@ void CameraControlModuleImpl::drcCleanFog(const CleanFogParams& params, const st
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CLEAN_FOG, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CLEAN_FOG, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1057,7 +1058,7 @@ void CameraControlModuleImpl::drcSetThermalCurrentPalette(const ThermalCurrentPa
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_CURRENT_PALETTE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_CURRENT_PALETTE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1075,7 +1076,7 @@ void CameraControlModuleImpl::drcSetThermalSuperResolutionEnable(const ThermalSu
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_SUPER_RESOLUTION_ENABLE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_SUPER_RESOLUTION_ENABLE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1093,7 +1094,7 @@ void CameraControlModuleImpl::drcSetIrMeteringMode(const IrMeteringModeSetParams
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_MODE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_MODE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1111,7 +1112,7 @@ void CameraControlModuleImpl::drcSetIrMeteringPoint(const IrMeteringPointSetPara
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_POINT, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_POINT, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1129,7 +1130,7 @@ void CameraControlModuleImpl::drcSetIrMeteringArea(const IrMeteringAreaSetParams
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_AREA, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_AREA, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1147,7 +1148,7 @@ void CameraControlModuleImpl::drcSetIrDisplayMode(const SetIrDisplayModeParams& 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_DISPLAY_MODE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_DISPLAY_MODE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1165,7 +1166,7 @@ void CameraControlModuleImpl::drcSetIrEnhanceMode(const SetIrEnhanceModeParams& 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_ENHANCE_MODE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_ENHANCE_MODE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1183,7 +1184,7 @@ void CameraControlModuleImpl::drcSetIrMixRate(const SetIrMixRateParams& params, 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_MIX_RATE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_MIX_RATE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1201,7 +1202,7 @@ void CameraControlModuleImpl::drcSetIsothermEnable(const SetIsothermEnableParams
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_ENABLE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_ENABLE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1219,7 +1220,7 @@ void CameraControlModuleImpl::drcSetIsothermColorRenderingType(const SetIsotherm
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_COLOR_RENDERING_TYPE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_COLOR_RENDERING_TYPE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1237,7 +1238,7 @@ void CameraControlModuleImpl::drcSetIsothermLowerUpperRange(const SetIsothermLow
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_LOWER_UPPER_RANGE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_LOWER_UPPER_RANGE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1255,7 +1256,7 @@ void CameraControlModuleImpl::drcSetIsothermRenderingPolygon(const SetIsothermRe
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_RENDERING_POLYGON, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_RENDERING_POLYGON, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1273,7 +1274,7 @@ void CameraControlModuleImpl::drcSetIsothermRoiBasedRenderingEnable(const SetIso
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_ROI_BASED_RENDERING_ENABLE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_ROI_BASED_RENDERING_ENABLE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1291,7 +1292,7 @@ void CameraControlModuleImpl::drcSetInfraredFillLightEnable(const InfraredFillLi
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_INFRARED_FILL_LIGHT_ENABLE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_INFRARED_FILL_LIGHT_ENABLE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1309,7 +1310,7 @@ void CameraControlModuleImpl::drcSetCameraNightVisionEnable(const CameraNightVis
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_NIGHT_VISION_ENABLE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_NIGHT_VISION_ENABLE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1327,7 +1328,7 @@ void CameraControlModuleImpl::drcResetCameraSettings(const CameraSettingsResetPa
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_RESET_CAMERA_SETTINGS, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_RESET_CAMERA_SETTINGS, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1349,7 +1350,7 @@ void CameraControlModuleImpl::drcSetCameraDenoiseLevelSet(const CameraDenoiseLev
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_DENOISE_LEVEL_SET, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_DENOISE_LEVEL_SET, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1367,7 +1368,7 @@ void CameraControlModuleImpl::drcSetVideoResolution(const VideoResolutionSetPara
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_VIDEO_RESOLUTION, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_VIDEO_RESOLUTION, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1385,7 +1386,7 @@ void CameraControlModuleImpl::drcSetCameraPhotoFormat(const CameraPhotoFormatSet
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_PHOTO_FORMAT, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_PHOTO_FORMAT, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1403,7 +1404,7 @@ void CameraControlModuleImpl::drcSetPreRecordedStatus(const PreRecordedStatusSet
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PRE_RECORDED_STATUS, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PRE_RECORDED_STATUS, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1421,7 +1422,7 @@ void CameraControlModuleImpl::drcSetPreRecordedTime(const PreRecordedTimeSetPara
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PRE_RECORDED_TIME, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PRE_RECORDED_TIME, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1439,7 +1440,7 @@ void CameraControlModuleImpl::drcSetCountDownAction(int count_down_type, int act
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_COUNT_DOWN_ACTION, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_COUNT_DOWN_ACTION, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1457,7 +1458,7 @@ void CameraControlModuleImpl::drcSetAssistantVideoMode(int mode, const std::func
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ASSISTANT_VIDEO_MODE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ASSISTANT_VIDEO_MODE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1475,7 +1476,7 @@ void CameraControlModuleImpl::drcSetAssistantVideoSwitch(int sw, const std::func
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ASSISTANT_VIDEO_SWITCH, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ASSISTANT_VIDEO_SWITCH, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1493,7 +1494,7 @@ void CameraControlModuleImpl::drcSetAlgorithmDehazeMode(const AlgorithmDehazeMod
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ALGORITHM_DEHAZE_MODE, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ALGORITHM_DEHAZE_MODE, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1511,7 +1512,7 @@ void CameraControlModuleImpl::drcSetAlgorithmDehazeLevel(const AlgorithmDehazeLe
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ALGORITHM_DEHAZE_LEVEL, state_err, "[CameraControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ALGORITHM_DEHAZE_LEVEL, state_err, session_id_, "[CameraControlModuleImpl]");
 
         callback(state_err);
         return;
@@ -1520,6 +1521,7 @@ void CameraControlModuleImpl::drcSetAlgorithmDehazeLevel(const AlgorithmDehazeLe
 }
 
 int CameraControlModuleImpl::listenDroneCameraWatermarkSettings(const std::function<void(const DroneCameraWatermarkSettingsPush&)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     if (!payload_ctrl_mgr_) {
         LOG_ERROR("[CameraControlModuleImpl] payload_ctrl_mgr_ is null");
         return -1;
@@ -1527,7 +1529,9 @@ int CameraControlModuleImpl::listenDroneCameraWatermarkSettings(const std::funct
     WeakDummy(weak_ptr);
     int user_listen_id = drone_camera_watermark_settings_next_id_++;
 
-    auto nc_listen_id = NotificationCenter::getInstance()->getBusinessManager()->ListenDroneCameraWatermarkSettings(
+    auto nc_listen_id = -1;
+    if (bm) {
+        nc_listen_id = bm->ListenDroneCameraWatermarkSettings(
         [this, weak_ptr, callback](const notification_center::DroneCameraWatermarkSettingsPush& msg) -> void {
             WeakDummyReturn(weak_ptr);
             DroneCameraWatermarkSettingsPush res{};
@@ -1552,6 +1556,9 @@ int CameraControlModuleImpl::listenDroneCameraWatermarkSettings(const std::funct
                 LOG_ERROR("[CameraControlModuleImpl] ListenDroneCameraWatermarkSettings error: %d", error_code);
             }
         }, payload_ctrl_mgr_->getDroneSn(), notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     drone_camera_watermark_settings_nc_listen_ids_[user_listen_id] = nc_listen_id;
     LOG_INFO("[CameraControlModuleImpl] listenDroneCameraWatermarkSettings user_listen_id: %d, nc_listen_id: %lld",
@@ -1560,10 +1567,13 @@ int CameraControlModuleImpl::listenDroneCameraWatermarkSettings(const std::funct
 }
 
 void CameraControlModuleImpl::cancelListenDroneCameraWatermarkSettings(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("[CameraControlModuleImpl] cancelListenDroneCameraWatermarkSettings listen_id: %d", listen_id);
     auto it = drone_camera_watermark_settings_nc_listen_ids_.find(listen_id);
     if (it != drone_camera_watermark_settings_nc_listen_ids_.end()) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(it->second);
+        if (bm) {
+            bm->CancelObserve(it->second);
+        }
         drone_camera_watermark_settings_nc_listen_ids_.erase(it);
     }
 }

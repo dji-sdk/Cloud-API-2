@@ -756,6 +756,17 @@ namespace notification_center {
             const std::string &device_sn,
             NotificationFrequency freq) = 0;
 
+        // 媒体服务: 3X 超清全景拼接进度推送("topic_pano_stitch_progress");
+        // PaaS 通道；PaaS 部署下云端拼接进度变化经云端通知服务推送该 topic;
+        // PanoStitchProgress;
+        // @note 第三参数 device_sn 在此处实际传入的是 workspace_id（PaaS 无 device 维度，
+        //       复用 NC 框架的 filter_key 槽位；SDK impl 层与 NC 层保持一致）。
+        virtual int64_t ListenPanoStitchProgress(
+            const std::function<void(const PanoStitchProgress &msg)> &on_messages_callback,
+            const std::function<void(const NotificationCenterErrorCode &error_code)> &on_result_callback,
+            const std::string &device_sn,
+            NotificationFrequency freq) = 0;
+
         // 媒体服务: 设备媒体回传通知("topic_media_file_device_upload");
         // MediaFileDeviceUpload;
         virtual int64_t ListenMediaFileDeviceUploadMessage(
@@ -799,14 +810,14 @@ namespace notification_center {
             const std::string &device_sn,
             NotificationFrequency freq) = 0;
 
-        // topic_media_file_hide_on_map — 模型隐藏地图推送（来自 file-storage）
+        // topic_media_file_hide_on_map — 模型隐藏地图推送（来自云端媒体服务）
         virtual int64_t ListenTerraMediaFileHideOnMap(
             const std::function<void(const TerraMediaFileHideOnMap &msg)> &on_messages_callback,
             const std::function<void(const NotificationCenterErrorCode &error_code)> &on_result_callback,
             const std::string &device_sn,
             NotificationFrequency freq) = 0;
 
-        // topic_media_file_show_on_map — 模型显示地图推送（来自 file-storage）
+        // topic_media_file_show_on_map — 模型显示地图推送（来自云端媒体服务）
         virtual int64_t ListenTerraMediaFileShowOnMap(
             const std::function<void(const TerraMediaFileShowOnMap &msg)> &on_messages_callback,
             const std::function<void(const NotificationCenterErrorCode &error_code)> &on_result_callback,
@@ -837,6 +848,20 @@ namespace notification_center {
         // 航线任务事件 ("topic_atc_wayline_task_event")
         virtual int64_t ListenWaylineTaskEvent(
             const std::function<void(const WaylineTaskEvent &msg)> &on_messages_callback,
+            const std::function<void(const NotificationCenterErrorCode &error_code)> &on_result_callback,
+            const std::string &device_sn,
+            NotificationFrequency freq) = 0;
+
+        // 多机场返航路径信息事件 ("topic_atc_return_home_info_event")
+        virtual int64_t ListenReturnHomeInfoEvent(
+            const std::function<void(const ReturnHomeInfoEvent &msg)> &on_messages_callback,
+            const std::function<void(const NotificationCenterErrorCode &error_code)> &on_result_callback,
+            const std::string &device_sn,
+            NotificationFrequency freq) = 0;
+
+        // 任务异常事件 ("topic_atc_task_exception_event")
+        virtual int64_t ListenTaskExceptionEvent(
+            const std::function<void(const TaskExceptionEvent &msg)> &on_messages_callback,
             const std::function<void(const NotificationCenterErrorCode &error_code)> &on_result_callback,
             const std::string &device_sn,
             NotificationFrequency freq) = 0;
@@ -949,6 +974,34 @@ namespace notification_center {
             const std::string &device_sn,
             NotificationFrequency freq) = 0;
 
+        // PSDK自定义数据透传上行 ("topic_custom_data_transmission_from_psdk")
+        virtual int64_t ListenPsdkCustomDataTransmissionFromPsdk(
+            const std::function<void(const PsdkCustomDataTransmission &msg)> &on_messages_callback,
+            const std::function<void(const NotificationCenterErrorCode &error_code)> &on_result_callback,
+            const std::string &device_sn,
+            NotificationFrequency freq) = 0;
+
+        // ESDK自定义数据透传上行 ("topic_custom_data_transmission_from_esdk")
+        virtual int64_t ListenEsdkCustomDataTransmissionFromEsdk(
+            const std::function<void(const EsdkCustomDataTransmission &msg)> &on_messages_callback,
+            const std::function<void(const NotificationCenterErrorCode &error_code)> &on_result_callback,
+            const std::string &device_sn,
+            NotificationFrequency freq) = 0;
+
+        // 飞行任务媒体最高优先级上传上行 ("topic_highest_priority_upload_flighttask_media")
+        virtual int64_t ListenHighestPriorityUploadFlighttaskMedia(
+            const std::function<void(const HighestPriorityUploadFlighttaskMedia &msg)> &on_messages_callback,
+            const std::function<void(const NotificationCenterErrorCode &error_code)> &on_result_callback,
+            const std::string &device_sn,
+            NotificationFrequency freq) = 0;
+
+        // AirSense 民航飞机告警上行 ("topic_airsense_warning")
+        virtual int64_t ListenAirsenseWarning(
+            const std::function<void(const AirsenseWarning &msg)> &on_messages_callback,
+            const std::function<void(const NotificationCenterErrorCode &error_code)> &on_result_callback,
+            const std::string &device_sn,
+            NotificationFrequency freq) = 0;
+
         // 飞行器进入当前状态原因推送 ("topic_drone_mode_code_reason")
         virtual int64_t ListenDroneModeCodeReason(
             const std::function<void(const DroneModeCodeReason &msg)> &on_messages_callback,
@@ -1001,6 +1054,28 @@ namespace notification_center {
         // 飞机相机水印设置推送 ("topic_drone_camera_watermark_settings")
         virtual int64_t ListenDroneCameraWatermarkSettings(
             const std::function<void(const DroneCameraWatermarkSettingsPush &msg)> &on_messages_callback,
+            const std::function<void(const NotificationCenterErrorCode &error_code)> &on_result_callback,
+            const std::string &device_sn,
+            NotificationFrequency freq) = 0;
+
+        // 级联节点状态变更 ("topic_cascade_node_status")
+        virtual int64_t ListenCascadeNodeStatus(
+            const std::function<void(const CascadeNodeStatusEvent &msg)> &on_messages_callback,
+            const std::function<void(const NotificationCenterErrorCode &error_code)> &on_result_callback,
+            const std::string &device_sn,
+            NotificationFrequency freq) = 0;
+
+        // 跨节点通道消息 ("topic_cascade_notify")
+        // 对端节点通过 POST /cascade/api/notify/{dstNode} 发过来的原始 payload；SDK 不解析。
+        virtual int64_t ListenCascadeNotify(
+            const std::function<void(const CascadeNotifyEvent &msg)> &on_messages_callback,
+            const std::function<void(const NotificationCenterErrorCode &error_code)> &on_result_callback,
+            const std::string &device_sn,
+            NotificationFrequency freq) = 0;
+
+        // AI 告警记录推送 ("alert_records.alert_records_notify")
+        virtual int64_t ListenAiAlertRecords(
+            const std::function<void(const AiAlertRecordsNotification &msg)> &on_messages_callback,
             const std::function<void(const NotificationCenterErrorCode &error_code)> &on_result_callback,
             const std::string &device_sn,
             NotificationFrequency freq) = 0;

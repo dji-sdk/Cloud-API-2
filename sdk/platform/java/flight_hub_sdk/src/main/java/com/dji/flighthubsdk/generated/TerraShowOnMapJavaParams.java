@@ -92,6 +92,62 @@ public class TerraShowOnMapJavaParams {
     return flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_is_distributed_set_get(swigCPtr, this);
   }
 
+  public void setRestore(boolean value) {
+    flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_restore_set(swigCPtr, this, value);
+  }
+
+  public boolean getRestore() {
+    return flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_restore_get(swigCPtr, this);
+  }
+
+  public void setIs_displayed(boolean value) {
+    flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_is_displayed_set(swigCPtr, this, value);
+  }
+
+  public boolean getIs_displayed() {
+    return flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_is_displayed_get(swigCPtr, this);
+  }
+
+  public void setIs_displayed_set(boolean value) {
+    flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_is_displayed_set_set(swigCPtr, this, value);
+  }
+
+  public boolean getIs_displayed_set() {
+    return flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_is_displayed_set_get(swigCPtr, this);
+  }
+
+  public void setIn_uniform_height(boolean value) {
+    flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_in_uniform_height_set(swigCPtr, this, value);
+  }
+
+  public boolean getIn_uniform_height() {
+    return flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_in_uniform_height_get(swigCPtr, this);
+  }
+
+  public void setIn_uniform_height_set(boolean value) {
+    flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_in_uniform_height_set_set(swigCPtr, this, value);
+  }
+
+  public boolean getIn_uniform_height_set() {
+    return flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_in_uniform_height_set_get(swigCPtr, this);
+  }
+
+  public void setModel_display_mod(int value) {
+    flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_model_display_mod_set(swigCPtr, this, value);
+  }
+
+  public int getModel_display_mod() {
+    return flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_model_display_mod_get(swigCPtr, this);
+  }
+
+  public void setModel_display_mod_set(boolean value) {
+    flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_model_display_mod_set_set(swigCPtr, this, value);
+  }
+
+  public boolean getModel_display_mod_set() {
+    return flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_model_display_mod_set_get(swigCPtr, this);
+  }
+
   public void setSelect_filter(TerraSelectFilterJavaParams value) {
     flighthubsdkmoduleJNI.TerraShowOnMapJavaParams_select_filter_set(swigCPtr, this, TerraSelectFilterJavaParams.getCPtr(value), value);
   }

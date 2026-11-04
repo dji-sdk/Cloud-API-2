@@ -5,12 +5,13 @@
 
 #include "api/wayline_manage_module.h"
 #include "common/util/async_capture_protect.h"
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class WaylineManageModuleImpl : public IWaylineManageModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit WaylineManageModuleImpl();
+    explicit WaylineManageModuleImpl(int session_id);
 
     void getWaylineList(const GetWaylineListParam& param, std::function<void(FlightHubError err, GetWaylineListResult result)> callback) override;
     void getWaylineDetail(const std::string& wayline_uuid, std::function<void(FlightHubError err, GetWaylineDetailResult result)> callback) override;
@@ -31,6 +32,7 @@ public:
         std::function<void(FlightHubError err, const GetWaylineEditorStsResult& result)> callback) override;
 
 private:
+    int session_id_;
 };
 
 }  // namespace flight_hub_sdk

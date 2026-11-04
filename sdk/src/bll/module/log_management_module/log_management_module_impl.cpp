@@ -12,10 +12,10 @@
 #include <memory>
 #include "notification_center/notification_center.h"
 #include <BusinessManager.h>
+#include "session/session_bm.h"
 
 namespace flight_hub_sdk {
-LogManagementModuleImpl::LogManagementModuleImpl()
-    {
+LogManagementModuleImpl::LogManagementModuleImpl(int session_id) : session_id_(session_id) {
     LOG_INFO("[LogManagementModuleImpl] constructor");
 }
 
@@ -23,9 +23,10 @@ LogManagementModuleImpl::~LogManagementModuleImpl() {}
 
 void LogManagementModuleImpl::QueryDeviceLogList(const std::string& device_sn, const std::vector<int> module_list, const std::function<void(FlightHubError err, DeviceLogListResult result)>& callback) {
     WeakDummy(weak_ptr);
-    get_device_log_list(device_sn, module_list, [weak_ptr, callback](const DeviceLogListResponse& response, FlightHubError err) {
+    get_device_log_list(device_sn, module_list, [weak_ptr, callback, this](const DeviceLogListResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("QueryDeviceLogList: err_code: %d", (int)err.error_code);
                 }
@@ -55,13 +56,13 @@ void LogManagementModuleImpl::QueryDeviceLogList(const std::string& device_sn, c
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_GET_DEVICE_LOG_LIST, err, "[LogManagementModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_GET_DEVICE_LOG_LIST, err, session_id_, "[LogManagementModuleImpl]");
 
                 if (callback) {
                     callback(err, result);
                 }
             });
-    });
+    }, session_id_);
 }
 
 void LogManagementModuleImpl::CreateDeviceLogReport(const CreateDeviceLogReportRequestParam& param, const std::function<void(FlightHubError err, CreateDeviceLogReportResult result)>& callback) {
@@ -122,9 +123,10 @@ void LogManagementModuleImpl::CreateDeviceLogReport(const CreateDeviceLogReportR
 
     request.is_crashed = param.is_crashed;
 
-    post_create_device_log_report(request, [weak_ptr, callback](const CreateDeviceLogReportResponse& response, FlightHubError err) {
+    post_create_device_log_report(request, [weak_ptr, callback, this](const CreateDeviceLogReportResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("CreateDeviceLogReport: err_code: %d", (int)err.error_code);
                 }
@@ -150,20 +152,21 @@ void LogManagementModuleImpl::CreateDeviceLogReport(const CreateDeviceLogReportR
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_CREATE_DEVICE_LOG_REPORT, err, "[LogManagementModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_CREATE_DEVICE_LOG_REPORT, err, session_id_, "[LogManagementModuleImpl]");
 
                 if (callback) {
                     callback(err, result);
                 }
             });
-    });
+    }, session_id_);
 }
 
 void LogManagementModuleImpl::LogReportList(const std::string& device_sn, int page, int page_size, const std::function<void(FlightHubError err, LogReportListResult result)>& callback) {
     WeakDummy(weak_ptr);
-    get_log_report_list(device_sn, page, page_size, [weak_ptr, callback](const LogReportListResponse& response, FlightHubError err) {
+    get_log_report_list(device_sn, page, page_size, [weak_ptr, callback, this](const LogReportListResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("LogReportList: err_code: %d", (int)err.error_code);
                 }
@@ -266,20 +269,21 @@ void LogManagementModuleImpl::LogReportList(const std::string& device_sn, int pa
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_GET_LOG_REPORT_LIST, err, "[LogManagementModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_GET_LOG_REPORT_LIST, err, session_id_, "[LogManagementModuleImpl]");
 
                 if (callback) {
                     callback(err, result);
                 }
             });
-    });
+    }, session_id_);
 }
 
 void LogManagementModuleImpl::LogReportOperation(const std::string& operation, const std::string& report_id, const std::function<void(FlightHubError err)>& callback) {
     WeakDummy(weak_ptr);
-    post_log_report_operation(operation, report_id, [weak_ptr, callback](FlightHubError err) {
+    post_log_report_operation(operation, report_id, [weak_ptr, callback, this](FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("LogReportOperation: err_code: %d", (int)err.error_code);
                 }
@@ -288,13 +292,13 @@ void LogManagementModuleImpl::LogReportOperation(const std::string& operation, c
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_POST_LOG_REPORT_OPERATION, err, "[LogManagementModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_POST_LOG_REPORT_OPERATION, err, session_id_, "[LogManagementModuleImpl]");
 
                 if (callback) {
                     callback(err);
                 }
             });
-    });
+    }, session_id_);
 }
 
 void LogManagementModuleImpl::UploadLogAppendFile(const std::string& file_path, std::function<void(FlightHubError err)> callback) {
@@ -312,7 +316,7 @@ void LogManagementModuleImpl::UploadLogAppendFile(const std::string& file_path, 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_UPLOAD_LOG_APPEND_FILE, not_found_err, "[LogManagementModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_UPLOAD_LOG_APPEND_FILE, not_found_err, session_id_, "[LogManagementModuleImpl]");
 
         if (callback) {
             callback(not_found_err);
@@ -332,7 +336,7 @@ void LogManagementModuleImpl::UploadLogAppendFile(const std::string& file_path, 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_UPLOAD_LOG_APPEND_FILE, too_large_err, "[LogManagementModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_UPLOAD_LOG_APPEND_FILE, too_large_err, session_id_, "[LogManagementModuleImpl]");
 
         if (callback) {
             callback(too_large_err);
@@ -349,7 +353,7 @@ void LogManagementModuleImpl::UploadLogAppendFile(const std::string& file_path, 
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_UPLOAD_LOG_APPEND_FILE, err, "[LogManagementModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_UPLOAD_LOG_APPEND_FILE, err, session_id_, "[LogManagementModuleImpl]");
 
             if (callback) {
                 callback(err);
@@ -373,7 +377,7 @@ void LogManagementModuleImpl::UploadLogAppendFile(const std::string& file_path, 
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_UPLOAD_LOG_APPEND_FILE, provider_err, "[LogManagementModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_UPLOAD_LOG_APPEND_FILE, provider_err, session_id_, "[LogManagementModuleImpl]");
 
             if (callback) {
                 callback(provider_err);
@@ -416,7 +420,7 @@ void LogManagementModuleImpl::UploadLogAppendFile(const std::string& file_path, 
 
         // 捕获 uploader，保证后台线程跑完前不被析构
         uploader->uploadFileAsync(file_path, object_key, sts_info,
-            [weak_ptr, callback, file_path, object_key, uploader](const CloudStorageUploadResult& result) {
+            [weak_ptr, callback, file_path, object_key, uploader, this](const CloudStorageUploadResult& result) {
                 WeakDummyReturn(weak_ptr);
                 if (result.success) {
                     LOG_INFO("[LogManagementModuleImpl] UploadLogAppendFile success: %s -> %s, ETag: %s",
@@ -428,7 +432,7 @@ void LogManagementModuleImpl::UploadLogAppendFile(const std::string& file_path, 
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_UPLOAD_LOG_APPEND_FILE, upload_err, "[LogManagementModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_UPLOAD_LOG_APPEND_FILE, upload_err, session_id_, "[LogManagementModuleImpl]");
 
                     if (callback) {
                         callback(upload_err);
@@ -442,7 +446,7 @@ void LogManagementModuleImpl::UploadLogAppendFile(const std::string& file_path, 
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_UPLOAD_LOG_APPEND_FILE, upload_err, "[LogManagementModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_UPLOAD_LOG_APPEND_FILE, upload_err, session_id_, "[LogManagementModuleImpl]");
 
                     if (callback) {
                         callback(upload_err);
@@ -455,9 +459,10 @@ void LogManagementModuleImpl::UploadLogAppendFile(const std::string& file_path, 
 
 void LogManagementModuleImpl::GetStsToken(const std::function<void(FlightHubError err, const LogReportAppendStsResponse& sts_response)>& callback) {
     WeakDummy(weak_ptr);
-    post_log_report_append_sts([weak_ptr, callback](const LogReportAppendStsResponse& response, FlightHubError err) {
+    post_log_report_append_sts([weak_ptr, callback, this](const LogReportAppendStsResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("GetStsToken: err_code: %d", (int)err.error_code);
                 }
@@ -466,14 +471,17 @@ void LogManagementModuleImpl::GetStsToken(const std::function<void(FlightHubErro
                     callback(err, response);
                 }
             });
-    });
+    }, session_id_);
 }
 
 int LogManagementModuleImpl::listenDeviceFileUploadProgress(const std::string& device_sn, const std::function<void(const DeviceFileUploadProgress& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
     int user_listen_id = file_upload_next_id_++;
 
-    auto nc_listen_id = NotificationCenter::getInstance()->getBusinessManager()->ListenDeviceFileUploadProgress(
+    auto nc_listen_id = -1;
+    if (bm) {
+        nc_listen_id = bm->ListenDeviceFileUploadProgress(
         [this, weak_ptr, callback](const notification_center::DeviceFileUploadProgress& msg) -> void {
             WeakDummyReturn(weak_ptr);
             DeviceFileUploadProgress res{};
@@ -507,6 +515,9 @@ int LogManagementModuleImpl::listenDeviceFileUploadProgress(const std::string& d
                 LOG_ERROR("[LogManagementModuleImpl] ListenDeviceFileUploadProgress error: %d", error_code);
             }
         }, device_sn, notification_center::NotificationFrequency_Any);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     file_upload_nc_listen_ids_[user_listen_id] = nc_listen_id;
     LOG_INFO("[LogManagementModuleImpl] listenDeviceFileUploadProgress listen_id: %d, nc_listen_id: %lld", user_listen_id, (long long)nc_listen_id);
@@ -514,10 +525,13 @@ int LogManagementModuleImpl::listenDeviceFileUploadProgress(const std::string& d
 }
 
 void LogManagementModuleImpl::cancelListenDeviceFileUploadProgress(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("[LogManagementModuleImpl] cancelListenDeviceFileUploadProgress listen_id: %d", listen_id);
     auto it = file_upload_nc_listen_ids_.find(listen_id);
     if (it != file_upload_nc_listen_ids_.end()) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(it->second);
+        if (bm) {
+            bm->CancelObserve(it->second);
+        }
         file_upload_nc_listen_ids_.erase(it);
     }
 }

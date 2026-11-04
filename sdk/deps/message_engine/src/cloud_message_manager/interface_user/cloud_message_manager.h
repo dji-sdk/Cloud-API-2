@@ -21,6 +21,16 @@ private:
 
 public:
 ///------ 用户自定义接口声明 start ------
+    /*
+        降落任务状态: 设备主动推送, 无需回包
+        北向: thing/product/{gateway_sn}/drc/up   method: landing_mission_state
+        data: landing_state(降落状态) / pause_reason(悬停原因) / cover_precent(舱盖开合百分比) / cover_error_code(开仓错误码)
+        landing_state 枚举: 0=初始空闲 1=等待参数同步 2=航向对齐 3=精准降落(有水平源) 4=无源降落(无水平源, 继续下降)
+                            5=悬停微调(有水平源) 6=纯悬停(无水平源) 7=备降(有源) 8=备降(无源) 9=备降(用户 RC 接管)
+        注: cover_precent 的拼写系协议设计如此(原文即 precent, 非 percent), 详见 drc_landing_mission_state_northbound.h
+    */
+    ListenIdCode ObserveDrcLandingMissionStateNorthbound(const std::function<void(const std::shared_ptr<DrcLandingMissionStateNorthbound>& msg)>& observe_callback, const std::shared_ptr<drc_sdk::Executor>& user_define_executor = nullptr) override;
+
     // /*
     //     北向: thing/product/uav/osd   数据结构: OsdNorthbound   接口: SendOsdNorthbound
     // */
@@ -43,10 +53,24 @@ public:
     // */
     // MeErrorCode SendEventsAirsenseWarningNorthbound(const std::shared_ptr<EventsAirsenseWarningNorthbound>& msg, const std::function<void(int error_code, const std::shared_ptr<EventsReplyAirsenseWarningSouthbound>& msg)>& southbound_msg_callback, const std::shared_ptr<Executor>& user_define_executor = nullptr) override;
     // ListenIdCode ObserveEventsReplyAirsenseWarningSouthbound(const std::function<void(const std::shared_ptr<EventsReplyAirsenseWarningSouthbound>& msg)>& observe_callback, const std::shared_ptr<Executor>& user_define_executor = nullptr) override;
+
+
     /*
         V3 压缩杆量控制（二进制 MessageV3，脚本无法生成）
     */
     MeErrorCode SendCompressedSticksControlSouthbound(const std::shared_ptr<CompressedSticksControlSouthbound>& msg, const std::shared_ptr<drc_sdk::Executor>& user_define_executor = nullptr) override;
+
+    /*
+        custom_data_transmission_to_esdk: 云端向 ESDK 下发自定义数据
+    */
+    MeErrorCode SendServicesCustomDataTransmissionToEsdkSouthbound(const std::shared_ptr<ServicesCustomDataTransmissionToEsdkSouthbound>& msg, const std::function<void(int error_code, const std::shared_ptr<ServicesReplyCustomDataTransmissionToEsdkNorthbound>& msg)>& southbound_msg_callback, const std::shared_ptr<drc_sdk::Executor>& user_define_executor = nullptr) override;
+    ListenIdCode ObserveServicesReplyCustomDataTransmissionToEsdkNorthbound(const std::function<void(const std::shared_ptr<ServicesReplyCustomDataTransmissionToEsdkNorthbound>& msg)>& observe_callback, const std::shared_ptr<drc_sdk::Executor>& user_define_executor = nullptr) override;
+
+    /*
+        custom_data_transmission_to_psdk: 云端向 PSDK 下发自定义数据
+    */
+    MeErrorCode SendServicesCustomDataTransmissionToPsdkSouthbound(const std::shared_ptr<ServicesCustomDataTransmissionToPsdkSouthbound>& msg, const std::function<void(int error_code, const std::shared_ptr<ServicesReplyCustomDataTransmissionToPsdkNorthbound>& msg)>& southbound_msg_callback, const std::shared_ptr<drc_sdk::Executor>& user_define_executor = nullptr) override;
+    ListenIdCode ObserveServicesReplyCustomDataTransmissionToPsdkNorthbound(const std::function<void(const std::shared_ptr<ServicesReplyCustomDataTransmissionToPsdkNorthbound>& msg)>& observe_callback, const std::shared_ptr<drc_sdk::Executor>& user_define_executor = nullptr) override;
 
 ///------ 用户自定义接口声明 end ------
 public:

@@ -23,8 +23,12 @@ public class GetWaylineListParam {
     private List<String> waylineUuids = new ArrayList<>();
     /** 载荷类型过滤 */
     private List<String> payloadTypes = new ArrayList<>();
-    /** 航线类型过滤 */
+    /** 航线类型过滤（历史字段，字符串；建议改用 waylineTypesInt） */
     private List<String> waylineTypes = new ArrayList<>();
+    /** 航线类型过滤（int 数组，与后端一致） */
+    private List<Integer> waylineTypesInt = new ArrayList<>();
+    /** 关键字模糊搜索 */
+    private String keyword = "";
 
     public GetWaylineListParam() {
     }
@@ -65,10 +69,20 @@ public class GetWaylineListParam {
     /** @param payloadTypes 载荷类型过滤 */
     public void setPayloadTypes(List<String> payloadTypes) { this.payloadTypes = payloadTypes != null ? payloadTypes : new ArrayList<>(); }
 
-    /** 航线类型过滤 */
+    /** 航线类型过滤（历史字段，字符串；建议改用 waylineTypesInt） */
     public List<String> getWaylineTypes() { return waylineTypes; }
-    /** @param waylineTypes 航线类型过滤 */
+    /** @param waylineTypes 航线类型过滤（历史字段） */
     public void setWaylineTypes(List<String> waylineTypes) { this.waylineTypes = waylineTypes != null ? waylineTypes : new ArrayList<>(); }
+
+    /** 航线类型过滤（int 数组） */
+    public List<Integer> getWaylineTypesInt() { return waylineTypesInt; }
+    /** @param waylineTypesInt 航线类型过滤（int 数组） */
+    public void setWaylineTypesInt(List<Integer> waylineTypesInt) { this.waylineTypesInt = waylineTypesInt != null ? waylineTypesInt : new ArrayList<>(); }
+
+    /** 关键字模糊搜索 */
+    public String getKeyword() { return keyword; }
+    /** @param keyword 关键字模糊搜索 */
+    public void setKeyword(String keyword) { this.keyword = keyword != null ? keyword : ""; }
 
     @Override
     public boolean equals(Object o) {
@@ -86,7 +100,9 @@ public class GetWaylineListParam {
                 && Objects.equals(droneTypes, that.droneTypes)
                 && Objects.equals(waylineUuids, that.waylineUuids)
                 && Objects.equals(payloadTypes, that.payloadTypes)
-                && Objects.equals(waylineTypes, that.waylineTypes);
+                && Objects.equals(waylineTypes, that.waylineTypes)
+                && Objects.equals(waylineTypesInt, that.waylineTypesInt)
+                && Objects.equals(keyword, that.keyword);
     }
 
     @Override
@@ -99,7 +115,9 @@ public class GetWaylineListParam {
                 droneTypes,
                 waylineUuids,
                 payloadTypes,
-                waylineTypes);
+                waylineTypes,
+                waylineTypesInt,
+                keyword);
     }
 
     @Override
@@ -113,6 +131,8 @@ public class GetWaylineListParam {
                 + ", waylineUuids=" + waylineUuids
                 + ", payloadTypes=" + payloadTypes
                 + ", waylineTypes=" + waylineTypes
+                + ", waylineTypesInt=" + waylineTypesInt
+                + ", keyword='" + keyword + '\''
                 + '}';
     }
 }

@@ -29,6 +29,7 @@ public class Workspace {
     private FirmwareManageModule firmwareManageModuleRef = null;
     private PsdkResourceModule psdkResourceModuleRef = null;
     private FlashLedModule flashLedModuleRef = null;
+    private AutoRecordModule autoRecordModuleRef = null;
     private WaylineManageModule waylineManageModuleRef = null;
     private AIInsideManageModule aiInsideManageModuleRef = null;
     private ElementModule elementModuleRef = null;
@@ -248,6 +249,22 @@ public class Workspace {
         }
         flashLedModuleRef = new FlashLedModule(raw);
         return flashLedModuleRef;
+    }
+
+    /**
+     * 获取自动录制配置模块（项目级配置，PAAS 路径无 project_id）
+     */
+    public synchronized AutoRecordModule getAutoRecordModule() {
+        if (autoRecordModuleRef != null) {
+            return autoRecordModuleRef;
+        }
+        IAutoRecordModule raw = workspace.getAutoRecordModule();
+        if (raw == null) {
+            Logger.error(TAG, "getAutoRecordModule error: module is null");
+            return null;
+        }
+        autoRecordModuleRef = new AutoRecordModule(raw);
+        return autoRecordModuleRef;
     }
 
     /**

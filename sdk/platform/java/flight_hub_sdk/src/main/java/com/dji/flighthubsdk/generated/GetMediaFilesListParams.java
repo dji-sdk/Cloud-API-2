@@ -59,6 +59,31 @@ public class GetMediaFilesListParams {
     return flighthubsdkmoduleJNI.GetMediaFilesListParams_flight_id_get(swigCPtr, this);
   }
 
+  public void setWayline_uuid(String value) {
+    flighthubsdkmoduleJNI.GetMediaFilesListParams_wayline_uuid_set(swigCPtr, this, value);
+  }
+
+  public String getWayline_uuid() {
+    return flighthubsdkmoduleJNI.GetMediaFilesListParams_wayline_uuid_get(swigCPtr, this);
+  }
+
+  public void setWayline_action_uuid(String value) {
+    flighthubsdkmoduleJNI.GetMediaFilesListParams_wayline_action_uuid_set(swigCPtr, this, value);
+  }
+
+  public String getWayline_action_uuid() {
+    return flighthubsdkmoduleJNI.GetMediaFilesListParams_wayline_action_uuid_get(swigCPtr, this);
+  }
+
+  public void setPayload_types(StringVector value) {
+    flighthubsdkmoduleJNI.GetMediaFilesListParams_payload_types_set(swigCPtr, this, StringVector.getCPtr(value), value);
+  }
+
+  public StringVector getPayload_types() {
+    long cPtr = flighthubsdkmoduleJNI.GetMediaFilesListParams_payload_types_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new StringVector(cPtr, false);
+  }
+
   public void setStart_index(int value) {
     flighthubsdkmoduleJNI.GetMediaFilesListParams_start_index_set(swigCPtr, this, value);
   }

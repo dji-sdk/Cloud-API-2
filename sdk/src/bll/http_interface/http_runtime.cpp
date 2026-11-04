@@ -4,6 +4,7 @@
 #include "http_runtime.h"
 
 #include "api/flight_hub_sdk.h"
+#include "session/session_manager.h"
 #include <AIGCJson.hpp>
 #include <base/common/logger.h>
 #include <common/log_safe.h>
@@ -65,6 +66,60 @@ void ensure_gateway_auth_headers_if_needed(
     headers["auth_keys"] = auth_keys_oss.str();
 }
 
+bool ensure_mesh_dst_header_for_session(
+    drc_sdk::common::HttpHeaders& headers,
+    int session_id) {
+    auto mgr_iface = FlightHubSdk::getSessionManager();
+    auto* mgr = mgr_iface ? static_cast<SessionManager*>(mgr_iface.get()) : nullptr;
+    if (!mgr) {
+        LOG_ERROR("[http] mesh header: SessionManager unavailable, session_id=%d", session_id);
+        return false;
+    }
+    auto session = mgr->getSession(session_id);
+    if (!session) {
+        LOG_ERROR("[http] mesh header: session_id=%d not found", session_id);
+        return false;
+    }
+    headers["mesh-dst-idc"] = session->getSessionInfo().node_id;
+    return true;
+}
+
+#ifndef __EMSCRIPTEN__
+// 把在途 HTTP 回调安全回跳到 Main executor。
+// shutdown() 期间 Executors::Shutdown() 会把 main_ reset 成 nullptr；若此时仍有在途
+// HTTP(如 SDK 自动发起的 beacon 上报)回调返回，直接 Executors::Main()->Post(...) 会
+// 解引用空 shared_ptr 触发 SIGSEGV(si_addr=0x0)。此处取本地引用并判空，Main 已销毁时
+// 静默丢弃晚到回调，避免 native 崩溃。
+inline void post_http_callback_to_main(
+    drc_sdk::common::HttpCallbackWithStatus&& callback,
+    drc_sdk::common::NetworkError err_code, int http_code,
+    const std::string& response, const std::vector<std::string>& certs,
+    const drc_sdk::common::HttpHeaders& resp_headers) {
+    auto main = drc_sdk::common::Executors::Main();
+    if (!main) {
+        LOG_WARN("[http] drop in-flight callback: Executors::Main() already shut down");
+        return;
+    }
+    main->Post([callback = std::move(callback), err_code, http_code, response, certs, resp_headers]() mutable {
+        callback(err_code, http_code, response, certs, resp_headers);
+    });
+}
+
+// 把 HTTP 任务安全提交到 IO executor。
+// shutdown() 期间 Executors::Shutdown() 会把 io_ reset 成 nullptr；而在途回调执行时
+// 可能再次发起 HTTP(如业务回调里 SDK 自动补发 beacon 上报)并调 Executors::IO()->Post，
+// 直接解引用空 io_ 会触发 SIGSEGV。此处取本地引用并判空，IO 已销毁时静默丢弃新任务。
+inline bool submit_http_io_task(std::function<void()>&& task) {
+    auto io = drc_sdk::common::Executors::IO();
+    if (!io) {
+        LOG_WARN("[http] drop http task: Executors::IO() already shut down");
+        return false;
+    }
+    io->Post(std::move(task));
+    return true;
+}
+#endif
+
 void HttpPostInnerWithStatus(const std::string& url, const drc_sdk::common::HttpHeaders& headers,
     const drc_sdk::common::HttpPostType post_type, const std::string& body,
     drc_sdk::common::HttpCallbackWithStatus&& callback, uint32_t timeout_ms) {
@@ -73,14 +128,13 @@ void HttpPostInnerWithStatus(const std::string& url, const drc_sdk::common::Http
 #ifdef __EMSCRIPTEN__
     drc_sdk::common::Network::Instance().Post(url, request_headers, post_type, body, std::move(callback), timeout_ms);
 #else
-    drc_sdk::common::Executors::IO()->Post([url, request_headers, post_type, body, callback = std::move(callback), timeout_ms]() mutable {
+    submit_http_io_task([url, request_headers, post_type, body, callback = std::move(callback), timeout_ms]() mutable {
         drc_sdk::common::HttpCallbackWithStatus callback_in_main =
             [callback = std::move(callback)](drc_sdk::common::NetworkError err_code, int http_code,
                 const std::string& response, const std::vector<std::string>& certs,
-                const drc_sdk::common::HttpHeaders& resp_headers) {
-            drc_sdk::common::Executors::Main()->Post([callback = std::move(callback), err_code, http_code, response, certs, resp_headers]() {
-                callback(err_code, http_code, response, certs, resp_headers);
-            });
+                const drc_sdk::common::HttpHeaders& resp_headers) mutable {
+            // 经安全回跳：Main 已销毁则丢弃，避免空指针解引用崩溃
+            post_http_callback_to_main(std::move(callback), err_code, http_code, response, certs, resp_headers);
         };
         drc_sdk::common::Network::Instance().Post(url, request_headers, post_type, body, std::move(callback_in_main), timeout_ms);
     });
@@ -95,14 +149,13 @@ void HttpDeleteInnerWithStatus(const std::string& url, const drc_sdk::common::Ht
 #ifdef __EMSCRIPTEN__
     drc_sdk::common::Network::Instance().Delete(url, request_headers, post_type, body, std::move(callback), timeout_ms);
 #else
-    drc_sdk::common::Executors::IO()->Post([url, request_headers, post_type, body, callback = std::move(callback), timeout_ms]() mutable {
+    submit_http_io_task([url, request_headers, post_type, body, callback = std::move(callback), timeout_ms]() mutable {
         drc_sdk::common::HttpCallbackWithStatus callback_in_main =
             [callback = std::move(callback)](drc_sdk::common::NetworkError err_code, int http_code,
                 const std::string& response, const std::vector<std::string>& certs,
-                const drc_sdk::common::HttpHeaders& resp_headers) {
-            drc_sdk::common::Executors::Main()->Post([callback = std::move(callback), err_code, http_code, response, certs, resp_headers]() {
-                callback(err_code, http_code, response, certs, resp_headers);
-            });
+                const drc_sdk::common::HttpHeaders& resp_headers) mutable {
+            // 经安全回跳：Main 已销毁则丢弃，避免空指针解引用崩溃
+            post_http_callback_to_main(std::move(callback), err_code, http_code, response, certs, resp_headers);
         };
         drc_sdk::common::Network::Instance().Delete(url, request_headers, post_type, body, std::move(callback_in_main), timeout_ms);
     });
@@ -117,14 +170,13 @@ void HttpPutInnerWithStatus(const std::string& url, const drc_sdk::common::HttpH
 #ifdef __EMSCRIPTEN__
     drc_sdk::common::Network::Instance().Put(url, request_headers, post_type, body, std::move(callback), timeout_ms);
 #else
-    drc_sdk::common::Executors::IO()->Post([url, request_headers, post_type, body, callback = std::move(callback), timeout_ms]() mutable {
+    submit_http_io_task([url, request_headers, post_type, body, callback = std::move(callback), timeout_ms]() mutable {
         drc_sdk::common::HttpCallbackWithStatus callback_in_main =
             [callback = std::move(callback)](drc_sdk::common::NetworkError err_code, int http_code,
                 const std::string& response, const std::vector<std::string>& certs,
-                const drc_sdk::common::HttpHeaders& resp_headers) {
-            drc_sdk::common::Executors::Main()->Post([callback = std::move(callback), err_code, http_code, response, certs, resp_headers]() {
-                callback(err_code, http_code, response, certs, resp_headers);
-            });
+                const drc_sdk::common::HttpHeaders& resp_headers) mutable {
+            // 经安全回跳：Main 已销毁则丢弃，避免空指针解引用崩溃
+            post_http_callback_to_main(std::move(callback), err_code, http_code, response, certs, resp_headers);
         };
         drc_sdk::common::Network::Instance().Put(url, request_headers, post_type, body, std::move(callback_in_main), timeout_ms);
     });
@@ -138,14 +190,13 @@ void HttpGetInnerWithStatus(const std::string& url, const drc_sdk::common::HttpH
 #ifdef __EMSCRIPTEN__
     drc_sdk::common::Network::Instance().Get(url, request_headers, std::move(callback), timeout_ms);
 #else
-    drc_sdk::common::Executors::IO()->Post([url, request_headers, callback = std::move(callback), timeout_ms]() mutable {
+    submit_http_io_task([url, request_headers, callback = std::move(callback), timeout_ms]() mutable {
         drc_sdk::common::HttpCallbackWithStatus callback_in_main =
             [callback = std::move(callback)](drc_sdk::common::NetworkError err_code, int http_code,
                 const std::string& response, const std::vector<std::string>& certs,
-                const drc_sdk::common::HttpHeaders& resp_headers) {
-            drc_sdk::common::Executors::Main()->Post([callback = std::move(callback), err_code, http_code, response, certs, resp_headers]() {
-                callback(err_code, http_code, response, certs, resp_headers);
-            });
+                const drc_sdk::common::HttpHeaders& resp_headers) mutable {
+            // 经安全回跳：Main 已销毁则丢弃，避免空指针解引用崩溃
+            post_http_callback_to_main(std::move(callback), err_code, http_code, response, certs, resp_headers);
         };
         drc_sdk::common::Network::Instance().Get(url, request_headers, std::move(callback_in_main), timeout_ms);
     });

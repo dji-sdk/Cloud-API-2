@@ -102,6 +102,60 @@ public class PsdkResourceModule {
     }
 
     /**
+     * 获取 PSDK 喊话器资源列表（支持 file_type/md5_sum 过滤）
+     * @param params 过滤参数（空字段表示不过滤）
+     * @param callback 回调，返回喊话器资源列表与错误信息
+     * @implNote 链路: HTTP | GET /pf-media/api/v2/speaker/resources
+     */
+    public void getPsdkSpeakerResourceListWithFilter(com.dji.flighthubsdk.bean.PsdkSpeakerResourceListParams params,
+            FlightHubCallback.PsdkSpeakerResourceListCallback callback) {
+        com.dji.flighthubsdk.generated.PsdkSpeakerResourceListParams nativeParams = null;
+        try {
+            int id = generateActionCallbackId();
+            com.dji.flighthubsdk.generated.PsdkSpeakerResourceListCallback swigCallback =
+                    new com.dji.flighthubsdk.generated.PsdkSpeakerResourceListCallback() {
+                @Override
+                public void onPsdkSpeakerResourceList(com.dji.flighthubsdk.generated.FlightHubError err,
+                        com.dji.flighthubsdk.generated.PsdkSpeakerResourceList psdk_speaker_resource_list) {
+                    try {
+                        if (callback != null) {
+                            callback.onResult(
+                                    FlightHubSdkConvert.toFlightHubError(err),
+                                    FlightHubSdkConvert.toPsdkSpeakerResourceList(psdk_speaker_resource_list));
+                        }
+                    } catch (Exception e) {
+                        Logger.error(TAG, "[getPsdkSpeakerResourceList] callback error: " + e.getMessage(), e);
+                    } finally {
+                        psdkSpeakerResourceListCallbackRef.remove(id);
+                    }
+                }
+            };
+
+            final CallbackRefContainer container = new CallbackRefContainer(swigCallback, callback);
+            nativeParams = FlightHubSdkConvert.toNativePsdkSpeakerResourceListParams(params);
+            synchronized (psdkSpeakerResourceListCallbackRef) {
+                psdkSpeakerResourceListCallbackRef.put(id, container);
+                psdkResourceModule.getPsdkSpeakerResourceListWithFilterWrapper(nativeParams, swigCallback);
+            }
+        } catch (Exception e) {
+            Logger.error(TAG, "[getPsdkSpeakerResourceList] error: " + e.getMessage(), e);
+            if (callback != null) {
+                try {
+                    callback.onResult(
+                            new com.dji.flighthubsdk.bean.FlightHubError(FlightHubSdkErrorCode.ERROR_OPERATION_FAILED),
+                            FlightHubSdkConvert.toPsdkSpeakerResourceList((com.dji.flighthubsdk.generated.PsdkSpeakerResourceList) null));
+                } catch (Exception ex) {
+                    Logger.error(TAG, "error callback threw: " + ex.getMessage(), ex);
+                }
+            }
+        } finally {
+            if (nativeParams != null) {
+                nativeParams.delete();
+            }
+        }
+    }
+
+    /**
      * 创建 PSDK 喊话器资源
      * @param params 创建参数
      * @param callback 回调，返回创建后的资源与错误信息
@@ -209,7 +263,7 @@ public class PsdkResourceModule {
      * @param callback 回调，返回错误信息
      * @implNote 链路: HTTP | DELETE /pf-media/api/v2/speaker/resources/{id}
      */
-    public void deletePsdkSpeakerResource(int resourceId, FlightHubCallback.ResultCallbackWithError callback) {
+    public void deletePsdkSpeakerResource(long resourceId, FlightHubCallback.ResultCallbackWithError callback) {
         try {
             int id = generateActionCallbackId();
             com.dji.flighthubsdk.generated.ResultCallbackWithError swigCallback = new com.dji.flighthubsdk.generated.ResultCallbackWithError() {

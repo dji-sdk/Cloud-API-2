@@ -5,11 +5,12 @@
 #include "notification_center/notification_center.h"
 #include <BusinessManager.h>
 #include <base/common/logger.h>
+#include "session/session_bm.h"
 
 namespace flight_hub_sdk {
 
-FirmwareManageModuleImpl::FirmwareManageModuleImpl()
-    : firmware_mgr_() {
+FirmwareManageModuleImpl::FirmwareManageModuleImpl(int session_id)
+    : firmware_mgr_(session_id), session_id_(session_id) {
     LOG_INFO("[FirmwareManageModuleImpl] constructor");
 }
 
@@ -58,10 +59,13 @@ void FirmwareManageModuleImpl::submitFirmwareInfo(const FirmwareInfoParam& firmw
 }
 
 int FirmwareManageModuleImpl::listenDeviceOtaProgress(const std::string& device_sn, const std::function<void(const DeviceOtaProgress& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
     int user_listen_id = ota_progress_next_id_++;
 
-    auto nc_listen_id = NotificationCenter::getInstance()->getBusinessManager()->ListenDeviceOtaProgress(
+    auto nc_listen_id = -1;
+    if (bm) {
+        nc_listen_id = bm->ListenDeviceOtaProgress(
         [this, weak_ptr, callback](const notification_center::DeviceOtaProgress& msg) -> void {
             WeakDummyReturn(weak_ptr);
             DeviceOtaProgress res{};
@@ -85,6 +89,9 @@ int FirmwareManageModuleImpl::listenDeviceOtaProgress(const std::string& device_
                 LOG_ERROR("[FirmwareManageModuleImpl] ListenDeviceOtaProgress error: %d", error_code);
             }
         }, device_sn, notification_center::NotificationFrequency_Any);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     ota_progress_nc_listen_ids_[user_listen_id] = nc_listen_id;
     LOG_INFO("[FirmwareManageModuleImpl] listenDeviceOtaProgress listen_id: %d, nc_listen_id: %lld", user_listen_id, (long long)nc_listen_id);
@@ -92,10 +99,13 @@ int FirmwareManageModuleImpl::listenDeviceOtaProgress(const std::string& device_
 }
 
 void FirmwareManageModuleImpl::cancelListenDeviceOtaProgress(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("[FirmwareManageModuleImpl] cancelListenDeviceOtaProgress listen_id: %d", listen_id);
     auto it = ota_progress_nc_listen_ids_.find(listen_id);
     if (it != ota_progress_nc_listen_ids_.end()) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(it->second);
+        if (bm) {
+            bm->CancelObserve(it->second);
+        }
         ota_progress_nc_listen_ids_.erase(it);
     }
 }

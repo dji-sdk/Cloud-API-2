@@ -28,7 +28,7 @@ using namespace notification_center;
 // TCP_NODELAY 优化所需头文件
 #include <netinet/tcp.h>
 #include <sys/socket.h>
-// P0-01 修复: 决策 5 主机名/IP 自检所需
+// 主机名/IP 自检所需
 #include <arpa/inet.h>
 
 // ============================================================================

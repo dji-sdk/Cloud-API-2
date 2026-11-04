@@ -18,7 +18,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CLOUD_API2_OS": "macosx",
-        "CLOUD_API2_ARCH": "arm64"
+        "CLOUD_API2_ARCH": "arm64",
+        "OPENSSL_ROOT_DIR": "/opt/homebrew/opt/openssl@3"
       }
     },
     {
@@ -28,7 +29,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CLOUD_API2_OS": "macosx",
-        "CLOUD_API2_ARCH": "arm64"
+        "CLOUD_API2_ARCH": "arm64",
+        "OPENSSL_ROOT_DIR": "/opt/homebrew/opt/openssl@3"
       }
     },
     {
@@ -50,12 +52,34 @@
         "CLOUD_API2_OS": "linux",
         "CLOUD_API2_ARCH": "x86_64"
       }
+    },
+    {
+      "name": "linux-aarch64-release",
+      "displayName": "Linux aarch64 Release",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CLOUD_API2_OS": "linux",
+        "CLOUD_API2_ARCH": "aarch64"
+      }
+    },
+    {
+      "name": "linux-aarch64-debug",
+      "displayName": "Linux aarch64 Debug",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CLOUD_API2_OS": "linux",
+        "CLOUD_API2_ARCH": "aarch64"
+      }
     }
   ],
   "buildPresets": [
     { "name": "macos-arm64-release", "configurePreset": "macos-arm64-release" },
     { "name": "macos-arm64-debug", "configurePreset": "macos-arm64-debug" },
     { "name": "linux-x86_64-release", "configurePreset": "linux-x86_64-release" },
-    { "name": "linux-x86_64-debug", "configurePreset": "linux-x86_64-debug" }
+    { "name": "linux-x86_64-debug", "configurePreset": "linux-x86_64-debug" },
+    { "name": "linux-aarch64-release", "configurePreset": "linux-aarch64-release" },
+    { "name": "linux-aarch64-debug", "configurePreset": "linux-aarch64-debug" }
   ]
 }

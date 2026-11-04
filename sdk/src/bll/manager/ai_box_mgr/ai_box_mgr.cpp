@@ -12,8 +12,8 @@
 
 namespace flight_hub_sdk {
 
-AIBoxManager::AIBoxManager() {
-    LOG_INFO("[AIBoxManager] constructor");
+AIBoxManager::AIBoxManager(int session_id) : session_id_(session_id) {
+    LOG_INFO("[AIBoxManager] constructor, session_id=%d", session_id_);
 }
 
 AIBoxManager::~AIBoxManager() {
@@ -36,21 +36,22 @@ void AIBoxManager::fetchAIBoxInfo(const std::string & device_sn, const std::func
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FETCH_AI_BOX_INFO, param_err, "[AIBoxManager]");
+        report_beacon_event_helper(kBeaconReportEvent_FETCH_AI_BOX_INFO, param_err, session_id_, "[AIBoxManager]");
 
         callback(param_err, {});
         return;
     }
 
     WeakDummy(weak_ptr);
-    fetch_ai_box_info(device_sn, [weak_ptr, callback](const AIBoxInfoListResponse& response, FlightHubError err) {
+    fetch_ai_box_info(device_sn, [weak_ptr, callback, this](const AIBoxInfoListResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 获取 AI Box 信息; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FETCH_AI_BOX_INFO, err, "[AIBoxManager]");
+            report_beacon_event_helper(kBeaconReportEvent_FETCH_AI_BOX_INFO, err, session_id, "[AIBoxManager]");
 
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_ERROR("fetchAIBoxInfo(): err_code: %d", static_cast<int>(err.error_code));
@@ -72,7 +73,7 @@ void AIBoxManager::fetchAIBoxInfo(const std::string & device_sn, const std::func
             }
             callback(err, result);
         });
-    });
+    }, session_id_);
 }
 
 
@@ -91,7 +92,7 @@ void AIBoxManager::FetchFileDownloadUrl(const FetchFileDownloadUrlParams &params
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_FETCH_FILE_DOWNLOAD_URL, param_err, "[AIBoxManager]");
+        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_FETCH_FILE_DOWNLOAD_URL, param_err, session_id_, "[AIBoxManager]");
 
         callback(param_err, {});
         return;
@@ -104,14 +105,15 @@ void AIBoxManager::FetchFileDownloadUrl(const FetchFileDownloadUrlParams &params
     request.box_sn = params.box_sn;
     request.object_keys = params.object_keys;
 
-    fetch_file_download_url(request, [weak_ptr, callback](const FileDownloadUrlListResponse& response, FlightHubError err) {
+    fetch_file_download_url(request, [weak_ptr, callback, this](const FileDownloadUrlListResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 获取 AI Box 文件下载 URL; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_FETCH_FILE_DOWNLOAD_URL, err, "[AIBoxManager]");
+            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_FETCH_FILE_DOWNLOAD_URL, err, session_id, "[AIBoxManager]");
 
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_ERROR("FetchFileDownloadUrl(): err_code: %d", static_cast<int>(err.error_code));
@@ -124,7 +126,7 @@ void AIBoxManager::FetchFileDownloadUrl(const FetchFileDownloadUrlParams &params
 
             callback(err, result);
         });
-    });
+    }, session_id_);
 }
 
 
@@ -143,7 +145,7 @@ void AIBoxManager::fetchAppList(const FetchAppListParam &param, const std::funct
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_FETCH_APP_LIST, param_err, "[AIBoxManager]");
+        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_FETCH_APP_LIST, param_err, session_id_, "[AIBoxManager]");
 
         callback(param_err, {});
         return;
@@ -155,14 +157,15 @@ void AIBoxManager::fetchAppList(const FetchAppListParam &param, const std::funct
     request.device_sn = param.device_sn;
     request.box_sn = param.box_sn;
 
-    fetch_app_list(request, [weak_ptr, callback](const FetchAppListResponse& response, FlightHubError err) {
+    fetch_app_list(request, [weak_ptr, callback, this](const FetchAppListResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 获取 AI Box 应用列表; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_FETCH_APP_LIST, err, "[AIBoxManager]");
+            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_FETCH_APP_LIST, err, session_id, "[AIBoxManager]");
 
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_ERROR("fetchAppList(): err_code: %d", static_cast<int>(err.error_code));
@@ -176,7 +179,7 @@ void AIBoxManager::fetchAppList(const FetchAppListParam &param, const std::funct
 
             callback(err, result);
         });
-    });
+    }, session_id_);
 }
 
 
@@ -196,7 +199,7 @@ void AIBoxManager::fetchAppListProgress(const FetchAppListProgressParam &param, 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_FETCH_APP_LIST_PROGRESS, param_err, "[AIBoxManager]");
+        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_FETCH_APP_LIST_PROGRESS, param_err, session_id_, "[AIBoxManager]");
 
         callback(param_err, {});
         return;
@@ -209,14 +212,15 @@ void AIBoxManager::fetchAppListProgress(const FetchAppListProgressParam &param, 
     request.box_sn = param.box_sn;
     request.bid = param.bid;
 
-    fetch_app_list_progress(request, [weak_ptr, callback](const FetchAppListProgressResponse& response, FlightHubError err) {
+    fetch_app_list_progress(request, [weak_ptr, callback, this](const FetchAppListProgressResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 查询 AI Box 应用列表进度; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_FETCH_APP_LIST_PROGRESS, err, "[AIBoxManager]");
+            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_FETCH_APP_LIST_PROGRESS, err, session_id, "[AIBoxManager]");
 
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_ERROR("fetchAppListProgress(): err_code: %d", static_cast<int>(err.error_code));
@@ -248,7 +252,7 @@ void AIBoxManager::fetchAppListProgress(const FetchAppListProgressParam &param, 
             }
             callback(err, result);
         });
-    });
+    }, session_id_);
 }
 
 
@@ -268,7 +272,7 @@ void AIBoxManager::exportFile(const ExportFileParam &param, const std::function<
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_EXPORT_FILE, param_err, "[AIBoxManager]");
+        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_EXPORT_FILE, param_err, session_id_, "[AIBoxManager]");
 
         callback(param_err, {});
         return;
@@ -282,14 +286,15 @@ void AIBoxManager::exportFile(const ExportFileParam &param, const std::function<
     request.app_id = param.app_id;
     request.export_type = param.export_type;
 
-    export_file(request, [weak_ptr, callback](const ExportFileResponse& response, FlightHubError err) {
+    export_file(request, [weak_ptr, callback, this](const ExportFileResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 导出 AI Box 文件; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_EXPORT_FILE, err, "[AIBoxManager]");
+            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_EXPORT_FILE, err, session_id, "[AIBoxManager]");
 
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_ERROR("exportFile(): err_code: %d", static_cast<int>(err.error_code));
@@ -303,7 +308,7 @@ void AIBoxManager::exportFile(const ExportFileParam &param, const std::function<
 
             callback(err, result);
         });
-    });
+    }, session_id_);
 }
 
 
@@ -323,7 +328,7 @@ void AIBoxManager::exportFileProgress(const ExportFileProgressParam &param, cons
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_EXPORT_FILE_PROGRESS, param_err, "[AIBoxManager]");
+        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_EXPORT_FILE_PROGRESS, param_err, session_id_, "[AIBoxManager]");
 
         callback(param_err, {});
         return;
@@ -336,14 +341,15 @@ void AIBoxManager::exportFileProgress(const ExportFileProgressParam &param, cons
     request.box_sn = param.box_sn;
     request.bid = param.bid;
 
-    export_file_progress(request, [weak_ptr, callback](const ExportFileProgressResponse& response, FlightHubError err) {
+    export_file_progress(request, [weak_ptr, callback, this](const ExportFileProgressResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 查询 AI Box 文件导出进度; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_EXPORT_FILE_PROGRESS, err, "[AIBoxManager]");
+            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_EXPORT_FILE_PROGRESS, err, session_id, "[AIBoxManager]");
 
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_ERROR("exportFileProgress(): err_code: %d", static_cast<int>(err.error_code));
@@ -365,7 +371,7 @@ void AIBoxManager::exportFileProgress(const ExportFileProgressParam &param, cons
 
             callback(err, result);
         });
-    });
+    }, session_id_);
 }
 
 
@@ -387,7 +393,7 @@ void AIBoxManager::installApp(const InstallAppParam &param, const std::function<
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_INSTALL_APP, param_err, "[AIBoxManager]");
+        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_INSTALL_APP, param_err, session_id_, "[AIBoxManager]");
 
         callback(param_err, {});
         return;
@@ -400,14 +406,15 @@ void AIBoxManager::installApp(const InstallAppParam &param, const std::function<
     request.box_sn = param.box_sn;
     request.object_key = param.object_key;
 
-    install_app(request, [weak_ptr, callback](const InstallAppResponse& response, FlightHubError err) {
+    install_app(request, [weak_ptr, callback, this](const InstallAppResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 安装 AI Box 应用; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_INSTALL_APP, err, "[AIBoxManager]");
+            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_INSTALL_APP, err, session_id, "[AIBoxManager]");
 
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_ERROR("installApp(): err_code: %d", static_cast<int>(err.error_code));
@@ -421,7 +428,7 @@ void AIBoxManager::installApp(const InstallAppParam &param, const std::function<
 
             callback(err, result);
         });
-    });
+    }, session_id_);
 }
 
 
@@ -446,7 +453,7 @@ void AIBoxManager::uploadFile(const UploadFileParam& param, const std::function<
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, param_err, "[AIBoxManager]");
+        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, param_err, session_id_, "[AIBoxManager]");
 
         callback(param_err, {});
         return;
@@ -472,7 +479,7 @@ void AIBoxManager::uploadFile(const UploadFileParam& param, const std::function<
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, file_err, "[AIBoxManager]");
+        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, file_err, session_id_, "[AIBoxManager]");
 
         callback(file_err, {});
         return;
@@ -490,7 +497,7 @@ void AIBoxManager::uploadFile(const UploadFileParam& param, const std::function<
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, size_err, "[AIBoxManager]");
+        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, size_err, session_id_, "[AIBoxManager]");
 
         callback(size_err, {});
         return;
@@ -506,7 +513,7 @@ void AIBoxManager::uploadFile(const UploadFileParam& param, const std::function<
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, too_large_err, "[AIBoxManager]");
+        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, too_large_err, session_id_, "[AIBoxManager]");
 
         callback(too_large_err, {});
         return;
@@ -518,7 +525,7 @@ void AIBoxManager::uploadFile(const UploadFileParam& param, const std::function<
     std::string the_box_sn = param.box_sn;        // AI Box序列号;
 
     // 先获取 STS token
-    getUploadStsToken(the_device_sn, the_box_sn, [this, weak_ptr, the_file_path, the_device_sn, the_box_sn, callback](FlightHubError err, const GetUploadStsResponse& response) {
+    getUploadStsToken(the_device_sn, the_box_sn, [this, weak_ptr, the_file_path, the_device_sn, the_box_sn, callback, session_id = session_id_](FlightHubError err, const GetUploadStsResponse& response) {
         if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
             LOG_ERROR("[AIBoxManager] uploadFile: getUploadStsToken failed, err: %s", err.to_string().c_str());
 
@@ -526,7 +533,7 @@ void AIBoxManager::uploadFile(const UploadFileParam& param, const std::function<
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, err, "[AIBoxManager]");
+            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, err, session_id_, "[AIBoxManager]");
 
             callback(err, {});
             return;
@@ -552,7 +559,7 @@ void AIBoxManager::uploadFile(const UploadFileParam& param, const std::function<
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, provider_err, "[AIBoxManager]");
+            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, provider_err, session_id_, "[AIBoxManager]");
 
             callback(provider_err, {});
             return;
@@ -581,7 +588,7 @@ void AIBoxManager::uploadFile(const UploadFileParam& param, const std::function<
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, name_err, "[AIBoxManager]");
+            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, name_err, session_id_, "[AIBoxManager]");
 
             callback(name_err, {});
             return;
@@ -621,9 +628,10 @@ void AIBoxManager::uploadFile(const UploadFileParam& param, const std::function<
 
         // 异步上传文件;
         uploader->uploadFileAsync(the_file_path, object_key, sts_info,
-            [weak_ptr, callback, the_file_path, object_key, uploader](const CloudStorageUploadResult& result) {
+            [weak_ptr, callback, the_file_path, object_key, uploader, session_id, this](const CloudStorageUploadResult& result) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([callback, result, the_file_path, object_key]() {
+                drc_sdk::common::Executors::Main()->Post([callback, result, the_file_path, object_key, session_id, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     if (result.success) {
                         LOG_INFO("[AIBoxManager] uploadFile success(100%%): file_path(%s) -> result.object_url(%s), ETag: %s",
                             the_file_path.c_str(), result.object_url.c_str(), result.etag.c_str()
@@ -640,7 +648,7 @@ void AIBoxManager::uploadFile(const UploadFileParam& param, const std::function<
                         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, success_err, "[AIBoxManager]");
+                        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, success_err, session_id, "[AIBoxManager]");
 
                         callback(success_err, res);
                     } else {
@@ -652,7 +660,7 @@ void AIBoxManager::uploadFile(const UploadFileParam& param, const std::function<
                         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, upload_err, "[AIBoxManager]");
+                        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_UPLOAD_FILE, upload_err, session_id, "[AIBoxManager]");
 
                         callback(upload_err, {});
                     }
@@ -679,7 +687,7 @@ void AIBoxManager::installAppProgress(const InstallAppProgressParam &param, cons
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_INSTALL_APP_PROGRESS, param_err, "[AIBoxManager]");
+        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_INSTALL_APP_PROGRESS, param_err, session_id_, "[AIBoxManager]");
 
         callback(param_err, {});
         return;
@@ -692,14 +700,15 @@ void AIBoxManager::installAppProgress(const InstallAppProgressParam &param, cons
     request.box_sn = param.box_sn;
     request.bid = param.bid;
 
-    install_app_progress(request, [weak_ptr, callback](const InstallAppProgressResponse& response, FlightHubError err) {
+    install_app_progress(request, [weak_ptr, callback, this](const InstallAppProgressResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 查询 AI Box 应用安装进度; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_INSTALL_APP_PROGRESS, err, "[AIBoxManager]");
+            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_INSTALL_APP_PROGRESS, err, session_id, "[AIBoxManager]");
 
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_ERROR("installAppProgress(): err_code: %d", static_cast<int>(err.error_code));
@@ -718,7 +727,7 @@ void AIBoxManager::installAppProgress(const InstallAppProgressParam &param, cons
 
             callback(err, result);
         });
-    });
+    }, session_id_);
 }
 
 
@@ -738,7 +747,7 @@ void AIBoxManager::operateApp(const OperateAppParam &param, const std::function<
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_OPERATE_APP, param_err, "[AIBoxManager]");
+        report_beacon_event_helper(kBeaconReportEvent_AI_BOX_OPERATE_APP, param_err, session_id_, "[AIBoxManager]");
 
         callback(param_err, {});
         return;
@@ -752,14 +761,15 @@ void AIBoxManager::operateApp(const OperateAppParam &param, const std::function<
     request.app_id = param.app_id;
     request.action = param.action;
 
-    operate_app(request, [weak_ptr, callback](const OperateAppResponse& response, FlightHubError err) {
+    operate_app(request, [weak_ptr, callback, this](const OperateAppResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 操作 AI Box 应用; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_OPERATE_APP, err, "[AIBoxManager]");
+            report_beacon_event_helper(kBeaconReportEvent_AI_BOX_OPERATE_APP, err, session_id, "[AIBoxManager]");
 
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_ERROR("operateApp(): err_code: %d", static_cast<int>(err.error_code));
@@ -773,7 +783,7 @@ void AIBoxManager::operateApp(const OperateAppParam &param, const std::function<
 
             callback(err, result);
         });
-    });
+    }, session_id_);
 }
 
 
@@ -781,9 +791,10 @@ void AIBoxManager::operateApp(const OperateAppParam &param, const std::function<
 /// AI Box: 获取上传 STS Token;
 void AIBoxManager::getUploadStsToken(const std::string &device_sn, const std::string &box_sn, const std::function<void(FlightHubError err, const GetUploadStsResponse& response)>& callback) {
     WeakDummy(weak_ptr);
-    get_upload_app_sts(device_sn, box_sn, [weak_ptr, callback](const GetUploadStsResponse& response, FlightHubError err) {
+    get_upload_app_sts(device_sn, box_sn, [weak_ptr, callback, this](const GetUploadStsResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_ERROR("getUploadStsToken(): err_code: %d", static_cast<int>(err.error_code));
                 callback(err, {});
@@ -791,7 +802,7 @@ void AIBoxManager::getUploadStsToken(const std::string &device_sn, const std::st
             }
             callback(err, response);
         });
-    });
+    }, session_id_);
 }
 
 

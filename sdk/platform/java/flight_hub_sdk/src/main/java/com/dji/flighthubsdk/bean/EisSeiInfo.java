@@ -102,10 +102,10 @@ public final class EisSeiInfo {
         }
         EisSeiInfo eisSeiInfo = (EisSeiInfo) o;
         return version == eisSeiInfo.version
-                && leftTop.equals(eisSeiInfo.leftTop)
-                && rightTop.equals(eisSeiInfo.rightTop)
-                && rightBottom.equals(eisSeiInfo.rightBottom)
-                && leftBottom.equals(eisSeiInfo.leftBottom);
+                && Objects.equals(leftTop, eisSeiInfo.leftTop)
+                && Objects.equals(rightTop, eisSeiInfo.rightTop)
+                && Objects.equals(rightBottom, eisSeiInfo.rightBottom)
+                && Objects.equals(leftBottom, eisSeiInfo.leftBottom);
     }
 
     @Override

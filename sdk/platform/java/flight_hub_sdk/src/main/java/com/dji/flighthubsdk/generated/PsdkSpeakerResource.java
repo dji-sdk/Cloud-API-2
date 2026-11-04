@@ -211,6 +211,30 @@ public class PsdkSpeakerResource {
     return flighthubsdkmoduleJNI.PsdkSpeakerResource_opus_md5_sum_get(swigCPtr, this);
   }
 
+  public void setProject_id(String value) {
+    flighthubsdkmoduleJNI.PsdkSpeakerResource_project_id_set(swigCPtr, this, value);
+  }
+
+  public String getProject_id() {
+    return flighthubsdkmoduleJNI.PsdkSpeakerResource_project_id_get(swigCPtr, this);
+  }
+
+  public void setVisible(boolean value) {
+    flighthubsdkmoduleJNI.PsdkSpeakerResource_visible_set(swigCPtr, this, value);
+  }
+
+  public boolean getVisible() {
+    return flighthubsdkmoduleJNI.PsdkSpeakerResource_visible_get(swigCPtr, this);
+  }
+
+  public void setCreate_scene(String value) {
+    flighthubsdkmoduleJNI.PsdkSpeakerResource_create_scene_set(swigCPtr, this, value);
+  }
+
+  public String getCreate_scene() {
+    return flighthubsdkmoduleJNI.PsdkSpeakerResource_create_scene_get(swigCPtr, this);
+  }
+
   public PsdkSpeakerResource() {
     this(flighthubsdkmoduleJNI.new_PsdkSpeakerResource(), true);
   }

@@ -23,6 +23,15 @@ public:
     /// @endinternal
     virtual void getPsdkSpeakerResourceList(std::function<void(FlightHubError err, const PsdkSpeakerResourceList& psdk_speaker_resource_list)> callback) = 0;
 
+    /// @brief 获取 PSDK 喊话器资源列表（支持 file_type/md5_sum 过滤）
+    /// @param params 过滤参数（空字段表示不过滤）
+    /// @param callback 回调，返回喊话器资源列表与错误信息
+    /// @internal
+    /// 链路: HTTP | GET /pf-media/api/v2/speaker/resources?file_type={file_type}&md5_sum={md5_sum}
+    /// @endinternal
+    virtual void getPsdkSpeakerResourceListWithFilter(const PsdkSpeakerResourceListParams& params,
+        std::function<void(FlightHubError err, const PsdkSpeakerResourceList& psdk_speaker_resource_list)> callback) = 0;
+
     /// @brief 创建 PSDK 喊话器资源
     /// @param params 创建参数
     /// @param callback 回调，返回创建后的资源与错误信息
@@ -45,7 +54,7 @@ public:
     /// @internal
     /// 链路: HTTP | DELETE /pf-media/api/v2/speaker/resources/{id}
     /// @endinternal
-    virtual void deletePsdkSpeakerResource(int resource_id, std::function<void(FlightHubError err)> callback) = 0;
+    virtual void deletePsdkSpeakerResource(int64_t resource_id, std::function<void(FlightHubError err)> callback) = 0;
 
     /// @brief 获取 STS 临时凭证
     /// @param callback 回调，返回 STS 凭证信息与错误信息

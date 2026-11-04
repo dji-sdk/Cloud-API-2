@@ -84,6 +84,97 @@ public class TerraSelectFilterJavaParams {
     return flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_key_get(swigCPtr, this);
   }
 
+  public void setGet_sub_file(boolean value) {
+    flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_get_sub_file_set(swigCPtr, this, value);
+  }
+
+  public boolean getGet_sub_file() {
+    return flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_get_sub_file_get(swigCPtr, this);
+  }
+
+  public void setStart_time(long value) {
+    flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_start_time_set(swigCPtr, this, value);
+  }
+
+  public long getStart_time() {
+    return flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_start_time_get(swigCPtr, this);
+  }
+
+  public void setEnd_time(long value) {
+    flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_end_time_set(swigCPtr, this, value);
+  }
+
+  public long getEnd_time() {
+    return flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_end_time_get(swigCPtr, this);
+  }
+
+  public void setFile_all_types(StringVector value) {
+    flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_file_all_types_set(swigCPtr, this, StringVector.getCPtr(value), value);
+  }
+
+  public StringVector getFile_all_types() {
+    long cPtr = flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_file_all_types_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new StringVector(cPtr, false);
+  }
+
+  public void setPayload_model_key(StringVector value) {
+    flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_payload_model_key_set(swigCPtr, this, StringVector.getCPtr(value), value);
+  }
+
+  public StringVector getPayload_model_key() {
+    long cPtr = flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_payload_model_key_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new StringVector(cPtr, false);
+  }
+
+  public void setParent_id(int value) {
+    flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_parent_id_set(swigCPtr, this, value);
+  }
+
+  public int getParent_id() {
+    return flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_parent_id_get(swigCPtr, this);
+  }
+
+  public void setFile_tags(StringVector value) {
+    flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_file_tags_set(swigCPtr, this, StringVector.getCPtr(value), value);
+  }
+
+  public StringVector getFile_tags() {
+    long cPtr = flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_file_tags_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new StringVector(cPtr, false);
+  }
+
+  public void setShare_state(int value) {
+    flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_share_state_set(swigCPtr, this, value);
+  }
+
+  public int getShare_state() {
+    return flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_share_state_get(swigCPtr, this);
+  }
+
+  public void setShare_state_set(boolean value) {
+    flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_share_state_set_set(swigCPtr, this, value);
+  }
+
+  public boolean getShare_state_set() {
+    return flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_share_state_set_get(swigCPtr, this);
+  }
+
+  public void setShow_on_map(boolean value) {
+    flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_show_on_map_set(swigCPtr, this, value);
+  }
+
+  public boolean getShow_on_map() {
+    return flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_show_on_map_get(swigCPtr, this);
+  }
+
+  public void setShow_on_map_set(boolean value) {
+    flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_show_on_map_set_set(swigCPtr, this, value);
+  }
+
+  public boolean getShow_on_map_set() {
+    return flighthubsdkmoduleJNI.TerraSelectFilterJavaParams_show_on_map_set_get(swigCPtr, this);
+  }
+
   public TerraSelectFilterJavaParams() {
     this(flighthubsdkmoduleJNI.new_TerraSelectFilterJavaParams(), true);
   }

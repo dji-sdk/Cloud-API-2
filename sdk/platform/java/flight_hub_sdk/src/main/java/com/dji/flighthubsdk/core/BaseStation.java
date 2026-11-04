@@ -50,7 +50,7 @@ public class BaseStation {
         com.dji.flighthubsdk.generated.LiveInfo nativeInfo = null;
         try {
             nativeInfo = FlightHubSdkConvert.toNativeLiveInfo(params);
-            String cacheKey = liveCacheKey(params);
+            String cacheKey = LiveCacheKey.of(params);
             if (liveModuleRef.containsKey(cacheKey)) {
                 return liveModuleRef.get(cacheKey);
             }
@@ -102,11 +102,5 @@ public class BaseStation {
             }
         }
         return networkTestModule;
-    }
-
-    private static String liveCacheKey(LiveInfo params) {
-        String payload = params.getPayloadIndex() != null ? params.getPayloadIndex() : "";
-        String video = params.getVideoId() != null ? params.getVideoId() : "";
-        return payload + ":" + video;
     }
 }

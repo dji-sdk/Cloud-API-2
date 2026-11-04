@@ -59,11 +59,11 @@ public class GridSignalItem {
     return flighthubsdkmoduleJNI.GridSignalItem_h3_index_get(swigCPtr, this);
   }
 
-  public void setSdr_avg(int value) {
+  public void setSdr_avg(double value) {
     flighthubsdkmoduleJNI.GridSignalItem_sdr_avg_set(swigCPtr, this, value);
   }
 
-  public int getSdr_avg() {
+  public double getSdr_avg() {
     return flighthubsdkmoduleJNI.GridSignalItem_sdr_avg_get(swigCPtr, this);
   }
 
@@ -83,11 +83,11 @@ public class GridSignalItem {
     return flighthubsdkmoduleJNI.GridSignalItem_sdr_min_get(swigCPtr, this);
   }
 
-  public void setSignal_4g_avg(int value) {
+  public void setSignal_4g_avg(double value) {
     flighthubsdkmoduleJNI.GridSignalItem_signal_4g_avg_set(swigCPtr, this, value);
   }
 
-  public int getSignal_4g_avg() {
+  public double getSignal_4g_avg() {
     return flighthubsdkmoduleJNI.GridSignalItem_signal_4g_avg_get(swigCPtr, this);
   }
 

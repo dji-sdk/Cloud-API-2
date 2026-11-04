@@ -115,38 +115,78 @@ public class FlightHubSdk {
   }
 
   public static IWorkspace getWorkspaceInstance() {
-    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getWorkspaceInstance();
+    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getWorkspaceInstance__SWIG_0();
+    return (cPtr == 0) ? null : new IWorkspace(cPtr, true);
+  }
+
+  public static IWorkspace getWorkspaceInstance(int session_id) {
+    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getWorkspaceInstance__SWIG_1(session_id);
     return (cPtr == 0) ? null : new IWorkspace(cPtr, true);
   }
 
   public static IDrone getDroneInstance(String sn) {
-    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getDroneInstance(sn);
+    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getDroneInstance__SWIG_0(sn);
+    return (cPtr == 0) ? null : new IDrone(cPtr, true);
+  }
+
+  public static IDrone getDroneInstance(int session_id, String sn) {
+    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getDroneInstance__SWIG_1(session_id, sn);
     return (cPtr == 0) ? null : new IDrone(cPtr, true);
   }
 
   public static IDock getDockInstance(String sn) {
-    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getDockInstance(sn);
+    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getDockInstance__SWIG_0(sn);
+    return (cPtr == 0) ? null : new IDock(cPtr, true);
+  }
+
+  public static IDock getDockInstance(int session_id, String sn) {
+    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getDockInstance__SWIG_1(session_id, sn);
     return (cPtr == 0) ? null : new IDock(cPtr, true);
   }
 
   public static IRemoteController getRemoteControllerInstance(String sn) {
-    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getRemoteControllerInstance(sn);
+    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getRemoteControllerInstance__SWIG_0(sn);
+    return (cPtr == 0) ? null : new IRemoteController(cPtr, true);
+  }
+
+  public static IRemoteController getRemoteControllerInstance(int session_id, String sn) {
+    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getRemoteControllerInstance__SWIG_1(session_id, sn);
     return (cPtr == 0) ? null : new IRemoteController(cPtr, true);
   }
 
   public static IBaseStation getBaseStationInstance(String sn) {
-    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getBaseStationInstance(sn);
+    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getBaseStationInstance__SWIG_0(sn);
+    return (cPtr == 0) ? null : new IBaseStation(cPtr, true);
+  }
+
+  public static IBaseStation getBaseStationInstance(int session_id, String sn) {
+    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getBaseStationInstance__SWIG_1(session_id, sn);
     return (cPtr == 0) ? null : new IBaseStation(cPtr, true);
   }
 
   public static IRelay getRelayInstance(String sn) {
-    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getRelayInstance(sn);
+    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getRelayInstance__SWIG_0(sn);
+    return (cPtr == 0) ? null : new IRelay(cPtr, true);
+  }
+
+  public static IRelay getRelayInstance(int session_id, String sn) {
+    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getRelayInstance__SWIG_1(session_id, sn);
     return (cPtr == 0) ? null : new IRelay(cPtr, true);
   }
 
   public static IStream getStream() {
     long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getStream();
     return (cPtr == 0) ? null : new IStream(cPtr, true);
+  }
+
+  public static ICascadeModule getCascadeModule() {
+    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getCascadeModule();
+    return (cPtr == 0) ? null : new ICascadeModule(cPtr, true);
+  }
+
+  public static ISessionManager getSessionManager() {
+    long cPtr = flighthubsdkmoduleJNI.FlightHubSdk_getSessionManager();
+    return (cPtr == 0) ? null : new ISessionManager(cPtr, true);
   }
 
   public static FlightHubSdkErrorCode injectRtcChannelManager(SWIGTYPE_p_std__shared_ptrT_message_engine__IRtcChannelManagerBridge_t rtc_channel_manager) {

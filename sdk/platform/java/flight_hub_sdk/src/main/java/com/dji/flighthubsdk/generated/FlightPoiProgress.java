@@ -75,6 +75,14 @@ public class FlightPoiProgress {
     return flighthubsdkmoduleJNI.FlightPoiProgress_device_sn_get(swigCPtr, this);
   }
 
+  public void setDrone_sn(String value) {
+    flighthubsdkmoduleJNI.FlightPoiProgress_drone_sn_set(swigCPtr, this, value);
+  }
+
+  public String getDrone_sn() {
+    return flighthubsdkmoduleJNI.FlightPoiProgress_drone_sn_get(swigCPtr, this);
+  }
+
   public void setPoi_center_point(FlightPoiProgressCenterPoint value) {
     flighthubsdkmoduleJNI.FlightPoiProgress_poi_center_point_set(swigCPtr, this, FlightPoiProgressCenterPoint.getCPtr(value), value);
   }
@@ -90,6 +98,22 @@ public class FlightPoiProgress {
 
   public double getSpeed() {
     return flighthubsdkmoduleJNI.FlightPoiProgress_speed_get(swigCPtr, this);
+  }
+
+  public void setCircle_speed(double value) {
+    flighthubsdkmoduleJNI.FlightPoiProgress_circle_speed_set(swigCPtr, this, value);
+  }
+
+  public double getCircle_speed() {
+    return flighthubsdkmoduleJNI.FlightPoiProgress_circle_speed_get(swigCPtr, this);
+  }
+
+  public void setMax_circle_speed(double value) {
+    flighthubsdkmoduleJNI.FlightPoiProgress_max_circle_speed_set(swigCPtr, this, value);
+  }
+
+  public double getMax_circle_speed() {
+    return flighthubsdkmoduleJNI.FlightPoiProgress_max_circle_speed_get(swigCPtr, this);
   }
 
   public void setCircle_radius(double value) {
@@ -108,12 +132,36 @@ public class FlightPoiProgress {
     return flighthubsdkmoduleJNI.FlightPoiProgress_payload_index_get(swigCPtr, this);
   }
 
-  public void setStatus(int value) {
+  public void setStatus(String value) {
     flighthubsdkmoduleJNI.FlightPoiProgress_status_set(swigCPtr, this, value);
   }
 
-  public int getStatus() {
+  public String getStatus() {
     return flighthubsdkmoduleJNI.FlightPoiProgress_status_get(swigCPtr, this);
+  }
+
+  public void setReason(int value) {
+    flighthubsdkmoduleJNI.FlightPoiProgress_reason_set(swigCPtr, this, value);
+  }
+
+  public int getReason() {
+    return flighthubsdkmoduleJNI.FlightPoiProgress_reason_get(swigCPtr, this);
+  }
+
+  public void setTimestamp(long value) {
+    flighthubsdkmoduleJNI.FlightPoiProgress_timestamp_set(swigCPtr, this, value);
+  }
+
+  public long getTimestamp() {
+    return flighthubsdkmoduleJNI.FlightPoiProgress_timestamp_get(swigCPtr, this);
+  }
+
+  public void setExecute_duration(int value) {
+    flighthubsdkmoduleJNI.FlightPoiProgress_execute_duration_set(swigCPtr, this, value);
+  }
+
+  public int getExecute_duration() {
+    return flighthubsdkmoduleJNI.FlightPoiProgress_execute_duration_get(swigCPtr, this);
   }
 
   public void setErr_code(int value) {

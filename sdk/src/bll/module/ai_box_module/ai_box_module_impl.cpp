@@ -6,9 +6,9 @@
 
 namespace flight_hub_sdk {
 
-AIBoxModuleImpl::AIBoxModuleImpl()
+AIBoxModuleImpl::AIBoxModuleImpl(int session_id)
     :
-      ai_box_mgr_() {
+      ai_box_mgr_(session_id), session_id_(session_id) {
     LOG_INFO("[AIBoxModuleImpl] constructor");
 }
 

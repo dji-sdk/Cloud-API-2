@@ -10,7 +10,9 @@
 #include <functional>
 #include <unordered_map>
 #include <map>
+#include <vector>
 
+#include "api/message.h"
 #include "base/async/timer.h"
 #include "common/util/async_capture_protect.h"
 
@@ -20,7 +22,6 @@ namespace notification_center {
     class BusinessManager;
     class WebsocketEvent;
     class WebSocketBase;  // 添加 WebSocketBase 前向声明
-    struct SdkInitializeInfo;
 }
 
 namespace flight_hub_sdk {
@@ -85,16 +86,12 @@ enum class NotificationCenterState {
 
 /**
  * NotificationCenter 通知中心管理类
- * 采用单例模式，封装 notification_center::SDKManager 的功能
- * 提供初始化、连接管理和业务管理器访问接口
+ * 可实例化，每个 Session 持有自己的 NC 实例；无全局 default。
  */
 class NotificationCenter : public drc_sdk::common::AsyncCaptureProtect {
 public:
-    /**
-     * 获取单例实例
-     * @return NotificationCenter 单例指针
-     */
-    static NotificationCenter* getInstance();
+    NotificationCenter();
+    ~NotificationCenter() override;
 
     uint64_t setConnectionCallback(const std::function<void(bool connected)>& callback);
 
@@ -102,21 +99,19 @@ public:
     void removeConnectionCallback(uint64_t id);
 
     /**
-     * 初始化通知中心
-     * @param log_path 日志文件路径
-     * @param log_level 日志级别 (0-6: NONE, FATAL, ERROR, WARNING, INFO, DEBUG, VERBOSE)
-     * @param log_to_console 是否打印日志到终端
+     * 初始化通知中心（连 WS / 建 BM）。
+     * 日志由上层 SDK（或 NCSDK 默认）配置；InitializePlog 有重入保护。
      * @param websocket_url WebSocket 服务器 URL
      * @param websocket_auth_headers WebSocket 鉴权头
      * @param verify_ssl WSS 证书验证开关（安全默认开启）；开启后校验证书链与主机名/IP，关闭会产生 WARN 日志，仅限受控测试环境
      * @param ssl_ca_path 私有 CA 证书文件路径（PEM）；为空时使用系统 CA 信任库
      * @return 是否初始化成功
      */
-    bool initialize(const std::string& log_path, int log_level, bool log_to_console,
-                    const std::string& websocket_url,
-                    const std::map<std::string, std::string>& websocket_auth_headers,
-                    bool verify_ssl = true, const std::string& ssl_ca_path = "");
-    void setWebSocketAuthHeaders(const std::map<std::string, std::string>& headers);
+    bool initialize(const std::string& websocket_url,
+                    const std::vector<HeaderKeyValue>& websocket_auth_headers,
+                    bool verify_ssl = true,
+                    const std::string& ssl_ca_path = "");
+    void setWebSocketAuthHeaders(const std::vector<HeaderKeyValue>& headers);
 
     /**
      * 设置 WebSocket 实现（用于 WASM 环境注入）
@@ -150,14 +145,11 @@ public:
     void reconnect();
 
 private:
-    // 单例模式，禁用外部构造
-    NotificationCenter();
-    ~NotificationCenter();
-    NotificationCenter(const NotificationCenter&) = delete;
-    NotificationCenter& operator=(const NotificationCenter&) = delete;
-
     // 内部 WebSocket 事件监听器
     class InternalWebsocketEventListener;
+
+    static std::map<std::string, std::string> headersToMap(
+        const std::vector<HeaderKeyValue>& headers);
 
     // 通知所有连接回调
     void notifyConnectionCallbacks();

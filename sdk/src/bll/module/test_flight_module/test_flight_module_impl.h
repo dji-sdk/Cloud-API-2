@@ -10,7 +10,7 @@ namespace flight_hub_sdk {
 
 class TestFlightModuleImpl : public ITestFlightModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit TestFlightModuleImpl();
+    explicit TestFlightModuleImpl(int session_id);
     ~TestFlightModuleImpl() override = default;
 
     void generateTryFlightWayline(
@@ -24,6 +24,7 @@ public:
         const std::function<void(const CreateTestFlightTaskResponse& response, FlightHubError err)>& callback) override;
 
 private:
+    int session_id_;
 };
 
 } // namespace flight_hub_sdk

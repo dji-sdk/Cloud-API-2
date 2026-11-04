@@ -1,3 +1,6 @@
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 # Dropbox json11：源码进仓，跟 SDK 一起编。
 
 add_library(cloud_api2_json11 STATIC

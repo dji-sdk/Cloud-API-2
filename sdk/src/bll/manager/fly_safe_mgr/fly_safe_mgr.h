@@ -15,7 +15,7 @@ namespace flight_hub_sdk {
 
 class FlySafeManager: public drc_sdk::common::AsyncCaptureProtect {
 public:
-    FlySafeManager();
+    explicit FlySafeManager(int session_id);
     virtual ~FlySafeManager();
 
     // 解锁证书管理
@@ -28,6 +28,8 @@ public:
 private:
     void GetImportUnlockLicenseSts(const std::function<void(FlightHubError err, const GetImportUnlockLicenseStsResponse& sts_response)>& callback);
     std::shared_ptr<ICloudStorageUploader> getCloudStorageUploader(const std::string& provider);
+
+    int session_id_;
 };
 
 }  // namespace flight_hub_sdk

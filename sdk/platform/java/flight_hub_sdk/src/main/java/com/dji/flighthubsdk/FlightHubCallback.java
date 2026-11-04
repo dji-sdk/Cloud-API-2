@@ -39,6 +39,7 @@ import com.dji.flighthubsdk.bean.EisSeiInfo;
 import com.dji.flighthubsdk.bean.FovSeiInfo;
 import com.dji.flighthubsdk.bean.FrameInfo;
 import com.dji.flighthubsdk.bean.HmsData;
+import com.dji.flighthubsdk.bean.AirsenseWarning;
 import com.dji.flighthubsdk.bean.CameraMeasureTarget;
 import com.dji.flighthubsdk.bean.CameraState;
 import com.dji.flighthubsdk.bean.NightModeSettings;
@@ -135,6 +136,7 @@ import com.dji.flighthubsdk.bean.GetAiAlertAlgorithmSettingResult;
 import com.dji.flighthubsdk.bean.GetAiAlertDeviceSettingResult;
 import com.dji.flighthubsdk.bean.GetAiAlertFlightsResult;
 import com.dji.flighthubsdk.bean.GetAiAlertRecordsResult;
+import com.dji.flighthubsdk.bean.AiAlertRecordsNotifyResult;
 import com.dji.flighthubsdk.bean.PostAiAlertAlgorithmSettingResult;
 import com.dji.flighthubsdk.bean.PostAiAlertDeviceSettingResult;
 import com.dji.flighthubsdk.value.CameraMode;
@@ -200,6 +202,16 @@ public class FlightHubCallback {
          * @param result 起飞结果
          */
         void onResult(FlightHubError error, com.dji.flighthubsdk.bean.TakeoffResult result);
+    }
+
+    /** 舱外起飞回调 */
+    @FunctionalInterface
+    public interface GroundTakeoffCallback {
+        /**
+         * @param error 错误信息
+         * @param result 舱外起飞结果
+         */
+        void onResult(FlightHubError error, com.dji.flighthubsdk.bean.GroundTakeoffResult result);
     }
 
     /** 创建空中航线任务回调 */
@@ -305,7 +317,12 @@ public class FlightHubCallback {
     }
 
     /**
-     * AI SEI 信息回调；参数为对外 {@link com.dji.flighthubsdk.bean.AiSeiInfo}（含 {@link com.dji.flighthubsdk.bean.AiDetectionTarget} 列表，非 SWIG 类型）。
+     * AI SEI 信息回调；参数为对外 {@link com.dji.flighthubsdk.bean.AiSeiInfo}
+     * （含 {@link com.dji.flighthubsdk.bean.AiDetectionTarget} 列表，非 SWIG 类型）。
+     * <p>框来源字段见 {@link com.dji.flighthubsdk.bean.AiDetectionTarget}：
+     * {@link com.dji.flighthubsdk.bean.AiDetectionTarget#getModelIndex()}（协议 model_index）、
+     * {@link com.dji.flighthubsdk.bean.AiDetectionTarget#getFrameSource()}（协议 frame_source）、
+     * {@link com.dji.flighthubsdk.bean.AiDetectionTarget#getModelInfoType()}（协议 model_info_type）。</p>
      */
     @FunctionalInterface
     public interface AiSeiInfoCallback {
@@ -363,6 +380,18 @@ public class FlightHubCallback {
          * @param fly_to_id 任务 ID
          */
         void onResult(FlightHubError error, String fly_to_id);
+    }
+
+    /**
+     * FlyToPointStart 结果回调（含 flight_id）
+     */
+    @FunctionalInterface
+    public interface FlyToPointStartResultCallback {
+        /**
+         * @param error  错误信息
+         * @param result fly_to_id + flight_id
+         */
+        void onResult(FlightHubError error, com.dji.flighthubsdk.bean.FlyToPointStartResult result);
     }
 
     /**
@@ -497,6 +526,16 @@ public class FlightHubCallback {
          * @param state 状态值
          */
         void onResult(boolean state);
+    }
+
+    /** 控制权 acquire/release 结果回调 */
+    public interface ControlAuthResultCallback {
+        /**
+         * @param error 错误信息
+         * @param result 控制权结果（controls / bid）
+         */
+        void onResult(com.dji.flighthubsdk.bean.FlightHubError error,
+                      com.dji.flighthubsdk.bean.ControlAuthResult result);
     }
 
     /**
@@ -888,6 +927,14 @@ public class FlightHubCallback {
     @FunctionalInterface
     public interface DeviceHmsCallback {
         void onResult(HmsData hms_data);
+    }
+
+    /**
+     * AirSense 民航飞机告警回调；参数为 {@code bean.AirsenseWarning}。
+     */
+    @FunctionalInterface
+    public interface AirsenseWarningCallback {
+        void onResult(AirsenseWarning airsense_warning);
     }
 
     /**
@@ -1312,6 +1359,28 @@ public class FlightHubCallback {
          * @param event 航线任务事件
          */
         void onResult(com.dji.flighthubsdk.bean.WaylineTaskEvent event);
+    }
+
+    /**
+     * 多机场返航路径信息事件回调接口
+     */
+    @FunctionalInterface
+    public interface ReturnHomeInfoEventCallback {
+        /**
+         * @param event 返航路径信息事件
+         */
+        void onResult(com.dji.flighthubsdk.bean.ReturnHomeInfoEvent event);
+    }
+
+    /**
+     * 任务异常事件回调接口
+     */
+    @FunctionalInterface
+    public interface TaskExceptionEventCallback {
+        /**
+         * @param event 任务异常事件
+         */
+        void onResult(com.dji.flighthubsdk.bean.TaskExceptionEvent event);
     }
 
     /**
@@ -1863,6 +1932,16 @@ public class FlightHubCallback {
         void onResult(FlightHubError error, com.dji.flighthubsdk.bean.GetFlightTaskTrackResults results);
     }
 
+    /** 查询飞行安全风险回调 */
+    @FunctionalInterface
+    public interface GetFlightRisksCallback {
+        /**
+         * @param error 错误信息
+         * @param results 飞行安全风险结果；任务未完成飞行时列表为空
+         */
+        void onResult(FlightHubError error, com.dji.flighthubsdk.bean.GetFlightRisksResults results);
+    }
+
     /** 创建/编辑航线任务回调 */
     @FunctionalInterface
     public interface CreateFlightTaskCallback {
@@ -2147,6 +2226,16 @@ public class FlightHubCallback {
         void onResult(FlightHubError error, com.dji.flighthubsdk.bean.TerraShowOnMapResult result);
     }
 
+    /** 模型删除结果回调（含 lock_files） */
+    @FunctionalInterface
+    public interface TerraDeleteModelFilesCallback {
+        /**
+         * @param error  错误信息
+         * @param result 删除结果（含被锁定文件）
+         */
+        void onResult(FlightHubError error, com.dji.flighthubsdk.bean.TerraDeleteModelFilesResult result);
+    }
+
     /** 模型解压进度 WS 推送监听回调 (topic_reconstruction_unzip_progress) */
     @FunctionalInterface
     public interface TerraUnzipProgressCallback {
@@ -2271,6 +2360,16 @@ public class FlightHubCallback {
          * @param result 飞行区域同步状态结果
          */
         void onResult(FlightHubError error, com.dji.flighthubsdk.bean.GetAreasSyncStatusResults result);
+    }
+
+    /** 获取飞行区文件下载地址回调 */
+    @FunctionalInterface
+    public interface GetFlightAreasUrlCallback {
+        /**
+         * @param error 错误信息
+         * @param result 飞行区文件下载地址结果
+         */
+        void onResult(FlightHubError error, com.dji.flighthubsdk.bean.GetFlightAreasUrlResults result);
     }
 
     /** 获取离线地图模型信息回调 */
@@ -2725,7 +2824,29 @@ public class FlightHubCallback {
         void onResult(FlightHubError error, java.util.List<FirmwareItemResult> items);
     }
 
-    /** 查询固件兼容性配置回调 */
+    /** 查询固件列表回调（含分页信息） */
+    @FunctionalInterface
+    public interface QueryFirmwareListWithPaginationCallback {
+        /**
+         * @param error 错误信息
+         * @param result 固件列表与分页信息
+         */
+        void onResult(FlightHubError error, com.dji.flighthubsdk.bean.FirmwareListResult result);
+    }
+
+    /**
+     * 查询固件兼容性配置回调。
+     *
+     * <p>当前后端返回特性开关配置，请使用
+     * {@link FirmwareCompatibilityConfigItemResult#getKey()}、
+     * {@link FirmwareCompatibilityConfigItemResult#getUserType()}、
+     * {@link FirmwareCompatibilityConfigItemResult#getDescription()}、
+     * {@link FirmwareCompatibilityConfigItemResult#getValidates()} 读取数据。
+     *
+     * <p>历史字段 {@link FirmwareCompatibilityConfigItemResult#getDeviceModelKey()}、
+     * {@link FirmwareCompatibilityConfigItemResult#getCompatibleVersions()}、
+     * {@link FirmwareCompatibilityConfigItemResult#getRules()} 对当前后端为空，已废弃。
+     */
     @FunctionalInterface
     public interface QueryFirmwareCompatibilityConfigCallback {
         /**
@@ -3260,34 +3381,6 @@ public class FlightHubCallback {
         void onResult(com.dji.flighthubsdk.bean.FlightHubError error, com.dji.flighthubsdk.bean.OperateAppResult result);
     }
 
-    public interface DockDeparturePointCallback {
-        void onResult(com.dji.flighthubsdk.generated.DockDeparturePoint msg);
-    }
-
-    public interface AircraftVisualScoutStatusCallback {
-        void onResult(com.dji.flighthubsdk.generated.AircraftVisualScoutStatus msg);
-    }
-
-    public interface AircraftVisualScoutAbnormalInfoCallback {
-        void onResult(com.dji.flighthubsdk.generated.AircraftVisualScoutAbnormalInfo msg);
-    }
-
-    public interface AircraftVisualScoutObstacleInfoCallback {
-        void onResult(com.dji.flighthubsdk.generated.AircraftVisualScoutObstacleInfo msg);
-    }
-
-    public interface EphemerisDownloadStateCallback {
-        void onResult(com.dji.flighthubsdk.generated.EphemerisDownloadState msg);
-    }
-
-    public interface EphemerisInfoCallback {
-        void onResult(com.dji.flighthubsdk.generated.EphemerisInfo msg);
-    }
-
-    public interface InOutWaylineFlightSettingCallback {
-        void onResult(com.dji.flighthubsdk.generated.InOutWaylineFlightSettingParams params, com.dji.flighthubsdk.bean.FlightHubError error);
-    }
-
     // ==================== AI Inside 机载算法管理回调接口（PAAS 纯血场景） ====================
 
     /** 获取机载算法列表回调 */
@@ -3427,6 +3520,19 @@ public class FlightHubCallback {
     }
 
     // ─────────────────────────────────────────────────────────
+    // AI 告警记录推送 (alert_records.alert_records_notify)
+    // ─────────────────────────────────────────────────────────
+    @FunctionalInterface
+    public interface AiAlertRecordsNotifyCallback {
+        /**
+         * 收到告警记录推送时回调。
+         *
+         * @param result 按架次分组的告警记录推送数据
+         */
+        void onResult(AiAlertRecordsNotifyResult result);
+    }
+
+    // ─────────────────────────────────────────────────────────
     // 固件升级进度 (topic_device_ota_progress)
     // ─────────────────────────────────────────────────────────
     @FunctionalInterface
@@ -3486,6 +3592,12 @@ public class FlightHubCallback {
         void onResult(com.dji.flighthubsdk.generated.DrcParachuteInfo info);
     }
 
+    /** DRC 降落任务状态回调 */
+    @FunctionalInterface
+    public interface DrcLandingMissionStateCallback {
+        void onResult(com.dji.flighthubsdk.generated.DrcLandingMissionState info);
+    }
+
     /** 爆闪灯状态回调 */
     @FunctionalInterface
     public interface FlashLedStateInfoCallback {
@@ -3517,6 +3629,18 @@ public class FlightHubCallback {
          * @param config 爆闪灯模板
          */
         void onResult(FlightHubError error, com.dji.flighthubsdk.bean.FlashLedConfig config);
+    }
+
+    /**
+     * AutoRecordConfigCallback 回调接口
+     */
+    @FunctionalInterface
+    public interface AutoRecordConfigCallback {
+        /**
+         * @param error 错误信息
+         * @param config 自动录制配置
+         */
+        void onResult(FlightHubError error, com.dji.flighthubsdk.bean.AutoRecordConfig config);
     }
 
     /** AI 告警状态回调 */
@@ -3715,6 +3839,30 @@ public class FlightHubCallback {
         void onResult(com.dji.flighthubsdk.bean.DronePsdkUiResource dronePsdkUiResource);
     }
 
+    // ─────────────────────────────────────────────────────────
+    // PSDK自定义数据透传上行 (topic_custom_data_transmission_from_psdk)
+    // ─────────────────────────────────────────────────────────
+    @FunctionalInterface
+    public interface PsdkCustomDataTransmissionFromPsdkCallback {
+        void onResult(com.dji.flighthubsdk.bean.PsdkCustomDataTransmission msg);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // ESDK自定义数据透传上行 (topic_custom_data_transmission_from_esdk)
+    // ─────────────────────────────────────────────────────────
+    @FunctionalInterface
+    public interface EsdkCustomDataTransmissionFromEsdkCallback {
+        void onResult(com.dji.flighthubsdk.bean.EsdkCustomDataTransmission msg);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // 飞行任务媒体最高优先级上传上行 (topic_highest_priority_upload_flighttask_media)
+    // ─────────────────────────────────────────────────────────
+    @FunctionalInterface
+    public interface HighestPriorityUploadFlighttaskMediaCallback {
+        void onResult(com.dji.flighthubsdk.bean.HighestPriorityUploadFlighttaskMedia msg);
+    }
+
     /**
      * 飞机相机水印设置推送(WebSocket topic_drone_camera_watermark_settings)回调接口。
      * 注意：与 DRC 侧 listenDrcCameraWatermarkSettings 使用的 CameraWatermarkSettings 不同，不要混用。
@@ -3739,4 +3887,133 @@ public class FlightHubCallback {
         void onResult(com.dji.flighthubsdk.bean.CloudEnvironmentSwitchResult result);
     }
     // ===================== 云环境切换 回调接口 End =====================
+
+    // ===================== Cascade 回调接口 Begin ==============    // v1.1（docs/superpowers/specs/级联接口文档-v1.1.md）：11 个 REST 接口 → 11 个回调 + 1 个事件回调。
+    // 已废弃：get*ChildNodeList/get*ChildNodePermission/set*NodePermission/
+    //         get*Topology/test*Connection/*RewriteRule*/set*NodeEntry。
+
+    /** 新增子节点回调（v1.1 §1 POST /cascade/api/provision）。 */
+    @FunctionalInterface
+    public interface CascadeAddChildNodeCallback {
+        void onResult(com.dji.flighthubsdk.bean.FlightHubError err,
+                      com.dji.flighthubsdk.bean.AddChildNodeResult result);
+    }
+
+    /** 批量启用子节点回调（v1.1 §2 POST /cascade/api/nodes/enable）。 */
+    @FunctionalInterface
+    public interface CascadeEnableChildNodesCallback {
+        void onResult(com.dji.flighthubsdk.bean.FlightHubError err,
+                      com.dji.flighthubsdk.bean.CascadeBatchOpResult result);
+    }
+
+    /** 批量禁用子节点回调（v1.1 §3 POST /cascade/api/nodes/disable）。 */
+    @FunctionalInterface
+    public interface CascadeDisableChildNodesCallback {
+        void onResult(com.dji.flighthubsdk.bean.FlightHubError err,
+                      com.dji.flighthubsdk.bean.CascadeBatchOpResult result);
+    }
+
+    /** 删除子节点回调（v1.1 §4 DELETE /cascade/api/node/{nodeID}）。 */
+    @FunctionalInterface
+    public interface CascadeDeleteChildNodeCallback {
+        void onResult(com.dji.flighthubsdk.bean.FlightHubError err);
+    }
+
+    /** 查询可达子节点列表回调（v1.1 §5 GET /cascade/api/children）。 */
+    @FunctionalInterface
+    public interface CascadeGetReachableChildrenCallback {
+        void onResult(com.dji.flighthubsdk.bean.FlightHubError err,
+                      com.dji.flighthubsdk.bean.CascadeChildNodeListResult result);
+    }
+
+    /** 获取父节点信息回调（v1.1 §6 GET /cascade/api/parent）。 */
+    @FunctionalInterface
+    public interface CascadeGetParentNodeCallback {
+        void onResult(com.dji.flighthubsdk.bean.FlightHubError err,
+                      com.dji.flighthubsdk.bean.CascadeParentNodeInfo info);
+    }
+
+    /** 响应上级平台组网请求回调（v1.1 §7 POST /cascade/api/parent/respond）。 */
+    @FunctionalInterface
+    public interface CascadeRespondToParentCallback {
+        void onResult(com.dji.flighthubsdk.bean.FlightHubError err);
+    }
+
+    /** 查询组网节点索引回调（v1.1 §8 GET /cascade/api/nodes/index）。 */
+    @FunctionalInterface
+    public interface CascadeGetNodeIndexCallback {
+        void onResult(com.dji.flighthubsdk.bean.FlightHubError err,
+                      com.dji.flighthubsdk.bean.CascadeChildNodeListResult result);
+    }
+
+    /** 联通性检测回调（v1.1 §9 GET /cascade/api/connectivity）。 */
+    @FunctionalInterface
+    public interface CascadeGetConnectivityCallback {
+        void onResult(com.dji.flighthubsdk.bean.FlightHubError err,
+                      com.dji.flighthubsdk.bean.CascadeConnectivityResult result);
+    }
+
+    /** 上级平台联通性检测回调（v1.1 §10 GET /cascade/api/parent/connectivity）。 */
+    @FunctionalInterface
+    public interface CascadeGetParentConnectivityCallback {
+        void onResult(com.dji.flighthubsdk.bean.FlightHubError err,
+                      com.dji.flighthubsdk.bean.CascadeParentConnectivity result);
+    }
+
+    /** 向指定节点投递消息回调（v1.1 §11 POST /cascade/api/notify/{dstNode}）。 */
+    @FunctionalInterface
+    public interface CascadePostToNodeCallback {
+        void onResult(com.dji.flighthubsdk.bean.FlightHubError err);
+    }
+
+    /**
+     * 级联节点状态变更事件回调（v1.1 事件推送 topic {@code topic_cascade_node_status}）。
+     * 事件体为全量快照，幂等自愈；状态派生优先级 {@code deleted > offline > disabled > normal}。
+     */
+    @FunctionalInterface
+    public interface CascadeNodeStatusEventCallback {
+        void onResult(com.dji.flighthubsdk.bean.CascadeNodeStatusEvent event);
+    }
+
+    /**
+     * 跨节点通道消息事件回调（v1.1 事件推送 topic {@code topic_cascade_notify}）。
+     * payload 为发送侧 postToNode 时透传的原始 body（SDK 不解析）。
+     */
+    @FunctionalInterface
+    public interface CascadeNotifyEventCallback {
+        void onResult(com.dji.flighthubsdk.bean.CascadeNotifyEvent event);
+    }
+
+    // ===================== Cascade 回调接口 End =====================
+    // ===================== 3X 超清全景拼接回调接口 Start =====================
+
+    /** 全景拼接 HTTP 操作（发起/停止/重试/触发切片）结果回调 */
+    @FunctionalInterface
+    public interface PanoStitchActionCallback {
+        /**
+         * @param error 错误信息；{@code error.getErrorCode() == SUCCESS} 表示成功
+         */
+        void onResult(FlightHubError error);
+    }
+
+    /** 获取全景瓦片 CDN URL 结果回调 */
+    @FunctionalInterface
+    public interface GetPanoTierTileUrlCallback {
+        /**
+         * @param error  错误信息
+         * @param result 瓦片 URL 结果；仅 {@code result.getState() == 3} 时 baseUrl 等字段有效
+         */
+        void onResult(FlightHubError error, com.dji.flighthubsdk.bean.GetPanoTierTileUrlResult result);
+    }
+
+    /** 全景拼接进度订阅回调（WS 推送，topic: topic_pano_stitch_progress） */
+    @FunctionalInterface
+    public interface PanoStitchProgressCallback {
+        /**
+         * @param msg 全景拼接进度消息；{@code msg.getPanoStitchState() == 3} 视为成功完成
+         */
+        void onResult(com.dji.flighthubsdk.bean.PanoStitchProgressMsg msg);
+    }
+
+    // ===================== 3X 超清全景拼接回调接口 End =====================
 }

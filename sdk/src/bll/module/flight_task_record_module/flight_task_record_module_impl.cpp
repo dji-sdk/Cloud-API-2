@@ -9,8 +9,7 @@
 
 namespace flight_hub_sdk {
 
-FlightTaskRecordModuleImpl::FlightTaskRecordModuleImpl()
-    {
+FlightTaskRecordModuleImpl::FlightTaskRecordModuleImpl(int session_id) : session_id_(session_id) {
     LOG_INFO("[FlightTaskRecordModuleImpl] constructor");
 }
 
@@ -40,7 +39,7 @@ void FlightTaskRecordModuleImpl::exportFlightRecords(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_RECORD_EXPORT_FLIGHT_RECORDS, param_err, "[FlightTaskRecordModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_RECORD_EXPORT_FLIGHT_RECORDS, param_err, session_id_, "[FlightTaskRecordModuleImpl]");
         callback(param_err, {});
         return;
     }
@@ -68,12 +67,13 @@ void FlightTaskRecordModuleImpl::exportFlightRecords(
         request,
         [this, weak_ptr, callback](const ExportFlightRecordsResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 导出飞行记录; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_RECORD_EXPORT_FLIGHT_RECORDS, err, "[FlightTaskRecordModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_RECORD_EXPORT_FLIGHT_RECORDS, err, session_id_, "[FlightTaskRecordModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("exportFlightRecords(): err_code: %d", (int)err.error_code);
@@ -90,7 +90,7 @@ void FlightTaskRecordModuleImpl::exportFlightRecords(
                 callback(err, results);
             });
         }
-    );
+    , session_id_);
 }
 
 
@@ -118,12 +118,13 @@ void FlightTaskRecordModuleImpl::getExportFlightRecordsProgress(
         params,
         [this, weak_ptr, callback](const GetExportFlightRecordsProgressResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 查询导出进度; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_RECORD_GET_EXPORT_FLIGHT_RECORDS_PROGRESS, err, "[FlightTaskRecordModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_RECORD_GET_EXPORT_FLIGHT_RECORDS_PROGRESS, err, session_id_, "[FlightTaskRecordModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("getExportFlightRecordsProgress(): err_code: %d", (int)err.error_code);
@@ -168,7 +169,7 @@ void FlightTaskRecordModuleImpl::getExportFlightRecordsProgress(
                 callback(err, results);
             });
         }
-    );
+    , session_id_);
 }
 
 

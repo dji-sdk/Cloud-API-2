@@ -11,8 +11,8 @@
 
 namespace flight_hub_sdk {
 
-FlySafeManager::FlySafeManager() {
-    LOG_INFO("[FlySafeManager] constructor");
+FlySafeManager::FlySafeManager(int session_id) : session_id_(session_id) {
+    LOG_INFO("[FlySafeManager] constructor, session_id=%d", session_id_);
 }
 
 FlySafeManager::~FlySafeManager() {
@@ -28,12 +28,13 @@ void FlySafeManager::getUnlockLicenseList(const QueryDeviceUnlockLicenseListPara
     request.device_model_domain = param.device_model_domain;
     get_unlock_license_list(request, [this, weak_ptr, callback](const QueryDeviceUnlockLicenseListResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
             // 埋点: 获取解锁证书列表; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_SAFETY_GET_UNLOCK_LICENSE_LIST, err, "[FlySafeManager]");
+            report_beacon_event_helper(kBeaconReportEvent_SAFETY_GET_UNLOCK_LICENSE_LIST, err, session_id, "[FlySafeManager]");
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_INFO("[FlySafeManager] getUnlockLicenseList: err_code: %d", static_cast<int>(err.error_code));
             }
@@ -75,7 +76,7 @@ void FlySafeManager::getUnlockLicenseList(const QueryDeviceUnlockLicenseListPara
                 callback(err, result);
             }
         });
-    });
+    }, session_id_);
 }
 
 void FlySafeManager::switchUnlockLicense(const SwitchUnlockLicenseParam& param, std::function<void(FlightHubError err)> callback) {
@@ -87,18 +88,19 @@ void FlySafeManager::switchUnlockLicense(const SwitchUnlockLicenseParam& param, 
     request.device_cmd_data.enable = param.enable;
     post_switch_unlock_license(request, [this, weak_ptr, callback](FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, session_id = session_id_, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
             // 埋点: 切换解锁证书状态; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_SAFETY_SWITCH_UNLOCK_LICENSE, err, "[FlySafeManager]");
+            report_beacon_event_helper(kBeaconReportEvent_SAFETY_SWITCH_UNLOCK_LICENSE, err, session_id, "[FlySafeManager]");
             LOG_INFO("[FlySafeManager] switchUnlockLicense: err_code: %d", static_cast<int>(err.error_code));
             if (callback) {
                 callback(err);
             }
         });
-    });
+    }, session_id_);
 }
 
 void FlySafeManager::checkUnlockLicense(const CheckUnlockLicenseParam& param, std::function<void(FlightHubError err, const CheckUnlockLicenseResult& result)> callback) {
@@ -108,18 +110,25 @@ void FlySafeManager::checkUnlockLicense(const CheckUnlockLicenseParam& param, st
     request.device_sn = param.device_sn;
     post_check_unlock_license(request, [this, weak_ptr, callback](const CheckUnlockLicenseResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
             // 埋点: 检查解锁证书; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_SAFETY_CHECK_UNLOCK_LICENSE, err, "[FlySafeManager]");
+            report_beacon_event_helper(kBeaconReportEvent_SAFETY_CHECK_UNLOCK_LICENSE, err, session_id, "[FlySafeManager]");
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_INFO("[FlySafeManager] checkUnlockLicense: err_code: %d", static_cast<int>(err.error_code));
             }
             CheckUnlockLicenseResult result;
             result.err_file_name = response.err_file_name;
-            result.err_cert_mismatch = response.err_cert_mismatch;
+            for (const auto& item : response.err_cert_mismatch) {
+                ErrCertMismatch mismatch;
+                mismatch.airport_sn = item.airport_sn;
+                mismatch.aircraft_sn = item.aircraft_sn;
+                mismatch.file_name = item.file_name;
+                result.err_cert_mismatch.push_back(mismatch);
+            }
             for (const auto& item : response.list) {
                 CheckUnlockLicenseResultItem result_item;
                 result_item.file_name = item.file_name;
@@ -134,7 +143,7 @@ void FlySafeManager::checkUnlockLicense(const CheckUnlockLicenseParam& param, st
                 callback(err, result);
             }
         });
-    });
+    }, session_id_);
 }
 
 void FlySafeManager::submitUnlockLicense(const ImportUnlockLicenseParam& param, std::function<void(FlightHubError err)> callback) {
@@ -144,36 +153,38 @@ void FlySafeManager::submitUnlockLicense(const ImportUnlockLicenseParam& param, 
     request.cert_url = param.cert_url;
     post_import_unlock_license(request, [this, weak_ptr, callback](FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, session_id = session_id_, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
             // 埋点: 提交解锁证书; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_SAFETY_SUBMIT_UNLOCK_LICENSE, err, "[FlySafeManager]");
+            report_beacon_event_helper(kBeaconReportEvent_SAFETY_SUBMIT_UNLOCK_LICENSE, err, session_id, "[FlySafeManager]");
             LOG_INFO("[FlySafeManager] importUnlockLicense: err_code: %d", static_cast<int>(err.error_code));
             if (callback) {
                 callback(err);
             }
         });
-    });
+    }, session_id_);
 }
 
 void FlySafeManager::clearDeviceUnlockLicense(const std::string& device_sn, std::function<void(FlightHubError err)> callback) {
     WeakDummy(weak_ptr);
     post_clear_device_unlock_license(device_sn, [this, weak_ptr, callback](FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, session_id = session_id_, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
             // 埋点: 清除设备解锁证书; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_SAFETY_CLEAR_DEVICE_UNLOCK_LICENSE, err, "[FlySafeManager]");
+            report_beacon_event_helper(kBeaconReportEvent_SAFETY_CLEAR_DEVICE_UNLOCK_LICENSE, err, session_id, "[FlySafeManager]");
             LOG_INFO("[FlySafeManager] clearDeviceUnlockLicense: err_code: %d", static_cast<int>(err.error_code));
             if (callback) {
                 callback(err);
             }
         });
-    });
+    }, session_id_);
 }
 
 void FlySafeManager::uploadUnlockLicenseFile(const std::string& file_path, std::function<void(FlightHubError err, const UploadUnlockLicenseFileResult& result)> callback) {
@@ -191,7 +202,7 @@ void FlySafeManager::uploadUnlockLicenseFile(const std::string& file_path, std::
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPLOAD_UNLOCK_LICENSE_FILE, not_found_err, "[FlySafeManager]");
+        report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPLOAD_UNLOCK_LICENSE_FILE, not_found_err, session_id_, "[FlySafeManager]");
 
         if (callback) {
             callback(not_found_err, UploadUnlockLicenseFileResult{});
@@ -211,7 +222,7 @@ void FlySafeManager::uploadUnlockLicenseFile(const std::string& file_path, std::
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPLOAD_UNLOCK_LICENSE_FILE, too_large_err, "[FlySafeManager]");
+        report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPLOAD_UNLOCK_LICENSE_FILE, too_large_err, session_id_, "[FlySafeManager]");
 
         if (callback) {
             callback(too_large_err, UploadUnlockLicenseFileResult{});
@@ -220,7 +231,7 @@ void FlySafeManager::uploadUnlockLicenseFile(const std::string& file_path, std::
     }
 
     // 先获取 STS token
-    GetImportUnlockLicenseSts([this, weak_ptr, file_path, callback](FlightHubError err, const GetImportUnlockLicenseStsResponse& sts_response) {
+    GetImportUnlockLicenseSts([this, weak_ptr, file_path, callback, session_id = session_id_](FlightHubError err, const GetImportUnlockLicenseStsResponse& sts_response) {
         if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
             LOG_ERROR("[FlySafeManager] uploadUnlockLicenseFile: GetImportUnlockLicenseSts failed, err_code: %d", static_cast<int>(err.error_code));
 
@@ -228,7 +239,7 @@ void FlySafeManager::uploadUnlockLicenseFile(const std::string& file_path, std::
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPLOAD_UNLOCK_LICENSE_FILE, err, "[FlySafeManager]");
+            report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPLOAD_UNLOCK_LICENSE_FILE, err, session_id_, "[FlySafeManager]");
 
             if (callback) {
                 callback(err, UploadUnlockLicenseFileResult{});
@@ -251,7 +262,7 @@ void FlySafeManager::uploadUnlockLicenseFile(const std::string& file_path, std::
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPLOAD_UNLOCK_LICENSE_FILE, provider_err, "[FlySafeManager]");
+            report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPLOAD_UNLOCK_LICENSE_FILE, provider_err, session_id_, "[FlySafeManager]");
 
             if (callback) {
                 callback(provider_err, UploadUnlockLicenseFileResult{});
@@ -294,7 +305,7 @@ void FlySafeManager::uploadUnlockLicenseFile(const std::string& file_path, std::
         std::string file_store_dir = sts_response.file_store_dir;
         // 捕获 uploader，保证后台线程跑完前不被析构
         uploader->uploadFileAsync(file_path, object_key, sts_info,
-            [weak_ptr, callback, file_path, object_key, file_store_dir, uploader](const CloudStorageUploadResult& result) {
+            [weak_ptr, callback, file_path, object_key, file_store_dir, uploader, session_id, this](const CloudStorageUploadResult& result) {
                 WeakDummyReturn(weak_ptr);
                 if (result.success) {
                     UploadUnlockLicenseFileResult upload_result;
@@ -308,7 +319,7 @@ void FlySafeManager::uploadUnlockLicenseFile(const std::string& file_path, std::
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPLOAD_UNLOCK_LICENSE_FILE, success_err, "[FlySafeManager]");
+                    report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPLOAD_UNLOCK_LICENSE_FILE, success_err, session_id, "[FlySafeManager]");
 
                     if (callback) {
                         callback(success_err, upload_result);
@@ -322,7 +333,7 @@ void FlySafeManager::uploadUnlockLicenseFile(const std::string& file_path, std::
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPLOAD_UNLOCK_LICENSE_FILE, upload_err, "[FlySafeManager]");
+                    report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPLOAD_UNLOCK_LICENSE_FILE, upload_err, session_id, "[FlySafeManager]");
 
                     if (callback) {
                         callback(upload_err, UploadUnlockLicenseFileResult{});
@@ -335,9 +346,10 @@ void FlySafeManager::uploadUnlockLicenseFile(const std::string& file_path, std::
 
 void FlySafeManager::GetImportUnlockLicenseSts(const std::function<void(FlightHubError err, const GetImportUnlockLicenseStsResponse& sts_response)>& callback) {
     WeakDummy(weak_ptr);
-    post_import_unlock_license_sts([weak_ptr, callback](const GetImportUnlockLicenseStsResponse& response, FlightHubError err) {
+    post_import_unlock_license_sts([weak_ptr, callback, this](const GetImportUnlockLicenseStsResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_INFO("[FlySafeManager] GetImportUnlockLicenseSts: err_code: %d", static_cast<int>(err.error_code));
             }
@@ -345,7 +357,7 @@ void FlySafeManager::GetImportUnlockLicenseSts(const std::function<void(FlightHu
                 callback(err, response);
             }
         });
-    });
+    }, session_id_);
 }
 
 std::shared_ptr<ICloudStorageUploader> FlySafeManager::getCloudStorageUploader(const std::string& provider) {

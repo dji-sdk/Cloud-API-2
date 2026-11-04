@@ -486,9 +486,20 @@
 
 #include "drc_stick_control_southbound.h"
 
+// 降落任务状态上报
+#include "drc_landing_mission_state_northbound.h"
+
 // // 杆量协议
 #include "compressed_sticks_control_southbound.h"
 #include "compressed_sticks_control_northbound.h"
+
+// // ESDK 自定义数据透传（云端→ESDK 下行 + 回复）
+#include "services_custom_data_transmission_to_esdk_southbound.h"
+#include "services_reply_custom_data_transmission_to_esdk_northbound.h"
+
+// // PSDK 自定义数据透传（云端→PSDK 下行 + 回复）
+#include "services_custom_data_transmission_to_psdk_southbound.h"
+#include "services_reply_custom_data_transmission_to_psdk_northbound.h"
 
 // // 设备能力上报
 // #include "state_northbound.h"

@@ -59,20 +59,37 @@ public class CreateTestFlightTaskResponse {
     return flighthubsdkmoduleJNI.CreateTestFlightTaskResponse_uuid_get(swigCPtr, this);
   }
 
-  public void setBegin_at(int value) {
+  public void setBegin_at(long value) {
     flighthubsdkmoduleJNI.CreateTestFlightTaskResponse_begin_at_set(swigCPtr, this, value);
   }
 
-  public int getBegin_at() {
+  public long getBegin_at() {
     return flighthubsdkmoduleJNI.CreateTestFlightTaskResponse_begin_at_get(swigCPtr, this);
   }
 
-  public void setEnd_at(int value) {
+  public void setEnd_at(long value) {
     flighthubsdkmoduleJNI.CreateTestFlightTaskResponse_end_at_set(swigCPtr, this, value);
   }
 
-  public int getEnd_at() {
+  public long getEnd_at() {
     return flighthubsdkmoduleJNI.CreateTestFlightTaskResponse_end_at_get(swigCPtr, this);
+  }
+
+  public void setWayline_validity_check_codes(LongLongVector value) {
+    flighthubsdkmoduleJNI.CreateTestFlightTaskResponse_wayline_validity_check_codes_set(swigCPtr, this, LongLongVector.getCPtr(value), value);
+  }
+
+  public LongLongVector getWayline_validity_check_codes() {
+    long cPtr = flighthubsdkmoduleJNI.CreateTestFlightTaskResponse_wayline_validity_check_codes_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new LongLongVector(cPtr, false);
+  }
+
+  public void setIs_task_created(boolean value) {
+    flighthubsdkmoduleJNI.CreateTestFlightTaskResponse_is_task_created_set(swigCPtr, this, value);
+  }
+
+  public boolean getIs_task_created() {
+    return flighthubsdkmoduleJNI.CreateTestFlightTaskResponse_is_task_created_get(swigCPtr, this);
   }
 
   public CreateTestFlightTaskResponse() {

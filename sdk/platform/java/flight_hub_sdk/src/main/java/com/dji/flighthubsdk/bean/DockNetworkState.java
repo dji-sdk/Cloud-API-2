@@ -11,8 +11,8 @@ public final class DockNetworkState {
     private int type;
     /** int, "网络质量(当网络类型为4G时才具有网络质量信息)", { 0: 差, 1: 中, 2: 好 }; 默认无效值: -1; */
     private int quality;
-    /** int, "网络速率(单位KB/秒)"; 默认值: 0; */
-    private int rate;
+    /** double, "网络速率(单位KB/秒)"; 默认值: 0.0; */
+    private double rate;
     public DockNetworkState() {
     }
 
@@ -23,7 +23,7 @@ public final class DockNetworkState {
      * @param quality 质量
      * @param rate 速率
      */
-    public DockNetworkState(int type, int quality, int rate) {
+    public DockNetworkState(int type, int quality, double rate) {
         this.type = type;
         this.quality = quality;
         this.rate = rate;
@@ -49,13 +49,13 @@ public final class DockNetworkState {
         this.quality = quality;
     }
 
-    /** int, "网络速率(单位KB/秒)"; 默认值: 0; */
-    public int getRate() {
+    /** double, "网络速率(单位KB/秒)"; 默认值: 0.0; */
+    public double getRate() {
         return rate;
     }
 
-    /** @param rate int, "网络速率(单位KB/秒)"; 默认值: 0; */
-    public void setRate(int rate) {
+    /** @param rate double, "网络速率(单位KB/秒)"; 默认值: 0.0; */
+    public void setRate(double rate) {
         this.rate = rate;
     }
 
@@ -68,7 +68,7 @@ public final class DockNetworkState {
             return false;
         }
         DockNetworkState that = (DockNetworkState) o;
-        return type == that.type && quality == that.quality && rate == that.rate;
+        return type == that.type && quality == that.quality && Double.compare(that.rate, rate) == 0;
     }
 
     @Override

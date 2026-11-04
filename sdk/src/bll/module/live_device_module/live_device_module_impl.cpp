@@ -9,31 +9,39 @@
 #include "bll/manager/topo_registry/topo_registry.h"
 #include "notification_center/notification_center.h"
 #include <BusinessManager.h>
+#include "session/session_bm.h"
 
 using namespace flight_hub_sdk;
 
-LiveDeviceModuleImpl::LiveDeviceModuleImpl(DeviceKind kind, const std::string& sn)
-    : kind_(kind), sn_(sn) {
+LiveDeviceModuleImpl::LiveDeviceModuleImpl(DeviceKind kind, const std::string& sn, int session_id)
+    : kind_(kind), sn_(sn), session_id_(session_id) {
     registerNotificationCenterListeners();
 }
 
 LiveDeviceModuleImpl::~LiveDeviceModuleImpl() {
+    auto bm = ResolveBusinessManager(session_id_);
     get_live_available_range_timer_.Cancel();
 
     if (dock_live_status_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_live_status_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_live_status_listen_id_);
+        }
         dock_live_status_listen_id_ = -1;
     }
     if (dock_live_capacity_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_live_capacity_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_live_capacity_listen_id_);
+        }
         dock_live_capacity_listen_id_ = -1;
     }
 }
 
 void LiveDeviceModuleImpl::registerNotificationCenterListeners() {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(p);
     // 机场直播状态(live_status);
-    dock_live_status_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockLiveStatus(
+    if (bm) {
+        dock_live_status_listen_id_ = bm->ListenDockLiveStatus(
         [this, p](const notification_center::DockLiveStatus& msg) -> void {
             WeakDummyReturn(p);
             flight_hub_sdk::DockLiveStatus dock_live_status{};
@@ -56,9 +64,13 @@ void LiveDeviceModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[LiveDeviceModuleImpl] ListenDockLiveStatus, error: %d", error_code);
             }
         }, sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 机场直播能力(live_capacity, WS 推送; 与 listenLiveAvailableRange 5s 轮询并存, 互不影响);
-    dock_live_capacity_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockLiveCapacity(
+    if (bm) {
+        dock_live_capacity_listen_id_ = bm->ListenDockLiveCapacity(
         [this, p](const notification_center::DockLiveCapacity& msg) -> void {
             WeakDummyReturn(p);
             flight_hub_sdk::DockLiveCapacity dock_live_capacity{};
@@ -95,6 +107,9 @@ void LiveDeviceModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[LiveDeviceModuleImpl] ListenDockLiveCapacity, error: %d", error_code);
             }
         }, sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 }
 
 int LiveDeviceModuleImpl::listenLiveAvailableRange(
@@ -209,7 +224,7 @@ void LiveDeviceModuleImpl::getLiveAvailableRange() {
             live_info_list_callbacks_.notifyCallbackIfChanged(live_info_list);
             return;
         } while (false);
-    });
+    }, session_id_);
 }
 
 void LiveDeviceModuleImpl::cancelListenLiveAvailableRange(int listen_id) {
@@ -224,17 +239,17 @@ void LiveDeviceModuleImpl::getAudienceCount(
     DeviceAudienceCountRequestItem item;
     item.sn = sn_;
     device_list.push_back(item);
-    post_audience_count(device_list, group, [callback](const std::vector<DeviceAudienceCountItem>& result, FlightHubError err) {
+    post_audience_count(device_list, group, [callback, this](const std::vector<DeviceAudienceCountItem>& result, FlightHubError err) {
         // 埋点: 查询在线观众数量; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_GET_AUDIENCE_COUNT, err, "[LiveDeviceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_GET_AUDIENCE_COUNT, err, session_id_, "[LiveDeviceModuleImpl]");
 
         if (callback) {
             callback(err, result);
         }
-    });
+    }, session_id_);
 }
 
 int LiveDeviceModuleImpl::listenDockLiveStatus(const std::function<void(const DockLiveStatus& msg)>& callback) {

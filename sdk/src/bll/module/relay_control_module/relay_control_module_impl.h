@@ -10,7 +10,7 @@ namespace flight_hub_sdk {
 
 class RelayControlModuleImpl : public IRelayControlModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    RelayControlModuleImpl(const std::string& sn);
+    RelayControlModuleImpl(const std::string& sn, int session_id);
     ~RelayControlModuleImpl() override;
 
     void setRelayBroadcastHide(bool is_broadcast_hide, const std::function<void(FlightHubError err)>& callback) override;
@@ -22,6 +22,7 @@ public:
     void relayDisconnect(const std::function<void(FlightHubError err, RelayDisconnectResult result)>& callback) override;
 
 private:
+    int session_id_;
     std::string sn_;
 };
 

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 set(_rtc_root "${CLOUD_API2_THIRD_PARTY}/libwebrtc")
 set(_rtc_inc "${_rtc_root}/include")
 set(_rtc_lib "${_rtc_root}/lib/${CLOUD_API2_PLAT}/libwebrtc.a")

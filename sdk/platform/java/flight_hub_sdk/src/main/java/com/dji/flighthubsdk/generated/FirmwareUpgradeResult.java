@@ -51,6 +51,14 @@ public class FirmwareUpgradeResult {
     }
   }
 
+  public void setBid(String value) {
+    flighthubsdkmoduleJNI.FirmwareUpgradeResult_bid_set(swigCPtr, this, value);
+  }
+
+  public String getBid() {
+    return flighthubsdkmoduleJNI.FirmwareUpgradeResult_bid_get(swigCPtr, this);
+  }
+
   public void setDevice_code(int value) {
     flighthubsdkmoduleJNI.FirmwareUpgradeResult_device_code_set(swigCPtr, this, value);
   }

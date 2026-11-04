@@ -9,8 +9,15 @@
 #include "notification_center/notification_center.h"
 #include "BusinessManager.h"
 #include <AIGCJson.hpp>
+#include <functional>
+#include <unordered_map>
+#include <unordered_set>
+#include "session/session_bm.h"
 
 namespace flight_hub_sdk {
+
+ElementModuleImpl::ElementModuleImpl(int session_id)
+    : session_id_(session_id) {}
 
 // 从 JSON 字符串中提取指定 key 对应的数组子串（含括号匹配）
 static std::string extractJsonArray(const std::string& json, const std::string& key) {
@@ -74,21 +81,34 @@ struct ResourceContentParseHelper {
     struct {
         std::string type;
         double radius = 0.0;
-        std::string coordinates;   // raw JSON 多态
-        std::string bread_crumbs;  // raw JSON 多态
-        AIGC_JSON_HELPER(type, radius, coordinates, bread_crumbs)
+        // coordinates/bread_crumbs 为多态数组，AIGC 无法解析到 string；
+        // 二者由 convertResourceData 中的 extractJsonArray 从原始 JSON 单独提取。
+        AIGC_JSON_HELPER(type, radius)
     } geometry;
+    AIGC_JSON_HELPER(type, properties, geometry)
+};
+
+/// 独立解析 media_resources：geometry.coordinates 为数组，AIGC 解析到 string 会提前失败，
+/// 不能依赖 ResourceContentParseHelper 的字段顺序。
+struct ResourceMediaContentParseHelper {
     ElementMediaResourcesResp media_resources;
-    AIGC_JSON_HELPER(type, properties, geometry, media_resources)
+    AIGC_JSON_HELPER(media_resources)
+};
+
+struct ResourceMediaParseHelper {
+    ResourceMediaContentParseHelper content;
+    AIGC_JSON_HELPER(content)
 };
 
 struct ResourceParseHelper {
-    ResourceContentParseHelper content;
+    // 标量字段放在 content 之前：AIGC 解析遇错即停，content 解析失败时
+    // 仍能保证 type/user_name/user_id/remark 已赋值。
     int type = 0;
     std::string user_name;
     std::string user_id;
     std::string remark;
-    AIGC_JSON_HELPER(content, type, user_name, user_id, remark)
+    ResourceContentParseHelper content;
+    AIGC_JSON_HELPER(type, user_name, user_id, remark, content)
 };
 
 // resource JSON string → ElementResourceData
@@ -97,8 +117,9 @@ static ElementResourceData convertResourceData(const std::string& resource_json)
     if (resource_json.empty()) return d;
     ResourceParseHelper h;
     std::string err;
-    aigc::JsonHelper::JsonToObject(h, resource_json, {}, &err);
-    // coordinates/bread_crumbs 是多态数组，AIGC 无法解析到 string，报错是预期行为，忽略
+    if (!aigc::JsonHelper::JsonToObject(h, resource_json, {}, &err)) {
+        LOG_ERROR("[ElementModuleImpl] convertResourceData parse failed: %s", err.c_str());
+    }
     d.type      = h.type;
     d.user_name = h.user_name;
     d.user_id   = h.user_id;
@@ -110,16 +131,31 @@ static ElementResourceData convertResourceData(const std::string& resource_json)
     d.content.properties.is_transparent  = h.content.properties.is_transparent;
     d.content.properties.font_size       = h.content.properties.font_size;
     d.content.properties.icon            = h.content.properties.icon;
+    d.content.properties.icon_url        = h.content.properties.icon_url;
+    d.content.properties.width           = h.content.properties.width;
+    d.content.properties.start_cap       = h.content.properties.start_cap;
+    d.content.properties.end_cap         = h.content.properties.end_cap;
     d.content.geometry.type   = h.content.geometry.type;
     d.content.geometry.radius = h.content.geometry.radius;
-    // coordinates/bread_crumbs 为 raw JSON 透传
+    // coordinates/breadCrumbs 为 raw JSON 透传；breadCrumbs 优先，兼容历史 bread_crumbs
     d.content.geometry.coordinates  = extractJsonArray(resource_json, "coordinates");
-    d.content.geometry.bread_crumbs = extractJsonArray(resource_json, "bread_crumbs");
-    for (const auto& img : h.content.media_resources.images) {
+    d.content.geometry.bread_crumbs = extractJsonArray(resource_json, "breadCrumbs");
+    if (d.content.geometry.bread_crumbs.empty()) {
+        d.content.geometry.bread_crumbs = extractJsonArray(resource_json, "bread_crumbs");
+    }
+    ResourceMediaParseHelper mh;
+    err.clear();
+    aigc::JsonHelper::JsonToObject(mh, resource_json, {}, &err);
+    for (const auto& img : mh.content.media_resources.images) {
         ElementMediaImage mi;
         mi.object_key      = img.object_key;
         mi.media_file_id   = img.media_file_id;
         mi.media_file_uuid = img.media_file_uuid;
+        mi.url             = img.url;
+        mi.preview_url     = img.preview_url;
+        mi.webp_url        = img.webp_url;
+        mi.file_type       = img.file_type;
+        mi.sub_file_type   = img.sub_file_type;
         d.content.media_resources.images.push_back(mi);
     }
     return d;
@@ -145,6 +181,10 @@ void ElementModuleImpl::createElement(
         req_content.properties.is_transparent   = c.properties.is_transparent;
         req_content.properties.font_size        = c.properties.font_size;
         req_content.properties.icon             = c.properties.icon;
+        req_content.properties.icon_url         = c.properties.icon_url;
+        req_content.properties.width            = c.properties.width;
+        req_content.properties.start_cap        = c.properties.start_cap;
+        req_content.properties.end_cap          = c.properties.end_cap;
         req_content.geometry.type   = c.geometry.type;
         req_content.geometry.radius = c.geometry.radius;
         req_content.geometry.coordinates  = c.geometry.coordinates;
@@ -169,12 +209,13 @@ void ElementModuleImpl::createElement(
         element_create(request,
             [this, weak_ptr, callback](const ElementCreateResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                     // 埋点: 创建要素; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_ELEMENT_CREATE, err, "[ElementModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_ELEMENT_CREATE, err, session_id_, "[ElementModuleImpl]");
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, CreateElementResult{});
                         return;
@@ -183,7 +224,7 @@ void ElementModuleImpl::createElement(
                     result.id = data.id;
                     if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -203,6 +244,10 @@ void ElementModuleImpl::updateElement(
         req_content.properties.is_transparent   = c.properties.is_transparent;
         req_content.properties.font_size        = c.properties.font_size;
         req_content.properties.icon             = c.properties.icon;
+        req_content.properties.icon_url         = c.properties.icon_url;
+        req_content.properties.width            = c.properties.width;
+        req_content.properties.start_cap        = c.properties.start_cap;
+        req_content.properties.end_cap          = c.properties.end_cap;
         req_content.geometry.type   = c.geometry.type;
         req_content.geometry.radius = c.geometry.radius;
         req_content.geometry.coordinates  = c.geometry.coordinates;
@@ -235,12 +280,13 @@ void ElementModuleImpl::updateElement(
         element_update(element_id, request,
             [this, weak_ptr, callback](const ElementUpdateResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                     // 埋点: 更新要素属性或移动要素到目标图层; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_ELEMENT_UPDATE, err, "[ElementModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_ELEMENT_UPDATE, err, session_id_, "[ElementModuleImpl]");
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, UpdateElementResult{});
                         return;
@@ -249,7 +295,7 @@ void ElementModuleImpl::updateElement(
                     result.id = data.id;
                     if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -271,18 +317,31 @@ void ElementModuleImpl::listElementHierarchy(
             request,
             [this, weak_ptr, callback](const ElementListHierarchyResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                     // 埋点: 查询元素层级列表（目录树 JSON 透传）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_ELEMENT_LIST_HIERARCHY, err, "[ElementModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_ELEMENT_LIST_HIERARCHY, err, session_id_, "[ElementModuleImpl]");
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, ListElementHierarchyResult{});
                         return;
                     }
-                    ListElementHierarchyResult result;
+                    // 后端返回扁平列表，仅用 pid 表达父子；按 pid 在 SDK 侧建树。
+                    std::unordered_map<std::string, const ElementGroupOutputData*> by_id;
+                    std::unordered_map<std::string, std::vector<const ElementGroupOutputData*>> children_by_pid;
                     for (const auto& d : data.data) {
+                        by_id[d.id] = &d;
+                        if (!d.pid.empty()) {
+                            children_by_pid[d.pid].push_back(&d);
+                        }
+                    }
+
+                    std::function<ElementGroupInfo(const ElementGroupOutputData&,
+                                                   std::unordered_set<std::string>&)> build_group;
+                    build_group = [&](const ElementGroupOutputData& d,
+                                      std::unordered_set<std::string>& visiting) -> ElementGroupInfo {
                         ElementGroupInfo g;
                         g.id             = d.id;
                         g.name           = d.name;
@@ -309,40 +368,32 @@ void ElementModuleImpl::listElementHierarchy(
                             item.notify                = e.notify;
                             g.elements.push_back(item);
                         }
-                        for (const auto& c : d.children) {
-                            ElementGroupInfo child;
-                            child.id             = c.id;
-                            child.name           = c.name;
-                            child.order          = c.order;
-                            child.is_distributed = c.is_distributed;
-                            child.type           = c.type;
-                            child.is_lock        = c.is_lock;
-                            child.tri_state      = c.tri_state;
-                            child.create_time    = c.create_time;
-                            child.pid            = c.pid;
-                            for (const auto& e : c.elements) {
-                                ElementItemInfo item;
-                                item.id                    = e.id;
-                                item.name                  = e.name;
-                                item.desc                  = e.desc;
-                                item.source                = e.source;
-                                item.order                 = e.order;
-                                item.status                = e.status;
-                                item.display               = e.display;
-                                item.resource              = convertResourceData(e.resource);
-                                item.update_time           = e.update_time;
-                                item.create_time           = e.create_time;
-                                item.elevation_load_status = e.elevation_load_status;
-                                item.notify                = e.notify;
-                                child.elements.push_back(item);
+                        if (visiting.insert(d.id).second) {
+                            auto it = children_by_pid.find(d.id);
+                            if (it != children_by_pid.end()) {
+                                for (const auto* child : it->second) {
+                                    if (child) {
+                                        g.children.push_back(build_group(*child, visiting));
+                                    }
+                                }
                             }
-                            g.children.push_back(child);
+                            visiting.erase(d.id);
                         }
-                        result.list.push_back(g);
+                        return g;
+                    };
+
+                    ListElementHierarchyResult result;
+                    for (const auto& d : data.data) {
+                        // pid 为空或父节点不存在时作为顶层
+                        if (!d.pid.empty() && by_id.find(d.pid) != by_id.end()) {
+                            continue;
+                        }
+                        std::unordered_set<std::string> visiting;
+                        result.list.push_back(build_group(d, visiting));
                     }
                     if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -359,12 +410,13 @@ void ElementModuleImpl::setElementVisibility(
         element_set_visibility(element_id, request,
             [this, weak_ptr, callback](const ElementSetVisibilityResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                     // 埋点: 设置要素显示/隐藏状态（PaaS 专用简化接口）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_ELEMENT_SET_VISIBILITY, err, "[ElementModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_ELEMENT_SET_VISIBILITY, err, session_id_, "[ElementModuleImpl]");
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, SetElementVisibilityResult{});
                         return;
@@ -373,7 +425,7 @@ void ElementModuleImpl::setElementVisibility(
                     result.id = data.id;
                     if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -389,12 +441,13 @@ void ElementModuleImpl::deleteElement(
         element_delete(element_id, from_batch,
             [this, weak_ptr, callback](const ElementDeleteResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                     // 埋点: 删除要素（仅限基础几何类型：点/线/面/圆）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_ELEMENT_DELETE, err, "[ElementModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_ELEMENT_DELETE, err, session_id_, "[ElementModuleImpl]");
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, DeleteElementResult{});
                         return;
@@ -403,7 +456,7 @@ void ElementModuleImpl::deleteElement(
                     result.id = data.id;
                     if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -411,10 +464,11 @@ void ElementModuleImpl::deleteElement(
 
 int ElementModuleImpl::listenElementCreate(
     const std::function<void(const ElementCreateMsg& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
-    return NotificationCenter::getInstance()->getBusinessManager()
-        ->ListenElementCreate(
-            [weak_ptr, callback](const notification_center::ElementCreate& nc_msg) {
+    if (bm) {
+        return bm->ListenElementCreate(
+            [weak_ptr, callback, session_id_ = session_id_](const notification_center::ElementCreate& nc_msg) {
                 WeakDummyReturn(weak_ptr);
                 ElementCreateMsg msg;
                 msg.id       = nc_msg.id;
@@ -426,20 +480,27 @@ int ElementModuleImpl::listenElementCreate(
             [](const notification_center::NotificationCenterErrorCode&) {},
             "",
             notification_center::NotificationFrequency_OnChanged);
+    }
+    LOG_ERROR("[session_bm] null, cannot Listen (return -1)");
+    return -1;
 }
 
 void ElementModuleImpl::cancelListenElementCreate(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     if (listen_id >= 0) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(listen_id);
+        if (bm) {
+            bm->CancelObserve(listen_id);
+        }
     }
 }
 
 int ElementModuleImpl::listenElementUpdate(
     const std::function<void(const ElementUpdateMsg& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
-    return NotificationCenter::getInstance()->getBusinessManager()
-        ->ListenElementUpdate(
-            [weak_ptr, callback](const notification_center::ElementUpdate& nc_msg) {
+    if (bm) {
+        return bm->ListenElementUpdate(
+            [weak_ptr, callback, session_id_ = session_id_](const notification_center::ElementUpdate& nc_msg) {
                 WeakDummyReturn(weak_ptr);
                 ElementUpdateMsg msg;
                 msg.id       = nc_msg.id;
@@ -451,20 +512,27 @@ int ElementModuleImpl::listenElementUpdate(
             [](const notification_center::NotificationCenterErrorCode&) {},
             "",
             notification_center::NotificationFrequency_OnChanged);
+    }
+    LOG_ERROR("[session_bm] null, cannot Listen (return -1)");
+    return -1;
 }
 
 void ElementModuleImpl::cancelListenElementUpdate(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     if (listen_id >= 0) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(listen_id);
+        if (bm) {
+            bm->CancelObserve(listen_id);
+        }
     }
 }
 
 int ElementModuleImpl::listenElementDelete(
     const std::function<void(const ElementDeleteMsg& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
-    return NotificationCenter::getInstance()->getBusinessManager()
-        ->ListenElementDelete(
-            [weak_ptr, callback](const notification_center::ElementDelete& nc_msg) {
+    if (bm) {
+        return bm->ListenElementDelete(
+            [weak_ptr, callback, session_id_ = session_id_](const notification_center::ElementDelete& nc_msg) {
                 WeakDummyReturn(weak_ptr);
                 ElementDeleteMsg msg;
                 msg.id       = nc_msg.id;
@@ -474,11 +542,17 @@ int ElementModuleImpl::listenElementDelete(
             [](const notification_center::NotificationCenterErrorCode&) {},
             "",
             notification_center::NotificationFrequency_OnChanged);
+    }
+    LOG_ERROR("[session_bm] null, cannot Listen (return -1)");
+    return -1;
 }
 
 void ElementModuleImpl::cancelListenElementDelete(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     if (listen_id >= 0) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(listen_id);
+        if (bm) {
+            bm->CancelObserve(listen_id);
+        }
     }
 }
 

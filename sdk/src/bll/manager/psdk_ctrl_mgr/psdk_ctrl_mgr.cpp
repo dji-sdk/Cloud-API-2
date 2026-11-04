@@ -8,11 +8,14 @@
 #include "base/common/logger.h"
 #include "common/executors/executors.h"
 #include "http_interface/http_interface.h"
+#include "services_custom_data_transmission_to_psdk_southbound.h"
+#include "services_reply_custom_data_transmission_to_psdk_northbound.h"
 
 using namespace flight_hub_sdk;
 
-PsdkCtrlMgr::PsdkCtrlMgr(std::string drone_sn, std::string gateway_sn, const std::shared_ptr<message_engine::IMessageEngine> &message_engine) : message_engine_(message_engine), drone_sn_(std::move(drone_sn)), gateway_sn_(std::move(gateway_sn)) {
-    LOG_INFO("[PsdkCtrlMgr][%s] ctor", drone_sn_.c_str());
+PsdkCtrlMgr::PsdkCtrlMgr(std::string drone_sn, std::string gateway_sn, const std::shared_ptr<message_engine::IMessageEngine> &message_engine, int session_id)
+    : message_engine_(message_engine), drone_sn_(std::move(drone_sn)), gateway_sn_(std::move(gateway_sn)), session_id_(session_id) {
+    LOG_INFO("[PsdkCtrlMgr][%s] ctor, session_id=%d", drone_sn_.c_str(), session_id_);
     initPsdkUiResourceListening();
 }
 
@@ -177,6 +180,7 @@ void PsdkCtrlMgr::cancelListenDrcPsdkFloatingWindowTextInfo(int psdk_index, int 
 }
 
 void PsdkCtrlMgr::DrcSpeakerAudioPlayStart(int psdk_index, const PsdkSpeakerAudioPlayInfo &audio_play_info, const std::function<void(FlightHubError err)> &callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr][%s] DrcSpeakerAudioPlayStart unknown psdk_index: %d", drone_sn_.c_str(), psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -184,19 +188,19 @@ void PsdkCtrlMgr::DrcSpeakerAudioPlayStart(int psdk_index, const PsdkSpeakerAudi
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_AUDIO_PLAY_START, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_AUDIO_PLAY_START, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
     auto psdk_abs = psdk_abs_map_[psdk_index];
-    psdk_abs->DrcSpeakerAudioPlayStart(audio_play_info, [callback](FlightHubError err) {
+    psdk_abs->DrcSpeakerAudioPlayStart(audio_play_info, [callback, session_id](FlightHubError err) {
         // 埋点: 开始音频喊话; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_AUDIO_PLAY_START, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_AUDIO_PLAY_START, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -204,6 +208,7 @@ void PsdkCtrlMgr::DrcSpeakerAudioPlayStart(int psdk_index, const PsdkSpeakerAudi
 }
 
 void PsdkCtrlMgr::DrcSpeakerTTSPlayStart(int psdk_index, const PsdkSpeakerTTSPlayInfo &tts_play_info, const std::function<void(FlightHubError err)> &callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr][%s] DrcSpeakerTTSPlayStart unknown psdk_index: %d", drone_sn_.c_str(), psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -211,7 +216,7 @@ void PsdkCtrlMgr::DrcSpeakerTTSPlayStart(int psdk_index, const PsdkSpeakerTTSPla
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_PLAY_START, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_PLAY_START, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
@@ -224,7 +229,7 @@ void PsdkCtrlMgr::DrcSpeakerTTSPlayStart(int psdk_index, const PsdkSpeakerTTSPla
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_PLAY_START, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_PLAY_START, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
@@ -237,7 +242,7 @@ void PsdkCtrlMgr::DrcSpeakerTTSPlayStart(int psdk_index, const PsdkSpeakerTTSPla
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_PLAY_START, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_PLAY_START, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
@@ -250,7 +255,7 @@ void PsdkCtrlMgr::DrcSpeakerTTSPlayStart(int psdk_index, const PsdkSpeakerTTSPla
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_PLAY_START, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_PLAY_START, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
@@ -258,12 +263,12 @@ void PsdkCtrlMgr::DrcSpeakerTTSPlayStart(int psdk_index, const PsdkSpeakerTTSPla
         return;
     }
     auto psdk_abs = psdk_abs_map_[psdk_index];
-    psdk_abs->DrcSpeakerTTSPlayStart(tts_play_info, [callback](FlightHubError err) {
+    psdk_abs->DrcSpeakerTTSPlayStart(tts_play_info, [callback, session_id](FlightHubError err) {
         // 埋点: 开始 TTS 喊话; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_PLAY_START, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_PLAY_START, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -271,6 +276,7 @@ void PsdkCtrlMgr::DrcSpeakerTTSPlayStart(int psdk_index, const PsdkSpeakerTTSPla
 }
 
 void PsdkCtrlMgr::DrcSpeakerRealTimeStart(int psdk_index, const std::function<void(FlightHubError err)> &callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr][%s] DrcSpeakerRealTimeStart unknown psdk_index: %d", drone_sn_.c_str(), psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -278,19 +284,19 @@ void PsdkCtrlMgr::DrcSpeakerRealTimeStart(int psdk_index, const std::function<vo
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REAL_TIME_START, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REAL_TIME_START, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
     auto psdk_abs = psdk_abs_map_[psdk_index];
-    psdk_abs->DrcSpeakerRealTimeStart([callback](FlightHubError err) {
+    psdk_abs->DrcSpeakerRealTimeStart([callback, session_id](FlightHubError err) {
         // 埋点: 开始实时喊话; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REAL_TIME_START, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REAL_TIME_START, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -298,6 +304,7 @@ void PsdkCtrlMgr::DrcSpeakerRealTimeStart(int psdk_index, const std::function<vo
 }
 
 void PsdkCtrlMgr::DrcSpeakerRealTimeStop(int psdk_index, const std::function<void(FlightHubError err)> &callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr][%s] DrcSpeakerRealTimeStop unknown psdk_index: %d", drone_sn_.c_str(), psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -305,19 +312,19 @@ void PsdkCtrlMgr::DrcSpeakerRealTimeStop(int psdk_index, const std::function<voi
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REAL_TIME_STOP, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REAL_TIME_STOP, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
     auto psdk_abs = psdk_abs_map_[psdk_index];
-    psdk_abs->DrcSpeakerRealTimeStop([callback](FlightHubError err) {
+    psdk_abs->DrcSpeakerRealTimeStop([callback, session_id](FlightHubError err) {
         // 埋点: 停止实时喊话; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REAL_TIME_STOP, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REAL_TIME_STOP, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -325,6 +332,7 @@ void PsdkCtrlMgr::DrcSpeakerRealTimeStop(int psdk_index, const std::function<voi
 }
 
 void PsdkCtrlMgr::DrcSpeakerReplay(int psdk_index, const std::function<void(FlightHubError err)> &callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr][%s] DrcSpeakerReplay unknown psdk_index: %d", drone_sn_.c_str(), psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -332,19 +340,19 @@ void PsdkCtrlMgr::DrcSpeakerReplay(int psdk_index, const std::function<void(Flig
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REPLAY, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REPLAY, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
     auto psdk_abs = psdk_abs_map_[psdk_index];
-    psdk_abs->DrcSpeakerReplay([callback](FlightHubError err) {
+    psdk_abs->DrcSpeakerReplay([callback, session_id](FlightHubError err) {
         // 埋点: 重播喊话; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REPLAY, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REPLAY, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -352,6 +360,7 @@ void PsdkCtrlMgr::DrcSpeakerReplay(int psdk_index, const std::function<void(Flig
 }
 
 void PsdkCtrlMgr::DrcSpeakerPlayStop(int psdk_index, const std::function<void(FlightHubError err)> &callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr][%s] DrcSpeakerPlayStop unknown psdk_index: %d", drone_sn_.c_str(), psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -359,19 +368,19 @@ void PsdkCtrlMgr::DrcSpeakerPlayStop(int psdk_index, const std::function<void(Fl
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_STOP, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_STOP, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
     auto psdk_abs = psdk_abs_map_[psdk_index];
-    psdk_abs->DrcSpeakerPlayStop([callback](FlightHubError err) {
+    psdk_abs->DrcSpeakerPlayStop([callback, session_id](FlightHubError err) {
         // 埋点: 停止喊话播放; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_STOP, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_STOP, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -379,6 +388,7 @@ void PsdkCtrlMgr::DrcSpeakerPlayStop(int psdk_index, const std::function<void(Fl
 }
 
 void PsdkCtrlMgr::DrcSpeakerPlayVolumeSet(int psdk_index, int volume, const std::function<void(FlightHubError err)> &callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr][%s] DrcSpeakerPlayVolumeSet unknown psdk_index: %d", drone_sn_.c_str(), psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -386,7 +396,7 @@ void PsdkCtrlMgr::DrcSpeakerPlayVolumeSet(int psdk_index, int volume, const std:
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_VOLUME_SET, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_VOLUME_SET, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
@@ -399,19 +409,19 @@ void PsdkCtrlMgr::DrcSpeakerPlayVolumeSet(int psdk_index, int volume, const std:
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_VOLUME_SET, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_VOLUME_SET, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
     auto psdk_abs = psdk_abs_map_[psdk_index];
-    psdk_abs->DrcSpeakerPlayVolumeSet(volume, [callback](FlightHubError err) {
+    psdk_abs->DrcSpeakerPlayVolumeSet(volume, [callback, session_id](FlightHubError err) {
         // 埋点: 设置喊话器播放音量; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_VOLUME_SET, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_VOLUME_SET, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -419,6 +429,7 @@ void PsdkCtrlMgr::DrcSpeakerPlayVolumeSet(int psdk_index, int volume, const std:
 }
 
 void PsdkCtrlMgr::DrcSpeakerPlayModeSet(int psdk_index, int play_mode, const std::function<void(FlightHubError err)> &callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr][%s] DrcSpeakerPlayModeSet unknown psdk_index: %d", drone_sn_.c_str(), psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -426,7 +437,7 @@ void PsdkCtrlMgr::DrcSpeakerPlayModeSet(int psdk_index, int play_mode, const std
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_MODE_SET, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_MODE_SET, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
@@ -441,19 +452,19 @@ void PsdkCtrlMgr::DrcSpeakerPlayModeSet(int psdk_index, int play_mode, const std
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_MODE_SET, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_MODE_SET, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
     auto psdk_abs = psdk_abs_map_[psdk_index];
-    psdk_abs->DrcSpeakerPlayModeSet(play_mode, [callback](FlightHubError err) {
+    psdk_abs->DrcSpeakerPlayModeSet(play_mode, [callback, session_id](FlightHubError err) {
         // 埋点: 设置喊话器播放模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_MODE_SET, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_MODE_SET, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -461,6 +472,7 @@ void PsdkCtrlMgr::DrcSpeakerPlayModeSet(int psdk_index, int play_mode, const std
 }
 
 void PsdkCtrlMgr::DrcSpeakerTTSSet(int psdk_index, PsdkSpeakerTTSconfig tts_config, const std::function<void(FlightHubError err)> &callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr][%s] DrcSpeakerTTSSet unknown psdk_index: %d", drone_sn_.c_str(), psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -468,19 +480,19 @@ void PsdkCtrlMgr::DrcSpeakerTTSSet(int psdk_index, PsdkSpeakerTTSconfig tts_conf
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_SET, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_SET, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
     auto psdk_abs = psdk_abs_map_[psdk_index];
-    psdk_abs->DrcSpeakerTTSSet(tts_config, [callback](FlightHubError err) {
+    psdk_abs->DrcSpeakerTTSSet(tts_config, [callback, session_id](FlightHubError err) {
         // 埋点: 设置 TTS 配置; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_SET, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_SET, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -488,6 +500,7 @@ void PsdkCtrlMgr::DrcSpeakerTTSSet(int psdk_index, PsdkSpeakerTTSconfig tts_conf
 }
 
 void PsdkCtrlMgr::DrcWidgetValueSet(int psdk_index, int index, int value, const std::function<void(FlightHubError err)> &callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr][%s] DrcWidgetValueSet unknown psdk_index: %d", drone_sn_.c_str(), psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -495,19 +508,19 @@ void PsdkCtrlMgr::DrcWidgetValueSet(int psdk_index, int index, int value, const 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_WIDGET_VALUE_SET, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_WIDGET_VALUE_SET, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
     auto psdk_abs = psdk_abs_map_[psdk_index];
-    psdk_abs->DrcWidgetValueSet(index, value, [callback](FlightHubError err) {
+    psdk_abs->DrcWidgetValueSet(index, value, [callback, session_id](FlightHubError err) {
         // 埋点: 设置 Widget 值; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_WIDGET_VALUE_SET, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_WIDGET_VALUE_SET, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -515,6 +528,7 @@ void PsdkCtrlMgr::DrcWidgetValueSet(int psdk_index, int index, int value, const 
 }
 
 void PsdkCtrlMgr::DrcWidgetInputBoxTextSet(int psdk_index, const std::string &value, const std::function<void(FlightHubError err)> &callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr][%s] DrcWidgetInputBoxTextSet unknown psdk_index: %d", drone_sn_.c_str(), psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -522,19 +536,19 @@ void PsdkCtrlMgr::DrcWidgetInputBoxTextSet(int psdk_index, const std::string &va
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_WIDGET_INPUT_BOX_TEXT_SET, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_WIDGET_INPUT_BOX_TEXT_SET, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
     auto psdk_abs = psdk_abs_map_[psdk_index];
-    psdk_abs->DrcWidgetInputBoxTextSet(value, [callback](FlightHubError err) {
+    psdk_abs->DrcWidgetInputBoxTextSet(value, [callback, session_id](FlightHubError err) {
         // 埋点: 设置 Widget 输入框文本; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_WIDGET_INPUT_BOX_TEXT_SET, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_WIDGET_INPUT_BOX_TEXT_SET, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -543,6 +557,7 @@ void PsdkCtrlMgr::DrcWidgetInputBoxTextSet(int psdk_index, const std::string &va
 
 
 void PsdkCtrlMgr::DrcSearchlightModeSet(int psdk_index, int mode, const std::function<void(FlightHubError err)>& callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr] DrcSearchlightModeSet unknown psdk_index: %d", psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -550,18 +565,18 @@ void PsdkCtrlMgr::DrcSearchlightModeSet(int psdk_index, int mode, const std::fun
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_MODE_SET, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_MODE_SET, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
-    psdk_abs_map_[psdk_index]->DrcSearchlightModeSet(mode, [callback](FlightHubError err) {
+    psdk_abs_map_[psdk_index]->DrcSearchlightModeSet(mode, [callback, session_id](FlightHubError err) {
         // 埋点: 设置探照灯模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_MODE_SET, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_MODE_SET, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -569,6 +584,7 @@ void PsdkCtrlMgr::DrcSearchlightModeSet(int psdk_index, int mode, const std::fun
 }
 
 void PsdkCtrlMgr::DrcSearchlightBrightnessSet(int psdk_index, int brightness, const std::function<void(FlightHubError err)>& callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr] DrcSearchlightBrightnessSet unknown psdk_index: %d", psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -576,18 +592,18 @@ void PsdkCtrlMgr::DrcSearchlightBrightnessSet(int psdk_index, int brightness, co
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_BRIGHTNESS_SET, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_BRIGHTNESS_SET, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
-    psdk_abs_map_[psdk_index]->DrcSearchlightBrightnessSet(brightness, [callback](FlightHubError err) {
+    psdk_abs_map_[psdk_index]->DrcSearchlightBrightnessSet(brightness, [callback, session_id](FlightHubError err) {
         // 埋点: 设置探照灯亮度; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_BRIGHTNESS_SET, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_BRIGHTNESS_SET, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -595,6 +611,7 @@ void PsdkCtrlMgr::DrcSearchlightBrightnessSet(int psdk_index, int brightness, co
 }
 
 void PsdkCtrlMgr::DrcSearchlightCalibration(int psdk_index, const std::function<void(FlightHubError err)>& callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr] DrcSearchlightCalibration unknown psdk_index: %d", psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -602,18 +619,18 @@ void PsdkCtrlMgr::DrcSearchlightCalibration(int psdk_index, const std::function<
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_CALIBRATION, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_CALIBRATION, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
-    psdk_abs_map_[psdk_index]->DrcSearchlightCalibration([callback](FlightHubError err) {
+    psdk_abs_map_[psdk_index]->DrcSearchlightCalibration([callback, session_id](FlightHubError err) {
         // 埋点: 探照灯校准; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_CALIBRATION, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_CALIBRATION, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -621,6 +638,7 @@ void PsdkCtrlMgr::DrcSearchlightCalibration(int psdk_index, const std::function<
 }
 
 void PsdkCtrlMgr::DrcSearchlightFineTuningSet(int psdk_index, int position, double value, bool saved, const std::function<void(FlightHubError err)>& callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr] DrcSearchlightFineTuningSet unknown psdk_index: %d", psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -628,18 +646,18 @@ void PsdkCtrlMgr::DrcSearchlightFineTuningSet(int psdk_index, int position, doub
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_FINE_TUNING_SET, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_FINE_TUNING_SET, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
-    psdk_abs_map_[psdk_index]->DrcSearchlightFineTuningSet(position, value, saved, [callback](FlightHubError err) {
+    psdk_abs_map_[psdk_index]->DrcSearchlightFineTuningSet(position, value, saved, [callback, session_id](FlightHubError err) {
         // 埋点: 探照灯微调设置; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_FINE_TUNING_SET, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_FINE_TUNING_SET, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -647,6 +665,7 @@ void PsdkCtrlMgr::DrcSearchlightFineTuningSet(int psdk_index, int position, doub
 }
 
 void PsdkCtrlMgr::DrcSearchlightWideFieldModeSet(int psdk_index, int wide_field_mode, const std::function<void(FlightHubError err)>& callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr] DrcSearchlightWideFieldModeSet unknown psdk_index: %d", psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -654,18 +673,18 @@ void PsdkCtrlMgr::DrcSearchlightWideFieldModeSet(int psdk_index, int wide_field_
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_WIDE_FIELD_MODE_SET, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_WIDE_FIELD_MODE_SET, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
-    psdk_abs_map_[psdk_index]->DrcSearchlightWideFieldModeSet(wide_field_mode, [callback](FlightHubError err) {
+    psdk_abs_map_[psdk_index]->DrcSearchlightWideFieldModeSet(wide_field_mode, [callback, session_id](FlightHubError err) {
         // 埋点: 设置探照灯广域模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_WIDE_FIELD_MODE_SET, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_WIDE_FIELD_MODE_SET, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -673,6 +692,7 @@ void PsdkCtrlMgr::DrcSearchlightWideFieldModeSet(int psdk_index, int wide_field_
 }
 
 void PsdkCtrlMgr::DrcSearchlightLightGimbalControlSet(int psdk_index, int light_gimbal_control, const std::function<void(FlightHubError err)>& callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr] DrcSearchlightLightGimbalControlSet unknown psdk_index: %d", psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -680,18 +700,18 @@ void PsdkCtrlMgr::DrcSearchlightLightGimbalControlSet(int psdk_index, int light_
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_LIGHT_GIMBAL_CONTROL_SET, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_LIGHT_GIMBAL_CONTROL_SET, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
-    psdk_abs_map_[psdk_index]->DrcSearchlightLightGimbalControlSet(light_gimbal_control, [callback](FlightHubError err) {
+    psdk_abs_map_[psdk_index]->DrcSearchlightLightGimbalControlSet(light_gimbal_control, [callback, session_id](FlightHubError err) {
         // 埋点: 设置探照灯云台控制; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_LIGHT_GIMBAL_CONTROL_SET, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_LIGHT_GIMBAL_CONTROL_SET, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
@@ -699,6 +719,7 @@ void PsdkCtrlMgr::DrcSearchlightLightGimbalControlSet(int psdk_index, int light_
 }
 
 void PsdkCtrlMgr::DrcSearchlightTypeSet(int psdk_index, int type, const std::function<void(FlightHubError err)>& callback) {
+    const int session_id = session_id_;
     if (psdk_abs_map_.count(psdk_index) == 0) {
         LOG_ERROR("[PsdkCtrlMgr] DrcSearchlightTypeSet unknown psdk_index: %d", psdk_index);
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
@@ -706,20 +727,73 @@ void PsdkCtrlMgr::DrcSearchlightTypeSet(int psdk_index, int type, const std::fun
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_TYPE_SET, param_err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_TYPE_SET, param_err, session_id_, "[PsdkCtrlMgr]");
         if (callback) {
             callback(param_err);
         }
         return;
     }
-    psdk_abs_map_[psdk_index]->DrcSearchlightTypeSet(type, [callback](FlightHubError err) {
+    psdk_abs_map_[psdk_index]->DrcSearchlightTypeSet(type, [callback, session_id](FlightHubError err) {
         // 埋点: 设置探照灯类型; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_TYPE_SET, err, "[PsdkCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_TYPE_SET, err, session_id, "[PsdkCtrlMgr]");
         if (callback) {
             callback(err);
         }
     });
+}
+
+void PsdkCtrlMgr::sendPsdkCustomDataTransmissionToPsdk(const std::string& value, const std::function<void(FlightHubError err)>& callback) {
+    // DJI 文档约束：数据内容长度 < 256
+    if (value.size() >= 256) {
+        LOG_ERROR("[PsdkCtrlMgr] sendPsdkCustomDataTransmissionToPsdk invalid value length: %d", (int)value.size());
+        auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_SEND_CUSTOM_DATA_TO_PSDK, param_err, session_id_, "[PsdkCtrlMgr]");
+        if (callback) {
+            drc_sdk::common::Executors::Main()->Post([callback, param_err]() -> void { callback(param_err); });
+        }
+        return;
+    }
+    if (!message_engine_ || !message_engine_->getCloudMessageManager()) {
+        LOG_ERROR("[PsdkCtrlMgr] sendPsdkCustomDataTransmissionToPsdk message_engine is not initialized");
+        auto state_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_STATE);
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_SEND_CUSTOM_DATA_TO_PSDK, state_err, session_id_, "[PsdkCtrlMgr]");
+        if (callback) {
+            drc_sdk::common::Executors::Main()->Post([callback, state_err]() -> void { callback(state_err); });
+        }
+        return;
+    }
+
+    WeakDummy(weak_ptr);
+    auto msg = std::make_shared<message_engine::ServicesCustomDataTransmissionToPsdkSouthbound>();
+    msg->msg.value = value;
+
+    auto err = message_engine_->getCloudMessageManager()->SendServicesCustomDataTransmissionToPsdkSouthbound(
+        msg, [this, weak_ptr, callback](int error_code, const std::shared_ptr<message_engine::ServicesReplyCustomDataTransmissionToPsdkNorthbound>& reply) {
+            WeakDummyReturn(weak_ptr);
+            FlightHubError result;
+            if (error_code == message_engine::MeErrorCode::ME_NO_ERROR && reply && reply->msg.result == 0) {
+                result = FlightHubError::from_sdk(FlightHubSdkErrorCode::SUCCESS);
+            } else {
+                LOG_ERROR("[PsdkCtrlMgr] sendPsdkCustomDataTransmissionToPsdk failed, error_code: %d, result: %d",
+                    error_code, reply ? reply->msg.result : -1);
+                // 设备端返回码透出到 device_code, 便于 ISV 定位设备拒绝原因
+                result = FlightHubError::from_drc(error_code, reply ? reply->msg.result : -1);
+            }
+            report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_SEND_CUSTOM_DATA_TO_PSDK, result, session_id_, "[PsdkCtrlMgr]");
+            if (callback) {
+                drc_sdk::common::Executors::Main()->Post([callback, result]() -> void { callback(result); });
+            }
+        });
+
+    if (err != message_engine::MeErrorCode::ME_NO_ERROR) {
+        LOG_ERROR("[PsdkCtrlMgr] sendPsdkCustomDataTransmissionToPsdk link error: %lld", (long long)err);
+        auto link_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_DRC_LINK);
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_SEND_CUSTOM_DATA_TO_PSDK, link_err, session_id_, "[PsdkCtrlMgr]");
+        if (callback) {
+            drc_sdk::common::Executors::Main()->Post([callback, link_err]() -> void { callback(link_err); });
+        }
+    }
 }

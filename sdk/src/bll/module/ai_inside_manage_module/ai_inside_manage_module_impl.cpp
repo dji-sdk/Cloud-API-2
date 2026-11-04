@@ -7,13 +7,46 @@
 #include "common/executors/executors.h"
 #include "cloud_storage_uploader/cloud_storage_factory.h"
 #include <filesystem>
+#include <charconv>
+#include <ctime>
+#include <system_error>
 
 using namespace flight_hub_sdk;
 
 namespace flight_hub_sdk {
 
-AIInsideManageModuleImpl::AIInsideManageModuleImpl()
-    {
+namespace {
+
+// 后端 file-upload 返回 Unix 秒；AIGC 会把它读成数字字符串，这里统一转 RFC3339。
+std::string NormalizeUnixTime(const std::string& v) {
+    if (v.empty()) return v;
+
+    long long secs = 0;
+    const char* begin = v.data();
+    const char* end = v.data() + v.size();
+    auto ret = std::from_chars(begin, end, secs);
+    if (ret.ec != std::errc() || ret.ptr != end || secs <= 0) {
+        return v;
+    }
+
+    std::time_t t = static_cast<std::time_t>(secs);
+    std::tm tm_utc{};
+#ifdef _WIN32
+    if (gmtime_s(&tm_utc, &t) != 0) return v;
+#else
+    if (gmtime_r(&t, &tm_utc) == nullptr) return v;
+#endif
+
+    char buf[32];
+    if (std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", &tm_utc) == 0) {
+        return v;
+    }
+    return buf;
+}
+
+}  // namespace
+
+AIInsideManageModuleImpl::AIInsideManageModuleImpl(int session_id) : session_id_(session_id){
     LOG_INFO("AIInsideManageModuleImpl: ");
 }
 
@@ -22,12 +55,13 @@ void AIInsideManageModuleImpl::getAIInsideModels(
     WeakDummy(weak_ptr);
     get_ai_inside_models([this, weak_ptr, callback](const GetAIInsideModelsResponse& rsp, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, rsp]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, rsp, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 获取组织下机载算法列表; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_GET_MODELS, err, "[AIInsideManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_GET_MODELS, err, session_id_, "[AIInsideManageModuleImpl]");
                 GetAIInsideModelsResult result;
                 for (const auto& item : rsp.models) {
                     AIInsideModelItem out;
@@ -41,6 +75,9 @@ void AIInsideManageModuleImpl::getAIInsideModels(
                     out.image_source   = item.image_source;
                     out.digital_effect = item.digital_effect;
                     out.vl_resolution  = item.vl_resolution;
+                    out.model_types    = item.model_types.value_or(std::vector<int>{});
+                    out.model_combination = item.model_combination;
+                    out.status         = item.status;
                     out.model_param.conf_threshold = item.model_param.conf_threshold;
                     out.model_param.nms_pre        = item.model_param.nms_pre;
                     out.model_param.iou_threshold  = item.model_param.iou_threshold;
@@ -54,7 +91,7 @@ void AIInsideManageModuleImpl::getAIInsideModels(
                 }
                 if (callback) { callback(err, result); }
             });
-        });
+        }, session_id_);
 }
 
 void AIInsideManageModuleImpl::getAIInsideModelDevices(
@@ -64,16 +101,23 @@ void AIInsideManageModuleImpl::getAIInsideModelDevices(
     get_ai_inside_model_devices(param,
         [this, weak_ptr, callback](const GetAIInsideModelDevicesResponse& rsp, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, rsp]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, rsp, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 获取指定算法绑定的设备详情（分页）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_GET_MODEL_DEVICES, err, "[AIInsideManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_GET_MODEL_DEVICES, err, session_id_, "[AIInsideManageModuleImpl]");
                 GetAIInsideModelDevicesResult result;
-                result.total     = rsp.pagination.total;
-                result.page      = rsp.pagination.page;
-                result.page_size = rsp.pagination.page_size;
+                if (rsp.pagination.page > 0 || rsp.pagination.page_size > 0 || rsp.pagination.total > 0) {
+                    result.total     = rsp.pagination.total;
+                    result.page      = rsp.pagination.page;
+                    result.page_size = rsp.pagination.page_size;
+                } else {
+                    result.total     = static_cast<int>(rsp.total);
+                    result.page      = rsp.page;
+                    result.page_size = rsp.page_size;
+                }
                 for (const auto& item : rsp.list) {
                     AIInsideDeviceItem dev;
                     dev.device_sn             = item.device_sn;
@@ -82,7 +126,11 @@ void AIInsideManageModuleImpl::getAIInsideModelDevices(
                     dev.device_working_status = item.device_working_status;
                     dev.device_model.device_model_key = item.device_model.device_model_key;
                     dev.device_model.domain           = item.device_model.domain;
+                    dev.device_model.type             = item.device_model.type;
+                    dev.device_model.sub_type         = item.device_model.sub_type;
                     dev.device_model.name             = item.device_model.name;
+                    dev.device_model.device_model_class = item.device_model.device_model_class;
+                    dev.device_model.develop_code     = item.device_model.develop_code;
                     dev.operate_ai_model.device_cmd_method = item.operate_ai_model.device_cmd_method;
                     dev.operate_ai_model.status            = item.operate_ai_model.status;
                     dev.operate_ai_model.progress.percent      = item.operate_ai_model.progress.percent;
@@ -95,7 +143,11 @@ void AIInsideManageModuleImpl::getAIInsideModelDevices(
                     dev.associate_drone_device_info.device_working_status = d.device_working_status;
                     dev.associate_drone_device_info.device_model.device_model_key = d.device_model.device_model_key;
                     dev.associate_drone_device_info.device_model.domain           = d.device_model.domain;
+                    dev.associate_drone_device_info.device_model.type             = d.device_model.type;
+                    dev.associate_drone_device_info.device_model.sub_type         = d.device_model.sub_type;
                     dev.associate_drone_device_info.device_model.name             = d.device_model.name;
+                    dev.associate_drone_device_info.device_model.device_model_class = d.device_model.device_model_class;
+                    dev.associate_drone_device_info.device_model.develop_code     = d.device_model.develop_code;
                     dev.associate_drone_device_info.ai_model_info.signed_id   = d.ai_model_info.signed_id;
                     dev.associate_drone_device_info.ai_model_info.model_name  = d.ai_model_info.model_name;
                     dev.associate_drone_device_info.ai_model_info.signed_utc  = d.ai_model_info.signed_utc;
@@ -105,7 +157,7 @@ void AIInsideManageModuleImpl::getAIInsideModelDevices(
                 }
                 if (callback) { callback(err, result); }
             });
-        });
+        }, session_id_);
 }
 
 void AIInsideManageModuleImpl::getAIInsideModelDevicesSummary(
@@ -115,18 +167,19 @@ void AIInsideManageModuleImpl::getAIInsideModelDevicesSummary(
     get_ai_inside_model_devices_summary(param,
         [this, weak_ptr, callback](const GetAIInsideModelDevicesSummaryResponse& rsp, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, rsp]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, rsp, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 获取指定算法在指定操作类型下的可操作设备数量统计; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_GET_MODEL_DEVICES_SUMMARY, err, "[AIInsideManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_GET_MODEL_DEVICES_SUMMARY, err, session_id_, "[AIInsideManageModuleImpl]");
                 GetAIInsideModelDevicesSummaryResult result;
                 result.total_devices    = rsp.total_devices;
                 result.operable_devices = rsp.operable_devices;
                 if (callback) { callback(err, result); }
             });
-        });
+        }, session_id_);
 }
 
 void AIInsideManageModuleImpl::operateAIInsideModel(
@@ -139,12 +192,13 @@ void AIInsideManageModuleImpl::operateAIInsideModel(
     post_operate_ai_inside_model(param.signed_id, request,
         [this, weak_ptr, callback](const OperateAIInsideModelResponse& rsp, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, rsp]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, rsp, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 批量下发 Load / Update / Unload 操作指令; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_OPERATE_MODEL, err, "[AIInsideManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_OPERATE_MODEL, err, session_id_, "[AIInsideManageModuleImpl]");
                 OperateAIInsideModelResult result;
                 for (const auto& item : rsp.results) {
                     AIInsideOperateDeviceResult r;
@@ -154,7 +208,7 @@ void AIInsideManageModuleImpl::operateAIInsideModel(
                 }
                 if (callback) { callback(err, result); }
             });
-        });
+        }, session_id_);
 }
 
 void AIInsideManageModuleImpl::createAIInsideAlgorithm(
@@ -166,12 +220,13 @@ void AIInsideManageModuleImpl::createAIInsideAlgorithm(
     post_create_ai_inside_algorithm(request,
         [this, weak_ptr, callback](const CreateAIInsideAlgorithmResponse& rsp, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, rsp]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, rsp, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 创建算法包上传凭证（私有化）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_CREATE_ALGORITHM, err, "[AIInsideManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_CREATE_ALGORITHM, err, session_id_, "[AIInsideManageModuleImpl]");
                 CreateAIInsideAlgorithmResult result;
                 result.credentials.access_key_id     = rsp.credentials.access_key_id;
                 result.credentials.access_key_secret = rsp.credentials.access_key_secret;
@@ -184,7 +239,7 @@ void AIInsideManageModuleImpl::createAIInsideAlgorithm(
                 result.file_store_dir = rsp.file_store_dir;
                 if (callback) { callback(err, result); }
             });
-        });
+        }, session_id_);
 }
 
 void AIInsideManageModuleImpl::fileUploadAIInsideAlgorithm(
@@ -196,17 +251,18 @@ void AIInsideManageModuleImpl::fileUploadAIInsideAlgorithm(
     post_file_upload_ai_inside_algorithm(request,
         [this, weak_ptr, callback](const FileUploadAIInsideAlgorithmResponse& rsp, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, rsp]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, rsp, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 处理已上传的算法文件; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_FILE_UPLOAD_ALGORITHM, err, "[AIInsideManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_FILE_UPLOAD_ALGORITHM, err, session_id_, "[AIInsideManageModuleImpl]");
                 FileUploadAIInsideAlgorithmResult result;
                 const auto& d = rsp.detail;
                 result.detail.id             = d.id;
-                result.detail.created_at     = d.created_at;
-                result.detail.updated_at     = d.updated_at;
+                result.detail.created_at     = NormalizeUnixTime(d.created_at);
+                result.detail.updated_at     = NormalizeUnixTime(d.updated_at);
                 result.detail.signed_id      = d.signed_id;
                 result.detail.signed_name    = d.signed_name;
                 result.detail.signed_version = d.signed_version;
@@ -233,7 +289,7 @@ void AIInsideManageModuleImpl::fileUploadAIInsideAlgorithm(
                 }
                 if (callback) { callback(err, result); }
             });
-        });
+        }, session_id_);
 }
 
 void AIInsideManageModuleImpl::deleteAIInsideAlgorithm(
@@ -245,15 +301,16 @@ void AIInsideManageModuleImpl::deleteAIInsideAlgorithm(
     delete_ai_inside_algorithm(request,
         [this, weak_ptr, callback](FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 删除指定算法; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_DELETE_ALGORITHM, err, "[AIInsideManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_DELETE_ALGORITHM, err, session_id_, "[AIInsideManageModuleImpl]");
                 if (callback) { callback(err); }
             });
-        });
+        }, session_id_);
 }
 
 // =========================================================================
@@ -285,7 +342,7 @@ void AIInsideManageModuleImpl::uploadAlgorithmFile(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_UPLOAD_ALGORITHM_FILE, not_found_err, "[AIInsideManageModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_UPLOAD_ALGORITHM_FILE, not_found_err, session_id_, "[AIInsideManageModuleImpl]");
         if (callback) {
             callback(not_found_err, UploadAIInsideAlgorithmFileResult{});
         }
@@ -303,7 +360,7 @@ void AIInsideManageModuleImpl::uploadAlgorithmFile(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_UPLOAD_ALGORITHM_FILE, too_large_err, "[AIInsideManageModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_UPLOAD_ALGORITHM_FILE, too_large_err, session_id_, "[AIInsideManageModuleImpl]");
         if (callback) {
             callback(too_large_err, UploadAIInsideAlgorithmFileResult{});
         }
@@ -327,7 +384,7 @@ void AIInsideManageModuleImpl::uploadAlgorithmFile(
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_UPLOAD_ALGORITHM_FILE, err, "[AIInsideManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_UPLOAD_ALGORITHM_FILE, err, session_id_, "[AIInsideManageModuleImpl]");
                 if (callback) {
                     callback(err, UploadAIInsideAlgorithmFileResult{});
                 }
@@ -350,7 +407,7 @@ void AIInsideManageModuleImpl::uploadAlgorithmFile(
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_UPLOAD_ALGORITHM_FILE, provider_err, "[AIInsideManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_UPLOAD_ALGORITHM_FILE, provider_err, session_id_, "[AIInsideManageModuleImpl]");
                 if (callback) {
                     callback(provider_err, UploadAIInsideAlgorithmFileResult{});
                 }
@@ -406,7 +463,7 @@ void AIInsideManageModuleImpl::uploadAlgorithmFile(
                         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                        report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_UPLOAD_ALGORITHM_FILE, upload_err, "[AIInsideManageModuleImpl]");
+                        report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_UPLOAD_ALGORITHM_FILE, upload_err, session_id_, "[AIInsideManageModuleImpl]");
                         if (callback) {
                             callback(upload_err, UploadAIInsideAlgorithmFileResult{});
                         }
@@ -432,12 +489,12 @@ void AIInsideManageModuleImpl::uploadAlgorithmFile(
                             WeakDummyReturn(weak_ptr);
                             drc_sdk::common::Executors::Main()->Post(
                                 [err, callback, rsp,
-                                 captured_object_key, captured_object_url, captured_etag]() {
+                                 captured_object_key, captured_object_url, captured_etag, this]() {
                                     // 埋点: 上传 AI Inside 算法文件(通知后端解压入库); 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                                    report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_UPLOAD_ALGORITHM_FILE, err, "[AIInsideManageModuleImpl]");
+                                    report_beacon_event_helper(kBeaconReportEvent_AI_INSIDE_UPLOAD_ALGORITHM_FILE, err, session_id_, "[AIInsideManageModuleImpl]");
                                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                                         LOG_ERROR("[AIInsideManageModule] uploadAlgorithmFile: "
                                                   "fileUpload notify failed, err_code: %d",
@@ -456,8 +513,8 @@ void AIInsideManageModuleImpl::uploadAlgorithmFile(
 
                                     const auto& d = rsp.detail;
                                     final_result.detail.id             = d.id;
-                                    final_result.detail.created_at     = d.created_at;
-                                    final_result.detail.updated_at     = d.updated_at;
+                                    final_result.detail.created_at     = NormalizeUnixTime(d.created_at);
+                                    final_result.detail.updated_at     = NormalizeUnixTime(d.updated_at);
                                     final_result.detail.signed_id      = d.signed_id;
                                     final_result.detail.signed_name    = d.signed_name;
                                     final_result.detail.signed_version = d.signed_version;
@@ -490,10 +547,10 @@ void AIInsideManageModuleImpl::uploadAlgorithmFile(
 
                                     if (callback) { callback(FlightHubError::success(), final_result); }
                                 });
-                        });
+                        }, session_id_);
                 },
                 progress_callback);
-        });
+        }, session_id_);
 }
 
 }  // namespace flight_hub_sdk

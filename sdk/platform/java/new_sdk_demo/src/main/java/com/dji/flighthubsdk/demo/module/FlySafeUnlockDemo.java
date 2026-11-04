@@ -19,10 +19,12 @@ import com.dji.flighthubsdk.bean.UploadUnlockLicenseFileResult;
 import com.dji.flighthubsdk.core.DeviceDebugModule;
 import com.dji.flighthubsdk.core.DockOsdModule;
 import com.dji.flighthubsdk.core.SafetyServiceModule;
+import com.dji.flighthubsdk.demo.base.Menu;
 import com.dji.flighthubsdk.demo.base.ModuleDemo;
 import com.dji.flighthubsdk.demo.runtime.Await;
 import com.dji.flighthubsdk.demo.runtime.DemoLog;
 import com.dji.flighthubsdk.demo.runtime.Node;
+import com.dji.flighthubsdk.demo.runtime.Subscription;
 import com.dji.flighthubsdk.demo.utils.Utils;
 
 import java.io.File;
@@ -34,7 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * 限飞解禁 Demo(菜单驱动)。
  *
- * <p>完整覆盖 {@code SafetyServiceModule} 的全部 6 个解禁证书接口：
+ * <p>完整覆盖 {@code SafetyServiceModule} 的全部 6 个解禁证书接口:
  *
  * <pre>
  * 主菜单
@@ -46,29 +48,29 @@ import java.util.concurrent.atomic.AtomicReference;
  * └── [6] 上传解禁证书文件    uploadUnlockLicenseFile(fileStoreDir+文件名拼成 fileKey 供 [3])
  * </pre>
  *
- * <p><b>接口串联设计(数据流见 message.h 的 UploadUnlockLicenseFileResult 流程注释)：</b>
+ * <p><b>接口串联设计 (数据流见 message.h 的 UploadUnlockLicenseFileResult 流程注释): </b>
  * <ul>
  *   <li>[6] 上传文件 → 用返回的 fileStoreDir 拼上本地文件名得到 fileKey, 缓存 {@link #lastFileKey}
- *       → [3] 检查自动使用; [3] 返回证书下载 url → 缓存 {@link #lastCertUrl} → [4] 提交自动使用；</li>
- *   <li>[1] 查列表 → 缓存 {@link #lastLicenseId} → [2] 切换直接使用；</li>
- *   <li>[1][2][4][5] 执行前经 {@link #ensureDebugMode} 检查并自动开启机场远程调试模式(mode_code=2)——
- *       此前置为联调实测经验, SDK 注解与仓内文档均未记载(六个解禁接口的链路注解均为云端 HTTP);
+ *       → [3] 检查自动使用; [3] 返回证书下载 url → 缓存 {@link #lastCertUrl} → [4] 提交自动使用; </li>
+ *   <li>[1] 查列表 → 缓存 {@link #lastLicenseId} → [2] 切换直接使用; </li>
+ *   <li>[1][2][4][5] 执行前经 {@link #ensureDebugMode} 检查并自动开启机场远程调试模式 (mode_code=2)——
+ *       此前置为联调实测经验, SDK 注解与仓内文档均未记载 (六个解禁接口的链路注解均为云端 HTTP);
  *       [3] 检查与 [6] 上传不做此前置。</li>
  * </ul>
  *
- * <p><b>注意：</b>本模块只负责限飞解禁,
- * 不要与 SafetyServiceDemo(安全服务, 负责自定义飞行区域/离线地图)混淆：
+ * <p><b>注意: </b>本模块只负责限飞解禁,
+ * 不要与 SafetyServiceDemo(安全服务, 负责自定义飞行区域/离线地图)混淆:
  * <ul>
  *   <li>FlySafeUnlockDemo → 限飞解禁 → {@code workspace.getSafetyServiceModule()} 解禁证书接口</li>
  *   <li>SafetyServiceDemo → 安全服务模块 → 飞行区域 / 离线地图 / 信号地图</li>
  * </ul>
  *
- * <p><b>SDK 入口：</b>{@code session.workspace().getSafetyServiceModule()}(挂在 Workspace 上)。
+ * <p><b>SDK 入口: </b>{@code session.workspace().getSafetyServiceModule()}(挂在 Workspace 上)。
  *
- * <p><b>设计要点：</b>
+ * <p><b>设计要点: </b>
  * <ul>
- *   <li>设备 SN 与证书文件路径配置驱动({@code fly_safe_unlock} 配置节), 未配置 SN 时回退 session 设备；</li>
- *   <li>三态结果回显(SUCCESS/TIMEOUT/FAILED), 结果对象仅在 SUCCESS 时解析回显。</li>
+ *   <li>设备 SN 与证书文件路径配置驱动 ({@code fly_safe_unlock} 配置节), 未配置 SN 时回退 session 设备; </li>
+ *   <li>三态结果回显 (SUCCESS/TIMEOUT/FAILED), 结果对象仅在 SUCCESS 时解析回显。</li>
  * </ul>
  */
 public class FlySafeUnlockDemo extends ModuleDemo {
@@ -79,8 +81,7 @@ public class FlySafeUnlockDemo extends ModuleDemo {
     private String lastCertUrl = null;
     /** [1] 查列表后缓存的 licenseId(每次查询刷新为本次列表第一条; 空列表时复位 -1), 供 [2] 切换使用。 */
     private int lastLicenseId = -1;
-    /** 本 demo 曾自动开启机场远程调试模式的标志: run() 收尾据此调用 closeDebugMode 还原设备状态。 */
-    private boolean debugModeOpenedByDemo = false;
+    // debugModeOpenedByDemo 已提升到基类 ModuleDemo, 此处不再重复定义。
 
     @Override
     public String name() {
@@ -101,46 +102,41 @@ public class FlySafeUnlockDemo extends ModuleDemo {
             return;
         }
 
-        final long actionTimeout = timeout("default_callback_timeout_ms");
+        final long actionTimeout = defaultTimeout();
         DemoLog.info(name(), "actionTimeout=" + actionTimeout + "ms");
 
         try {
-            while (true) {
-                Utils.printTitle("执行 " + name());
-                if (lastFileKey != null) {
-                    console("(已缓存 fileKey, [3] 检查将自动使用)");
-                }
-                if (lastCertUrl != null) {
-                    console("(已缓存 certUrl, [4] 提交将自动使用)");
-                }
-                if (lastLicenseId >= 0) {
-                    console("(已缓存 licenseId=" + lastLicenseId + ", [2] 切换将自动使用)");
-                }
-                System.out.print(menu());
-                int choice = Utils.readIntInRange(input, "请选择(1-6, q 退出): ", 1, 6);
-                if (choice == Utils.QUIT) {
-                    DemoLog.info(name(), "退出限飞解禁菜单");
-                    break;
-                }
-                try {
-                    switch (choice) {
-                        case 1: getUnlockLicenseList(module, actionTimeout);     break;
-                        case 2: switchUnlockLicense(module, actionTimeout);      break;
-                        case 3: checkUnlockLicense(module, actionTimeout);       break;
-                        case 4: submitUnlockLicense(module, actionTimeout);      break;
-                        case 5: clearDeviceUnlockLicense(module, actionTimeout); break;
-                        case 6: uploadUnlockLicenseFile(module, actionTimeout);  break;
-                        default: break;
-                    }
-                } catch (Exception e) {
-                    console("   结果 -> [异常] " + Utils.describe(e));
-                    DemoLog.error(name(), "菜单动作执行异常: " + Utils.describe(e), e);
-                }
-            }
+            Menu.of(this, "执行 " + name())
+                    .banner("=== 限飞解禁 (Fly Safe Unlock) ===")
+                    .header(() -> {
+                        if (lastFileKey != null) {
+                            console("(已缓存 fileKey, [3] 检查将自动使用)");
+                        }
+                        if (lastCertUrl != null) {
+                            console("(已缓存 certUrl, [4] 提交将自动使用)");
+                        }
+                        if (lastLicenseId >= 0) {
+                            console("(已缓存 licenseId=" + lastLicenseId + ", [2] 切换将自动使用)");
+                        }
+                    })
+                    .item("获取解禁证书列表   (getUnlockLicenseList, 缓存 licenseId)", () -> getUnlockLicenseList(module, actionTimeout))
+                    .item("切换解禁证书状态   (switchUnlockLicense: 启用/禁用, 使用缓存 licenseId)", () -> switchUnlockLicense(module, actionTimeout))
+                    .item("检查解禁证书       (checkUnlockLicense, 使用缓存 fileKey, 缓存 certUrl)", () -> checkUnlockLicense(module, actionTimeout))
+                    .item("提交解禁证书       (submitUnlockLicense, 使用 [3] 缓存的 certUrl)", () -> submitUnlockLicense(module, actionTimeout))
+                    .item("清除解禁证书       (clearDeviceUnlockLicense)", () -> clearDeviceUnlockLicense(module, actionTimeout))
+                    .item("上传解禁证书文件   (uploadUnlockLicenseFile, 缓存 fileKey)", () -> uploadUnlockLicenseFile(module, actionTimeout))
+                    .section("操作建议: [6] 上传得 fileKey → [3] 检查得 certUrl → [4] 提交 → [1] 查列表确认 → [2] 切换状态")
+                    .exitLog("退出限飞解禁菜单")
+                    .run();
         } finally {
             // 状态还原: 本 demo 曾自动开启机场远程调试模式时, 退出前关闭还原,
             // 避免 demo 退出后机场遗留在调试模式影响正常作业。兜 Throwable 不掩盖主异常。
-            restoreDebugModeIfOpened(actionTimeout);
+            if (session.hasDock()) {
+                DeviceDebugModule debugModule = session.dock().getDeviceDebugModule();
+                if (debugModule != null) {
+                    restoreDebugModeIfOpened(debugModule, session.dockSn(), actionTimeout);
+                }
+            }
         }
     }
 
@@ -166,7 +162,7 @@ public class FlySafeUnlockDemo extends ModuleDemo {
         param.setDetail(true);
 
         console("\n   获取解禁证书列表: sn=" + deviceSn);
-        DemoLog.info(name(), "getUnlockLicenseList: sn=" + deviceSn);
+        DemoLog.debug(name(), "getUnlockLicenseList: sn=" + deviceSn);
 
         final Await<FlightHubError> await = new Await<>(name() + ".getUnlockLicenseList");
         final AtomicReference<QueryDeviceUnlockLicenseListResult> ref = new AtomicReference<>();
@@ -183,7 +179,7 @@ public class FlySafeUnlockDemo extends ModuleDemo {
         if (o == Outcome.SUCCESS) {
             QueryDeviceUnlockLicenseListResult result = ref.get();
             if (result != null) {
-                // 每次成功查询先复位缓存: 查询返回空列表(如换了 device_sn)时不残留上一设备的
+                // 每次成功查询先复位缓存: 查询返回空列表 (如换了 device_sn)时不残留上一设备的
                 // 旧 licenseId, 否则 [2] 会对新设备下发旧证书 id。
                 lastLicenseId = -1;
                 console("     result=" + result.getResult()
@@ -194,7 +190,7 @@ public class FlySafeUnlockDemo extends ModuleDemo {
                 boolean cachedThisQuery = false;
                 for (DeviceUnlockLicenseItem lic : licenses) {
                     if (lic.getCommonFields() != null) {
-                        console("       licenseId=" + lic.getCommonFields().getId()
+                        consoleDebug("       licenseId=" + lic.getCommonFields().getId()
                             + " type=" + lic.getCommonFields().getType()
                             + " deviceSn=" + lic.getCommonFields().getDeviceSn()
                             + " beginTime=" + lic.getCommonFields().getBeginTime()
@@ -204,9 +200,9 @@ public class FlySafeUnlockDemo extends ModuleDemo {
                             cachedThisQuery = true;
                         }
                     }
-                    DemoLog.info(name(), "license: " + lic);
+                    DemoLog.debug(name(), "license: " + lic);
                 }
-                // 「已缓存」提示只在本次确有缓存时打印(对齐 [3] 的 cachedUrlThisQuery 写法)。
+                // 「已缓存」提示只在本次确有缓存时打印 (对齐 [3] 的 cachedUrlThisQuery 写法)。
                 if (cachedThisQuery) {
                     hint("已缓存 licenseId=" + lastLicenseId + ", [2] 切换将自动使用");
                 }
@@ -291,6 +287,13 @@ public class FlySafeUnlockDemo extends ModuleDemo {
             })
         );
 
+        if (o != Outcome.SUCCESS) {
+            CheckUnlockLicenseResult result = ref.get();
+            if (result != null) {
+                console("     errFileNames=" + result.getErrFileNames());
+                console("     errCertMismatch=" + result.getErrCertMismatch());
+            }
+        }
         if (o == Outcome.SUCCESS) {
             CheckUnlockLicenseResult result = ref.get();
             if (result != null) {
@@ -299,6 +302,9 @@ public class FlySafeUnlockDemo extends ModuleDemo {
                 List<CheckUnlockLicenseResultItem> items =
                         result.getItems() != null ? result.getItems() : Collections.emptyList();
                 console("     解禁证书详情(共 " + items.size() + " 条):");
+                // 先复位 lastCertUrl: 换设备/fileKey 后本次返回 items 全部 url 为空时,
+                // 不残留上一设备的脏缓存(对齐 lastLicenseId 范式, #11 同源问题)。
+                lastCertUrl = null;
                 boolean cachedUrlThisQuery = false;
                 for (CheckUnlockLicenseResultItem item : items) {
                     console("       name=" + item.getName() + " type=" + item.getType()
@@ -314,7 +320,7 @@ public class FlySafeUnlockDemo extends ModuleDemo {
                 if (cachedUrlThisQuery) {
                     hint("已缓存 certUrl, [4] 提交将自动使用");
                 }
-                DemoLog.info(name(), "checkLicense: " + result);
+                DemoLog.debug(name(), "checkLicense: " + result);
             }
         }
     }
@@ -407,7 +413,7 @@ public class FlySafeUnlockDemo extends ModuleDemo {
             if (result != null) {
                 console("     fileStoreDir=" + result.getFileStoreDir());
                 DemoLog.info(name(), "uploadLicense: fileStoreDir=" + result.getFileStoreDir());
-                // 服务端只返回存储目录, fileKey = fileStoreDir + "/" + 文件名(见 message.h 流程注释);
+                // 服务端只返回存储目录, fileKey = fileStoreDir + "/" + 文件名 (见 message.h 流程注释);
                 // 直接把目录当 fileKey 用会让 [3] 检查指向目录而非上传的文件
                 String dir = result.getFileStoreDir();
                 String fileName = new File(filePath).getName();
@@ -421,15 +427,15 @@ public class FlySafeUnlockDemo extends ModuleDemo {
     // ==================== 调试模式检测 ====================
 
     /**
-     * 确保会话机场处于远程调试模式(mode_code=2)。
+     * 确保会话机场处于远程调试模式 (mode_code=2)。
      *
      * <p>[1]列表/[2]切换/[4]提交/[5]清除执行前调用。此前置为联调实测经验——SDK 注解与仓内文档
      * 均未记载, 六个解禁接口的链路注解均为云端 HTTP, 以实际服务端行为为准。
-     * 流程：WS 订阅会话机场的 mode_code → 为 2 直接放行 → 否则自动调用 openDebugMode 开启
+     * 流程: WS 订阅会话机场的 mode_code → 为 2 直接放行 → 否则自动调用 openDebugMode 开启
      * (对已处于调试模式的机场重复开启预期无害, 幂等性未见 SDK 文档背书; 与 DeviceDebugDemo 的
      * checkAndEnsureDebugMode 同思路, 本版开启成功后额外等 2s 让 mode_code 切换生效)。
      *
-     * <p>注意：解禁目标设备 SN({@code fly_safe_unlock.device_sn}, 可为飞机)与调试模式所在设备
+     * <p>注意: 解禁目标设备 SN({@code fly_safe_unlock.device_sn}, 可为飞机)与调试模式所在设备
      * (恒为会话机场)是两个概念, 本方法只检查/开启会话机场。
      */
     private boolean ensureDebugMode(String operation, long timeout) {
@@ -448,9 +454,15 @@ public class FlySafeUnlockDemo extends ModuleDemo {
         final AtomicInteger modeCodeRef = new AtomicInteger(-1);
         final Await<Integer> modeAwait = new Await<>(name() + ".listenDockModeCode");
 
-        int listenId = -1;
+        // 走基类 subscribe()(内部 Subscription.of + registry().add), 而不是裸 listenId:
+        // 裸写法把退订唯一地压在下面的 finally 上, 一旦原生层抛 Error(JNI 场景不是假想) 把本方法
+        // 掀翻, 这个监听就永久留在 SDK 里——会话 registry 里没有它的登记, demo 退出时的统一退订
+        // 也捞不到, 属于会话级不可回收泄漏。登记后即便本方法被掀翻, 会话结束仍会兜底退订。
+        Subscription modeSub = null;
         try {
-            listenId = dockOsd.listenDockModeCode(new FlightHubCallback.DockModeCodeCallback() {
+            // subscribe(...) 写在本 try 内: 其内部的 Subscription.of 在 listenId == -1 时会抛异常,
+            // 与 listenDockModeCode 自身抛出的异常同属「订阅没建起来」, 由同一个 catch 按告警处理。
+            modeSub = subscribe("dockModeCode", dockOsd.listenDockModeCode(new FlightHubCallback.DockModeCodeCallback() {
                 @Override
                 public void onResult(DockModeCode modeCode) {
                     if (modeCode != null && !modeAwait.isDone()) {
@@ -458,7 +470,7 @@ public class FlySafeUnlockDemo extends ModuleDemo {
                         modeAwait.set(modeCode.getModeCode());
                     }
                 }
-            });
+            }), id -> dockOsd.cancelListenDockModeCode(id));
         } catch (Exception e) {
             DemoLog.warn(name(), "listenDockModeCode 失败: " + Utils.describe(e));
         }
@@ -468,8 +480,11 @@ public class FlySafeUnlockDemo extends ModuleDemo {
         } catch (Exception e) {
             DemoLog.warn(name(), "等待 mode_code 超时, 将直接尝试开启调试模式");
         } finally {
-            if (listenId >= 0) {
-                try { dockOsd.cancelListenDockModeCode(listenId); } catch (Exception ignore) {}
+            // close() 自身 CAS 幂等且内部已兜 Throwable(见 Subscription.close), 故此处无需再包 try:
+            // 它不会把异常抛回来打断后续的开启流程。remove 只是摘掉 registry 里的死引用。
+            if (modeSub != null) {
+                modeSub.close();
+                registry().remove(modeSub);
             }
         }
 
@@ -488,7 +503,7 @@ public class FlySafeUnlockDemo extends ModuleDemo {
         }
 
         if (modeCode >= 0) {
-            console("   当前 mode_code: " + modeCode + "(" + describeModeCode(modeCode) + ")");
+            console("   当前 mode_code: " + modeCode + "(" + Utils.describeModeCode(modeCode) + ")");
             console("   ✗ " + operation + " 需要远程调试模式(mode_code=2), 尝试开启...");
         } else {
             console("   当前 mode_code: WS 未推送, 自动尝试开启远程调试模式...");
@@ -526,75 +541,27 @@ public class FlySafeUnlockDemo extends ModuleDemo {
         }
     }
 
-    /**
-     * run() 收尾: 若本 demo 曾自动开启机场远程调试模式, 调用 closeDebugMode 还原, 避免设备状态残留。
-     * 兜 Throwable(对齐全工程 JNI Error 隔离策略), 失败仅告警不外抛、不掩盖主异常。
-     */
-    private void restoreDebugModeIfOpened(long timeout) {
-        if (!debugModeOpenedByDemo) return;
-        try {
-            if (!session.hasDock()) return;
-            DeviceDebugModule debugModule = session.dock().getDeviceDebugModule();
-            if (debugModule == null) {
-                DemoLog.warn(name(), "[收尾] DeviceDebugModule 不可用, 无法关闭远程调试模式");
-                return;
-            }
-            hint("[收尾] 本 demo 曾自动开启远程调试模式, 关闭还原...");
-            final Await<FlightHubError> closeAwait = new Await<>(name() + ".closeDebugMode");
-            Outcome o = runOutcome("关闭远程调试模式(收尾)", timeout, closeAwait, () ->
-                debugModule.closeDebugMode(session.dockSn(), new FlightHubCallback.CloseDebugModeCallback() {
-                    @Override
-                    public void onResult(FlightHubError error, com.dji.flighthubsdk.bean.CloseDebugModeResult result) {
-                        closeAwait.set(error);
-                    }
-                })
-            );
-            if (o == Outcome.SUCCESS) {
-                debugModeOpenedByDemo = false;
-                hint("[收尾] 远程调试模式已关闭");
-            } else {
-                DemoLog.warn(name(), "[收尾] 关闭远程调试模式未确认成功(" + o + "), 机场可能仍处于调试模式");
-            }
-        } catch (Throwable t) {
-            DemoLog.warn(name(), "[收尾] 关闭远程调试模式异常: " + Utils.describe(t));
-        }
-    }
-
-    /** mode_code 枚举描述(0-9, 见 SDK bean {@link DockModeCode} 类注释)。 */
-    private static String describeModeCode(int code) {
-        switch (code) {
-            case 0: return "空闲中";
-            case 1: return "现场调试中";
-            case 2: return "远程调试中";
-            case 3: return "设备升级中";
-            case 4: return "设备作业中";
-            case 5: return "机场设备未标定";
-            case 6: return "节能状态中";
-            case 7: return "现场急停中";
-            case 8: return "换电中";
-            case 9: return "日志拉取中";
-            default: return "未知(" + code + ")";
-        }
-    }
+    // restoreDebugModeIfOpened 已提升到基类 ModuleDemo, 此处不再重复定义。
+    // describeModeCode 已提升到 Utils.describeModeCode, 全工程共用, 此处不再重复定义。
 
     // ==================== 辅助方法 ====================
 
-    /** 解析目标设备 SN：配置 {@code fly_safe_unlock.device_sn} 优先, 回退 session 机场 SN, 再回退飞机 SN。 */
+    /** 解析目标设备 SN: 配置 {@code fly_safe_unlock.device_sn} 优先, 回退 session 机场 SN, 再回退飞机 SN。 */
     private String resolveDeviceSn(Node cfg) {
         String sn = cfg.str("device_sn", "");
         if (!sn.isEmpty()) return sn;
         if (session.hasDock() && session.dockSn() != null && !session.dockSn().isEmpty()) {
-            hint("fly_safe_unlock.device_sn 未配置, 自动使用机场 SN: " + session.dockSn());
+            hintDebug("fly_safe_unlock.device_sn 未配置, 自动使用机场 SN: " + session.dockSn());
             return session.dockSn();
         }
         if (session.hasDrone() && session.droneSn() != null && !session.droneSn().isEmpty()) {
-            hint("fly_safe_unlock.device_sn 未配置, 自动使用飞机 SN: " + session.droneSn());
+            hintDebug("fly_safe_unlock.device_sn 未配置, 自动使用飞机 SN: " + session.droneSn());
             return session.droneSn();
         }
         return "";
     }
 
-    /** 解析 deviceModelDomain(0=飞机, 3=机场, 见 QueryDeviceUnlockLicenseListParam);无法判断时返回 -1(不设置)。 */
+    /** 解析 deviceModelDomain(0=飞机, 3=机场, 见 QueryDeviceUnlockLicenseListParam); 无法判断时返回 -1(不设置)。 */
     private int resolveDeviceModelDomain(String deviceSn) {
         if (deviceSn.isEmpty()) return -1;
         if (session.hasDock() && deviceSn.equals(session.dockSn())) return 3;
@@ -602,40 +569,10 @@ public class FlySafeUnlockDemo extends ModuleDemo {
         return -1;
     }
 
-    /** 截断长字符串用于回显(如 fileKey), 超过 maxLen 时截断并加省略号。 */
+    /** 截断长字符串用于回显 (如 fileKey), 超过 maxLen 时截断并加省略号; null 入参返回空串。 */
     private static String abbreviate(String s, int maxLen) {
+        if (s == null) return "";
         return s.length() <= maxLen ? s : s.substring(0, maxLen) + "...";
     }
 
-    /** 纯控制台输出(不落日志文件), 用于菜单文案与结果回显。 */
-    private void console(String line) {
-        System.out.println(line);
-    }
-
-    /** 提示信息双写：既落日志文件(带 demo 名 tag)又回显控制台, 用于前置条件不满足、取消等需留痕的提示。 */
-    private void hint(String msg) {
-        DemoLog.info(name(), msg);
-        console("   " + msg);
-    }
-
-    // ==================== 菜单文案 ====================
-
-    /**
-     * 主菜单文案：6 个菜单项与 {@code SafetyServiceModule} 的解禁证书接口一一对应(见类 Javadoc 菜单树)。
-     * 增删菜单项时须同步 {@link #run()} 中的 switch 分支与 {@code readIntInRange} 的取值上界。
-     */
-    private String menu() {
-        return "\n"
-            + "  === 限飞解禁 (Fly Safe Unlock) ===\n"
-            + "  1.  获取解禁证书列表   (getUnlockLicenseList, 缓存 licenseId)\n"
-            + "  2.  切换解禁证书状态   (switchUnlockLicense: 启用/禁用, 使用缓存 licenseId)\n"
-            + "  3.  检查解禁证书       (checkUnlockLicense, 使用缓存 fileKey, 缓存 certUrl)\n"
-            + "  4.  提交解禁证书       (submitUnlockLicense, 使用 [3] 缓存的 certUrl)\n"
-            + "  5.  清除解禁证书       (clearDeviceUnlockLicense)\n"
-            + "  6.  上传解禁证书文件   (uploadUnlockLicenseFile, 缓存 fileKey)\n"
-            + "\n"
-            + "  操作建议: [6] 上传得 fileKey → [3] 检查得 certUrl → [4] 提交 → [1] 查列表确认 → [2] 切换状态\n"
-            + "\n"
-            + "  q.  返回上级菜单\n";
-    }
 }

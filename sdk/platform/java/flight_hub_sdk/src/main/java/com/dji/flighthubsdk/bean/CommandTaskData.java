@@ -38,11 +38,11 @@ public final class CommandTaskData {
     private OutOfControlAction outOfControlAction = OutOfControlAction.UNKNOWN;
     /** 返航高度（米） */
     private int rthAltitude;
-    /** 指点飞行模式 */
+    /** 指点飞行模式。枚举：0=平稳模式, 1=运动模式 */
     private int commanderFlightMode;
     /** 指点飞行高度（米） */
     private double commanderFlightHeight;
-    /** 返航模式 */
+    /** 返航高度模式。枚举：0=智能高度, 1=设定高度 */
     private int rthMode;
     /** 云云对接 ID */
     private String cloudToCloudId;
@@ -129,11 +129,11 @@ public final class CommandTaskData {
     public OutOfControlAction getOutOfControlAction() { return outOfControlAction; }
     /** 返航高度（米） */
     public int getRthAltitude() { return rthAltitude; }
-    /** 指点飞行模式 */
+    /** 指点飞行模式。枚举：0=平稳模式, 1=运动模式 */
     public int getCommanderFlightMode() { return commanderFlightMode; }
     /** 指点飞行高度（米） */
     public double getCommanderFlightHeight() { return commanderFlightHeight; }
-    /** 返航模式 */
+    /** 返航高度模式。枚举：0=智能高度, 1=设定高度 */
     public int getRthMode() { return rthMode; }
     /** 云云对接 ID */
     public String getCloudToCloudId() { return cloudToCloudId; }
@@ -213,7 +213,7 @@ public final class CommandTaskData {
         this.rthAltitude = rthAltitude;
     }
 
-    /** @param commanderFlightMode 指点飞行模式 */
+    /** @param commanderFlightMode 指点飞行模式。枚举：0=平稳模式, 1=运动模式 */
     public void setCommanderFlightMode(int commanderFlightMode) {
         this.commanderFlightMode = commanderFlightMode;
     }
@@ -223,7 +223,7 @@ public final class CommandTaskData {
         this.commanderFlightHeight = commanderFlightHeight;
     }
 
-    /** @param rthMode 返航模式 */
+    /** @param rthMode 返航高度模式。枚举：0=智能高度, 1=设定高度 */
     public void setRthMode(int rthMode) {
         this.rthMode = rthMode;
     }

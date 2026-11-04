@@ -59,6 +59,14 @@ public class ImportKmzItem {
     return flighthubsdkmoduleJNI.ImportKmzItem_kmz_object_key_get(swigCPtr, this);
   }
 
+  public void setWayline_uuid(String value) {
+    flighthubsdkmoduleJNI.ImportKmzItem_wayline_uuid_set(swigCPtr, this, value);
+  }
+
+  public String getWayline_uuid() {
+    return flighthubsdkmoduleJNI.ImportKmzItem_wayline_uuid_get(swigCPtr, this);
+  }
+
   public void setWayline_name(String value) {
     flighthubsdkmoduleJNI.ImportKmzItem_wayline_name_set(swigCPtr, this, value);
   }

@@ -9,7 +9,7 @@ import java.util.Objects;
 /** 保养信息列表。 */
 public final class AircraftMaintainStatusInfo {
 
-    private List<AircraftMaintainStatus> maintainStatuses;
+    private List<AircraftMaintainStatus> maintainStatuses = Collections.emptyList();
     public AircraftMaintainStatusInfo() {
     }
 
@@ -22,14 +22,14 @@ public final class AircraftMaintainStatusInfo {
         this.maintainStatuses = maintainStatuses != null ? maintainStatuses : Collections.emptyList();
     }
 
-    /** 保养状态信息列表 */
+    /** 保养状态信息列表；无数据时为空列表 */
     public List<AircraftMaintainStatus> getMaintainStatuses() {
         return maintainStatuses;
     }
 
-    /** 保养状态信息列表 */
+    /** 保养状态信息列表；传 null 时归一化为空列表 */
     public void setMaintainStatuses(List<AircraftMaintainStatus> maintainStatuses) {
-        this.maintainStatuses = maintainStatuses;
+        this.maintainStatuses = maintainStatuses != null ? maintainStatuses : Collections.emptyList();
     }
 
     @Override
@@ -51,6 +51,7 @@ public final class AircraftMaintainStatusInfo {
 
     @Override
     public String toString() {
-        return "AircraftMaintainStatusInfo{count=" + maintainStatuses.size() + '}';
+        return "AircraftMaintainStatusInfo{count="
+                + (maintainStatuses != null ? maintainStatuses.size() : 0) + '}';
     }
 }

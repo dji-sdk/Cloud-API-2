@@ -43,6 +43,9 @@ public class MediaServiceModule {
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> mediaUploadCallbackCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> uploadGeoMediaFileCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> getMediaFileDetailByIdCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
+    // 3X 超清全景拼接回调引用（5 个 HTTP action 共用一个 map，通过 id 区分）
+    private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> panoStitchActionCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> getPanoTierTileUrlCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
 
     private int id_counter = 0;
     private synchronized int generateActionCallbackId() {
@@ -551,6 +554,179 @@ public class MediaServiceModule {
         } catch (Exception e) {
             Logger.error(TAG, "[getMediaFileDetailById] error: " + e.getMessage(), e);
             if (callback != null) try { callback.onResult(new com.dji.flighthubsdk.bean.FlightHubError(FlightHubSdkErrorCode.ERROR_OPERATION_FAILED), null); } catch (Exception ex) { Logger.error(TAG, "error callback threw: " + ex.getMessage(), ex); }
+        }
+    }
+
+    // ── 3X 超清全景拼接（pano-stitch / pano-tier） ────────────────────────────
+
+    /**
+     * 触发 3X 超清全景拼接
+     * @param fileId   全景照片目录 ID（pano_total_count &gt; 0 的目录）
+     * @param callback 结果回调
+     * @implNote 链路: HTTP | POST /pf-media/api/v1/media-files/{fileId}/pano-stitch
+     */
+    public void startPanoStitch(long fileId, FlightHubCallback.PanoStitchActionCallback callback) {
+        invokePanoStitchAction("startPanoStitch", fileId, callback, (id, swigCb) ->
+                this.mediaServiceModule.startPanoStitchWrapper(fileId, swigCb));
+    }
+
+    /**
+     * 停止全景拼接（仅 WaitingResource/Processing 状态可停）
+     * @param fileId   全景成片文件 ID
+     * @param callback 结果回调
+     * @implNote 链路: HTTP | POST /pf-media/api/v1/media-files/{fileId}/pano-stitch/stop
+     */
+    public void stopPanoStitch(long fileId, FlightHubCallback.PanoStitchActionCallback callback) {
+        invokePanoStitchAction("stopPanoStitch", fileId, callback, (id, swigCb) ->
+                this.mediaServiceModule.stopPanoStitchWrapper(fileId, swigCb));
+    }
+
+    /**
+     * 重试全景拼接（仅 Failed/Cancel/PaidFailed 状态可重试）
+     * @param fileId   全景成片文件 ID
+     * @param callback 结果回调
+     * @implNote 链路: HTTP | POST /pf-media/api/v1/media-files/{fileId}/pano-stitch/retry
+     */
+    public void retryPanoStitch(long fileId, FlightHubCallback.PanoStitchActionCallback callback) {
+        invokePanoStitchAction("retryPanoStitch", fileId, callback, (id, swigCb) ->
+                this.mediaServiceModule.retryPanoStitchWrapper(fileId, swigCb));
+    }
+
+    /**
+     * 触发全景瓦片切片（1X 全景成片使用；3X 拼接自带切片无需单独调）
+     * @param fileId   全景成片文件 ID
+     * @param callback 结果回调
+     * @implNote 链路: HTTP | POST /pf-media/api/v1/media-files/{fileId}/pano-tier
+     */
+    public void startPanoTier(long fileId, FlightHubCallback.PanoStitchActionCallback callback) {
+        invokePanoStitchAction("startPanoTier", fileId, callback, (id, swigCb) ->
+                this.mediaServiceModule.startPanoTierWrapper(fileId, swigCb));
+    }
+
+    /** 内部复用：5 个 action HTTP 方法公共逻辑 */
+    private interface PanoActionInvoker {
+        void invoke(int id, com.dji.flighthubsdk.generated.PanoStitchActionCallback swigCb);
+    }
+
+    private void invokePanoStitchAction(String methodName, long fileId,
+            FlightHubCallback.PanoStitchActionCallback callback,
+            PanoActionInvoker invoker) {
+        try {
+            int id = generateActionCallbackId();
+            com.dji.flighthubsdk.generated.PanoStitchActionCallback swigCallback =
+                    new com.dji.flighthubsdk.generated.PanoStitchActionCallback() {
+                        @Override
+                        public void onPanoStitchAction(com.dji.flighthubsdk.generated.FlightHubError err) {
+                            try {
+                                if (callback != null) {
+                                    callback.onResult(FlightHubSdkConvert.toFlightHubError(err));
+                                }
+                            } catch (Exception e) {
+                                Logger.error(TAG, "[" + methodName + "] callback error: " + e.getMessage(), e);
+                            } finally {
+                                panoStitchActionCallbackRef.remove(id);
+                            }
+                        }
+                    };
+            final CallbackRefContainer container = new CallbackRefContainer(swigCallback, callback);
+            synchronized (panoStitchActionCallbackRef) {
+                panoStitchActionCallbackRef.put(id, container);
+                invoker.invoke(id, swigCallback);
+            }
+        } catch (Exception e) {
+            Logger.error(TAG, "[" + methodName + "] error: " + e.getMessage(), e);
+            if (callback != null) try {
+                callback.onResult(new com.dji.flighthubsdk.bean.FlightHubError(FlightHubSdkErrorCode.ERROR_OPERATION_FAILED));
+            } catch (Exception ex) {
+                Logger.error(TAG, "error callback threw: " + ex.getMessage(), ex);
+            }
+        }
+    }
+
+    /**
+     * 获取全景瓦片 CDN URL 及鉴权信息
+     * @param fileId   全景成片文件 ID
+     * @param callback 结果回调；state=3 时 baseUrl/cookies/queryParams 有效
+     * @implNote 链路: HTTP | GET /pf-media/api/v1/media-files/{fileId}/pano-tier/url
+     */
+    public void getPanoTierTileUrl(long fileId, FlightHubCallback.GetPanoTierTileUrlCallback callback) {
+        try {
+            int id = generateActionCallbackId();
+            com.dji.flighthubsdk.generated.GetPanoTierTileUrlCallback swigCallback =
+                    new com.dji.flighthubsdk.generated.GetPanoTierTileUrlCallback() {
+                        @Override
+                        public void onGetPanoTierTileUrl(com.dji.flighthubsdk.generated.FlightHubError err,
+                                com.dji.flighthubsdk.generated.GetPanoTierTileUrlResult result) {
+                            try {
+                                if (callback != null) {
+                                    callback.onResult(FlightHubSdkConvert.toFlightHubError(err),
+                                            FlightHubSdkConvert.toGetPanoTierTileUrlResult(result));
+                                }
+                            } catch (Exception e) {
+                                Logger.error(TAG, "[getPanoTierTileUrl] callback error: " + e.getMessage(), e);
+                            } finally {
+                                getPanoTierTileUrlCallbackRef.remove(id);
+                            }
+                        }
+                    };
+            final CallbackRefContainer container = new CallbackRefContainer(swigCallback, callback);
+            synchronized (getPanoTierTileUrlCallbackRef) {
+                getPanoTierTileUrlCallbackRef.put(id, container);
+                this.mediaServiceModule.getPanoTierTileUrlWrapper(fileId, swigCallback);
+            }
+        } catch (Exception e) {
+            Logger.error(TAG, "[getPanoTierTileUrl] error: " + e.getMessage(), e);
+            if (callback != null) try {
+                callback.onResult(new com.dji.flighthubsdk.bean.FlightHubError(FlightHubSdkErrorCode.ERROR_OPERATION_FAILED), null);
+            } catch (Exception ex) {
+                Logger.error(TAG, "error callback threw: " + ex.getMessage(), ex);
+            }
+        }
+    }
+
+    /**
+     * 订阅全景拼接进度（WS topic: topic_pano_stitch_progress）
+     * @param callback    进度回调；state=3 视为完成，4/5/6 视为失败/取消/欠费
+     * @return listenId，用于 {@link #cancelListenPanoStitchProgress(int)} 取消
+     * @implNote 链路: WebSocket | topic: topic_pano_stitch_progress（PaaS 通道）
+     */
+    public int subscribePanoStitchProgress(FlightHubCallback.PanoStitchProgressCallback callback) {
+        try {
+            com.dji.flighthubsdk.generated.PanoStitchProgressCallback swigCallback =
+                    new com.dji.flighthubsdk.generated.PanoStitchProgressCallback() {
+                        @Override
+                        public void onPanoStitchProgress(com.dji.flighthubsdk.generated.PanoStitchProgressMsg msg) {
+                            try {
+                                if (callback != null) {
+                                    callback.onResult(FlightHubSdkConvert.toPanoStitchProgressMsg(msg));
+                                }
+                            } catch (Exception e) {
+                                Logger.error(TAG, "[subscribePanoStitchProgress] callback error: " + e.getMessage(), e);
+                            }
+                        }
+                    };
+            int listenId = this.mediaServiceModule.subscribePanoStitchProgressWrapper(swigCallback);
+            if (listenId >= 0) {
+                swigCallback.swigReleaseOwnership();
+            }
+            Logger.info(TAG, "subscribePanoStitchProgress listenId: " + listenId);
+            return listenId;
+        } catch (Exception e) {
+            Logger.error(TAG, "[subscribePanoStitchProgress] error: " + e.getMessage(), e);
+        }
+        return -1;
+    }
+
+    /**
+     * 取消订阅全景拼接进度
+     * @param listenId {@link #subscribePanoStitchProgress} 返回的 listenId
+     */
+    public void cancelListenPanoStitchProgress(int listenId) {
+        try {
+            this.mediaServiceModule.cancelListenPanoStitchProgressWrapper(listenId);
+            Logger.info(TAG, "cancelListenPanoStitchProgress listenId: " + listenId);
+        } catch (Exception e) {
+            Logger.error(TAG, "[cancelListenPanoStitchProgress] error: " + e.getMessage(), e);
         }
     }
 }

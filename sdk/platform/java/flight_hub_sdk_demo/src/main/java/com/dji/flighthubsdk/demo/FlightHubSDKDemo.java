@@ -1021,6 +1021,9 @@ public class FlightHubSDKDemo {
                     case 205: // 停止循环拉流压测
                         handleStopCyclicPullStreamStressTest();
                         break;
+                    case 206: // 双飞机拉流（输入两 SN，仅飞机两路）
+                        handleDualDroneLiveStream();
+                        break;
                     case 240: // 机场控制 - 切换舱内/舱外摄像头
                         handleDockChangeCameraPosition();
                         break;
@@ -1207,6 +1210,10 @@ public class FlightHubSDKDemo {
                         // [安全服务模块] - [获取自定义飞行区域同步状态]
                         handleGetFlightAreasSyncStatus();
                         break;
+                    case 347:
+                        // [安全服务模块] - [获取飞行区文件下载地址]
+                        handleGetFlightAreasUrl();
+                        break;
                     case 350:
                         // [安全服务模块][地形障碍物] - [查询离线地图模型信息]
                         handleGetOfflineMapsModelInfo();
@@ -1281,7 +1288,7 @@ public class FlightHubSDKDemo {
                     case 448: handleAIBoxInstallAppProgress(); break;
                     case 449: handleAIBoxOperateApp(); break;
                     case 450: handleListenTaskEvents(); break;
-                    case 460: handleHyapp177995Repro(); break;
+                    case 460: handleSwigDirectorUafRepro(); break;
                     case 500: handleDrcCameraApertureSet(); break;
                     case 501: handleDrcCameraIsoSet(); break;
                     case 502: handleDrcCameraShutterSet(); break;
@@ -1943,6 +1950,7 @@ public class FlightHubSDKDemo {
         System.out.println("[203] 拉流压测（多路拉流测试）");
         System.out.println("[204] 循环拉流压测（多路WHEP循环拉流，可配置时间）");
         System.out.println("[205] 停止循环拉流压测");
+        System.out.println("[206] 双飞机拉流（输入两 SN，仅飞机两路；EA340 DRTC 双路验证）");
 
         System.out.println("[240] 机场控制 - 切换舱内/舱外摄像头");
         System.out.println("[241] 直播录制 - 开始录制");
@@ -2039,6 +2047,7 @@ public class FlightHubSDKDemo {
         System.out.println("[344] 安全服务模块 - [删除自定义飞行区域]");
         System.out.println("[345] 安全服务模块 - [同步自定义飞行区域]");
         System.out.println("[346] 安全服务模块 - [获取自定义飞行区域同步状态]");
+        System.out.println("[347] 安全服务模块 - [获取飞行区文件下载地址]");
         System.out.println("[350] 安全服务模块 - [地形障碍物] 查询离线地图模型信息");
         System.out.println("[351] 安全服务模块 - [地形障碍物] 创建/更新离线地图模型");
         System.out.println("[352] 安全服务模块 - [地形障碍物] 取消离线地图生成");
@@ -2084,7 +2093,7 @@ public class FlightHubSDKDemo {
 
         System.out.println("[450] 任务事件监听 - [指令/指点飞行/航线]");
 
-        System.out.println("[460] HYAPP-177995 复现 - 监听直播范围+离线即cancel(关机触发 SWIG director UAF)");
+        System.out.println("[460] SWIG director UAF 复现 - 监听直播范围+离线即cancel");
 
         // 500-520 for DRC 高级功能测试
         System.out.println("[500] DRC高级 - 相机光圈设置");
@@ -2111,8 +2120,8 @@ public class FlightHubSDKDemo {
         System.out.println("[515] DRC高级 - 悬停设置");
         System.out.println("[516] DRC高级 - 夜航灯设置");
         System.out.println("[517] DRC高级 - 隐身模式设置");
-        System.out.println("[518] DRC高级 - 监听OSD/电池/延时推送");
-        System.out.println("[519] DRC高级 - 停止监听OSD/电池/延时推送");
+        System.out.println("[518] DRC高级 - 监听OSD/电池/延时/降落任务状态推送");
+        System.out.println("[519] DRC高级 - 停止监听OSD/电池/延时/降落任务状态推送");
         System.out.println("[520] DRC高级 - RTC质量测试");
         System.out.println("── Element 模块 ─────────────────────────────────────────");
         System.out.println("[601] Element - 创建要素");
@@ -2474,6 +2483,7 @@ public class FlightHubSDKDemo {
                 continue;
             }
             log("INFO", tag, "    -> device_sn: " + subDevice.getDeviceSn()
+                    + ", nickname: " + subDevice.getNickname()
                     + ", online: " + subDevice.isOnline()
                     + ", firmware_version: " + subDevice.getDeviceFirmwareVersion()
                     + ", firmware_status: " + subDevice.getDeviceFirmwareStatus()
@@ -4605,11 +4615,45 @@ public class FlightHubSDKDemo {
         log("INFO", "handleFlyTo", "基准坐标: (" + baseLatitude + ", " + baseLongitude + ")");
         log("INFO", "handleFlyTo", "随机坐标: (" + randomLat + ", " + randomLon + ")");
         
+        // start_point(航段起点=飞机当前位置)与目标点是两个不同坐标, 服务端对两者都做 required 校验。
+        // 与 handleUpdateTargetPoints 一致, 由操作者输入当前机位。
+        System.out.print("请输入起点(飞机当前位置)纬度: ");
+        double startLat = Double.parseDouble(scanner.nextLine().trim());
+        System.out.print("请输入起点(飞机当前位置)经度: ");
+        double startLng = Double.parseDouble(scanner.nextLine().trim());
+        System.out.print("请输入起点(飞机当前位置)高度(米): ");
+        double startH = Double.parseDouble(scanner.nextLine().trim());
+
         com.dji.flighthubsdk.bean.FlyToPointParams params = new com.dji.flighthubsdk.bean.FlyToPointParams();
-        params.setLatitude(randomLat);
-        params.setLongitude(randomLon);
-        params.setHeight(180);
         params.setMaxSpeed(10);
+        com.dji.flighthubsdk.bean.FlyToTargetPoint startPoint = new com.dji.flighthubsdk.bean.FlyToTargetPoint();
+        startPoint.setLatitude(startLat);
+        startPoint.setLongitude(startLng);
+        startPoint.setHeight(startH);
+        params.setStartPoint(startPoint);
+        com.dji.flighthubsdk.bean.FlyToTargetPoint targetPoint = new com.dji.flighthubsdk.bean.FlyToTargetPoint();
+        targetPoint.setLatitude(randomLat);
+        targetPoint.setLongitude(randomLon);
+        targetPoint.setHeight(180);
+        params.setPoints(java.util.Arrays.asList(targetPoint));
+
+        // speed_mode / real_height_cap_* 是三态可选字段: UNKNOWN 与 -1 表示「不下发」,
+        // 服务端据此保持设备当前设置(传 0 与不传是两种不同行为, 不能用默认值折叠)。
+        // 这里显式取「不设置」, 与新增这三个字段之前的报文逐字节一致; 要实测就改下面三个初值。
+        com.dji.flighthubsdk.value.SpeedMode speedMode = com.dji.flighthubsdk.value.SpeedMode.UNKNOWN;  // LOW=低速 HIGH=高速
+        int realHeightCapEnabled = -1;   // 0=false 1=true
+        int realHeightCapLimit = -1;     // 单位米, 合法范围 20-1500
+        params.setSpeedMode(speedMode);
+        params.setRealHeightCapEnabled(realHeightCapEnabled);
+        params.setRealHeightCapLimit(realHeightCapLimit);
+
+        log("INFO", "handleFlyTo", "指点飞行参数(ExecuteFlyToPointRequest):");
+        log("INFO", "handleFlyTo", "  start_point: " + startLat + ", " + startLng + ", " + startH + "m");
+        log("INFO", "handleFlyTo", "  points[0]: " + randomLat + ", " + randomLon + ", 180.0m");
+        log("INFO", "handleFlyTo", "  max_speed: " + params.getMaxSpeed() + "m/s");
+        log("INFO", "handleFlyTo", "  speed_mode: " + params.getSpeedMode() + " (UNKNOWN=未设置)");
+        log("INFO", "handleFlyTo", "  real_height_cap_enabled/limit: " + params.getRealHeightCapEnabled()
+                + " / " + params.getRealHeightCapLimit() + " (-1=未设置)");
         
         FlyToPointModule flyToModule = drone.getFlyToPointModule();
         flyToModule.start(params, new FlightHubCallback.FlyToPointStartCallback() {
@@ -5336,7 +5380,7 @@ public class FlightHubSDKDemo {
 
     /**
      * 处理一键起飞功能。
-     * 参数对齐 QA HYAPP-189294 可用 curl（TakeoffWithFlyTo）；
+     * 参数对齐 QA 可用 curl（TakeoffWithFlyTo）；
      * 故意不 set commanderFlightHeight / commanderFlightMode（保持 -1），验证可选字段未设置时不写入请求体。
      */
     private static void handleTakeoff() {
@@ -5369,6 +5413,16 @@ public class FlightHubSDKDemo {
         params.setTakeoffMode(com.dji.flighthubsdk.value.TakeoffMode.TAKEOFF_WITH_FLY_TO);
         params.setRthMode(1);
 
+        // speed_mode / real_height_cap_* 是三态可选字段: UNKNOWN 与 -1 表示「不下发」,
+        // 服务端据此保持设备当前设置(传 0 与不传是两种不同行为, 不能用默认值折叠)。
+        // 这里显式取「不设置」, 与新增这三个字段之前的报文逐字节一致; 要实测就改下面三个初值。
+        com.dji.flighthubsdk.value.SpeedMode speedMode = com.dji.flighthubsdk.value.SpeedMode.UNKNOWN;  // LOW=低速 HIGH=高速
+        int realHeightCapEnabled = -1;   // 0=false 1=true
+        int realHeightCapLimit = -1;     // 单位米, 合法范围 20-1500
+        params.setSpeedMode(speedMode);
+        params.setRealHeightCapEnabled(realHeightCapEnabled);
+        params.setRealHeightCapLimit(realHeightCapLimit);
+
         log("INFO", "handleTakeoff", "起飞参数（CommandRequest）:");
         log("INFO", "handleTakeoff", "  security_takeoff_height: " + params.getSecurityTakeoffHeight() + "m");
         log("INFO", "handleTakeoff", "  max_speed: " + params.getMaxSpeed() + "m/s");
@@ -5383,6 +5437,9 @@ public class FlightHubSDKDemo {
         log("INFO", "handleTakeoff", "  cloud_to_cloud_id: '" + params.getCloudToCloudId() + "' (空=未设置)");
         log("INFO", "handleTakeoff", "  need_verify_flight_control: " + params.getNeedVerifyFlightControl()
                 + " (-1=未设置)");
+        log("INFO", "handleTakeoff", "  speed_mode: " + params.getSpeedMode() + " (UNKNOWN=未设置)");
+        log("INFO", "handleTakeoff", "  real_height_cap_enabled/limit: " + params.getRealHeightCapEnabled()
+                + " / " + params.getRealHeightCapLimit() + " (-1=未设置)");
 
         drone.getTakeoffModule().takeoff(params, new FlightHubCallback.TakeoffCallback() {
             @Override
@@ -5771,9 +5828,9 @@ public class FlightHubSDKDemo {
         waitForKeyPress();
     }
 
-    // ==================== [460] HYAPP-177995 复现 - SWIG director 异步回调 UAF ====================
+    // ==================== [460] SWIG director 异步回调 UAF 复现 ====================
     /**
-     * HYAPP-177995 复现：监听直播可用范围 + 监听在线状态；离线即【立即】cancel 范围监听
+     * SWIG director UAF 复现：监听直播可用范围 + 监听在线状态；离线即【立即】cancel 范围监听
      * （制造与"关机→范围变空派发"的竞态），在线即重新 listen。
      *
      * 操作：进入后反复对飞机【关机→等离线 / 开机→等在线】循环数十次，按 Enter 停止。
@@ -5783,18 +5840,18 @@ public class FlightHubSDKDemo {
      *
      * 注：真机 race 命中靠时序，可能需多轮；机制层确定性验证见 ASAN 微复现 uaf_repro.cpp。
      */
-    private static void handleHyapp177995Repro() {
-        printSeparator("HYAPP-177995 复现 - 监听直播范围 + 离线即 cancel (SWIG director UAF)");
+    private static void handleSwigDirectorUafRepro() {
+        printSeparator("SWIG director UAF 复现 - 监听直播范围 + 离线即 cancel");
 
         if (selectedDevice == null || !hasSubDevice(selectedDevice)) {
-            log("ERROR", "handleHyapp177995Repro", "该设备没有无人机，无法复现");
+            log("ERROR", "handleSwigDirectorUafRepro", "该设备没有无人机，无法复现");
             waitForKeyPress();
             return;
         }
 
         final Drone d = getOrCreateDrone(getSubDeviceSn(selectedDevice));
         if (d == null) {
-            log("ERROR", "handleHyapp177995Repro", "获取无人机实例失败");
+            log("ERROR", "handleSwigDirectorUafRepro", "获取无人机实例失败");
             waitForKeyPress();
             return;
         }
@@ -5815,10 +5872,10 @@ public class FlightHubSDKDemo {
                     @Override
                     public void onResult(java.util.List<LiveInfo> list) {
                         rangeCallbacks.incrementAndGet();
-                        log("INFO", "handleHyapp177995Repro", "[range] size=" + (list == null ? -1 : list.size()));
+                        log("INFO", "handleSwigDirectorUafRepro", "[range] size=" + (list == null ? -1 : list.size()));
                     }
                 });
-                log("INFO", "handleHyapp177995Repro", "[listen] rangeListenId=" + rangeId[0]);
+                log("INFO", "handleSwigDirectorUafRepro", "[listen] rangeListenId=" + rangeId[0]);
             }
         };
 
@@ -5828,7 +5885,7 @@ public class FlightHubSDKDemo {
                 if (rangeId[0] < 0) return;
                 int id = rangeId[0];
                 rangeId[0] = -1;
-                log("INFO", "handleHyapp177995Repro", "[cancel] rangeListenId=" + id);
+                log("INFO", "handleSwigDirectorUafRepro", "[cancel] rangeListenId=" + id);
                 d.getLiveDeviceModule().cancelListenLiveAvailableRange(id); // ★ 离线即同步 cancel
             }
         };
@@ -5839,7 +5896,7 @@ public class FlightHubSDKDemo {
                 @Override
                 public void onResult(DroneOnlineStatus status) {
                     boolean online = status != null && status.isOnline();
-                    log("INFO", "handleHyapp177995Repro", "[online] is_online=" + online);
+                    log("INFO", "handleSwigDirectorUafRepro", "[online] is_online=" + online);
                     if (online) {
                         startRange.run();
                     } else {
@@ -5852,9 +5909,9 @@ public class FlightHubSDKDemo {
         // 启动时若已在线，先 listen 一次
         startRange.run();
 
-        log("INFO", "handleHyapp177995Repro",
+        log("INFO", "handleSwigDirectorUafRepro",
                 "复现中：请反复对飞机【关机→等离线 / 开机→等在线】循环数十次。按 Enter 停止。");
-        log("INFO", "handleHyapp177995Repro",
+        log("INFO", "handleSwigDirectorUafRepro",
                 "旧包预期：若干轮后 JVM 崩溃(hs_err, SIGSEGV pc=0)；修复包预期：长时间不崩。");
         waitForKeyPress();
 
@@ -5869,7 +5926,7 @@ public class FlightHubSDKDemo {
                 rangeId[0] = -1;
             }
         }
-        log("INFO", "handleHyapp177995Repro",
+        log("INFO", "handleSwigDirectorUafRepro",
                 "已停止。online_cycles=" + onlineCycles.get() + " range_callbacks=" + rangeCallbacks.get());
     }
 
@@ -7375,9 +7432,11 @@ public class FlightHubSDKDemo {
                     log("INFO", "handleGetSTS", "  提供商: " + stsInfo.getProvider());
                     log("INFO", "handleGetSTS", "  区域: " + stsInfo.getRegion());
                     log("INFO", "handleGetSTS", "  访问密钥ID: " + stsInfo.getCredentials().getAccessKeyId());
-                    log("INFO", "handleGetSTS", "  访问密钥Secret: " + stsInfo.getCredentials().getAccessKeySecret());
+                    log("INFO", "handleGetSTS", "  访问密钥Secret: (已脱敏, 长度: "
+                            + (stsInfo.getCredentials().getAccessKeySecret() == null ? 0 : stsInfo.getCredentials().getAccessKeySecret().length()) + ")");
                     log("INFO", "handleGetSTS", "  过期时间: " + stsInfo.getCredentials().getExpire());
-                    log("INFO", "handleGetSTS", "  安全令牌: " + stsInfo.getCredentials().getSecurityToken());
+                    log("INFO", "handleGetSTS", "  安全令牌: (已脱敏, 长度: "
+                            + (stsInfo.getCredentials().getSecurityToken() == null ? 0 : stsInfo.getCredentials().getSecurityToken().length()) + ")");
                 } else {
                     log("ERROR", "handleGetSTS", "获取临时上传凭证失败，错误: " + error);
                 }
@@ -7584,13 +7643,12 @@ public class FlightHubSDKDemo {
         }
 
         System.out.println("请选择红外增益模式:");
-        System.out.println("  0: 自动");
         System.out.println("  1: 低增益");
         System.out.println("  2: 高增益");
         System.out.println("  3: 超清模式");
-        System.out.print("请输入选择 (0-3): ");
+        System.out.print("请输入选择 (1-3): ");
         
-        int choice = getUserChoice(0, 3);
+        int choice = getUserChoice(1, 3);
         IrGainMode gainMode = IrGainMode.fromValue(choice);
         
         com.dji.flighthubsdk.bean.ThermalGainModeSetParams params = new com.dji.flighthubsdk.bean.ThermalGainModeSetParams();
@@ -7652,8 +7710,6 @@ public class FlightHubSDKDemo {
             return "未知模式";
         }
         switch (gainMode) {
-            case Auto:
-                return "自动";
             case LowGain:
                 return "低增益";
             case HighGain:
@@ -10711,7 +10767,331 @@ public class FlightHubSDKDemo {
         
         cyclicPullStreamStressTestThread = null;
     }
-    
+
+    /**
+     * [206] 双飞机拉流：交互输入两个飞机 SN，仅拉这两路飞机码流（不拉机场），用于 EA340 DRTC 双路验证。
+     * 状态全部局部持有，不覆盖全局 {@code drone}/{@code droneLiveModule}。
+     */
+    private static void handleDualDroneLiveStream() {
+        printSeparator("双飞机拉流（仅飞机两路）");
+
+        System.out.print("请输入飞机 SN1: ");
+        String sn1 = scanner.nextLine().trim();
+        System.out.print("请输入飞机 SN2: ");
+        String sn2 = scanner.nextLine().trim();
+
+        if (sn1.isEmpty() || sn2.isEmpty()) {
+            log("ERROR", "handleDualDroneLiveStream", "SN1/SN2 不能为空");
+            return;
+        }
+        if (sn1.equals(sn2)) {
+            log("ERROR", "handleDualDroneLiveStream", "两路飞机 SN 不能相同: " + sn1);
+            return;
+        }
+
+        DualDronePull pull1 = null;
+        DualDronePull pull2 = null;
+        try {
+            Files.createDirectories(Paths.get(outputDirectory));
+            pull1 = startDualDronePull("drone1", sn1);
+            pull2 = startDualDronePull("drone2", sn2);
+            if (pull1 == null && pull2 == null) {
+                log("ERROR", "handleDualDroneLiveStream", "两路均未能启动（getDroneInstance 失败或无 LiveDeviceModule）");
+                return;
+            }
+            log("INFO", "handleDualDroneLiveStream",
+                    "已发起双路拉流(异步等 live_capacity)；按 Enter 停止两路。"
+                            + " sn1=" + sn1 + " sn2=" + sn2
+                            + " preferredPayload=" + targetPayloadIndex);
+            waitForKeyPress();
+        } catch (Exception e) {
+            log("ERROR", "handleDualDroneLiveStream", "双飞机拉流异常: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            if (pull1 != null) {
+                pull1.stop();
+            }
+            if (pull2 != null) {
+                pull2.stop();
+            }
+        }
+    }
+
+    /**
+     * 启动单路双飞机拉流：listenLiveAvailableRange → 选源 → getLiveStream → start → subscribe → 写盘。
+     * range 回调可能多次触发，用 started 保证只建一路。
+     *
+     * @return 句柄；getDroneInstance / LiveDeviceModule 失败时返回 null
+     */
+    private static DualDronePull startDualDronePull(String role, String sn) {
+        Drone d = getOrCreateDrone(sn);
+        if (d == null) {
+            log("ERROR", "handleDualDroneLiveStream", "[" + role + "] getDroneInstance 失败: " + sn);
+            return null;
+        }
+        if (d.getLiveDeviceModule() == null) {
+            log("ERROR", "handleDualDroneLiveStream", "[" + role + "] LiveDeviceModule 为空: " + sn);
+            return null;
+        }
+
+        final DualDronePull pull = new DualDronePull(role, sn, d);
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS");
+            String fileName = outputDirectory + "/" + role + "_" + sn + "_" + sdf.format(new Date()) + ".h264";
+            pull.out = new FileOutputStream(fileName);
+            pull.filePath = fileName;
+            log("INFO", "handleDualDroneLiveStream", "[" + role + "] 落盘文件: " + fileName);
+        } catch (IOException e) {
+            log("ERROR", "handleDualDroneLiveStream", "[" + role + "] 打开落盘文件失败: " + e.getMessage());
+            return null;
+        }
+
+        pull.rangeListenId = d.getLiveDeviceModule().listenLiveAvailableRange(
+                new FlightHubCallback.LiveAvailableRangeCallback() {
+                    @Override
+                    public void onResult(List<LiveInfo> ranges) {
+                        if (pull.stopped.get() || pull.started.get()) {
+                            return;
+                        }
+                        int n = ranges != null ? ranges.size() : 0;
+                        log("INFO", "handleDualDroneLiveStream",
+                                "[" + role + "] 直播可用范围: " + n + " (ownSn=" + sn + ")");
+                        if (ranges == null || ranges.isEmpty()) {
+                            return;
+                        }
+                        for (LiveInfo range : ranges) {
+                            logLiveInfoDetails("handleDualDroneLiveStream/" + role, range);
+                        }
+                        LiveInfo liveInfo = pickDualDroneLiveInfo(ranges, sn, targetPayloadIndex);
+                        if (liveInfo == null) {
+                            log("WARN", "handleDualDroneLiveStream",
+                                    "[" + role + "] 无本机可用直播源，继续等待");
+                            return;
+                        }
+                        if (!pull.started.compareAndSet(false, true)) {
+                            return;
+                        }
+                        log("INFO", "handleDualDroneLiveStream",
+                                "[" + role + "] 选中源 sn=" + liveInfo.getDeviceSn()
+                                        + " payload=" + liveInfo.getPayloadIndex()
+                                        + " video_id=" + liveInfo.getVideoId());
+                        try {
+                            LiveModule lm = d.getLiveStream(liveInfo);
+                            if (lm == null) {
+                                log("ERROR", "handleDualDroneLiveStream",
+                                        "[" + role + "] getLiveStream 返回 null");
+                                pull.started.set(false);
+                                return;
+                            }
+                            pull.liveModule = lm;
+                            lm.start(new FlightHubCallback.ResultCallbackWithError() {
+                                @Override
+                                public void onResult(com.dji.flighthubsdk.bean.FlightHubError error) {
+                                    if (error != null && error.isSuccess()) {
+                                        log("INFO", "handleDualDroneLiveStream",
+                                                "[" + role + "] 直播流启动成功");
+                                    } else {
+                                        log("ERROR", "handleDualDroneLiveStream",
+                                                "[" + role + "] 直播流启动失败: " + error);
+                                    }
+                                }
+                            });
+                            pull.streamListenId = lm.subscribeLiveStream(
+                                    new FlightHubCallback.LiveStreamCallback() {
+                                        @Override
+                                        public void onResult(byte[] data, FrameInfo frameInfo) {
+                                            if (pull.stopped.get() || data == null || data.length == 0) {
+                                                return;
+                                            }
+                                            long frames = pull.frameCount.incrementAndGet();
+                                            long total = pull.totalBytes.addAndGet(data.length);
+                                            if (frames % 30 == 0) {
+                                                log("INFO", "handleDualDroneLiveStream",
+                                                        "[" + role + "] 收到直播流数据 #" + frames
+                                                                + ": " + data.length + " bytes (总计: "
+                                                                + total + " bytes)");
+                                            }
+                                            synchronized (pull.writeLock) {
+                                                if (pull.out == null || pull.stopped.get()) {
+                                                    return;
+                                                }
+                                                try {
+                                                    pull.out.write(data);
+                                                } catch (IOException e) {
+                                                    log("ERROR", "handleDualDroneLiveStream",
+                                                            "[" + role + "] 写盘失败: " + e.getMessage());
+                                                }
+                                            }
+                                        }
+                                    });
+                            if (pull.streamListenId == -1) {
+                                log("ERROR", "handleDualDroneLiveStream",
+                                        "[" + role + "] subscribeLiveStream 返回 -1");
+                            }
+                        } catch (Exception e) {
+                            log("ERROR", "handleDualDroneLiveStream",
+                                    "[" + role + "] 启动拉流异常: " + e.getMessage());
+                            pull.started.set(false);
+                        }
+                    }
+                });
+        if (pull.rangeListenId == -1) {
+            log("ERROR", "handleDualDroneLiveStream",
+                    "[" + role + "] listenLiveAvailableRange 失败");
+            pull.stop();
+            return null;
+        }
+        log("INFO", "handleDualDroneLiveStream",
+                "[" + role + "] 已监听直播范围 listenId=" + pull.rangeListenId + " sn=" + sn);
+        return pull;
+    }
+
+    /**
+     * 从可用源列表挑一路：优先本机 SN + payload，其次本机 SN 首路，再兜底列表首路。
+     */
+    private static LiveInfo pickDualDroneLiveInfo(List<LiveInfo> ranges, String ownSn, String preferredPayload) {
+        if (ranges == null || ranges.isEmpty()) {
+            return null;
+        }
+        LiveInfo ownPayload = null;
+        LiveInfo ownFirst = null;
+        boolean wantPayload = preferredPayload != null && !preferredPayload.isEmpty();
+        for (LiveInfo li : ranges) {
+            if (li == null) {
+                continue;
+            }
+            String deviceSn = li.getDeviceSn();
+            boolean own = ownSn != null && ownSn.equals(deviceSn);
+            boolean payloadMatch = wantPayload && preferredPayload.equals(li.getPayloadIndex());
+            if (own) {
+                if (payloadMatch && ownPayload == null) {
+                    ownPayload = li;
+                }
+                if (ownFirst == null) {
+                    ownFirst = li;
+                }
+            }
+        }
+        if (ownPayload != null) {
+            return ownPayload;
+        }
+        if (ownFirst != null) {
+            return ownFirst;
+        }
+        // 全部明确属于其它设备时不选，避免两路录成同一条流；仅当上报未带 sn 时才兜底首路。
+        for (LiveInfo li : ranges) {
+            if (li == null) {
+                continue;
+            }
+            String deviceSn = li.getDeviceSn();
+            if (deviceSn == null || deviceSn.isEmpty()) {
+                if (wantPayload && preferredPayload.equals(li.getPayloadIndex())) {
+                    return li;
+                }
+            }
+        }
+        for (LiveInfo li : ranges) {
+            if (li == null) {
+                continue;
+            }
+            String deviceSn = li.getDeviceSn();
+            if (deviceSn == null || deviceSn.isEmpty()) {
+                return li;
+            }
+        }
+        return null;
+    }
+
+    /** [206] 单路拉流运行态（局部，不碰全局 droneLiveModule）。 */
+    private static final class DualDronePull {
+        final String role;
+        final String sn;
+        final Drone drone;
+        final Object writeLock = new Object();
+        final AtomicBoolean started = new AtomicBoolean(false);
+        final AtomicBoolean stopped = new AtomicBoolean(false);
+        final AtomicLong frameCount = new AtomicLong();
+        final AtomicLong totalBytes = new AtomicLong();
+
+        volatile int rangeListenId = -1;
+        volatile int streamListenId = -1;
+        volatile LiveModule liveModule;
+        volatile FileOutputStream out;
+        volatile String filePath;
+
+        DualDronePull(String role, String sn, Drone drone) {
+            this.role = role;
+            this.sn = sn;
+            this.drone = drone;
+        }
+
+        /** 退订 → stop → 关文件（幂等）。 */
+        void stop() {
+            if (!stopped.compareAndSet(false, true)) {
+                return;
+            }
+            if (streamListenId != -1 && liveModule != null) {
+                try {
+                    liveModule.unSubscribeLiveStream(streamListenId);
+                    log("INFO", "handleDualDroneLiveStream",
+                            "[" + role + "] 已取消订阅直播流 listenId=" + streamListenId);
+                } catch (Exception e) {
+                    log("ERROR", "handleDualDroneLiveStream",
+                            "[" + role + "] 取消订阅失败: " + e.getMessage());
+                }
+                streamListenId = -1;
+            }
+            if (liveModule != null) {
+                try {
+                    liveModule.stop();
+                    log("INFO", "handleDualDroneLiveStream", "[" + role + "] LiveModule 已 stop");
+                } catch (Exception e) {
+                    log("ERROR", "handleDualDroneLiveStream",
+                            "[" + role + "] stop 失败: " + e.getMessage());
+                }
+                liveModule = null;
+            }
+            if (rangeListenId != -1 && drone.getLiveDeviceModule() != null) {
+                try {
+                    drone.getLiveDeviceModule().cancelListenLiveAvailableRange(rangeListenId);
+                    log("INFO", "handleDualDroneLiveStream",
+                            "[" + role + "] 已取消 range 监听 listenId=" + rangeListenId);
+                } catch (Exception e) {
+                    log("ERROR", "handleDualDroneLiveStream",
+                            "[" + role + "] 取消 range 监听失败: " + e.getMessage());
+                }
+                rangeListenId = -1;
+            }
+            synchronized (writeLock) {
+                if (out != null) {
+                    try {
+                        out.flush();
+                        out.close();
+                    } catch (IOException e) {
+                        log("WARN", "handleDualDroneLiveStream",
+                                "[" + role + "] 关闭文件失败: " + e.getMessage());
+                    }
+                    out = null;
+                }
+            }
+            long f = frameCount.get();
+            long b = totalBytes.get();
+            log("INFO", "handleDualDroneLiveStream",
+                    "[" + role + "] 停止: sn=" + sn + " 帧数=" + f + " 字节=" + b
+                            + String.format(" (%.2f MB)", b / 1024.0 / 1024.0)
+                            + (filePath != null ? " -> " + filePath : ""));
+            if (b == 0 && filePath != null) {
+                try {
+                    Files.deleteIfExists(Paths.get(filePath));
+                    log("WARN", "handleDualDroneLiveStream",
+                            "[" + role + "] 0 字节，已删除空文件: " + filePath);
+                } catch (IOException ignore) {
+                    // ignore
+                }
+            }
+        }
+    }
+
     /**
      * 自动启动循环拉流压测（非交互式，使用固定参数）
      * 参数固定为：
@@ -13158,6 +13538,51 @@ public class FlightHubSDKDemo {
     }
 
 
+    /**
+     * 安全服务模块: 获取飞行区文件下载地址;
+     */
+    private static void handleGetFlightAreasUrl() {
+        printSeparator("[安全服务模块] 获取飞行区文件下载地址");
+
+        workspace = FlightHubSDK.getWorkspaceInstance();
+        if (workspace == null) {
+            log("ERROR", "handleGetFlightAreasUrl", "获取workspace失败");
+            return;
+        }
+
+        // 获取 [安全服务模块]
+        SafetyServiceModule safetyServiceModule = workspace.getSafetyServiceModule();
+        if (safetyServiceModule == null) {
+            log("ERROR", "handleGetFlightAreasUrl", "获取 safetyServiceModule 失败(safetyServiceModule is null)");
+            return;
+        }
+
+        // 请求 获取 飞行区文件下载地址
+        safetyServiceModule.getFlightAreasUrl(new FlightHubCallback.GetFlightAreasUrlCallback() {
+            @Override
+            public void onResult(FlightHubError error, com.dji.flighthubsdk.bean.GetFlightAreasUrlResults result) {
+                if (!error.isSuccess()) {
+                    log("ERROR", "handleGetFlightAreasUrl", "getFlightAreasUrl 失败, error: " + error);
+                    return;
+                }
+                log("INFO", "handleGetFlightAreasUrl", "getFlightAreasUrl 成功");
+                if (result == null) {
+                    log("ERROR", "handleGetFlightAreasUrl", "result is null");
+                    return;
+                }
+                log("INFO", "handleGetFlightAreasUrl", "  => name:     " + result.getName());
+                // url 为签名下载地址, 有效期 3600 秒;
+                log("INFO", "handleGetFlightAreasUrl", "  => url:      " + result.getUrl());
+                // checksum 为文件内容 SHA-256, 十六进制;
+                log("INFO", "handleGetFlightAreasUrl", "  => checksum: " + result.getChecksum());
+                log("INFO", "handleGetFlightAreasUrl", "  => size:     " + result.getSize());
+            }
+        });
+
+        waitForKeyPress();
+    }
+
+
     // ==================== 地形障碍物 ====================
 
     /**
@@ -14066,7 +14491,20 @@ public class FlightHubSDKDemo {
         targetPoint.setHeight(targetH);
         params.setPoints(java.util.Arrays.asList(targetPoint));
 
+        // speed_mode / real_height_cap_* 是三态可选字段: UNKNOWN 与 -1 表示「不下发」,
+        // 服务端据此保持设备当前设置(传 0 与不传是两种不同行为, 不能用默认值折叠)。
+        // 这里显式取「不设置」, 与新增这三个字段之前的报文逐字节一致; 要实测就改下面三个初值。
+        com.dji.flighthubsdk.value.SpeedMode speedMode = com.dji.flighthubsdk.value.SpeedMode.UNKNOWN;  // LOW=低速 HIGH=高速
+        int realHeightCapEnabled = -1;   // 0=false 1=true
+        int realHeightCapLimit = -1;     // 单位米, 合法范围 20-1500
+        params.setSpeedMode(speedMode);
+        params.setRealHeightCapEnabled(realHeightCapEnabled);
+        params.setRealHeightCapLimit(realHeightCapLimit);
+
         log("INFO", "handleUpdateTargetPoints", "更新目标点, flyToId=" + flyToId + ", maxSpeed=" + maxSpeed);
+        log("INFO", "handleUpdateTargetPoints", "  speed_mode: " + params.getSpeedMode() + " (UNKNOWN=未设置)");
+        log("INFO", "handleUpdateTargetPoints", "  real_height_cap_enabled/limit: "
+                + params.getRealHeightCapEnabled() + " / " + params.getRealHeightCapLimit() + " (-1=未设置)");
         flyToModule.updateTargetPoints(params, new FlightHubCallback.ResultCallbackWithError() {
             @Override
             public void onResult(com.dji.flighthubsdk.bean.FlightHubError error) {
@@ -14788,7 +15226,7 @@ public class FlightHubSDKDemo {
                     log("INFO", "Media", "  credentials.expire=" + cred.getExpire());
                     String token = cred.getSecurityToken();
                     if (token != null && !token.isEmpty())
-                        log("INFO", "Media", "  credentials.security_token=" + token.substring(0, Math.min(20, token.length())) + "...");
+                        log("INFO", "Media", "  credentials.security_token=(已脱敏, 长度: " + token.length() + ")");
                 }
             }
             latch.countDown();
@@ -16452,11 +16890,20 @@ public class FlightHubSDKDemo {
                         new com.dji.flighthubsdk.bean.OperateAIInsideModelParam();
                 opParam.setSignedId(signedId.isEmpty() ? "algo_signed_001" : signedId);
                 opParam.setOperationType("load");
-                // 指定 EA230，避免空列表全量下发
-                opParam.setDroneSNList(java.util.Collections.singletonList("PLACEHOLDER_DRONE_SN_2"));
+                // 输入 drone SN（逗号分隔多个）；直接回车留空 = 对该算法全部可操作设备下发
+                System.out.print(" 请输入 drone SN (逗号分隔多个，留空=全部可操作设备): ");
+                String droneSnInput = scanner.nextLine().trim();
+                java.util.List<String> droneSnList = new java.util.ArrayList<String>();
+                if (!droneSnInput.isEmpty()) {
+                    for (String s : droneSnInput.split(",")) {
+                        String sn = s.trim();
+                        if (!sn.isEmpty()) droneSnList.add(sn);
+                    }
+                }
+                opParam.setDroneSNList(droneSnList);
                 log("INFO", "handleAIInsideTest",
                         "调用 operateAIInsideModel load, signed_id=" + opParam.getSignedId()
-                        + ", drone_sn_list=[PLACEHOLDER_DRONE_SN_2]");
+                        + ", drone_sn_list=" + droneSnList + (droneSnList.isEmpty() ? " (全部可操作设备)" : ""));
                 aiModule.operateAIInsideModel(opParam, new FlightHubCallback.OperateAIInsideModelCallback() {
                     @Override
                     public void onResult(com.dji.flighthubsdk.bean.FlightHubError error,
@@ -16479,9 +16926,20 @@ public class FlightHubSDKDemo {
                          new com.dji.flighthubsdk.bean.OperateAIInsideModelParam();
                  opParam.setSignedId(signedId.isEmpty() ? "algo_signed_001" : signedId);
                  opParam.setOperationType("unload");
-                 opParam.setDroneSNList(java.util.Collections.singletonList("PLACEHOLDER_DRONE_SN_2"));
+                 // 输入 drone SN（逗号分隔多个）；直接回车留空 = 对该算法全部可操作设备下发
+                 System.out.print(" 请输入 drone SN (逗号分隔多个，留空=全部可操作设备): ");
+                 String droneSnInputU = scanner.nextLine().trim();
+                 java.util.List<String> droneSnListU = new java.util.ArrayList<String>();
+                 if (!droneSnInputU.isEmpty()) {
+                     for (String s : droneSnInputU.split(",")) {
+                         String sn = s.trim();
+                         if (!sn.isEmpty()) droneSnListU.add(sn);
+                     }
+                 }
+                 opParam.setDroneSNList(droneSnListU);
                  log("INFO", "handleAIInsideTest",
-                         "调用 operateAIInsideModel unload, signed_id=" + opParam.getSignedId());
+                         "调用 operateAIInsideModel unload, signed_id=" + opParam.getSignedId()
+                         + ", drone_sn_list=" + droneSnListU + (droneSnListU.isEmpty() ? " (全部可操作设备)" : ""));
                 aiModule.operateAIInsideModel(opParam, new FlightHubCallback.OperateAIInsideModelCallback() {
                     @Override
                     public void onResult(com.dji.flighthubsdk.bean.FlightHubError error,
@@ -17326,6 +17784,7 @@ public class FlightHubSDKDemo {
     private static int drcOsdListenId = -1;
     private static int drcBatteryListenId = -1;
     private static int drcDelayListenId = -1;
+    private static int drcLandingMissionStateListenId = -1;
 
     private static void handleDrcCameraApertureSet() {
         log("INFO", "handleDrcCameraApertureSet", "=== DRC - 相机光圈设置 ===");
@@ -17844,7 +18303,7 @@ public class FlightHubSDKDemo {
     }
 
     private static void handleDrcListenPushData() {
-        log("INFO", "handleDrcListenPushData", "=== DRC - 监听OSD/电池/延时推送 ===");
+        log("INFO", "handleDrcListenPushData", "=== DRC - 监听OSD/电池/延时/降落任务状态推送 ===");
         if (drone == null) { log("ERROR", "handleDrcListenPushData", "drone未初始化"); waitForKeyPress(); return; }
         FlightControlModule fc = drone.getFlightControlModule();
         DrcModule drcMod = drone.getDrcModule();
@@ -17861,6 +18320,17 @@ public class FlightHubSDKDemo {
                     info.getCapacity_percent(), info.getRemain_flight_time()));
             });
             log("INFO", "handleDrcListenPushData", "电池监听ID=" + drcBatteryListenId);
+
+            // 降落任务状态。landing_state: 0=初始空闲 1=等待参数同步 2=航向对齐 3=精准降落(有水平源)
+            // 4=无源降落(无水平源,继续下降) 5=悬停微调(有水平源) 6=纯悬停(无水平源) 7=备降(有源)
+            // 8=备降(无源) 9=备降(用户RC接管)。
+            // 注: getCover_percent() 在协议侧拼作 cover_precent(协议设计如此), SDK 对外已更正。
+            drcLandingMissionStateListenId = fc.listenDrcLandingMissionState(info -> {
+                log("INFO", "DRC_PUSH", String.format("LandingMission: state=%d pauseReason=%d cover=%d%% errCode=%d",
+                    info.getLanding_state(), info.getPause_reason(),
+                    info.getCover_percent(), info.getCover_error_code()));
+            });
+            log("INFO", "handleDrcListenPushData", "降落任务状态监听ID=" + drcLandingMissionStateListenId);
         }
 
         if (drcMod != null) {
@@ -17890,6 +18360,11 @@ public class FlightHubSDKDemo {
             fc.cancelListenDrcBatteriesInfo(drcBatteryListenId);
             log("INFO", "handleDrcStopListenPushData", "已取消电池监听");
             drcBatteryListenId = -1;
+        }
+        if (fc != null && drcLandingMissionStateListenId >= 0) {
+            fc.cancelListenDrcLandingMissionState(drcLandingMissionStateListenId);
+            log("INFO", "handleDrcStopListenPushData", "已取消降落任务状态监听");
+            drcLandingMissionStateListenId = -1;
         }
         if (drcMod != null && drcDelayListenId >= 0) {
             drcMod.cancelListenDrcDelayInfo(drcDelayListenId);

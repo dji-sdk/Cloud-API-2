@@ -6,7 +6,11 @@ tests/
 
 # 本地配置与鉴权（切勿提交真实 token / uuid）
 config.json
+config.mock.json
 flight_hub_config.json
+# DRTC 本地配置：只入库 drtc_config_node.json.example，落地的真实/占位配置不提交
+drtc_config_node.json
+drtc_config_node_*.json
 
 # demo 运行产物
 *.log

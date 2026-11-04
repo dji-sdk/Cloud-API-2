@@ -29,6 +29,7 @@ public class FlightHubSdkManager {
     private static final java.util.concurrent.ConcurrentHashMap<String, Relay> relayRef = new java.util.concurrent.ConcurrentHashMap<>();
     private static Workspace workspaceRef = null;
     private static Stream stream = null;
+    private static CascadeModule cascade = null;
 
     /**
      * 初始化 SDK。
@@ -214,75 +215,117 @@ public class FlightHubSdkManager {
     // ---- 设备实例获取（去 SaaS 后无 session/binding 概念） ----
 
     /**
-     * 获取 Workspace 实例（全局单例）
+     * 获取 Workspace 实例（等价于 session 0）
      */
     public static synchronized Workspace getWorkspaceInstance() {
+        return getWorkspaceInstance(0);
+    }
+
+    /**
+     * 按 session_id 获取 Workspace；session 0 走缓存，其它 session 每次向 native 取。
+     */
+    public static synchronized Workspace getWorkspaceInstance(int sessionId) {
         try {
-            if (workspaceRef != null) {
-                return workspaceRef;
+            if (sessionId == 0) {
+                if (workspaceRef != null) {
+                    return workspaceRef;
+                }
+                com.dji.flighthubsdk.generated.IWorkspace swigWorkspace =
+                        com.dji.flighthubsdk.generated.FlightHubSdk.getWorkspaceInstance(0);
+                if (swigWorkspace != null) {
+                    workspaceRef = new Workspace(swigWorkspace);
+                    return workspaceRef;
+                }
+                Logger.warn("FlightHubSdkManager", "getWorkspaceInstance(0): null returned");
+                return null;
             }
             com.dji.flighthubsdk.generated.IWorkspace swigWorkspace =
-                    com.dji.flighthubsdk.generated.FlightHubSdk.getWorkspaceInstance();
+                    com.dji.flighthubsdk.generated.FlightHubSdk.getWorkspaceInstance(sessionId);
             if (swigWorkspace != null) {
-                workspaceRef = new Workspace(swigWorkspace);
-                return workspaceRef;
+                return new Workspace(swigWorkspace);
             }
-            Logger.warn("FlightHubSdkManager", "getWorkspaceInstance: null returned");
+            Logger.warn("FlightHubSdkManager",
+                    "getWorkspaceInstance: null returned, sessionId=" + sessionId);
             return null;
         } catch (Exception e) {
-            Logger.error("FlightHubSdkManager", "getWorkspaceInstance error: " + e.getMessage(), e);
+            Logger.error("FlightHubSdkManager",
+                    "getWorkspaceInstance error: sessionId=" + sessionId + ", " + e.getMessage(), e);
             return null;
         }
     }
 
     /**
-     * 通过设备 SN 获取 Drone 实例
+     * 通过设备 SN 获取 Drone 实例（session 0）
      */
     public static synchronized Drone getDroneInstance(String sn) {
+        return getDroneInstance(0, sn);
+    }
+
+    /**
+     * 按 session_id 获取 Drone；session 0 走缓存，其它 session 每次向 native 取。
+     */
+    public static synchronized Drone getDroneInstance(int sessionId, String sn) {
         try {
             if (sn == null || sn.isEmpty()) {
                 Logger.error("FlightHubSdkManager", "getDroneInstance error: sn is null or empty");
                 return null;
             }
-            if (droneRef.containsKey(sn)) {
+            if (sessionId == 0 && droneRef.containsKey(sn)) {
                 return droneRef.get(sn);
             }
-            com.dji.flighthubsdk.generated.IDrone swigDrone = com.dji.flighthubsdk.generated.FlightHubSdk.getDroneInstance(sn);
+            com.dji.flighthubsdk.generated.IDrone swigDrone =
+                    com.dji.flighthubsdk.generated.FlightHubSdk.getDroneInstance(sessionId, sn);
             if (swigDrone != null) {
                 Drone drone = new Drone(swigDrone, sn);
-                droneRef.put(sn, drone);
+                if (sessionId == 0) {
+                    droneRef.put(sn, drone);
+                }
                 return drone;
             }
-            Logger.warn("FlightHubSdkManager", "getDroneInstance: drone not found, sn=" + sn);
+            Logger.warn("FlightHubSdkManager",
+                    "getDroneInstance: drone not found, sessionId=" + sessionId + ", sn=" + sn);
             return null;
         } catch (Exception e) {
-            Logger.error("FlightHubSdkManager", "getDroneInstance error: " + e.getMessage(), e);
+            Logger.error("FlightHubSdkManager",
+                    "getDroneInstance error: sessionId=" + sessionId + ", " + e.getMessage(), e);
             return null;
         }
     }
 
     /**
-     * 通过设备 SN 获取 Dock 实例
+     * 通过设备 SN 获取 Dock 实例（session 0）
      */
     public static synchronized Dock getDockInstance(String sn) {
+        return getDockInstance(0, sn);
+    }
+
+    /**
+     * 按 session_id 获取 Dock；session 0 走缓存，其它 session 每次向 native 取。
+     */
+    public static synchronized Dock getDockInstance(int sessionId, String sn) {
         try {
             if (sn == null || sn.isEmpty()) {
                 Logger.error("FlightHubSdkManager", "getDockInstance error: sn is null or empty");
                 return null;
             }
-            if (dockRef.containsKey(sn)) {
+            if (sessionId == 0 && dockRef.containsKey(sn)) {
                 return dockRef.get(sn);
             }
-            com.dji.flighthubsdk.generated.IDock swigDock = com.dji.flighthubsdk.generated.FlightHubSdk.getDockInstance(sn);
+            com.dji.flighthubsdk.generated.IDock swigDock =
+                    com.dji.flighthubsdk.generated.FlightHubSdk.getDockInstance(sessionId, sn);
             if (swigDock != null) {
                 Dock dock = new Dock(swigDock, sn);
-                dockRef.put(sn, dock);
+                if (sessionId == 0) {
+                    dockRef.put(sn, dock);
+                }
                 return dock;
             }
-            Logger.warn("FlightHubSdkManager", "getDockInstance: dock not found, sn=" + sn);
+            Logger.warn("FlightHubSdkManager",
+                    "getDockInstance: dock not found, sessionId=" + sessionId + ", sn=" + sn);
             return null;
         } catch (Exception e) {
-            Logger.error("FlightHubSdkManager", "getDockInstance error: " + e.getMessage(), e);
+            Logger.error("FlightHubSdkManager",
+                    "getDockInstance error: sessionId=" + sessionId + ", " + e.getMessage(), e);
             return null;
         }
     }
@@ -379,6 +422,32 @@ public class FlightHubSdkManager {
             return stream;
         } catch (Exception e) {
             Logger.error("FlightHubSdkManager", "GetStreamInstance error: " + e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * 获取级联管理模块实例（workspace 级单例）。
+     */
+    public static synchronized CascadeModule getCascadeInstance() {
+        try {
+            if (cascade == null) {
+                cascade = new CascadeModule(com.dji.flighthubsdk.generated.FlightHubSdk.getCascadeModule());
+            }
+            return cascade;
+        } catch (Exception e) {
+            Logger.error("FlightHubSdkManager", "GetCascadeInstance error: " + e.getMessage(), e);
+            return null;
+        }
+    }
+
+    public static SessionManager getSessionManager() {
+        try {
+            com.dji.flighthubsdk.generated.ISessionManager raw =
+                    com.dji.flighthubsdk.generated.FlightHubSdk.getSessionManager();
+            return raw != null ? new SessionManager(raw) : null;
+        } catch (Exception e) {
+            Logger.error("FlightHubSdkManager", "getSessionManager error: " + e.getMessage(), e);
             return null;
         }
     }

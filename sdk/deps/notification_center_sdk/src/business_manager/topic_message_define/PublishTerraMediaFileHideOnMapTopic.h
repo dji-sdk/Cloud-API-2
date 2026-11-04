@@ -8,7 +8,7 @@
 
 namespace notification_center {
     // "topic_media_file_hide_on_map"
-    // 模型隐藏地图推送（Delete/BatchDelete 触发，来自 file-storage）
+    // 模型隐藏地图推送（Delete/BatchDelete 触发，来自云端媒体服务）
 
     /// TerraMediaFileHideOnMapMsg — 隐藏地图消息体
     class TerraMediaFileHideOnMapMsg {

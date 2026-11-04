@@ -5,6 +5,7 @@ package com.dji.flighthubsdk.bean;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import java.util.Objects;
 /** 航线列表项 */
@@ -17,10 +18,19 @@ public final class WaylineListItemResult {
     private List<String> payloadTypes;
     private List<String> payloadTypesWithIndex;
     private String droneType;
+    /** 更新时间(unix 毫秒) */
     private long updatedAt;
     private boolean withMegaphone;
     private boolean withSearchLight;
     private boolean aiWayline;
+    /** 编辑告警 */
+    private Map<String, String> editorWarnings;
+    /** 执行告警 */
+    private Map<String, String> executeWarnings;
+    /** 是否存在碰撞 */
+    private boolean hasCollisions;
+    /** 碰撞位置列表 */
+    private List<WaylineCollisionEvent> collisionPositions;
     public WaylineListItemResult() {
     }
 
@@ -34,7 +44,7 @@ public final class WaylineListItemResult {
      * @param payloadTypes 负载类型列表
      * @param payloadTypesWithIndex 带索引的负载类型列表
      * @param droneType 飞行器类型
-     * @param updatedAt 更新时间
+     * @param updatedAt 更新时间(unix 毫秒)
      * @param withMegaphone 是否携带喊话器
      * @param withSearchLight 是否携带探照灯
      * @param aiWayline 是否AI航线
@@ -78,7 +88,7 @@ public final class WaylineListItemResult {
     public List<String> getPayloadTypesWithIndex() { return payloadTypesWithIndex; }
     /** 飞行器类型 */
     public String getDroneType() { return droneType; }
-    /** 更新时间 */
+    /** 更新时间(unix 毫秒) */
     public long getUpdatedAt() { return updatedAt; }
     /** 是否携带喊话器 */
     public boolean isWithMegaphone() { return withMegaphone; }
@@ -86,6 +96,14 @@ public final class WaylineListItemResult {
     public boolean isWithSearchLight() { return withSearchLight; }
     /** 是否AI航线 */
     public boolean isAiWayline() { return aiWayline; }
+    /** 编辑告警 */
+    public Map<String, String> getEditorWarnings() { return editorWarnings; }
+    /** 执行告警 */
+    public Map<String, String> getExecuteWarnings() { return executeWarnings; }
+    /** 是否存在碰撞 */
+    public boolean isHasCollisions() { return hasCollisions; }
+    /** 碰撞位置列表 */
+    public List<WaylineCollisionEvent> getCollisionPositions() { return collisionPositions; }
 
     /** 航线UUID */
     public void setWaylineUuid(String waylineUuid) {
@@ -122,7 +140,7 @@ public final class WaylineListItemResult {
         this.droneType = droneType;
     }
 
-    /** 更新时间 */
+    /** 更新时间(unix 毫秒) */
     public void setUpdatedAt(long updatedAt) {
         this.updatedAt = updatedAt;
     }
@@ -140,6 +158,26 @@ public final class WaylineListItemResult {
     /** 是否AI航线 */
     public void setAiWayline(boolean aiWayline) {
         this.aiWayline = aiWayline;
+    }
+
+    /** 编辑告警 */
+    public void setEditorWarnings(Map<String, String> editorWarnings) {
+        this.editorWarnings = editorWarnings;
+    }
+
+    /** 执行告警 */
+    public void setExecuteWarnings(Map<String, String> executeWarnings) {
+        this.executeWarnings = executeWarnings;
+    }
+
+    /** 是否存在碰撞 */
+    public void setHasCollisions(boolean hasCollisions) {
+        this.hasCollisions = hasCollisions;
+    }
+
+    /** 碰撞位置列表 */
+    public void setCollisionPositions(List<WaylineCollisionEvent> collisionPositions) {
+        this.collisionPositions = collisionPositions;
     }
 
     @Override
@@ -161,7 +199,11 @@ public final class WaylineListItemResult {
                 && updatedAt == that.updatedAt
                 && withMegaphone == that.withMegaphone
                 && withSearchLight == that.withSearchLight
-                && aiWayline == that.aiWayline;
+                && aiWayline == that.aiWayline
+                && Objects.equals(editorWarnings, that.editorWarnings)
+                && Objects.equals(executeWarnings, that.executeWarnings)
+                && hasCollisions == that.hasCollisions
+                && Objects.equals(collisionPositions, that.collisionPositions);
     }
 
     @Override
@@ -177,7 +219,11 @@ public final class WaylineListItemResult {
                 updatedAt,
                 withMegaphone,
                 withSearchLight,
-                aiWayline);
+                aiWayline,
+                editorWarnings,
+                executeWarnings,
+                hasCollisions,
+                collisionPositions);
     }
 
     @Override
@@ -194,6 +240,10 @@ public final class WaylineListItemResult {
                 + ", withMegaphone=" + withMegaphone
                 + ", withSearchLight=" + withSearchLight
                 + ", aiWayline=" + aiWayline
+                + ", editorWarnings=" + editorWarnings
+                + ", executeWarnings=" + executeWarnings
+                + ", hasCollisions=" + hasCollisions
+                + ", collisionPositions=" + collisionPositions
                 + '}';
     }
 }

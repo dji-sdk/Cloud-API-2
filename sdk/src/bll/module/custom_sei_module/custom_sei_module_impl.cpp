@@ -67,7 +67,7 @@ bool CustomSEIModuleImpl::CustomSEIEncode(const std::vector<int>& frame_data,
 bool CustomSEIModuleImpl::CustomSEIDecode(const std::vector<int>& frame_data,
                                          SeiHeader& output_header,
                                          std::vector<SeiItem>& output_sei_data) {
-    // 空数据校验，防止 SIGSEGV
+// 空数据校验，防止 SIGSEGV
     if (frame_data.empty()) {
         LOG_ERROR("CustomSEIModule: decode failed, frame_data is empty");
         return false;
@@ -100,7 +100,7 @@ bool CustomSEIModuleImpl::CustomSEIDecode(const std::vector<int>& frame_data,
 
 // 数据转换函数实现
 std::vector<std::shared_ptr<CustomSeiTLVDataBase>> CustomSEIModuleImpl::convertToH264AnalyzeData(const std::vector<SeiItem>& sdk_data) {
-    std::vector<std::shared_ptr<CustomSeiTLVDataBase>> h264_data;
+std::vector<std::shared_ptr<CustomSeiTLVDataBase>> h264_data;
     
     for (const auto& item : sdk_data) {
         switch (static_cast<SeiDataType>(item.type)) {
@@ -168,7 +168,7 @@ std::vector<std::shared_ptr<CustomSeiTLVDataBase>> CustomSEIModuleImpl::convertT
 }
 
 std::vector<SeiItem> CustomSEIModuleImpl::convertFromH264AnalyzeData(const std::vector<std::shared_ptr<CustomSeiTLVDataBase>>& h264_data) {
-    std::vector<SeiItem> sdk_data;
+std::vector<SeiItem> sdk_data;
     
     for (const auto& item : h264_data) {
         switch (item->tlv_type) {
@@ -245,7 +245,7 @@ std::vector<SeiItem> CustomSEIModuleImpl::convertFromH264AnalyzeData(const std::
 }
 
 CustomSEIHeader CustomSEIModuleImpl::convertToH264AnalyzeHeader(const SeiHeader& sdk_header) {
-    CustomSEIHeader h264_header;
+CustomSEIHeader h264_header;
     h264_header.version = static_cast<uint8_t>(sdk_header.version);
     h264_header.reserved = static_cast<uint8_t>(sdk_header.reserved);
     h264_header.data_size = static_cast<uint16_t>(sdk_header.data_size);
@@ -254,7 +254,7 @@ CustomSEIHeader CustomSEIModuleImpl::convertToH264AnalyzeHeader(const SeiHeader&
 }
 
 SeiHeader CustomSEIModuleImpl::convertFromH264AnalyzeHeader(const CustomSEIHeader& h264_header) {
-    SeiHeader sdk_header;
+SeiHeader sdk_header;
     sdk_header.version = static_cast<int>(h264_header.version);
     sdk_header.reserved = static_cast<int>(h264_header.reserved);
     sdk_header.data_size = static_cast<int>(h264_header.data_size);

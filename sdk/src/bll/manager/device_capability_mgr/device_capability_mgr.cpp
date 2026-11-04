@@ -125,279 +125,92 @@ flight_hub_sdk::FeatureStatus DeviceCapabilityManager::checkUnsupportedByDeviceS
  *
  * Construct-On-First-Use: 函数局部静态, 首次调用时才构造, 线程安全(C++11 magic static),
  * 消除跨 TU 的静态初始化顺序问题(SIOF);
+ *
+ * 构建分两步:
+ *   1) 以 device_capability_mgr.h 中的 kAllModelKeys 打底, 每个 SDK 已知机型都落一个空黑名单条目;
+ *      —— 保证"已声明的 model_key 必定已注册", checkUnsupported() 对已知机型至少返回
+ *         NotConfigured, 只有未知/非法 model_key 才返回 NotFound;
+ *   2) 逐机型登记黑名单; 每款机型保留一个登记位, 便于逐款排查、逐步补齐;
+ *
+ * 新增机型时:
+ *   - 必做: 在 .h 的 kAllModelKeys 中登记(否则 checkUnsupported 会误判为 NotFound);
+ *   - 建议: 在下面第 2 步对应分组内补一行登记位, 便于后续跟踪该机型的能力确认进度;
+ *     即便漏写登记位也不会出问题 —— Step 1 已保证该机型必定在表中;
  */
 // todo: 在框架上不断补充配置;
 const std::unordered_map<std::string, std::set<flight_hub_sdk::FeatureId>>& DeviceCapabilityManager::unsupportedFeaturesTable() {
-    static const std::unordered_map<std::string, std::set<flight_hub_sdk::FeatureId>> table = {
-    /* 大疆机场(Dock) 能力黑名单; */
-    // DJI Dock 1:  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_3_1_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-            FeatureId::FlyToPoint,
-            FeatureId::FlightTaskControl,
-            FeatureId::POI,
-            FeatureId::FC_EmergencyStop,
-            FeatureId::FC_EmergencyLanding
-        }
-    },
+    static const std::unordered_map<std::string, std::set<flight_hub_sdk::FeatureId>> table = [] {
+        std::unordered_map<std::string, std::set<flight_hub_sdk::FeatureId>> unsupported_features_table;
+        unsupported_features_table.reserve(kAllModelKeys.size());
 
-    /* 大疆机场2 (Dock 2) 能力黑名单; */
-    // DJI Dock 2:  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_3_2_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-            FeatureId::FlyToPoint,
-            FeatureId::FlightTaskControl,
-            FeatureId::POI,
-            FeatureId::FC_EmergencyStop,
-            FeatureId::FC_EmergencyLanding
+        /* Step 1: 用 SDK 已知机型全量清单打底, 默认"无已知不支持项"; */
+        for (const auto &model_key : kAllModelKeys) {
+            unsupported_features_table.emplace(std::string(model_key), std::set<flight_hub_sdk::FeatureId>{});
         }
-    },
 
-    /* 大疆机场3 (Dock 3) 能力黑名单; */
-    // DJI Dock 3:  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_3_3_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-            FeatureId::FlyToPoint,
-            FeatureId::FlightTaskControl,
-            FeatureId::POI,
-            FeatureId::FC_EmergencyStop,
-            FeatureId::FC_EmergencyLanding
-        }
-    },
+        /*
+         * Step 2: 逐机型登记"不支持的 Feature";
+         * 登记位约定:
+         *   - 空集合 {} 表示"当前尚无已知不支持项", 带 todo 标记, 待确认后填入;
+         *   - 已确认有不支持项的机型, 直接把 FeatureId 列进去;
+         */
+        auto mark = [&unsupported_features_table](std::string_view model_key,
+                                                  std::set<flight_hub_sdk::FeatureId> unsupported_features) {
+            unsupported_features_table[std::string(model_key)] = std::move(unsupported_features);
+        };
 
-    /* Matrice 300 RTK, 经纬 300 RTK 飞机 能力黑名单; */
-    // Matrice 300 RTK:  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_0_60_0),
-        // UN-supported_features set;
+        /* ========== 机场系列 (class: "airport") ========== */
+        // 大疆机场 DOCK 1 / DOCK 2 / DOCK 3 能力黑名单;
+        // 机场机型走航线任务下发, 不支持指点飞行/航线任务控制/POI 环绕/急停/迫降;
         // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
+        for (const auto &dock_model_key : {kModelKey_3_1_0, kModelKey_3_2_0, kModelKey_3_3_0}) {
+            mark(dock_model_key, {
+                FeatureId::FlyToPoint,
+                FeatureId::FlightTaskControl,
+                FeatureId::POI,
+                FeatureId::FC_EmergencyStop,
+                FeatureId::FC_EmergencyLanding
+            });
         }
-    },
+        mark(kModelKey_3_4_0,   {});   // D-RTK 3 (Inside Edition), ei200;                    todo: 待确认不支持项;
 
-    /* Matrice 30 飞机 能力黑名单; */
-    // DJI Matrice 30(M30):  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_0_67_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
+        /* ========== 飞机系列 (class: "drone") ========== */
+        mark(kModelKey_0_60_0,  {});   // Matrice 300 RTK, pm430;                             todo: 待确认不支持项;
+        mark(kModelKey_0_67_0,  {});   // Matrice 30(M30), pm320;                             todo: 待确认不支持项;
+        mark(kModelKey_0_67_1,  {});   // Matrice 30T(M30T), pm320;                           todo: 待确认不支持项;
+        mark(kModelKey_0_77_0,  {});   // Mavic 3E(M3E 相机), wm265;                          todo: 待确认不支持项;
+        mark(kModelKey_0_77_1,  {});   // Mavic 3T(M3T 相机), wm265;                          todo: 待确认不支持项;
+        mark(kModelKey_0_77_2,  {});   // Mavic 3M(M3M), wm265;                               todo: 待确认不支持项;
+        mark(kModelKey_0_77_3,  {});   // Mavic 3TA(M3TA 相机), wm265;                        todo: 待确认不支持项;
+        mark(kModelKey_0_89_0,  {});   // Matrice 350 RTK, pm431;                             todo: 待确认不支持项;
+        mark(kModelKey_0_91_0,  {});   // Matrice 3D(M3D), ea220e;                            todo: 待确认不支持项;
+        mark(kModelKey_0_91_1,  {});   // Matrice 3TD(M3TD), ea220t;                          todo: 待确认不支持项;
+        mark(kModelKey_0_99_0,  {});   // Matrice 4E(M4E 相机), wa345e;                       todo: 待确认不支持项;
+        mark(kModelKey_0_99_1,  {});   // Matrice 4T(M4T 相机), wa345t;                       todo: 待确认不支持项;
+        mark(kModelKey_0_100_0, {});   // Matrice 4D, ea230e;                                 todo: 待确认不支持项;
+        mark(kModelKey_0_100_1, {});   // Matrice 4TD, ea230t;                                todo: 待确认不支持项;
+        mark(kModelKey_0_103_0, {});   // Matrice 400, pm440;                                 todo: 待确认不支持项;
+        mark(kModelKey_0_130_0, {});   // M5TD 网联飞机, ea340t;                              todo: 待确认不支持项;
+        mark(kModelKey_0_139_0, {});   // pm355(搭配 rc710 遥控器);                           todo: 待确认不支持项;
 
-    /* Matrice 30T(M30T) 飞机 能力黑名单; */
-    // DJI Matrice 30T(M30T):  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_0_67_1),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
+        /* ========== 中继 (class: "relay") ========== */
+        mark(kModelKey_6_600_0, {});   // Relay(比如 D-RTK 3), ea600;                         todo: 待确认不支持项;
+        mark(kModelKey_6_610_0, {});   // EA610 中继(上报名 "O4 Ground Station"), ea610relay; todo: 待确认不支持项;
 
-    /*
-     * wm265 飞机, Mavic 3 行业系列: M3E / M3T / M3M / M3TA;
-     * DJI Mavic 3E   配备 4/3 CMOS 2000 万像素广角相机和长焦相机;
-     * DJI Mavic 3T   配备 1/2″ CMOS 4800 万像素广角相机、长焦相机和热成像相机;
-     * DJI Mavic 3M   多光谱机型;
-     * DJI Mavic 3TA  在 M3T 基础上优化红外模组;
-     */
-    // Mavic 3E (M3E 相机):  model_key --> UN-supported_features set;
-    {
-        std::string(kModelKey_0_77_0),
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-    // Mavic 3T (M3T 相机):  model_key --> UN-supported_features set;
-    {
-        std::string(kModelKey_0_77_1),
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-    // Mavic 3M (M3M):  model_key --> UN-supported_features set;
-    {
-        std::string(kModelKey_0_77_2),
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-    // Mavic 3TA (M3TA 相机):  model_key --> UN-supported_features set;
-    {
-        std::string(kModelKey_0_77_3),
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
+        /* ========== 基站/机库 (class: "base_station" / "dock") ========== */
+        mark(kModelKey_8_135_0, {});   // Base Station(O4 Ground Station), ea610;             todo: 待确认不支持项;
+        mark(kModelKey_9_116_0, {});   // ea231d 机库;                                        todo: 待确认不支持项;
+        mark(kModelKey_9_131_0, {});   // ea340d 机库;                                        todo: 待确认不支持项;
 
-    /* pm431 飞机, Matrice 350 RTK, 配合 DJI RC Plus + DJI Pilot 2 使用; */
-    // Matrice 350 RTK:  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_0_89_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
+        /* ========== 遥控器 (class: "rc") ========== */
+        mark(kModelKey_2_56_0,  {});   // "DJI 带屏遥控器行业版" rm500(搭配 M300 RTK);        todo: 待确认不支持项;
+        mark(kModelKey_2_119_0, {});   // "DJI RC Plus" rm700(搭配 M350/M300 RTK, M30/M30T);  todo: 待确认不支持项;
+        mark(kModelKey_2_144_0, {});   // "DJI RC Pro 行业版" rm510(搭配 Mavic 3 行业系列);   todo: 待确认不支持项;
+        mark(kModelKey_2_174_0, {});   // "DJI RC Plus 2" rc701(搭配 Matrice 4 系列);         todo: 待确认不支持项;
+        mark(kModelKey_2_197_0, {});   // rc710(搭配 pm355);                                  todo: 待确认不支持项;
 
-    // DJI Matrice 3D(M3D):  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_0_91_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-    // DJI Matrice 3TD(M3TD):  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_0_91_1),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-
-    /* wa345e / wa345t 飞机, DJI Matrice 4 系列(M4E / M4T 相机); */
-    // Matrice 4E (M4E 相机):  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_0_99_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-    // Matrice 4T (M4T 相机):  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_0_99_1),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-    // DJI Matrice 4D:  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_0_100_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-    // DJI Matrice 4TD:  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_0_100_1),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-
-    // DJI Matrice 400:  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_0_103_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-
-    /* 中继 (class: "relay") */
-    // Relay(比如 D-RTK 3) (class: "relay");
-    {
-        // model_key;
-        std::string(kModelKey_6_600_0),
-        // UN-supported_features set;
-        // todo: 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-
-    /* 基站和关联的设备; */
-    // Base Station(比如 O4 Ground Station):  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_8_135_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-    // ea340t drone:  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_0_130_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-    // ea340d dock:  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_9_131_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-
-    /* RC 遥控器设备; */
-    // RC "DJI 带屏遥控器行业版"(rm500, 搭配 Matrice 300 RTK):  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_2_56_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-    // RC "DJI RC Plus"(rm700, 搭配 M350/M300 RTK, M30/M30T):  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_2_119_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-    // RC "DJI RC Pro 行业版"(rm510, 搭配 Mavic 3 行业系列):  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_2_144_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    },
-    // RC "DJI RC Plus 2"(rc701, 搭配 DJI Matrice 4 系列):  model_key --> UN-supported_features set;
-    {
-        // model_key;
-        std::string(kModelKey_2_174_0),
-        // UN-supported_features set;
-        // todo: 无法一次列全, 需持续完善;
-        std::set<flight_hub_sdk::FeatureId>{
-        }
-    }
-    };
+        return unsupported_features_table;
+    }();
 
     // 返回 能力黑名单;
     return table;

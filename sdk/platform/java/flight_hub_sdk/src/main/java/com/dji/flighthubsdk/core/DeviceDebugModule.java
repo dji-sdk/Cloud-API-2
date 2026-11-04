@@ -862,7 +862,7 @@ public class DeviceDebugModule {
     /**
      * 设置夜航灯状态
      * @param device_sn 设备序列号
-     * @param night_lights_state 夜航灯状态
+     * @param night_lights_state 夜航灯状态，0=关 1=开
      * @param callback 结果回调，返回错误信息和设置夜航灯结果
      * @implNote 链路: HTTP | HTTP POST /device/api/v1/service/night-lights-state
      */

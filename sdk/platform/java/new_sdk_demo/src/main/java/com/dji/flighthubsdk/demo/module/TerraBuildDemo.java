@@ -20,12 +20,15 @@ import com.dji.flighthubsdk.bean.TerraModelDetailResult;
 import com.dji.flighthubsdk.bean.TerraModelStatusChangedMsg;
 import com.dji.flighthubsdk.bean.TerraRenameModelParams;
 import com.dji.flighthubsdk.bean.TerraSetLasWktParams;
+import com.dji.flighthubsdk.bean.TerraDeleteModelFilesResult;
+import com.dji.flighthubsdk.bean.TerraSelectFilterParams;
 import com.dji.flighthubsdk.bean.TerraShowOnMapParams;
 import com.dji.flighthubsdk.bean.TerraShowOnMapResult;
 import com.dji.flighthubsdk.bean.TerraUnzipProgressMsg;
 import com.dji.flighthubsdk.bean.TerraUploadCallbackParams;
 import com.dji.flighthubsdk.bean.TerraUploadCallbackResult;
 import com.dji.flighthubsdk.core.TerraBuildModule;
+import com.dji.flighthubsdk.demo.base.Menu;
 import com.dji.flighthubsdk.demo.base.ModuleDemo;
 import com.dji.flighthubsdk.demo.runtime.Await;
 import com.dji.flighthubsdk.demo.runtime.DemoLog;
@@ -39,9 +42,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Terra Build 建图重建模块 Demo(菜单驱动)：模型文件管理、重建任务、全景拼接、WS 状态推送、LAS 坐标系设置。
+ * Terra Build 建图重建模块 Demo(菜单驱动): 模型文件管理、重建任务、全景拼接、WS 状态推送、LAS 坐标系设置。
  *
- * <p>主菜单为两级结构, [1][2][4] 为子菜单：
+ * <p>主菜单为两级结构, [1][2][4] 为子菜单:
  * <pre>
  * 主菜单
  * ├── [1] 模型文件管理
@@ -67,21 +70,21 @@ import java.util.concurrent.atomic.AtomicReference;
  * └── [5] 设置 LAS 坐标系             setLasWkt
  * </pre>
  *
- * <p><b>接口串联设计：</b>[1-1] 查询列表、[2-1] 创建重建、[3] 全景拼接、[1-7] 上传回调成功后
+ * <p><b>接口串联设计: </b>[1-1] 查询列表、[2-1] 创建重建、[3] 全景拼接、[1-7] 上传回调成功后
  * 均缓存 fileId/fileUuid({@link #lastFileId}/{@link #lastFileUuid}), 其余菜单项自动沿用,
  * 实现「创建 → 查询/操作 → 订阅推送跟踪进度」的业务串联; 未缓存时回退配置项
  * {@code terra_build.file_id}/{@code terra_build.file_uuid}, 支持操作历史任务。
  *
- * <p><b>SDK 入口：</b>{@code session.workspace().getTerraBuildModule()}(挂在 Workspace 上)。
+ * <p><b>SDK 入口: </b>{@code session.workspace().getTerraBuildModule()}(挂在 Workspace 上)。
  *
- * <p><b>设计要点：</b>
+ * <p><b>设计要点: </b>
  * <ul>
- *   <li>覆盖 {@code TerraBuildModule} 29 个公开接口中的 22 个常用接口(非全量)：
+ *   <li>覆盖 {@code TerraBuildModule} 29 个公开接口中的 22 个常用接口 (非全量):
  *       未覆盖 {@code batchDeleteModelFiles} 与 listen/cancelListen 三对地图上下图推送
- *       ({@code TerraFileShowOnMap}/{@code TerraMediaFileHideOnMap}/{@code TerraMediaFileShowOnMap}) 共 7 个;</li>
- *   <li>三态结果回显(SUCCESS/TIMEOUT/FAILED), 结果解析只在 SUCCESS 分支进行
- *       (convert 层对 null 输入会返回非 null 空 bean, 非成功时判空守卫会失效);</li>
- *   <li>危险动作(删除模型文件)执行前须输入 {@code yes} 二次确认;</li>
+ *       ({@code TerraFileShowOnMap}/{@code TerraMediaFileHideOnMap}/{@code TerraMediaFileShowOnMap}) 共 7 个; </li>
+ *   <li>三态结果回显 (SUCCESS/TIMEOUT/FAILED), 结果解析只在 SUCCESS 分支进行
+ *       (convert 层对 null 输入会返回非 null 空 bean, 非成功时判空守卫会失效); </li>
+ *   <li>危险动作 (删除模型文件)执行前须输入 {@code yes} 二次确认; </li>
  *   <li>WS 订阅采用「订阅 → 阻塞等待按 Enter → 退订」模式, 推送只落日志文件不刷控制台;
  *       {@code subscribe()} 已登记会话 registry, 会话结束自动兜底退订。</li>
  * </ul>
@@ -113,62 +116,40 @@ public class TerraBuildDemo extends ModuleDemo {
             return;
         }
 
-        final long actionTimeout = timeout("default_callback_timeout_ms");
+        final long actionTimeout = defaultTimeout();
         DemoLog.info(name(), "actionTimeout=" + actionTimeout + "ms");
 
-        while (true) {
-            Utils.printTitle("执行 " + name());
-            if (lastFileUuid != null) {
-                console("(已缓存 fileUuid=" + lastFileUuid + " fileId=" + lastFileId + ")");
-            }
-            System.out.print(mainMenu());
-            int choice = Utils.readIntInRange(input, "请选择(1-5, q 退出): ", 1, 5);
-            if (choice == Utils.QUIT) {
-                DemoLog.info(name(), "退出 Terra Build 菜单");
-                break;
-            }
-            try {
-                switch (choice) {
-                    case 1: menuModelFiles(module, actionTimeout);     break;
-                    case 2: menuReconstruction(module, actionTimeout); break;
-                    case 3: createPanorama(module, actionTimeout);     break;
-                    case 4: menuSubscriptions(module);                 break;
-                    case 5: setLasWkt(module, actionTimeout);          break;
-                    default: break;
-                }
-            } catch (Exception e) {
-                console("   结果 -> [异常] " + Utils.describe(e));
-                DemoLog.error(name(), "菜单动作执行异常: " + Utils.describe(e), e);
-            }
-        }
+        Menu.of(this, "执行 " + name())
+                .banner("=== 建图重建 (Terra Build) ===")
+                .header(() -> {
+                    if (lastFileUuid != null) {
+                        console("(已缓存 fileUuid=" + lastFileUuid + " fileId=" + lastFileId + ")");
+                    }
+                })
+                .item("模型文件管理    (子菜单: 列表/详情/URL/重命名/上图/删除/上传回调)", () -> menuModelFiles(module, actionTimeout))
+                .item("重建任务        (子菜单: 创建/重试/停止/设置/质量报告/空三/图像)", () -> menuReconstruction(module, actionTimeout))
+                .item("全景拼接        (createPanorama)", () -> createPanorama(module, actionTimeout))
+                .item("WS 推送订阅     (子菜单: 重建状态/解压进度/模型状态)", () -> menuSubscriptions(module))
+                .item("设置 LAS 坐标系 (setLasWkt)", () -> setLasWkt(module, actionTimeout))
+                .exitLog("退出 Terra Build 菜单")
+                .run();
     }
 
-    // ==================== 子菜单 [1]：模型文件管理 ====================
+    // ==================== 子菜单 [1]: 模型文件管理 ====================
 
     private void menuModelFiles(TerraBuildModule module, long timeout) {
-        while (true) {
-            Utils.printTitle("模型文件管理");
-            System.out.print(modelFileMenu());
-            int c = Utils.readIntInRange(input, "请选择(1-7, q 返回): ", 1, 7);
-            if (c == Utils.QUIT) {
-                return;
-            }
-            try {
-                switch (c) {
-                    case 1: modelList(module, timeout);           break;
-                    case 2: modelDetail(module, timeout);         break;
-                    case 3: modelGetUrl(module, timeout);         break;
-                    case 4: modelRename(module, timeout);         break;
-                    case 5: modelShowOnMap(module, timeout);      break;
-                    case 6: modelDelete(module, timeout);         break;
-                    case 7: uploadModelCallback(module, timeout); break;
-                    default: break;
-                }
-            } catch (Exception e) {
-                console("   结果 -> [异常] " + Utils.describe(e));
-                DemoLog.error(name(), "模型文件操作异常: " + Utils.describe(e), e);
-            }
-        }
+        Menu.of(this, "模型文件管理")
+                .banner("--- 模型文件管理 ---")
+                .item("查询模型列表     (getModelFileList, 缓存 fileId/fileUuid)", () -> modelList(module, timeout))
+                .item("查询模型详情     (getModelDetail)", () -> modelDetail(module, timeout))
+                .item("获取文件 URL     (getModelFileUrl)", () -> modelGetUrl(module, timeout))
+                .item("重命名模型       (renameModel)", () -> modelRename(module, timeout))
+                .item("上图/下图控制    (showModelOnMap)", () -> modelShowOnMap(module, timeout))
+                .item("删除模型文件     (deleteModelFile)", () -> modelDelete(module, timeout))
+                .item("模型上传回调     (uploadModelCallback)", () -> uploadModelCallback(module, timeout))
+                .quit("返回")
+                .quitWord("返回")
+                .run();
     }
 
     /** [1-1] 查询模型文件列表, 缓存第一条的 fileId 和 fileUuid。 */
@@ -178,7 +159,7 @@ public class TerraBuildDemo extends ModuleDemo {
         int pageSize = cfg.intVal("list_page_size", 10);
         console("\n   查询模型文件列表: page=" + page + " pageSize=" + pageSize);
 
-        // 双参回调(error, result)：Await<FlightHubError> 走 runOutcome 三态骨架;
+        // 双参回调 (error, result): Await<FlightHubError> 走 runOutcome 三态骨架;
         // 业务结果用 AtomicReference 在回调中保存, 只在 Outcome.SUCCESS 分支解析——
         // convert 层对 null 输入会返回非 null 空 bean, 非成功时判空守卫会失效。
         final Await<FlightHubError> await = new Await<>(name() + ".getModelFileList");
@@ -199,12 +180,15 @@ public class TerraBuildDemo extends ModuleDemo {
                     result.getList() != null ? result.getList() : Collections.emptyList();
             console("   模型文件列表(本页 " + list.size() + " / 总计 " + result.getTotal() + "):");
             for (TerraBuildModelFileItem item : list) {
-                // fileType 的数值枚举 SDK 内均未标注(bean javadoc 标 "tif"/"b3dm"/"pnts" 字符串值却落在 int 字段, 疑为生成器串档;
+                // fileType 的数值枚举 SDK 内均未标注 (bean javadoc 标 "tif"/"b3dm"/"pnts" 字符串值却落在 int 字段, 疑为生成器串档;
                 // C++ 层 terra_build.h 仅注 "文件大类型"), 原样打印裸值
                 console("     id=" + item.getId() + " uuid=" + item.getUuid()
                     + " name=" + item.getName()
                     + " state=" + item.getState() + describeTerraState(item.getState())
                     + " fileType=" + item.getFileType());
+                console("       previewUrl=" + item.getPreviewUrl()
+                    + " createdAt=" + item.getCreatedAt()
+                    + " updatedAt=" + item.getUpdatedAt());
                 DemoLog.info(name(), "modelFile: id=" + item.getId() + " uuid=" + item.getUuid()
                     + " name=" + item.getName());
             }
@@ -237,7 +221,7 @@ public class TerraBuildDemo extends ModuleDemo {
         );
         if (o == Outcome.SUCCESS && ref.get() != null) {
             TerraModelDetailResult r = ref.get();
-            // size 单位为字节(TerraModelDetailResult bean javadoc: 文件大小(字节))
+            // size 单位为字节 (TerraModelDetailResult bean javadoc: 文件大小 (字节))
             console("     id=" + r.getId() + " uuid=" + r.getUuid()
                 + " name=" + r.getName()
                 + " state=" + r.getState() + describeTerraState(r.getState())
@@ -247,7 +231,7 @@ public class TerraBuildDemo extends ModuleDemo {
         }
     }
 
-    /** [1-3] 获取模型文件签名 URL。type 枚举: 1=原始文件(默认), 2=转换后 ZIP(出处: {@code TerraBuildModule.getModelFileUrl} javadoc)。 */
+    /** [1-3] 获取模型文件签名 URL。type 枚举: 1=原始文件 (默认), 2=转换后 ZIP(出处: {@code TerraBuildModule.getModelFileUrl} javadoc)。 */
     private void modelGetUrl(TerraBuildModule module, long timeout) {
         int fileId = resolveFileId();
         if (fileId < 0) {
@@ -306,7 +290,7 @@ public class TerraBuildDemo extends ModuleDemo {
     /**
      * [1-5] 加载/取消加载模型到地图。
      *
-     * <p>接口本身支持批量({@code TerraShowOnMapParams} 的 ids 列表与 selectFilter 全选过滤二选一),
+     * <p>接口本身支持批量 ({@code TerraShowOnMapParams} 的 ids 列表与 selectFilter 全选过滤二选一),
      * demo 仅演示单个 fileId(demo 未做批量, 非接口限制)。
      */
     private void modelShowOnMap(TerraBuildModule module, long timeout) {
@@ -314,15 +298,42 @@ public class TerraBuildDemo extends ModuleDemo {
         if (fileId < 0) {
             return;
         }
-        int state = Utils.readIntInRange(input, "   模型上图开关(0=下图 1=上图, q 取消): ", 0, 1);
+        int state = Utils.readIntInRange(input, "   模型上图开关(0=下图 1=上图, q 取消): ", 0, 1, "取消");
         if (state == Utils.QUIT) {
             return;
         }
 
+        Node cfg = params.node("terra_build");
         TerraShowOnMapParams p = new TerraShowOnMapParams();
         p.setIds(Collections.singletonList(fileId));
         p.setShowOnMap(state == 1);
-        console("   设置模型上图: fileId=" + fileId + " showOnMap=" + (state == 1));
+        p.setRestore(cfg.bool("show_on_map_restore", false));
+        int isDisplayed = cfg.intVal("show_on_map_is_displayed", -1);
+        if (isDisplayed >= 0) p.setIsDisplayed(isDisplayed == 1);
+        int inUniformHeight = cfg.intVal("show_on_map_in_uniform_height", -1);
+        if (inUniformHeight >= 0) p.setInUniformHeight(inUniformHeight == 1);
+        int modelDisplayMod = cfg.intVal("show_on_map_model_display_mod", -1);
+        if (modelDisplayMod >= 0) p.setModelDisplayMod(modelDisplayMod);
+        if (cfg.bool("show_on_map_select_enable", false)) {
+            TerraSelectFilterParams sf = new TerraSelectFilterParams();
+            sf.setGetSubFile(cfg.bool("select_get_sub_file", false));
+            sf.setStartTime(cfg.longVal("select_start_time", 0L));
+            sf.setEndTime(cfg.longVal("select_end_time", 0L));
+            sf.setFileAllTypes(stringList(cfg.list("select_file_all_types")));
+            sf.setPayloadModelKey(stringList(cfg.list("select_payload_model_key")));
+            sf.setParentId(cfg.intVal("select_parent_id", 0));
+            sf.setFileTags(stringList(cfg.list("select_file_tags")));
+            int shareState = cfg.intVal("select_share_state", -1);
+            if (shareState >= 0) sf.setShareState(shareState);
+            int selectShowOnMap = cfg.intVal("select_show_on_map", -1);
+            if (selectShowOnMap >= 0) sf.setShowOnMap(selectShowOnMap == 1);
+            p.setSelectFilter(sf);
+            p.setIds(new ArrayList<>());
+        }
+        console("   设置模型上图: fileId=" + fileId + " showOnMap=" + (state == 1)
+            + " restore=" + p.isRestore() + " isDisplayed=" + p.getIsDisplayed()
+            + " inUniformHeight=" + p.getInUniformHeight()
+            + " modelDisplayMod=" + p.getModelDisplayMod());
 
         final Await<FlightHubError> await = new Await<>(name() + ".showModelOnMap");
         final AtomicReference<TerraShowOnMapResult> ref = new AtomicReference<>();
@@ -340,7 +351,7 @@ public class TerraBuildDemo extends ModuleDemo {
         }
     }
 
-    /** [1-6] 删除模型文件(危险动作, 须输入 yes 二次确认)。 */
+    /** [1-6] 删除模型文件 (危险动作, 须输入 yes 二次确认)。 */
     private void modelDelete(TerraBuildModule module, long timeout) {
         int fileId = resolveFileId();
         if (fileId < 0) {
@@ -350,9 +361,22 @@ public class TerraBuildDemo extends ModuleDemo {
             return;
         }
 
-        // deleteModelFile 的回调类型是 FlightHubCallback.ResultCallback, 走基类 syncOutcome 三态化
-        Outcome o = syncOutcome("删除模型文件", cb -> module.deleteModelFile(fileId, cb), timeout);
-        // FAILED = 服务端明确拒绝, 文件确定还在, 保留缓存避免用户被迫重查；
+        final Await<FlightHubError> await = new Await<>(name() + ".deleteModelFileWithResult");
+        final AtomicReference<TerraDeleteModelFilesResult> ref = new AtomicReference<>();
+        Outcome o = runOutcome("删除模型文件", timeout, await, () ->
+            module.deleteModelFileWithResult(fileId, new FlightHubCallback.TerraDeleteModelFilesCallback() {
+                @Override
+                public void onResult(FlightHubError error, TerraDeleteModelFilesResult result) {
+                    ref.set(result);
+                    await.set(error);
+                }
+            })
+        );
+        if (o == Outcome.SUCCESS && ref.get() != null) {
+            TerraDeleteModelFilesResult r = ref.get();
+            console("   hasLockFiles=" + r.isHasLockFiles() + " lockFiles=" + r.getLockFiles());
+        }
+        // FAILED = 服务端明确拒绝, 文件确定还在, 保留缓存避免用户被迫重查;
         // SUCCESS/TIMEOUT(可能已生效)才清空缓存, 避免后续菜单沿用已删 fileId。
         if (o != Outcome.FAILED && lastFileId == fileId) {
             lastFileId = -1;
@@ -361,7 +385,7 @@ public class TerraBuildDemo extends ModuleDemo {
         }
     }
 
-    /** [1-7] 模型上传回调(外部工具上传模型文件后, 调用此接口通知服务端; objectKey/name 必填)。 */
+    /** [1-7] 模型上传回调 (外部工具上传模型文件后, 调用此接口通知服务端; objectKey/name 必填)。 */
     private void uploadModelCallback(TerraBuildModule module, long timeout) {
         Node cfg = params.node("terra_build");
         String objectKey = cfg.str("upload_object_key", "");
@@ -405,31 +429,20 @@ public class TerraBuildDemo extends ModuleDemo {
         }
     }
 
-    // ==================== 子菜单 [2]：重建任务 ====================
+    // ==================== 子菜单 [2]: 重建任务 ====================
 
     private void menuReconstruction(TerraBuildModule module, long timeout) {
-        while (true) {
-            Utils.printTitle("重建任务");
-            System.out.print(reconstructionMenu());
-            int c = Utils.readIntInRange(input, "请选择(1-6, q 返回): ", 1, 6);
-            if (c == Utils.QUIT) {
-                return;
-            }
-            try {
-                switch (c) {
-                    case 1: reconCreate(module, timeout);           break;
-                    case 2: reconRetryOrStop(module, timeout);      break;
-                    case 3: reconGetSettings(module, timeout);      break;
-                    case 4: reconGetQualityReport(module, timeout); break;
-                    case 5: reconGetSfmResult(module, timeout);     break;
-                    case 6: reconGetImages(module, timeout);        break;
-                    default: break;
-                }
-            } catch (Exception e) {
-                console("   结果 -> [异常] " + Utils.describe(e));
-                DemoLog.error(name(), "重建任务异常: " + Utils.describe(e), e);
-            }
-        }
+        Menu.of(this, "重建任务")
+                .banner("--- 重建任务 (建议: [1] 创建 → 主菜单 [4] WS 订阅跟踪进度) ---")
+                .item("创建重建任务     (createReconstruction, 缓存 fileId/fileUuid)", () -> reconCreate(module, timeout))
+                .item("重试/停止重建    (retryReconstruction / stopReconstruction)", () -> reconRetryOrStop(module, timeout))
+                .item("查询重建设置     (getReconstructionSettings)", () -> reconGetSettings(module, timeout))
+                .item("获取质量报告     (getQualityReport)", () -> reconGetQualityReport(module, timeout))
+                .item("获取空三结果     (getSfmResult)", () -> reconGetSfmResult(module, timeout))
+                .item("获取重建图像列表 (getReconstructionImages)", () -> reconGetImages(module, timeout))
+                .quit("返回")
+                .quitWord("返回")
+                .run();
     }
 
     /**
@@ -540,7 +553,7 @@ public class TerraBuildDemo extends ModuleDemo {
             console("     state=" + r.getState() + describeTerraState(r.getState()));
             if (r.getReconstructionSettings() != null) {
                 // reconstructionMode 取值枚举 SDK 内确无标注; qualityLevel 在本 settings bean/结构体两层未给取值,
-                // 但 C++ 参数侧同名字段有标注(terra_build.h ReconParameter3D: 1=高, 2=中, 3=低; Lidar/3DGS 变体语义各异), 此处原样打印裸值
+                // 但 C++ 参数侧同名字段有标注 (terra_build.h ReconParameter3D: 1=高, 2=中, 3=低; Lidar/3DGS 变体语义各异), 此处原样打印裸值
                 console("     reconName=" + r.getReconstructionSettings().getName()
                     + " mode=" + r.getReconstructionSettings().getReconstructionMode()
                     + " qualityLevel=" + r.getReconstructionSettings().getQualityLevel());
@@ -552,9 +565,9 @@ public class TerraBuildDemo extends ModuleDemo {
     /**
      * [2-4] 获取质量报告 URL。
      *
-     * <p>language 取值 SDK 内两处注释不一致(C++ {@code TerraBuildReportSetting} 标 zh/en,
+     * <p>language 取值 SDK 内两处注释不一致 (C++ {@code TerraBuildReportSetting} 标 zh/en,
      * 创建参数 bean 标 zh/en/es/fr/de/ja/ko), 以实际为准; measureUnitSystem 两源一致:
-     * {@code metric}=公制(默认) / {@code imperial}=英制。
+     * {@code metric}=公制 (默认) / {@code imperial}=英制。
      */
     private void reconGetQualityReport(TerraBuildModule module, long timeout) {
         String fileUuid = resolveFileUuid();
@@ -634,7 +647,7 @@ public class TerraBuildDemo extends ModuleDemo {
         if (o == Outcome.SUCCESS && ref.get() != null) {
             TerraBuildReconstructionImagesResult r = ref.get();
             int count = r.getList() != null ? r.getList().size() : 0;
-            // total 字段语义 SDK 内注释不一致(Java bean 标"总容量(KB)"且 list 标"HMS 数据项列表", 疑为生成器串档; C++ 层无注释), 原样打印以实际为准
+            // total 字段语义 SDK 内注释不一致 (Java bean 标"总容量 (KB)"且 list 标"HMS 数据项列表", 疑为生成器串档; C++ 层无注释), 原样打印以实际为准
             console("     图像列表: 返回 " + count + " 条, total=" + r.getTotal());
             DemoLog.info(name(), "reconImages: total=" + r.getTotal() + " count=" + count);
         }
@@ -680,31 +693,20 @@ public class TerraBuildDemo extends ModuleDemo {
         }
     }
 
-    // ==================== 子菜单 [4]：WS 推送订阅 ====================
+    // ==================== 子菜单 [4]: WS 推送订阅 ====================
 
     private void menuSubscriptions(TerraBuildModule module) {
-        while (true) {
-            Utils.printTitle("WS 推送订阅");
-            System.out.print(subscriptionMenu());
-            int c = Utils.readIntInRange(input, "请选择(1-3, q 返回): ", 1, 3);
-            if (c == Utils.QUIT) {
-                return;
-            }
-            try {
-                switch (c) {
-                    case 1: listenReconstructionStatus(module); break;
-                    case 2: listenUnzipProgress(module);        break;
-                    case 3: listenModelStatusChanged(module);   break;
-                    default: break;
-                }
-            } catch (Exception e) {
-                console("   结果 -> [异常] " + Utils.describe(e));
-                DemoLog.error(name(), "订阅操作异常: " + Utils.describe(e), e);
-            }
-        }
+        Menu.of(this, "WS 推送订阅")
+                .banner("--- WS 推送订阅 (按 Enter 退订, 推送只落日志文件) ---")
+                .item("重建任务状态变更 (listenReconstructionStatusChanged)", () -> listenReconstructionStatus(module))
+                .item("模型解压进度     (listenTerraUnzipProgress)", () -> listenUnzipProgress(module))
+                .item("模型状态变更     (listenTerraModelStatusChanged)", () -> listenModelStatusChanged(module))
+                .quit("返回")
+                .quitWord("返回")
+                .run();
     }
 
-    /** [4-1] 订阅重建任务状态变更(阻塞等待, 按 Enter 退订; 推送只落日志文件, 不刷控制台)。 */
+    /** [4-1] 订阅重建任务状态变更 (阻塞等待, 按 Enter 退订; 推送只落日志文件, 不刷控制台)。 */
     private void listenReconstructionStatus(TerraBuildModule module) {
         console("\n>> [重建状态变更监听] 开始监听(推送只落日志文件) ...");
         int listenId = module.listenReconstructionStatusChanged(new FlightHubCallback.TerraBuildReconstructionStatusChangedCallback() {
@@ -735,7 +737,7 @@ public class TerraBuildDemo extends ModuleDemo {
         hint("已退订重建状态变更");
     }
 
-    /** [4-2] 订阅模型解压进度(阻塞等待, 按 Enter 退订; 推送只落日志文件, 不刷控制台)。 */
+    /** [4-2] 订阅模型解压进度 (阻塞等待, 按 Enter 退订; 推送只落日志文件, 不刷控制台)。 */
     private void listenUnzipProgress(TerraBuildModule module) {
         console("\n>> [模型解压进度监听] 开始监听(推送只落日志文件) ...");
         int listenId = module.listenTerraUnzipProgress(new FlightHubCallback.TerraUnzipProgressCallback() {
@@ -767,7 +769,7 @@ public class TerraBuildDemo extends ModuleDemo {
         hint("已退订解压进度");
     }
 
-    /** [4-3] 订阅模型状态变更(阻塞等待, 按 Enter 退订; 推送只落日志文件, 不刷控制台)。 */
+    /** [4-3] 订阅模型状态变更 (阻塞等待, 按 Enter 退订; 推送只落日志文件, 不刷控制台)。 */
     private void listenModelStatusChanged(TerraBuildModule module) {
         console("\n>> [模型状态变更监听] 开始监听(推送只落日志文件) ...");
         int listenId = module.listenTerraModelStatusChanged(new FlightHubCallback.TerraModelStatusChangedCallback() {
@@ -805,7 +807,7 @@ public class TerraBuildDemo extends ModuleDemo {
      *
      * <p>仅适用于 subFileType=FormatLas(7) 的模型文件: 上传 LAS 后若探测到坐标系缺失,
      * 模型停在状态 4(选择坐标系), 此时调用本接口写入坐标系并触发 Las2Pnts 转换
-     * (见 {@code TerraSetLasWktParams} bean javadoc)。wkt 支持 EPSG 代码(如 "EPSG:4326")或完整 WKT 字符串。
+     * (见 {@code TerraSetLasWktParams} bean javadoc)。wkt 支持 EPSG 代码 (如 "EPSG: 4326")或完整 WKT 字符串。
      */
     private void setLasWkt(TerraBuildModule module, long timeout) {
         String fileUuid = resolveFileUuid();
@@ -838,7 +840,7 @@ public class TerraBuildDemo extends ModuleDemo {
     // ==================== 辅助方法 ====================
 
     /**
-     * 解析 fileId：优先用会话缓存 {@link #lastFileId}, 其次配置 {@code terra_build.file_id},
+     * 解析 fileId: 优先用会话缓存 {@link #lastFileId}, 其次配置 {@code terra_build.file_id},
      * 均无时提示并返回 -1(调用方中止)。
      */
     private int resolveFileId() {
@@ -855,7 +857,7 @@ public class TerraBuildDemo extends ModuleDemo {
     }
 
     /**
-     * 解析 fileUuid：优先用会话缓存 {@link #lastFileUuid}, 其次配置 {@code terra_build.file_uuid},
+     * 解析 fileUuid: 优先用会话缓存 {@link #lastFileUuid}, 其次配置 {@code terra_build.file_uuid},
      * 均无时提示并返回 null(调用方中止)。
      */
     private String resolveFileUuid() {
@@ -871,19 +873,8 @@ public class TerraBuildDemo extends ModuleDemo {
         return null;
     }
 
-    /** 危险动作二次确认：输入 yes(不区分大小写)才执行, EOF/其他输入一律取消。 */
-    private boolean confirmDangerous(String action) {
-        String line = Utils.readLine(input,
-            "\n   警告: 即将执行「" + action + "」\n   输入 yes 确认, 其他取消: ");
-        boolean ok = line != null && line.equalsIgnoreCase("yes");
-        if (!ok) {
-            hint("已取消");
-        }
-        return ok;
-    }
-
     /**
-     * 建图文件状态枚举描述(出处: {@code TerraBuildModelFileItem.getState} bean javadoc,
+     * 建图文件状态枚举描述 (出处: {@code TerraBuildModelFileItem.getState} bean javadoc,
      * 与 C++ 层 {@code src/api/terra_build.h} 注释逐字一致)。
      */
     private static String describeTerraState(int state) {
@@ -918,82 +909,14 @@ public class TerraBuildDemo extends ModuleDemo {
         }
     }
 
-    /** 纯控制台输出(不落日志文件), 用于菜单文案与结果回显。 */
-    private void console(String line) {
-        System.out.println(line);
+    private List<String> stringList(List<Object> raw) {
+        List<String> out = new ArrayList<>();
+        if (raw != null) {
+            for (Object o : raw) {
+                out.add(String.valueOf(o));
+            }
+        }
+        return out;
     }
 
-    /** 提示信息双写：既落日志文件(带 demo 名 tag)又回显控制台, 用于前置条件不满足、取消等需留痕的提示。 */
-    private void hint(String msg) {
-        DemoLog.info(name(), msg);
-        console("   " + msg);
-    }
-
-    /** 监听推送专用：只落日志文件不刷控制台, 避免推送打断菜单交互。 */
-    private void pushLog(String line) {
-        DemoLog.info(name(), line);
-    }
-
-    // ==================== 菜单文案 ====================
-
-    /**
-     * 主菜单文案：5 个菜单项对应 5 个功能域([1][2][4] 为子菜单, 见类 Javadoc 菜单树)。
-     * 增删菜单项时须同步 {@link #run()} 中的 switch 分支与 {@code readIntInRange} 的取值上界。
-     */
-    private String mainMenu() {
-        return "\n"
-            + "  === 建图重建 (Terra Build) ===\n"
-            + "  1.  模型文件管理    (子菜单: 列表/详情/URL/重命名/上图/删除/上传回调)\n"
-            + "  2.  重建任务        (子菜单: 创建/重试/停止/设置/质量报告/空三/图像)\n"
-            + "  3.  全景拼接        (createPanorama)\n"
-            + "  4.  WS 推送订阅     (子菜单: 重建状态/解压进度/模型状态)\n"
-            + "  5.  设置 LAS 坐标系 (setLasWkt)\n"
-            + "\n  q.  返回上级菜单\n";
-    }
-
-    /**
-     * 模型文件管理子菜单文案：7 个菜单项与 {@code TerraBuildModule} 同名接口一一对应(见类 Javadoc 菜单树)。
-     * 增删菜单项时须同步 {@link #menuModelFiles} 中的 switch 分支与 {@code readIntInRange} 的取值上界。
-     */
-    private String modelFileMenu() {
-        return "\n"
-            + "  --- 模型文件管理 ---\n"
-            + "  1. 查询模型列表     (getModelFileList, 缓存 fileId/fileUuid)\n"
-            + "  2. 查询模型详情     (getModelDetail)\n"
-            + "  3. 获取文件 URL     (getModelFileUrl)\n"
-            + "  4. 重命名模型       (renameModel)\n"
-            + "  5. 上图/下图控制    (showModelOnMap)\n"
-            + "  6. 删除模型文件     (deleteModelFile)\n"
-            + "  7. 模型上传回调     (uploadModelCallback)\n"
-            + "\n  q.  返回\n";
-    }
-
-    /**
-     * 重建任务子菜单文案：6 个菜单项与 {@code TerraBuildModule} 接口对应([2] 一项对应重试/停止两个接口, 见类 Javadoc 菜单树)。
-     * 增删菜单项时须同步 {@link #menuReconstruction} 中的 switch 分支与 {@code readIntInRange} 的取值上界。
-     */
-    private String reconstructionMenu() {
-        return "\n"
-            + "  --- 重建任务 (建议: [1] 创建 → 主菜单 [4] WS 订阅跟踪进度) ---\n"
-            + "  1. 创建重建任务     (createReconstruction, 缓存 fileId/fileUuid)\n"
-            + "  2. 重试/停止重建    (retryReconstruction / stopReconstruction)\n"
-            + "  3. 查询重建设置     (getReconstructionSettings)\n"
-            + "  4. 获取质量报告     (getQualityReport)\n"
-            + "  5. 获取空三结果     (getSfmResult)\n"
-            + "  6. 获取重建图像列表 (getReconstructionImages)\n"
-            + "\n  q.  返回\n";
-    }
-
-    /**
-     * WS 推送订阅子菜单文案：3 个菜单项与 {@code TerraBuildModule} 同名 listen 接口一一对应(见类 Javadoc 菜单树)。
-     * 增删菜单项时须同步 {@link #menuSubscriptions} 中的 switch 分支与 {@code readIntInRange} 的取值上界。
-     */
-    private String subscriptionMenu() {
-        return "\n"
-            + "  --- WS 推送订阅 (按 Enter 退订, 推送只落日志文件) ---\n"
-            + "  1. 重建任务状态变更 (listenReconstructionStatusChanged)\n"
-            + "  2. 模型解压进度     (listenTerraUnzipProgress)\n"
-            + "  3. 模型状态变更     (listenTerraModelStatusChanged)\n"
-            + "\n  q.  返回\n";
-    }
 }

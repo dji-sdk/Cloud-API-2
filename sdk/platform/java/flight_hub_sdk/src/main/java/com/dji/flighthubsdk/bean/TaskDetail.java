@@ -59,7 +59,7 @@ public final class TaskDetail {
     private String deletedAt;
     /** 是否支持断点续飞 */
     private boolean isBreakPointResume;
-    /** 媒体上传状态 */
+    /** 媒体上传状态。枚举：0=待上传, 1=上传中, 2=上传结束 */
     private int mediaUploadStatus;
     /** 避障信息列表 */
     private List<WaylineObstacle> obstacles;
@@ -67,6 +67,10 @@ public final class TaskDetail {
     private String runAt;
     /** 任务标签列表 */
     private List<String> tags;
+    /** 云云对接存储桶 ID */
+    private String cloudToCloudId;
+    /** 是否有快速建模任务 */
+    private boolean fastReconstruction;
     /** 更新时间（ISO 8601） */
     private String updatedAt;
     /** 航线预估时长，单位：秒 */
@@ -194,7 +198,7 @@ public final class TaskDetail {
     public String getDeletedAt() { return deletedAt; }
     /** 是否支持断点续飞 */
     public boolean isBreakPointResume() { return isBreakPointResume; }
-    /** 媒体上传状态 */
+    /** 媒体上传状态。枚举：0=待上传, 1=上传中, 2=上传结束 */
     public int getMediaUploadStatus() { return mediaUploadStatus; }
     /** 避障信息列表 */
     public List<WaylineObstacle> getObstacles() { return obstacles; }
@@ -202,6 +206,16 @@ public final class TaskDetail {
     public String getRunAt() { return runAt; }
     /** 任务标签列表 */
     public List<String> getTags() { return tags; }
+
+    /** 云云对接存储桶 ID */
+    public String getCloudToCloudId() { return cloudToCloudId; }
+    /** 云云对接存储桶 ID */
+    public void setCloudToCloudId(String cloudToCloudId) { this.cloudToCloudId = cloudToCloudId; }
+
+    /** 是否有快速建模任务 */
+    public boolean isFastReconstruction() { return fastReconstruction; }
+    /** 是否有快速建模任务 */
+    public void setFastReconstruction(boolean fastReconstruction) { this.fastReconstruction = fastReconstruction; }
     /** 更新时间（ISO 8601） */
     public String getUpdatedAt() { return updatedAt; }
     /** 航线预估时长，单位：秒 */
@@ -332,7 +346,7 @@ public final class TaskDetail {
         this.isBreakPointResume = breakPointResume;
     }
 
-    /** 媒体上传状态 */
+    /** 媒体上传状态。枚举：0=待上传, 1=上传中, 2=上传结束 */
     public void setMediaUploadStatus(int mediaUploadStatus) {
         this.mediaUploadStatus = mediaUploadStatus;
     }

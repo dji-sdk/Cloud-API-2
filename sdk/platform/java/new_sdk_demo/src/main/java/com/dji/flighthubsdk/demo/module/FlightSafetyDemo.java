@@ -12,6 +12,7 @@ import com.dji.flighthubsdk.bean.FlightSafeSyncField;
 import com.dji.flighthubsdk.bean.FlightSafeSyncResult;
 import com.dji.flighthubsdk.bean.FlightSmartPlanModeResult;
 import com.dji.flighthubsdk.core.FlightSettingsModule;
+import com.dji.flighthubsdk.demo.base.Menu;
 import com.dji.flighthubsdk.demo.base.ModuleDemo;
 import com.dji.flighthubsdk.demo.runtime.Await;
 import com.dji.flighthubsdk.demo.runtime.DemoLog;
@@ -21,9 +22,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * 飞行安全配置 Demo(菜单驱动)：智能规划模式、失控动作、飞行任务高度、返航高度、空中回传开关。
+ * 飞行安全配置 Demo(菜单驱动): 智能规划模式、失控动作、飞行任务高度、返航高度、空中回传开关。
  *
- * <p>对应 {@code FlightSettingsModule} 全部 5 个设置接口：
+ * <p>对应 {@code FlightSettingsModule} 全部 5 个设置接口:
  *
  * <pre>
  * 主菜单
@@ -34,15 +35,15 @@ import java.util.concurrent.atomic.AtomicReference;
  * └── [5] 空中回传开关    setAirTransferEnable
  * </pre>
  *
- * <p><b>SDK 入口：</b>{@code session.drone().getFlightSettingsModule()}(挂在 Drone 上, 需要飞行器设备)。
+ * <p><b>SDK 入口: </b>{@code session.drone().getFlightSettingsModule()}(挂在 Drone 上, 需要飞行器设备)。
  *
- * <p><b>设计要点：</b>
+ * <p><b>设计要点: </b>
  * <ul>
- *   <li>均为即时 HTTP 设置动作, 无进度订阅、无退出收尾, 参数由用户交互输入；</li>
- *   <li>三态结果回显(SUCCESS/TIMEOUT/FAILED), 超时与失败明确区分；</li>
- *   <li>成功后回显服务端 echo 值与设备影子同步状态({@link FlightSafeSyncResult},
+ *   <li>均为即时 HTTP 设置动作, 无进度订阅、无退出收尾, 参数由用户交互输入; </li>
+ *   <li>三态结果回显 (SUCCESS/TIMEOUT/FAILED), 超时与失败明确区分; </li>
+ *   <li>成功后回显服务端 echo 值与设备影子同步状态 ({@link FlightSafeSyncResult},
  *       经各结果 bean 的 {@code getDeviceShadowSync()} 获取), 服务端未返回同步信息的接口
- *       静默跳过(见 {@link #printSyncResult}); [5] setAirTransferEnable 回调无结果对象
+ *       静默跳过 (见 {@link #printSyncResult}); [5] setAirTransferEnable 回调无结果对象
  *       (仅 error), 成功时只回显本地开关状态。</li>
  * </ul>
  */
@@ -71,38 +72,25 @@ public class FlightSafetyDemo extends ModuleDemo {
             return;
         }
 
-        final long actionTimeout = timeout("default_callback_timeout_ms");
+        final long actionTimeout = defaultTimeout();
         DemoLog.info(name(), "actionTimeout=" + actionTimeout + "ms");
 
-        while (true) {
-            Utils.printTitle("执行 " + name());
-            System.out.print(menu());
-            int choice = Utils.readIntInRange(input, "请选择(1-5, q 退出): ", 1, 5);
-            if (choice == Utils.QUIT) {
-                DemoLog.info(name(), "退出飞行安全配置菜单");
-                break;
-            }
-            try {
-                switch (choice) {
-                    case 1: setFlightSmartPlanMode(module, actionTimeout); break;
-                    case 2: setOutOfControlAction(module, actionTimeout);  break;
-                    case 3: setFlightTaskHeight(module, actionTimeout);    break;
-                    case 4: setRthAltitude(module, actionTimeout);         break;
-                    case 5: setAirTransferEnable(module, actionTimeout);   break;
-                    default: break;
-                }
-            } catch (Exception e) {
-                console("   结果 -> [异常] " + Utils.describe(e));
-                DemoLog.error(name(), "菜单动作执行异常: " + Utils.describe(e), e);
-            }
-        }
+        Menu.of(this, "执行 " + name())
+                .banner("=== 飞行安全配置 (Flight Settings) ===")
+                .item("设置智能规划模式   (setFlightSmartPlanMode)", () -> setFlightSmartPlanMode(module, actionTimeout))
+                .item("设置失控动作       (setOutOfControlAction)", () -> setOutOfControlAction(module, actionTimeout))
+                .item("设置飞行任务高度   (setFlightTaskHeight)", () -> setFlightTaskHeight(module, actionTimeout))
+                .item("设置返航高度       (setRthAltitude)", () -> setRthAltitude(module, actionTimeout))
+                .item("设置空中回传开关   (setAirTransferEnable)", () -> setAirTransferEnable(module, actionTimeout))
+                .exitLog("退出飞行安全配置菜单")
+                .run();
     }
 
     // ==================== [1] 智能规划模式 ====================
 
     private void setFlightSmartPlanMode(FlightSettingsModule module, long timeout) {
-        // 注意取值语义与直觉相反: 0=开启, 1=关闭(以 SDK bean FlightSmartPlanModeResult 注释为准)
-        final int mode = Utils.readIntInRange(input, "   请输入规划模式(0=开启 1=关闭, q 取消): ", 0, 1);
+        // 注意取值语义与直觉相反: 0=开启, 1=关闭 (以 SDK bean FlightSmartPlanModeResult 注释为准)
+        final int mode = Utils.readIntInRange(input, "   请输入规划模式(0=开启 1=关闭, q 取消): ", 0, 1, "取消");
         if (mode == Utils.QUIT) return;
         console("   设置智能规划模式: mode=" + mode + "(0=开启 1=关闭)");
 
@@ -164,8 +152,15 @@ public class FlightSafetyDemo extends ModuleDemo {
     // ==================== [3] 飞行任务高度 ====================
 
     private void setFlightTaskHeight(FlightSettingsModule module, long timeout) {
-        final int height = askInt("   请输入飞行任务高度(单位: 米, q 取消): ");
-        if (height == Utils.QUIT) return;
+        String line = Utils.readLineEcho(input, "   请输入飞行任务高度(单位: 米, 支持小数, q 取消): ");
+        if (line == null || "q".equalsIgnoreCase(line.trim())) return;
+        final double height;
+        try {
+            height = Double.parseDouble(line.trim());
+        } catch (Exception e) {
+            hint("高度格式不正确: " + line);
+            return;
+        }
         console("   设置飞行任务高度: height=" + height + "m");
 
         final Await<FlightHubError> await = new Await<>(name() + ".setFlightTaskHeight");
@@ -224,7 +219,7 @@ public class FlightSafetyDemo extends ModuleDemo {
     // ==================== [5] 空中回传开关 ====================
 
     private void setAirTransferEnable(FlightSettingsModule module, long timeout) {
-        int state = Utils.readIntInRange(input, "   请输入空中回传开关(0=禁用 1=启用, q 取消): ", 0, 1);
+        int state = Utils.readIntInRange(input, "   请输入空中回传开关(0=禁用 1=启用, q 取消): ", 0, 1, "取消");
         if (state == Utils.QUIT) return;
         final boolean enabled = state != 0;
         console("   设置空中回传开关: enabled=" + enabled);
@@ -249,9 +244,9 @@ public class FlightSafetyDemo extends ModuleDemo {
     // ==================== 辅助方法 ====================
 
     /**
-     * 交互读取一个非负整数参数(高度类), 输入 q/EOF 返回 {@link Utils#QUIT} 表示取消, 非数字/负数循环重试。
+     * 交互读取一个非负整数参数 (高度类), 输入 q/EOF 返回 {@link Utils#QUIT} 表示取消, 非数字/负数循环重试。
      *
-     * <p>不设上界(各机型限高/返航高度范围不同, 由服务端校验并返回错误码);
+     * <p>不设上界 (各机型限高/返航高度范围不同, 由服务端校验并返回错误码);
      * 拒绝负数除物理语义外, 也避免用户输入 {@code -1} 与 QUIT 哨兵冲突被误判为取消。
      */
     private int askInt(String prompt) {
@@ -275,8 +270,8 @@ public class FlightSafetyDemo extends ModuleDemo {
     }
 
     /**
-     * 打印设置结果中的设备影子同步状态({@link FlightSafeSyncResult}, 经结果 bean 的
-     * {@code getDeviceShadowSync()} 获取)：整体 status + 逐字段 synced 标志。
+     * 打印设置结果中的设备影子同步状态 ({@link FlightSafeSyncResult}, 经结果 bean 的
+     * {@code getDeviceShadowSync()} 获取): 整体 status + 逐字段 synced 标志。
      * 部分接口不 echo back 同步信息, 此时静默跳过, 不打印以免误导。
      */
     private void printSyncResult(FlightSafeSyncResult sync) {
@@ -299,32 +294,4 @@ public class FlightSafetyDemo extends ModuleDemo {
         }
     }
 
-    /** 纯控制台输出(不落日志文件), 用于菜单文案与结果回显。 */
-    private void console(String line) {
-        System.out.println(line);
-    }
-
-    /** 提示信息双写：既落日志文件(带 demo 名 tag)又回显控制台, 用于前置条件不满足、取消等需留痕的提示。 */
-    private void hint(String msg) {
-        DemoLog.info(name(), msg);
-        console("   " + msg);
-    }
-
-    // ==================== 菜单文案 ====================
-
-    /**
-     * 主菜单文案：5 个设置项与 {@code FlightSettingsModule} 同名接口一一对应(见类 Javadoc 菜单树)。
-     * 增删菜单项时须同步 {@link #run()} 中的 switch 分支与 {@code readIntInRange} 的取值上界。
-     */
-    private String menu() {
-        return "\n"
-            + "  === 飞行安全配置 (Flight Settings) ===\n"
-            + "  1.  设置智能规划模式   (setFlightSmartPlanMode)\n"
-            + "  2.  设置失控动作       (setOutOfControlAction)\n"
-            + "  3.  设置飞行任务高度   (setFlightTaskHeight)\n"
-            + "  4.  设置返航高度       (setRthAltitude)\n"
-            + "  5.  设置空中回传开关   (setAirTransferEnable)\n"
-            + "\n"
-            + "  q.  返回上级菜单\n";
-    }
 }

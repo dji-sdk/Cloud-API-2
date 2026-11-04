@@ -12,10 +12,11 @@ namespace flight_hub_sdk {
 
 class HMSModuleImpl : public IHMSModule, public drc_sdk::common::AsyncCaptureProtect{
 public:
-    explicit HMSModuleImpl();
+    explicit HMSModuleImpl(int session_id);
     ~HMSModuleImpl();
     void QueryHistoryHMSData(const HistoryHmsDataParam& params, std::function<void(FlightHubError err, const HistoryHmsDataResult&)> callback) override;
 
 private:
+    int session_id_;
 };
 }// namespace flight_hub_sdk

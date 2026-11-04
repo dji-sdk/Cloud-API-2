@@ -9,8 +9,8 @@
 
 using namespace flight_hub_sdk;
 
-DrcModuleImpl::DrcModuleImpl(std::shared_ptr<DrcLinkMgr> drc_link_mgr, const std::string& log_tag)
-    : drc_link_mgr_(std::move(drc_link_mgr)), log_tag_(log_tag) {
+DrcModuleImpl::DrcModuleImpl(std::shared_ptr<DrcLinkMgr> drc_link_mgr, const std::string& log_tag, int session_id)
+    : drc_link_mgr_(std::move(drc_link_mgr)), log_tag_(log_tag), session_id_(session_id) {
     LOG_INFO("[DrcModuleImpl] constructor, log_tag: %s", log_tag_.c_str());
     registerDrcLinkStateListener();
 }
@@ -59,7 +59,7 @@ void DrcModuleImpl::connectDrcLink(const std::function<void(FlightHubSdkErrorCod
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DRC_CONNECT_LINK, state_err, "[DrcModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_DRC_CONNECT_LINK, state_err, session_id_, "[DrcModuleImpl]");
 
         if (callback) {
             callback(state_err.error_code);
@@ -79,7 +79,7 @@ void DrcModuleImpl::disconnectDrcLink(const std::function<void(FlightHubSdkError
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DRC_DISCONNECT_LINK, state_err, "[DrcModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_DRC_DISCONNECT_LINK, state_err, session_id_, "[DrcModuleImpl]");
 
         if (callback) {
             callback(state_err.error_code);
@@ -102,7 +102,7 @@ void DrcModuleImpl::drcRtcQualityTest(const RtcQualityTestParams& params, const 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DRC_RTC_QUALITY_TEST, state_err, "[DrcModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_DRC_RTC_QUALITY_TEST, state_err, session_id_, "[DrcModuleImpl]");
 
         if (callback) {
             callback(state_err);

@@ -11,7 +11,7 @@ import java.util.Objects;
 public final class CheckUnlockLicenseResult {
 
     private List<String> errFileNames;
-    private List<String> errCertMismatch;
+    private List<ErrCertMismatch> errCertMismatch;
     private List<CheckUnlockLicenseResultItem> items;
     public CheckUnlockLicenseResult() {
     }
@@ -24,7 +24,7 @@ public final class CheckUnlockLicenseResult {
      * @param items 校验结果项列表
      */
     public CheckUnlockLicenseResult(
-            List<String> errFileNames, List<String> errCertMismatch, List<CheckUnlockLicenseResultItem> items) {
+            List<String> errFileNames, List<ErrCertMismatch> errCertMismatch, List<CheckUnlockLicenseResultItem> items) {
         this.errFileNames = errFileNames != null ? errFileNames : Collections.emptyList();
         this.errCertMismatch = errCertMismatch != null ? errCertMismatch : Collections.emptyList();
         this.items = items != null ? items : Collections.emptyList();
@@ -41,12 +41,12 @@ public final class CheckUnlockLicenseResult {
     }
 
     /** 证书不匹配列表 */
-    public List<String> getErrCertMismatch() {
+    public List<ErrCertMismatch> getErrCertMismatch() {
         return errCertMismatch;
     }
 
     /** 证书不匹配列表 */
-    public void setErrCertMismatch(List<String> errCertMismatch) {
+    public void setErrCertMismatch(List<ErrCertMismatch> errCertMismatch) {
         this.errCertMismatch = errCertMismatch;
     }
 

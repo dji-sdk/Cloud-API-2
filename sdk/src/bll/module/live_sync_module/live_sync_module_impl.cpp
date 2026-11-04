@@ -3,6 +3,8 @@
 
 #include "live_sync_module_impl.h"
 #include <base/common/logger.h>
+#include "base/utils/base64_codec.h"
+#include <AIGCJson.hpp>
 #include "http_interface/http_interface.h"
 #include "common/executors/executors.h"
 
@@ -10,7 +12,7 @@ using namespace flight_hub_sdk;
 
 namespace flight_hub_sdk {
 
-LiveSyncModuleImpl::LiveSyncModuleImpl() {
+LiveSyncModuleImpl::LiveSyncModuleImpl(int session_id) : session_id_(session_id) {
     LOG_INFO("LiveSyncModuleImpl: created");
 }
 
@@ -127,16 +129,30 @@ static LiveSyncDeviceV2 map_device_v2(const LiveSyncDeviceV2Http& h) {
     d.name             = h.name;
     d.device_model_key = h.device_model_key;
     d.device_type      = h.device_type;
-    for (const auto& cc : h.camera_capacity) {
-        LiveSyncCameraCapacity cap;
-        cap.camera_index = cc.camera_index;
-        for (const auto& v : cc.videos_list) {
-            LiveSyncVideoCapacity vc;
-            vc.video_type  = v.video_type;
-            vc.video_index = v.video_index;
-            cap.videos_list.push_back(vc);
+    // camera_capacity 为 base64 字符串，解码后解析内层 JSON；
+    // 字段缺省/空/解码或解析失败均视为无能力（空集合），不影响整条设备树解析。
+    if (!h.camera_capacity.empty()) {
+        std::string decoded = drc_sdk::base64_decode(h.camera_capacity);
+        if (!decoded.empty()) {
+            LiveSyncCameraCapacityPayloadHttp payload;
+            std::string parse_err;
+            if (aigc::JsonHelper::JsonToObject(payload, decoded, {}, &parse_err)) {
+                for (const auto& cc : payload.camera_list) {
+                    LiveSyncCameraCapacity cap;
+                    cap.camera_index = cc.camera_index;
+                    for (const auto& v : cc.video_list) {
+                        LiveSyncVideoCapacity vc;
+                        vc.video_type  = v.video_type;
+                        vc.video_index = v.video_index;
+                        cap.videos_list.push_back(vc);
+                    }
+                    d.camera_capacity.push_back(cap);
+                }
+            } else {
+                LOG_WARN("map_device_v2: camera_capacity decode-json parse failed sn=%s, err=%s",
+                         h.sn.c_str(), parse_err.c_str());
+            }
         }
-        d.camera_capacity.push_back(cap);
     }
     return d;
 }
@@ -156,19 +172,20 @@ void LiveSyncModuleImpl::createLiveSync(
     post_live_sync_create(req,
         [this, weak_ptr, callback](const LiveSyncCreateResponse& rsp, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, rsp]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, rsp, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 创建转码器; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_LIVE_SYNC_CREATE, err, "[LiveSyncModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_LIVE_SYNC_CREATE, err, session_id_, "[LiveSyncModuleImpl]");
                 LiveSyncCreateResult result;
                 result.item      = map_live_sync_item(rsp);
                 result.limit     = rsp.limit;
                 result.has_limit = (rsp.limit > 0);
                 if (callback) { callback(err, result); }
             });
-        });
+        }, session_id_);
 }
 
 void LiveSyncModuleImpl::deleteLiveSync(
@@ -178,15 +195,16 @@ void LiveSyncModuleImpl::deleteLiveSync(
     delete_live_sync(id,
         [this, weak_ptr, callback](FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 删除转码器; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_LIVE_SYNC_DELETE, err, "[LiveSyncModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_LIVE_SYNC_DELETE, err, session_id_, "[LiveSyncModuleImpl]");
                 if (callback) { callback(err); }
             });
-        });
+        }, session_id_);
 }
 
 void LiveSyncModuleImpl::updateLiveSync(
@@ -222,13 +240,14 @@ void LiveSyncModuleImpl::updateLiveSync(
 
     if (!json_err.empty()) {
         LOG_ERROR("LiveSyncModuleImpl::updateLiveSync: ObjectToJson error: %s", json_err.c_str());
-        drc_sdk::common::Executors::Main()->Post([callback]() {
+        drc_sdk::common::Executors::Main()->Post([callback, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
             auto json_error = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED);
             // 埋点: 更新直播同步任务(请求体序列化失败, 未发起请求); 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_LIVE_SYNC_UPDATE, json_error, "[LiveSyncModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_LIVE_SYNC_UPDATE, json_error, session_id_, "[LiveSyncModuleImpl]");
             if (callback) { callback(json_error, {}); }
         });
         return;
@@ -237,16 +256,17 @@ void LiveSyncModuleImpl::updateLiveSync(
     put_live_sync_update(params.id, body,
         [this, weak_ptr, callback](const LiveSyncUpdateResponse& rsp, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, rsp]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, rsp, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 更新转码器（启用/停用或全量更新）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_LIVE_SYNC_UPDATE, err, "[LiveSyncModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_LIVE_SYNC_UPDATE, err, session_id_, "[LiveSyncModuleImpl]");
                 LiveSyncItem result = map_live_sync_item(rsp);
                 if (callback) { callback(err, result); }
             });
-        });
+        }, session_id_);
 }
 
 void LiveSyncModuleImpl::getLiveSyncList(
@@ -256,12 +276,13 @@ void LiveSyncModuleImpl::getLiveSyncList(
     get_live_sync_list(params,
         [this, weak_ptr, callback](const LiveSyncListResponse& rsp, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, rsp]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, rsp, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 分页查询转码器列表; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_LIVE_SYNC_GET_LIST, err, "[LiveSyncModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_LIVE_SYNC_GET_LIST, err, session_id_, "[LiveSyncModuleImpl]");
                 LiveSyncListResult result;
                 result.page  = rsp.page;
                 result.size  = rsp.size;
@@ -271,7 +292,7 @@ void LiveSyncModuleImpl::getLiveSyncList(
                 }
                 if (callback) { callback(err, result); }
             });
-        });
+        }, session_id_);
 }
 
 void LiveSyncModuleImpl::getLiveSyncDevicesV2(
@@ -280,12 +301,13 @@ void LiveSyncModuleImpl::getLiveSyncDevicesV2(
     get_live_sync_devices_v2(
         [this, weak_ptr, callback](const LiveSyncDevicesV2Response& rsp, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, rsp]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, rsp, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 获取可用设备树（V2，含基站/Dock）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_LIVE_SYNC_GET_DEVICES_V2, err, "[LiveSyncModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_LIVE_SYNC_GET_DEVICES_V2, err, session_id_, "[LiveSyncModuleImpl]");
                 LiveSyncDevicesV2Result result;
                 result.total = rsp.total;
                 for (const auto& item : rsp.list) {
@@ -298,7 +320,7 @@ void LiveSyncModuleImpl::getLiveSyncDevicesV2(
                 }
                 if (callback) { callback(err, result); }
             });
-        });
+        }, session_id_);
 }
 
 void LiveSyncModuleImpl::getLiveSyncSummary(
@@ -307,18 +329,19 @@ void LiveSyncModuleImpl::getLiveSyncSummary(
     get_live_sync_summary(
         [this, weak_ptr, callback](const LiveSyncSummaryResponse& rsp, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, rsp]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, rsp, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 获取转码器总数与启用数汇总; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_LIVE_SYNC_GET_SUMMARY, err, "[LiveSyncModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_LIVE_SYNC_GET_SUMMARY, err, session_id_, "[LiveSyncModuleImpl]");
                 LiveSyncSummaryResult result;
                 result.total      = rsp.total;
                 result.enable_cnt = rsp.enable_cnt;
                 if (callback) { callback(err, result); }
             });
-        });
+        }, session_id_);
 }
 
 }  // namespace flight_hub_sdk

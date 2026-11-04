@@ -9,12 +9,13 @@
 #include "bll/manager/device_list_mgr/device_list_mgr.h"
 
 #include <vector>
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class DeviceManageModuleImpl : public IDeviceManageModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit DeviceManageModuleImpl();
+    explicit DeviceManageModuleImpl(int session_id);
     ~DeviceManageModuleImpl() override;
 
     void getDeviceList(std::function<void(const std::vector<DeviceTopo>&, const FlightHubError err)> callback) override;
@@ -31,6 +32,7 @@ public:
     std::vector<DeviceTopo> getCachedDeviceList();
 
 private:
+    int session_id_;
     void initWorkspaceDeviceChangeListening();
     void initDeviceTopoChangeListening();
 

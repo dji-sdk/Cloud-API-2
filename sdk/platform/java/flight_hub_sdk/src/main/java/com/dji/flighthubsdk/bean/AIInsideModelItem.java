@@ -32,6 +32,12 @@ public class AIInsideModelItem {
     private List<Integer> digitalEffect = new ArrayList<>();
     /** 支持的可见光分辨率（0=1k, 1=2k） */
     private List<Integer> vlResolution = new ArrayList<>();
+    /** 模型类型列表 */
+    private List<Integer> modelTypes = new ArrayList<>();
+    /** 模型组合，JSON 对象字符串 */
+    private String modelCombination = "";
+    /** 算法装载状态：latest/updatable/not_loaded/expired/not_supported */
+    private String status = "";
 
     public AIInsideModelItem() {}
 
@@ -106,4 +112,22 @@ public class AIInsideModelItem {
 
     /** @param v 支持的可见光分辨率（0=1k, 1=2k） */
     public void setVlResolution(List<Integer> v) { this.vlResolution = v != null ? v : new ArrayList<>(); }
+
+    /** 模型类型列表 */
+    public List<Integer> getModelTypes() { return modelTypes; }
+
+    /** @param v 模型类型列表 */
+    public void setModelTypes(List<Integer> v) { this.modelTypes = v != null ? v : new ArrayList<>(); }
+
+    /** 模型组合，JSON 对象字符串 */
+    public String getModelCombination() { return modelCombination; }
+
+    /** @param v 模型组合，JSON 对象字符串 */
+    public void setModelCombination(String v) { this.modelCombination = v != null ? v : ""; }
+
+    /** 算法装载状态：latest/updatable/not_loaded/expired/not_supported */
+    public String getStatus() { return status; }
+
+    /** @param v 算法装载状态：latest/updatable/not_loaded/expired/not_supported */
+    public void setStatus(String v) { this.status = v != null ? v : ""; }
 }

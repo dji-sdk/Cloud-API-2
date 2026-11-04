@@ -9,7 +9,7 @@ import java.util.Objects;
 public final class DockStatusNetworkStateResult {
 
     private int quality;
-    private int rate;
+    private double rate;
     private int type;
     public DockStatusNetworkStateResult() {
     }
@@ -21,7 +21,7 @@ public final class DockStatusNetworkStateResult {
      * @param rate 速率
      * @param type 类型
      */
-    public DockStatusNetworkStateResult(int quality, int rate, int type) {
+    public DockStatusNetworkStateResult(int quality, double rate, int type) {
         this.quality = quality;
         this.rate = rate;
         this.type = type;
@@ -38,12 +38,12 @@ public final class DockStatusNetworkStateResult {
     }
 
     /** 速率 */
-    public int getRate() {
+    public double getRate() {
         return rate;
     }
 
     /** 速率 */
-    public void setRate(int rate) {
+    public void setRate(double rate) {
         this.rate = rate;
     }
 
@@ -67,7 +67,7 @@ public final class DockStatusNetworkStateResult {
         }
         DockStatusNetworkStateResult that = (DockStatusNetworkStateResult) o;
         return quality == that.quality
-                && rate == that.rate
+                && Double.compare(that.rate, rate) == 0
                 && type == that.type;
     }
 

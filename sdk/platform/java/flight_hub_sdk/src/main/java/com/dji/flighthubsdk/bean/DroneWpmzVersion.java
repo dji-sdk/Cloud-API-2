@@ -5,7 +5,7 @@ package com.dji.flighthubsdk.bean;
 
 import java.util.Objects;
 
-/** 飞行器航线解析库版本（wpmz_version）。EA340 消息推送补全（Phase D）。 */
+/** 飞行器上报的航线解析库版本（OSD / 设备推送字段 {@code wpmz_version}）。 */
 public final class DroneWpmzVersion {
 
     private String wpmzVersion;

@@ -62,6 +62,10 @@ public class IPsdkResourceModule {
     flighthubsdkmoduleJNI.IPsdkResourceModule_getPsdkSpeakerResourceListWrapper(swigCPtr, this, PsdkSpeakerResourceListCallback.getCPtr(callback), callback);
   }
 
+  public void getPsdkSpeakerResourceListWithFilterWrapper(PsdkSpeakerResourceListParams params, PsdkSpeakerResourceListCallback callback) {
+    flighthubsdkmoduleJNI.IPsdkResourceModule_getPsdkSpeakerResourceListWithFilterWrapper(swigCPtr, this, PsdkSpeakerResourceListParams.getCPtr(params), params, PsdkSpeakerResourceListCallback.getCPtr(callback), callback);
+  }
+
   public void createPsdkSpeakerResourceWrapper(CreatePsdkSpeakerResourceParams params, PsdkSpeakerResourceCallback callback) {
     flighthubsdkmoduleJNI.IPsdkResourceModule_createPsdkSpeakerResourceWrapper(swigCPtr, this, CreatePsdkSpeakerResourceParams.getCPtr(params), params, PsdkSpeakerResourceCallback.getCPtr(callback), callback);
   }
@@ -70,7 +74,7 @@ public class IPsdkResourceModule {
     flighthubsdkmoduleJNI.IPsdkResourceModule_editPsdkSpeakerResourceWrapper(swigCPtr, this, EditPsdkSpeakerResourceParams.getCPtr(params), params, PsdkSpeakerResourceCallback.getCPtr(callback), callback);
   }
 
-  public void deletePsdkSpeakerResourceWrapper(int resource_id, ResultCallbackWithError callback) {
+  public void deletePsdkSpeakerResourceWrapper(long resource_id, ResultCallbackWithError callback) {
     flighthubsdkmoduleJNI.IPsdkResourceModule_deletePsdkSpeakerResourceWrapper(swigCPtr, this, resource_id, ResultCallbackWithError.getCPtr(callback), callback);
   }
 

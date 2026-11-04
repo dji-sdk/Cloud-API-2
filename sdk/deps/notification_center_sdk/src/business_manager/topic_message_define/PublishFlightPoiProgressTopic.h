@@ -27,29 +27,38 @@ namespace notification_center {
 
     class FlightPoiProgressMsg {
     public:
-        std::string uuid;
-        std::string sn;
+        // 字段名/类型严格对齐设备 topic_task_flight_poi_progress 实际推送：
+        // {device_sn, drone_sn, center_point{lat,lon,height}, circle_radius, circle_speed,
+        //  max_circle_speed, reason, status(string), timestamp, execute_duration, payload_index}
         std::string device_sn;
-        FlightPoiProgressCenterPointMsg poi_center_point;
-        double speed = 0.0;
+        std::string drone_sn;
+        FlightPoiProgressCenterPointMsg center_point;
         double circle_radius = 0.0;
+        double circle_speed = 0.0;
+        double max_circle_speed = 0.0;
+        int reason = 0;
+        std::string status;            // 设备推送为字符串，如 "in_progress" / "ok"
+        long timestamp = 0;
+        int execute_duration = 0;
         std::string payload_index;
-        int status = 0;
-        int err_code = 0;
 
-        AIGC_JSON_HELPER(uuid, sn, device_sn, poi_center_point, speed, circle_radius, payload_index, status, err_code);
+        AIGC_JSON_HELPER(device_sn, drone_sn, center_point, circle_radius, circle_speed,
+                         max_circle_speed, reason, status, timestamp, execute_duration, payload_index);
 
         explicit operator FlightPoiProgress() const {
             FlightPoiProgress obj{};
-            obj.uuid = uuid;
-            obj.sn = sn;
             obj.device_sn = device_sn;
-            obj.poi_center_point = static_cast<FlightPoiProgressCenterPoint>(poi_center_point);
-            obj.speed = speed;
+            obj.drone_sn = drone_sn;
+            obj.poi_center_point = static_cast<FlightPoiProgressCenterPoint>(center_point);
             obj.circle_radius = circle_radius;
-            obj.payload_index = payload_index;
+            obj.circle_speed = circle_speed;
+            obj.max_circle_speed = max_circle_speed;
+            obj.speed = circle_speed;   // 兼容旧字段 speed
+            obj.reason = reason;
             obj.status = status;
-            obj.err_code = err_code;
+            obj.timestamp = timestamp;
+            obj.execute_duration = execute_duration;
+            obj.payload_index = payload_index;
             return obj;
         }
     };

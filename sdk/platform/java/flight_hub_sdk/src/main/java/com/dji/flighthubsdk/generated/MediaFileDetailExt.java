@@ -76,6 +76,255 @@ public class MediaFileDetailExt {
     return (cPtr == 0) ? null : new MediaFileGeoPosition(cPtr, false);
   }
 
+  public void setResolution(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_resolution_set(swigCPtr, this, value);
+  }
+
+  public String getResolution() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_resolution_get(swigCPtr, this);
+  }
+
+  public void setPhotographer(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_photographer_set(swigCPtr, this, value);
+  }
+
+  public String getPhotographer() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_photographer_get(swigCPtr, this);
+  }
+
+  public void setTask_name(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_task_name_set(swigCPtr, this, value);
+  }
+
+  public String getTask_name() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_task_name_get(swigCPtr, this);
+  }
+
+  public void setLine_name(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_line_name_set(swigCPtr, this, value);
+  }
+
+  public String getLine_name() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_line_name_get(swigCPtr, this);
+  }
+
+  public void setWayline_uuid(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_wayline_uuid_set(swigCPtr, this, value);
+  }
+
+  public String getWayline_uuid() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_wayline_uuid_get(swigCPtr, this);
+  }
+
+  public void setOrigin_wayline_uuid(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_origin_wayline_uuid_set(swigCPtr, this, value);
+  }
+
+  public String getOrigin_wayline_uuid() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_origin_wayline_uuid_get(swigCPtr, this);
+  }
+
+  public void setWayline_action_uuid(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_wayline_action_uuid_set(swigCPtr, this, value);
+  }
+
+  public String getWayline_action_uuid() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_wayline_action_uuid_get(swigCPtr, this);
+  }
+
+  public void setPayload_model_key(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_payload_model_key_set(swigCPtr, this, value);
+  }
+
+  public String getPayload_model_key() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_payload_model_key_get(swigCPtr, this);
+  }
+
+  public void setDrone_model_key(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_drone_model_key_set(swigCPtr, this, value);
+  }
+
+  public String getDrone_model_key() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_drone_model_key_get(swigCPtr, this);
+  }
+
+  public void setIs_original(boolean value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_is_original_set(swigCPtr, this, value);
+  }
+
+  public boolean getIs_original() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_is_original_get(swigCPtr, this);
+  }
+
+  public void setDigital_zoom_ratio(double value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_digital_zoom_ratio_set(swigCPtr, this, value);
+  }
+
+  public double getDigital_zoom_ratio() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_digital_zoom_ratio_get(swigCPtr, this);
+  }
+
+  public void setLength_in35mm_film(double value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_length_in35mm_film_set(swigCPtr, this, value);
+  }
+
+  public double getLength_in35mm_film() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_length_in35mm_film_get(swigCPtr, this);
+  }
+
+  public void setGimbal_roll(double value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_gimbal_roll_set(swigCPtr, this, value);
+  }
+
+  public double getGimbal_roll() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_gimbal_roll_get(swigCPtr, this);
+  }
+
+  public void setGimbal_yaw(double value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_gimbal_yaw_set(swigCPtr, this, value);
+  }
+
+  public double getGimbal_yaw() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_gimbal_yaw_get(swigCPtr, this);
+  }
+
+  public void setGimbal_yaw_degree(double value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_gimbal_yaw_degree_set(swigCPtr, this, value);
+  }
+
+  public double getGimbal_yaw_degree() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_gimbal_yaw_degree_get(swigCPtr, this);
+  }
+
+  public void setFlight_id(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_flight_id_set(swigCPtr, this, value);
+  }
+
+  public String getFlight_id() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_flight_id_get(swigCPtr, this);
+  }
+
+  public void setDuration(double value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_duration_set(swigCPtr, this, value);
+  }
+
+  public double getDuration() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_duration_get(swigCPtr, this);
+  }
+
+  public void setShoot_position(MediaFileGeoPosition value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_shoot_position_set(swigCPtr, this, MediaFileGeoPosition.getCPtr(value), value);
+  }
+
+  public MediaFileGeoPosition getShoot_position() {
+    long cPtr = flighthubsdkmoduleJNI.MediaFileDetailExt_shoot_position_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new MediaFileGeoPosition(cPtr, false);
+  }
+
+  public void setAbsolute_altitude(double value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_absolute_altitude_set(swigCPtr, this, value);
+  }
+
+  public double getAbsolute_altitude() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_absolute_altitude_get(swigCPtr, this);
+  }
+
+  public void setRelative_altitude(double value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_relative_altitude_set(swigCPtr, this, value);
+  }
+
+  public double getRelative_altitude() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_relative_altitude_get(swigCPtr, this);
+  }
+
+  public void setCreated_time(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_created_time_set(swigCPtr, this, value);
+  }
+
+  public String getCreated_time() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_created_time_get(swigCPtr, this);
+  }
+
+  public void setCreation_time(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_creation_time_set(swigCPtr, this, value);
+  }
+
+  public String getCreation_time() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_creation_time_get(swigCPtr, this);
+  }
+
+  public void setCreate_time(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_create_time_set(swigCPtr, this, value);
+  }
+
+  public String getCreate_time() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_create_time_get(swigCPtr, this);
+  }
+
+  public void setEncoder(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_encoder_set(swigCPtr, this, value);
+  }
+
+  public String getEncoder() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_encoder_get(swigCPtr, this);
+  }
+
+  public void setFormat_long_name(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_format_long_name_set(swigCPtr, this, value);
+  }
+
+  public String getFormat_long_name() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_format_long_name_get(swigCPtr, this);
+  }
+
+  public void setFormat_name(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_format_name_set(swigCPtr, this, value);
+  }
+
+  public String getFormat_name() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_format_name_get(swigCPtr, this);
+  }
+
+  public void setExt_size(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_ext_size_set(swigCPtr, this, value);
+  }
+
+  public String getExt_size() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_ext_size_get(swigCPtr, this);
+  }
+
+  public void setFlight_yaw(double value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_flight_yaw_set(swigCPtr, this, value);
+  }
+
+  public double getFlight_yaw() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_flight_yaw_get(swigCPtr, this);
+  }
+
+  public void setFocal_length(double value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_focal_length_set(swigCPtr, this, value);
+  }
+
+  public double getFocal_length() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_focal_length_get(swigCPtr, this);
+  }
+
+  public void setGimbal_pitch(double value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_gimbal_pitch_set(swigCPtr, this, value);
+  }
+
+  public double getGimbal_pitch() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_gimbal_pitch_get(swigCPtr, this);
+  }
+
+  public void setImage_type(String value) {
+    flighthubsdkmoduleJNI.MediaFileDetailExt_image_type_set(swigCPtr, this, value);
+  }
+
+  public String getImage_type() {
+    return flighthubsdkmoduleJNI.MediaFileDetailExt_image_type_get(swigCPtr, this);
+  }
+
   public MediaFileDetailExt() {
     this(flighthubsdkmoduleJNI.new_MediaFileDetailExt(), true);
   }

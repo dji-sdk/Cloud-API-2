@@ -110,6 +110,31 @@ public class FirmwareUpgradeProgressItem {
     return flighthubsdkmoduleJNI.FirmwareUpgradeProgressItem_working_status_get(swigCPtr, this);
   }
 
+  public void setFirmware_version(String value) {
+    flighthubsdkmoduleJNI.FirmwareUpgradeProgressItem_firmware_version_set(swigCPtr, this, value);
+  }
+
+  public String getFirmware_version() {
+    return flighthubsdkmoduleJNI.FirmwareUpgradeProgressItem_firmware_version_get(swigCPtr, this);
+  }
+
+  public void setDevice_model_key(String value) {
+    flighthubsdkmoduleJNI.FirmwareUpgradeProgressItem_device_model_key_set(swigCPtr, this, value);
+  }
+
+  public String getDevice_model_key() {
+    return flighthubsdkmoduleJNI.FirmwareUpgradeProgressItem_device_model_key_get(swigCPtr, this);
+  }
+
+  public void setServices(FirmwareService value) {
+    flighthubsdkmoduleJNI.FirmwareUpgradeProgressItem_services_set(swigCPtr, this, FirmwareService.getCPtr(value), value);
+  }
+
+  public FirmwareService getServices() {
+    long cPtr = flighthubsdkmoduleJNI.FirmwareUpgradeProgressItem_services_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new FirmwareService(cPtr, false);
+  }
+
   public FirmwareUpgradeProgressItem() {
     this(flighthubsdkmoduleJNI.new_FirmwareUpgradeProgressItem(), true);
   }

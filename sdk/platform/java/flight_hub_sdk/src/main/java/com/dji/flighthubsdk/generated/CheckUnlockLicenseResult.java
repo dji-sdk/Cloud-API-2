@@ -60,13 +60,13 @@ public class CheckUnlockLicenseResult {
     return (cPtr == 0) ? null : new StringVector(cPtr, false);
   }
 
-  public void setErr_cert_mismatch(StringVector value) {
-    flighthubsdkmoduleJNI.CheckUnlockLicenseResult_err_cert_mismatch_set(swigCPtr, this, StringVector.getCPtr(value), value);
+  public void setErr_cert_mismatch(ErrCertMismatchVector value) {
+    flighthubsdkmoduleJNI.CheckUnlockLicenseResult_err_cert_mismatch_set(swigCPtr, this, ErrCertMismatchVector.getCPtr(value), value);
   }
 
-  public StringVector getErr_cert_mismatch() {
+  public ErrCertMismatchVector getErr_cert_mismatch() {
     long cPtr = flighthubsdkmoduleJNI.CheckUnlockLicenseResult_err_cert_mismatch_get(swigCPtr, this);
-    return (cPtr == 0) ? null : new StringVector(cPtr, false);
+    return (cPtr == 0) ? null : new ErrCertMismatchVector(cPtr, false);
   }
 
   public void setList(CheckUnlockLicenseResultItemVector value) {

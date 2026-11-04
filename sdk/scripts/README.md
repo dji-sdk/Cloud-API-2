@@ -5,7 +5,6 @@
 | 文件 | 作用 |
 |---|---|
 | `build_java.sh` | Java SDK 全量打包入口：编 C++ JNI → 编 SDK jar → 编两个 demo → 收拢产物 → 打 zip |
-| `make_source_package.sh` | 源码外包打包入口：**git 白名单**（只打已跟踪文件）+ 排除清单（测试录像、macOS 预编译产物）+ 版本/坐标/机密门禁 → 源码 tar.gz |
 
 ## 用法
 
@@ -14,42 +13,35 @@
 ```bash
 cd scripts
 
-./build_java.sh -r              # 默认：按 CPU 核数满并行
-./build_java.sh -r --jobs=8     # 限制并行度
-FHSDK_JOBS=4 ./build_java.sh -r # 同上
-./build_java.sh --help
+./build_java.sh -r -j=10        # Release，10 路并行（-j 必传）
+./build_java.sh -d --jobs=4     # Debug，4 路并行
+./build_java.sh -r -j=$(nproc)  # 吃满核
+./build_java.sh --help          # 帮助不需要 -j
 ```
-
-### 源码包
-
-```bash
-cd scripts
-
-./make_source_package.sh                               # 要求工作区干净（包内容 = commit，可追溯）
-git add -A && git commit -m "release vX.Y.Z"           # 先提交
-RELEASE_TAG=vX.Y.Z ./make_source_package.sh            # 发布侧指定 tag，强制与 VERSION 一致
-FHSDK_ALLOW_DIRTY=1 ./make_source_package.sh           # 调试：跳过干净度检查
-FHSDK_LIST_EXCLUDED=1 ./make_source_package.sh         # 只看排除清单命中哪些文件，不出包
-```
-
-排除清单在脚本内的 `PKG_EXCLUDE_RULES` 一处定义，拷贝过滤 / 干净度门禁 / 打包后回归门禁
-/ 终端摘要共用它。干净度检查只看**入包**文件，被排除的路径（如本机重编的 macOS 库）
-处于 modified 也不影响打包。
 
 ## 并行度
 
-| 变量 / 参数 | 含义 |
+`--jobs=N` / `-j=N` 是**必传参数**，没有默认值：不传直接报错退出，不再按核数推算。
+本机核数用 `nproc` 查（`lscpu` 看物理/逻辑核细分）。
+
+| 参数 / 变量 | 含义 |
 |---|---|
-| （默认） | `nproc`（Linux）或 `sysctl -n hw.ncpu`（macOS） |
-| `--jobs=N` / `-j=N` / `FHSDK_JOBS` | 覆盖并行度 |
-| `FHSDK_MAX_JOBS` | 旧名，与 `FHSDK_JOBS` 等价 |
+| `--jobs=N` / `-j=N` | **必传**。整数，下限 1；两者同时出现时后者生效 |
+| `FHSDK_JOBS` / `FHSDK_MAX_JOBS` | **不再是输入**。由脚本按 `--jobs` 定版后 `export` 给下游 |
 
-开源常见做法：默认吃满核；机器内存吃紧时由用户自行降 `-j`，脚本不再默认 `nice` / 硬顶。
+取值校验：非十进制整数（`abc` / `-3` / `1.5`）直接报错退出，不做猜测性纠正；
+`0` 会带警告修正为 1（`make -j0`、`gradle --max-workers=0` 会直接失败）。
 
-`build_java.sh` 解析一次并 `export FHSDK_JOBS`，下游沿用：
+之所以做成必传：并行度取决于当时机器上还跑着什么（IDE、其他构建、容器配额），
+脚本猜不准，猜错的代价是把机器压到失去响应。内存吃紧时自行降 `-j`，脚本不做默认 `nice` / 硬顶。
+
+定版后 `export FHSDK_JOBS`（并同步 `FHSDK_MAX_JOBS` 兼容旧名），下游沿用同一值：
 
 - `platform/java/bin/build.sh` —— `make -j$N`、gradle `--max-workers=$N`
 - `flight_hub_sdk_demo/build.sh`、`new_sdk_demo/build.sh` —— 各自 `run_gradle`
+- `third_party/*/bin/build_*.sh` —— 读 `FHSDK_MAX_JOBS`
+
+这些子脚本单独直接调用时仍各自带兜底默认值，不受本次改动影响。
 
 ## Gradle daemon
 

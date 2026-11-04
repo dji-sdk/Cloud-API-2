@@ -5,19 +5,24 @@ package com.dji.flighthubsdk.demo.module;
 
 import com.dji.flighthubsdk.FlightHubCallback;
 import com.dji.flighthubsdk.bean.FlightHubError;
+import com.dji.flighthubsdk.bean.GetMediaFileDetailByIdResult;
 import com.dji.flighthubsdk.bean.GetMediaFilesDownloadUrlResults;
 import com.dji.flighthubsdk.bean.GetMediaFilesListParams;
 import com.dji.flighthubsdk.bean.GetMediaFilesListResults;
 import com.dji.flighthubsdk.bean.GetMediaUploadStsParams;
 import com.dji.flighthubsdk.bean.GetMediaUploadStsResult;
+import com.dji.flighthubsdk.bean.MediaFileDetailExt;
 import com.dji.flighthubsdk.bean.MediaFileDeviceUpload;
+import com.dji.flighthubsdk.bean.MediaFileGeoPosition;
 import com.dji.flighthubsdk.bean.MediaFilePostProcess;
 import com.dji.flighthubsdk.bean.MediaFilesListItemInfoData;
 import com.dji.flighthubsdk.bean.MediaUploadCallbackFile;
+import com.dji.flighthubsdk.bean.MediaUploadCallbackFileExt;
 import com.dji.flighthubsdk.bean.MediaUploadCallbackParams;
 import com.dji.flighthubsdk.bean.MediaUploadCallbackResult;
 import com.dji.flighthubsdk.bean.MediaUploadStsCredentials;
 import com.dji.flighthubsdk.core.MediaServiceModule;
+import com.dji.flighthubsdk.demo.base.Menu;
 import com.dji.flighthubsdk.demo.base.ModuleDemo;
 import com.dji.flighthubsdk.demo.runtime.Await;
 import com.dji.flighthubsdk.demo.runtime.DemoLog;
@@ -30,10 +35,10 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * 媒体服务 Demo(菜单驱动)：媒体回传/后处理通知订阅、文件列表/下载地址/删除、上传 STS 凭证获取与上传完成回调。
+ * 媒体服务 Demo(菜单驱动): 媒体回传/后处理通知订阅、文件列表/下载地址/删除、上传 STS 凭证获取与上传完成回调。
  *
- * <p>对应 {@code MediaServiceModule} 的 9 个常用接口(非全量: 未覆盖 uploadGeoMediaFile / getMediaFileDetailById,
- * 也未覆盖 getMediaFilesList 的展开参数重载与 getMediaFilesDownloadURL 的 objectKeys 重载)：
+ * <p>对应 {@code MediaServiceModule} 的 9 个常用接口 (非全量: 未覆盖 uploadGeoMediaFile / getMediaFileDetailById,
+ * 也未覆盖 getMediaFilesList 的展开参数重载与 getMediaFilesDownloadURL 的 objectKeys 重载):
  *
  * <pre>
  * 主菜单
@@ -46,32 +51,32 @@ import java.util.concurrent.atomic.AtomicReference;
  * └── [7] 媒体上传完成回调              mediaUploadCallback
  * </pre>
  *
- * <p><b>接口串联设计：</b>
+ * <p><b>接口串联设计: </b>
  * <ul>
- *   <li>[3] 查列表拿到 fileId → [4] 按 fileId 换下载地址 → [5] 按 fileId 删除；</li>
- *   <li>[6] 获取 STS 凭证(由外部工具持凭证直传对象存储) → [7] 上传完成后回调服务端登记。
+ *   <li>[3] 查列表拿到 fileId → [4] 按 fileId 换下载地址 → [5] 按 fileId 删除; </li>
+ *   <li>[6] 获取 STS 凭证 (由外部工具持凭证直传对象存储) → [7] 上传完成后回调服务端登记。
  *       注意 [7] 的 file.objectKey 须是文件在对象存储上的<b>完整 Key</b>, 而 [6] 返回的
- *       objectKeyPrefix 只是路径前缀, 两者不可混用；</li>
+ *       objectKeyPrefix 只是路径前缀, 两者不可混用; </li>
  *   <li>[1]/[2] 订阅后可留在菜单继续操作, 设备回传/后处理完成时推送落日志文件。</li>
  * </ul>
  *
- * <p><b>SDK 入口：</b>{@code session.workspace().getMediaServiceModule()}(挂在 Workspace 上)。
+ * <p><b>SDK 入口: </b>{@code session.workspace().getMediaServiceModule()}(挂在 Workspace 上)。
  *
- * <p><b>设计要点：</b>
+ * <p><b>设计要点: </b>
  * <ul>
- *   <li>三态结果回显(SUCCESS/TIMEOUT/FAILED), 超时与失败明确区分；</li>
- *   <li>结果解析只在 SUCCESS 门控内(C++ 失败路径回 callback(err, {}) 空结构体, 经 SWIG 落地为非 null 对象、
- *       convert 后为非 null 空 bean, FAILED 时判空守卫不可靠; 仅模块层 Java 异常兜底会直接回 result=null)；</li>
+ *   <li>三态结果回显 (SUCCESS/TIMEOUT/FAILED), 超时与失败明确区分; </li>
+ *   <li>结果解析只在 SUCCESS 门控内 (C++ 失败路径回 callback(err, {}) 空结构体, 经 SWIG 落地为非 null 对象、
+ *       convert 后为非 null 空 bean, FAILED 时判空守卫不可靠; 仅模块层 Java 异常兜底会直接回 result=null); </li>
  *   <li>[1]/[2] 的订阅经基类 subscribe 登记到会话 registry(demo 结束兜底退订), 正常路径由再次选择
- *       同一菜单项(toggle)或 run() 收尾显式关闭, 推送只落日志文件不刷控制台；</li>
- *   <li>STS securityToken 打印前脱敏({@link #maskToken}), accessKeySecret 不打印, 避免完整凭证落屏。</li>
+ *       同一菜单项 (toggle)或 run() 收尾显式关闭, 推送只落日志文件不刷控制台; </li>
+ *   <li>STS securityToken 打印前脱敏 ({@link #maskToken}), accessKeySecret 不打印, 避免完整凭证落屏。</li>
  * </ul>
  */
 public class MediaServiceDemo extends ModuleDemo {
 
-    /** [1] 设备媒体回传订阅句柄(基类 subscribe 已登记到 registry, demo 结束自动收尾)。 */
+    /** [1] 设备媒体回传订阅句柄 (基类 subscribe 已登记到 registry, demo 结束自动收尾)。 */
     private Subscription deviceUploadSub;
-    /** [2] 媒体后处理完成订阅句柄(同上)。 */
+    /** [2] 媒体后处理完成订阅句柄 (同上)。 */
     private Subscription postProcessSub;
 
     @Override
@@ -92,40 +97,30 @@ public class MediaServiceDemo extends ModuleDemo {
             console("   获取 MediaServiceModule 失败(返回 null), 无法进入媒体服务菜单");
             return;
         }
-        final long actionTimeout = timeout("default_callback_timeout_ms");
+        final long actionTimeout = defaultTimeout();
         DemoLog.info(name(), "actionTimeout=" + actionTimeout + "ms");
 
         try {
-            while (true) {
-                Utils.printTitle("执行 " + name());
-                if (deviceUploadSub != null) {
-                    console("(设备媒体回传订阅中: 推送只落日志; 选 [1] 关闭)");
-                }
-                if (postProcessSub != null) {
-                    console("(媒体后处理订阅中: 推送只落日志; 选 [2] 关闭)");
-                }
-                System.out.print(menu());
-                int choice = Utils.readIntInRange(input, "请选择(1-7, q 退出): ", 1, 7);
-                if (choice == Utils.QUIT) {
-                    DemoLog.info(name(), "退出媒体服务菜单");
-                    break;
-                }
-                try {
-                    switch (choice) {
-                        case 1: toggleDeviceUpload(module);                      break;
-                        case 2: togglePostProcess(module);                       break;
-                        case 3: getMediaFilesList(module, actionTimeout);        break;
-                        case 4: getMediaFilesDownloadURL(module, actionTimeout); break;
-                        case 5: deleteMediaFiles(module, actionTimeout);         break;
-                        case 6: getMediaUploadSts(module, actionTimeout);        break;
-                        case 7: mediaUploadCallback(module, actionTimeout);      break;
-                        default: break;
-                    }
-                } catch (Exception e) {
-                    console("   结果 -> [异常] " + Utils.describe(e));
-                    DemoLog.error(name(), "菜单动作执行异常: " + Utils.describe(e), e);
-                }
-            }
+            Menu.of(this, "执行 " + name())
+                    .banner("=== 媒体服务 (Media Service) ===")
+                    .header(() -> {
+                        if (deviceUploadSub != null) {
+                            console("(设备媒体回传订阅中: 推送只落日志; 选 [1] 关闭)");
+                        }
+                        if (postProcessSub != null) {
+                            console("(媒体后处理订阅中: 推送只落日志; 选 [2] 关闭)");
+                        }
+                    })
+                    .item("订阅/取消 设备媒体回传通知    (listenMediaFileDeviceUploadMessage, toggle, 推送只落日志)", () -> toggleDeviceUpload(module))
+                    .item("订阅/取消 媒体后处理完成通知  (listenMediaFilePostProcessMessage, toggle, 推送只落日志)", () -> togglePostProcess(module))
+                    .item("获取媒体文件列表              (getMediaFilesList)", () -> getMediaFilesList(module, actionTimeout))
+                    .item("获取媒体文件下载地址          (getMediaFilesDownloadURL, 需输入 fileId)", () -> getMediaFilesDownloadURL(module, actionTimeout))
+                    .item("批量删除媒体文件              (deleteMediaFiles, 需输入 fileIds)", () -> deleteMediaFiles(module, actionTimeout))
+                    .item("获取媒体上传 STS 凭证         (getMediaUploadSts)", () -> getMediaUploadSts(module, actionTimeout))
+                    .item("媒体上传完成回调              (mediaUploadCallback)", () -> mediaUploadCallback(module, actionTimeout))
+                    .item("按文件 ID 获取媒体详情        (getMediaFileDetailById)", () -> getMediaFileDetailById(module, actionTimeout))
+                    .exitLog("退出媒体服务菜单")
+                    .run();
         } finally {
             // registry() 会兜底关订阅, 这里显式关一次让本地字段清空, 并从 registry 移除死引用
             if (deviceUploadSub != null) {
@@ -143,7 +138,7 @@ public class MediaServiceDemo extends ModuleDemo {
 
     // ==================== [1] 订阅/取消 设备媒体回传通知 (listenMediaFileDeviceUploadMessage) ====================
 
-    /** 再次选择同一菜单项即取消订阅(toggle)。 */
+    /** 再次选择同一菜单项即取消订阅 (toggle)。 */
     private void toggleDeviceUpload(MediaServiceModule module) {
         if (deviceUploadSub != null) {
             deviceUploadSub.close();
@@ -163,7 +158,7 @@ public class MediaServiceDemo extends ModuleDemo {
                 if (info == null) {
                     return;
                 }
-                pushLog("listenMediaFileDeviceUploadMessage() #MediaFileDeviceUpload, [设备媒体回传] fileId=" + info.getFileId() + " flightId=" + info.getFlightId()
+                pushLogDebug("listenMediaFileDeviceUploadMessage() #MediaFileDeviceUpload, [设备媒体回传] fileId=" + info.getFileId() + " flightId=" + info.getFlightId()
                     + " sn=" + info.getDeviceSn()
                     + " fileType=" + info.getFileType() + "(" + describeFileType(info.getFileType()) + ")"
                     + " objectSize=" + info.getObjectSize() + " objectKey=" + info.getObjectKey());
@@ -176,12 +171,12 @@ public class MediaServiceDemo extends ModuleDemo {
         // subscribe() 已登记到会话 registry(会话结束自动退订), deviceUploadSub 另记一份供 toggle/收尾主动退订
         deviceUploadSub = subscribe("listenMediaFileDeviceUpload", listenId,
             id -> module.cancelListenMediaFileDeviceUploadMessage(id));
-        console("   订阅已建立(listenId=" + listenId + ", sn=" + (sn.isEmpty() ? "(空)" : sn) + "), 推送只落日志文件");
+        consoleDebug("   订阅已建立(listenId=" + listenId + ", sn=" + (sn.isEmpty() ? "(空)" : sn) + "), 推送只落日志文件");
     }
 
     // ==================== [2] 订阅/取消 媒体后处理完成通知 (listenMediaFilePostProcessMessage) ====================
 
-    /** 再次选择同一菜单项即取消订阅(toggle)。 */
+    /** 再次选择同一菜单项即取消订阅 (toggle)。 */
     private void togglePostProcess(MediaServiceModule module) {
         if (postProcessSub != null) {
             postProcessSub.close();
@@ -201,7 +196,7 @@ public class MediaServiceDemo extends ModuleDemo {
                 if (info == null) {
                     return;
                 }
-                pushLog("listenMediaFilePostProcessMessage() #MediaFilePostProcess, [媒体后处理] fileId=" + info.getFileId() + " flightId=" + info.getFlightId()
+                pushLogDebug("listenMediaFilePostProcessMessage() #MediaFilePostProcess, [媒体后处理] fileId=" + info.getFileId() + " flightId=" + info.getFlightId()
                     + " sn=" + info.getDeviceSn()
                     + " fileType=" + info.getFileType() + "(" + describeFileType(info.getFileType()) + ")"
                     + " objectSize=" + info.getObjectSize() + " objectKey=" + info.getObjectKey()
@@ -215,7 +210,7 @@ public class MediaServiceDemo extends ModuleDemo {
         // subscribe() 已登记到会话 registry(会话结束自动退订), postProcessSub 另记一份供 toggle/收尾主动退订
         postProcessSub = subscribe("listenMediaFilePostProcess", listenId,
             id -> module.cancelListenMediaFilePostProcessMessage(id));
-        console("   订阅已建立(listenId=" + listenId + ", sn=" + (sn.isEmpty() ? "(空)" : sn) + "), 推送只落日志文件");
+        consoleDebug("   订阅已建立(listenId=" + listenId + ", sn=" + (sn.isEmpty() ? "(空)" : sn) + "), 推送只落日志文件");
     }
 
     // ==================== [3] 获取媒体文件列表 (getMediaFilesList) ====================
@@ -224,17 +219,29 @@ public class MediaServiceDemo extends ModuleDemo {
         Node cfg = params.node("media_service");
         final GetMediaFilesListParams p = new GetMediaFilesListParams();
         p.setFlightId(cfg.str("list_flight_id", ""));
+        p.setWaylineUuid(cfg.str("list_wayline_uuid", ""));
+        p.setWaylineActionUuid(cfg.str("list_wayline_action_uuid", ""));
+        List<Object> rawPayloadTypes = cfg.list("list_payload_types");
+        if (rawPayloadTypes != null) {
+            List<String> payloadTypes = new ArrayList<>();
+            for (Object o : rawPayloadTypes) {
+                payloadTypes.add(String.valueOf(o));
+            }
+            p.setPayloadTypes(payloadTypes);
+        }
         // deviceSn 须传机场 Dock SN: 媒体文件由机场上传, 服务端 media_files.sn 存机场 SN 并做等值匹配,
-        // 传飞机 SN 查不到数据(见 bean GetMediaFilesListParams#setDeviceSn)。空串=不按 SN 过滤。
+        // 传飞机 SN 查不到数据 (见 bean GetMediaFilesListParams#setDeviceSn)。空串=不按 SN 过滤。
         p.setDeviceSn(cfg.str("list_device_sn", ""));
         p.setStartIndex(cfg.intVal("list_start_index", 0));
         // pageSize 范围 1-500(见 bean 注释)
         p.setPageSize(cfg.intVal("list_page_size", 20));
-        // fileTypes/startCreateTime/endCreateTime 保持 bean 默认(空列表 / -1): SDK 组装 query 时直接省略
-        // 这些可选参数(见 C++ http_interface.cpp get_media_files_list), 语义是"不过滤类型/不限时间段"。
+        // fileTypes/startCreateTime/endCreateTime 保持 bean 默认 (空列表 / -1): SDK 组装 query 时直接省略
+        // 这些可选参数 (见 C++ http_interface.cpp get_media_files_list), 语义是"不过滤类型/不限时间段"。
         // fileTypes 枚举: "2"=图片, "3"=视频; 时间为秒级时间戳。
 
-        console("   > flightId=" + p.getFlightId() + " deviceSn=" + p.getDeviceSn()
+        consoleDebug("   > flightId=" + p.getFlightId() + " waylineUuid=" + p.getWaylineUuid()
+            + " waylineActionUuid=" + p.getWaylineActionUuid() + " payloadTypes=" + p.getPayloadTypes()
+            + " deviceSn=" + p.getDeviceSn()
             + " startIndex=" + p.getStartIndex() + " pageSize=" + p.getPageSize());
 
         final Await<FlightHubError> await = new Await<>(name() + ".getMediaFilesList");
@@ -259,12 +266,14 @@ public class MediaServiceDemo extends ModuleDemo {
                 if (list != null) {
                     for (int i = 0; i < list.size(); i++) {
                         MediaFilesListItemInfoData it = list.get(i);
-                        // size 单位为字节(C++ api/message.h MediaFilesListItemInfoData: 文件大小(字节))
-                        console("   [" + (i + 1) + "] fileId=" + it.getFileId()
+                        // size 单位为字节 (C++ api/message.h MediaFilesListItemInfoData: 文件大小 (字节))
+                        consoleDebug("   [" + (i + 1) + "] fileId=" + it.getFileId()
                             + "  size=" + it.getSize() + "B  fileName=" + it.getFileName()
                             + "  sn=" + it.getDeviceSn());
                         console("       objectKey=" + it.getObjectKey()
                             + "  flightId=" + it.getFlightId() + "  createdAt=" + it.getCreatedAt()
+                            + "  waylineUuid=" + it.getWaylineUuid()
+                            + "  previewKey=" + it.getPreviewKey()
                             + "  type=" + it.getType());
                     }
                 }
@@ -316,7 +325,7 @@ public class MediaServiceDemo extends ModuleDemo {
             hint("已取消删除操作");
             return;
         }
-        // 空列表会被 SDK 本地校验拒绝(见 C++ media_service_module_impl.cpp), 此处在输入侧提前拦下
+        // 空列表会被 SDK 本地校验拒绝 (见 C++ media_service_module_impl.cpp), 此处在输入侧提前拦下
         if (idsStr.trim().isEmpty()) {
             hint("fileIds 不能为空");
             return;
@@ -343,17 +352,17 @@ public class MediaServiceDemo extends ModuleDemo {
     private void getMediaUploadSts(MediaServiceModule module, long timeoutMs) {
         Node cfg = params.node("media_service");
         final GetMediaUploadStsParams p = new GetMediaUploadStsParams();
-        // filePath 语义是"上传目标路径前缀(OSS Object Key 前缀)"而非单个文件的完整 Key(见 C++
+        // filePath 语义是"上传目标路径前缀 (OSS Object Key 前缀)"而非单个文件的完整 Key(见 C++
         // request_message.h GetMediaUploadStsRequest.file_path), 服务端据此返回 objectKeyPrefix;
-        // 为空会被 SDK 本地校验直接拒绝(ERROR_INVALID_PARAM, 见 media_service_module_impl.cpp)。
-        // 示例默认为前缀形态(通常以 / 结尾), 旧参考 demo 用 "project/<uuid>/media/" 同款形态。
+        // 为空会被 SDK 本地校验直接拒绝 (ERROR_INVALID_PARAM, 见 media_service_module_impl.cpp)。
+        // 示例默认为前缀形态 (通常以 / 结尾), 旧参考 demo 用 "project/<uuid>/media/" 同款形态。
         p.setFilePath(cfg.str("upload_sts_file_path", "demo/media/"));
-        // expire 单位秒(bean 注释); C++ request_message.h 标注最大 3600
+        // expire 单位秒 (bean 注释); C++ request_message.h 标注最大 3600
         p.setExpire(cfg.intVal("upload_sts_expire", 3600));
         p.setSn(cfg.str("upload_sts_sn", session.hasDock() ? session.dockSn() : ""));
         p.setModule(cfg.intVal("upload_sts_module", 0));
 
-        console("   > filePath=" + p.getFilePath() + " expire=" + p.getExpire() + "s"
+        consoleDebug("   > filePath=" + p.getFilePath() + " expire=" + p.getExpire() + "s"
             + " sn=" + p.getSn() + " module=" + p.getModule() + "(" + describeStsModule(p.getModule()) + ")");
 
         final Await<FlightHubError> await = new Await<>(name() + ".getMediaUploadSts");
@@ -375,8 +384,12 @@ public class MediaServiceDemo extends ModuleDemo {
             MediaUploadStsCredentials c = r.getCredentials();
             if (c != null) {
                 // accessKeySecret 有意不打印; securityToken 脱敏后回显
-                console("   accessKeyId=" + c.getAccessKeyId() + " expire=" + c.getExpire() + "s");
+                console("   accessKeyId=" + c.getAccessKeyId() + " expire=" + c.getExpire() + "s"
+                    + " expiration=" + c.getExpiration() + " platform=" + c.getPlatform());
                 console("   securityToken=" + maskToken(c.getSecurityToken()));
+            }
+            if (r.getExt() != null && !r.getExt().isEmpty()) {
+                console("   ext=" + r.getExt());
             }
         }
     }
@@ -387,7 +400,7 @@ public class MediaServiceDemo extends ModuleDemo {
         Node cfg = params.node("media_service");
         final MediaUploadCallbackParams p = new MediaUploadCallbackParams();
         p.setSn(cfg.str("upload_cb_sn", session.hasDock() ? session.dockSn() : ""));
-        // result: 上传结果码, 0=成功(见 C++ request_message.h UploadCallbackData 注释)
+        // result: 上传结果码, 0=成功 (见 C++ request_message.h UploadCallbackData 注释)
         p.setResult(cfg.intVal("upload_cb_result", 0));
         // progress: 上传进度, 取值 0-100(见 bean MediaUploadCallbackParams)
         p.setProgress(cfg.intVal("upload_cb_progress", 100));
@@ -402,20 +415,32 @@ public class MediaServiceDemo extends ModuleDemo {
 
         MediaUploadCallbackFile file = new MediaUploadCallbackFile();
         // objectKey 须是文件在对象存储上的完整 Key(非 [6] 返回的 objectKeyPrefix 路径前缀);
-        // objectKey/name 任一为空会被 SDK 本地校验直接拒绝(ERROR_INVALID_PARAM, 见
+        // objectKey/name 任一为空会被 SDK 本地校验直接拒绝 (ERROR_INVALID_PARAM, 见
         // media_service_module_impl.cpp), 属本地拦截而非服务端返回。
         file.setObjectKey(cfg.str("upload_cb_object_key", ""));
         file.setName(cfg.str("upload_cb_file_name", ""));
         // type: bean 本字段未标注枚举, 仓库内证据矛盾——旧参考 demo(FlightHubSDKDemo#handleMediaUploadCallback)
         // 对 .jpeg 实传 0, C++ request_message.h UploadCallbackFile 默认亦为 0; 推送消息族 fileType 枚举
-        // 2=图片 3=视频(见 bean MediaFileDeviceUpload#getFileType), 两者可能非同一枚举族, 以实际为准。
+        // 2=图片 3=视频 (见 bean MediaFileDeviceUpload#getFileType), 两者可能非同一枚举族, 以实际为准。
         // 默认取 0(仓库内唯一经实际调用验证过的取值)。
         file.setType(cfg.intVal("upload_cb_file_type", 0));
         file.setFingerprint(cfg.str("upload_cb_fingerprint", ""));
+        // ext: 补齐后端 DeviceUploadFileExt 的 5 个新增字段
+        MediaUploadCallbackFileExt ext = new MediaUploadCallbackFileExt();
+        ext.setWaylineActionUuid(cfg.str("upload_cb_wayline_action_uuid", ""));
+        ext.setTaskName(cfg.str("upload_cb_task_name", ""));
+        ext.setSn(p.getSn());
+        ext.setExpectedFileCount(cfg.intVal("upload_cb_ext_expected_count", 1));
+        ext.setPanoTotalCount(cfg.intVal("upload_cb_pano_total_count", 0));
+        file.setExt(ext);
         p.setFile(file);
 
-        console("   > sn=" + p.getSn() + " objectKey=" + file.getObjectKey()
-            + " name=" + file.getName() + " progress=" + p.getProgress() + "%");
+        consoleDebug("   > sn=" + p.getSn() + " objectKey=" + file.getObjectKey()
+            + " name=" + file.getName() + " progress=" + p.getProgress() + "%"
+            + " waylineActionUuid=" + ext.getWaylineActionUuid()
+            + " taskName=" + ext.getTaskName()
+            + " extExpectedFileCount=" + ext.getExpectedFileCount()
+            + " panoTotalCount=" + ext.getPanoTotalCount());
 
         final Await<FlightHubError> await = new Await<>(name() + ".mediaUploadCallback");
         final AtomicReference<MediaUploadCallbackResult> ref = new AtomicReference<>();
@@ -436,12 +461,87 @@ public class MediaServiceDemo extends ModuleDemo {
         }
     }
 
+    // ==================== [8] 按文件 ID 获取媒体详情 (getMediaFileDetailById) ====================
+
+    private void getMediaFileDetailById(MediaServiceModule module, long timeoutMs) {
+        String idStr = Utils.readLineEcho(input, "   请输入 fileId(可先用 [3] 查列表获得, q 取消): ");
+        if (idStr == null || idStr.trim().equalsIgnoreCase("q")) {
+            hint("已取消获取媒体详情");
+            return;
+        }
+        if (idStr.trim().isEmpty()) {
+            hint("fileId 不能为空");
+            return;
+        }
+        final int fileId;
+        try {
+            fileId = Integer.parseInt(idStr.trim());
+        } catch (NumberFormatException e) {
+            hint("fileId 必须是数字: " + idStr.trim());
+            return;
+        }
+
+        final Await<FlightHubError> await = new Await<>(name() + ".getMediaFileDetailById");
+        final AtomicReference<GetMediaFileDetailByIdResult> ref = new AtomicReference<>();
+        Outcome o = runOutcome("获取媒体详情", timeoutMs, await, () ->
+            module.getMediaFileDetailById(fileId, new FlightHubCallback.GetMediaFileDetailByIdCallback() {
+                @Override
+                public void onResult(FlightHubError error, GetMediaFileDetailByIdResult r) {
+                    ref.set(r);
+                    await.set(error);
+                }
+            })
+        );
+        if (o == Outcome.SUCCESS && ref.get() != null) {
+            GetMediaFileDetailByIdResult r = ref.get();
+            console("   url=" + r.getUrl());
+            console("   thumbnailUrl=" + r.getThumbnailUrl());
+            console("   name=" + r.getName() + " suffix=" + r.getSuffix() + " size=" + r.getSize()
+                + " createAt=" + r.getCreateAt());
+            console("   panoStitchState=" + r.getPanoStitchState()
+                + " panoStitchProgress=" + r.getPanoStitchProgress()
+                + " panoErrorCode=" + r.getPanoErrorCode());
+            MediaFileDetailExt e = r.getExt();
+            if (e != null) {
+                MediaFileGeoPosition p = e.getPhotoPosition();
+                console("   ext: width=" + e.getWidth() + " height=" + e.getHeight()
+                    + " resolution=" + e.getResolution() + " photographer=" + e.getPhotographer());
+                console("   ext: taskName=" + e.getTaskName() + " lineName=" + e.getLineName()
+                    + " waylineUuid=" + e.getWaylineUuid()
+                    + " originWaylineUuid=" + e.getOriginWaylineUuid()
+                    + " waylineActionUuid=" + e.getWaylineActionUuid());
+                console("   ext: droneModelKey=" + e.getDroneModelKey()
+                    + " payloadModelKey=" + e.getPayloadModelKey()
+                    + " isOriginal=" + e.isOriginal() + " flightId=" + e.getFlightId());
+                console("   ext: photoPosition=" + (p == null ? "null" : p.toString()));
+                MediaFileGeoPosition sp = e.getShootPosition();
+                console("   ext: shootPosition=" + (sp == null ? "null" : sp.toString())
+                    + " absoluteAltitude=" + e.getAbsoluteAltitude()
+                    + " relativeAltitude=" + e.getRelativeAltitude());
+                console("   ext: gimbalRoll=" + e.getGimbalRoll() + " gimbalYaw=" + e.getGimbalYaw()
+                    + " gimbalYawDegree=" + e.getGimbalYawDegree()
+                    + " gimbalPitch=" + e.getGimbalPitch()
+                    + " flightYaw=" + e.getFlightYaw()
+                    + " focalLength=" + e.getFocalLength()
+                    + " lengthIn35mmFilm=" + e.getLengthIn35mmFilm()
+                    + " digitalZoomRatio=" + e.getDigitalZoomRatio());
+                console("   ext: duration=" + e.getDuration() + " encoder=" + e.getEncoder()
+                    + " formatName=" + e.getFormatName()
+                    + " formatLongName=" + e.getFormatLongName()
+                    + " extSize=" + e.getExtSize() + " imageType=" + e.getImageType());
+                console("   ext: createdTime=" + e.getCreatedTime()
+                    + " creationTime=" + e.getCreationTime()
+                    + " createTime=" + e.getCreateTime());
+            }
+        }
+    }
+
     // ==================== 辅助方法 ====================
 
     /**
      * 读取订阅用 deviceSn(q / EOF 取消时返回 {@code null})。
      *
-     * <p>订阅推送按 device_sn 与订阅时传入值<b>等值匹配</b>分发(NotificationCenter
+     * <p>订阅推送按 device_sn 与订阅时传入值<b>等值匹配</b>分发 (NotificationCenter
      * TopicManager::OnPublish 对 sn 做等值校验); 留空即按空 SN 订阅——仓库内未见"空 SN=全部设备"
      * 的通配实现, 留空时是否收到推送取决于服务端行为, 以实际为准。
      */
@@ -453,7 +553,7 @@ public class MediaServiceDemo extends ModuleDemo {
         return line.trim();
     }
 
-    /** 文件类型枚举描述(出处: bean MediaFileDeviceUpload#getFileType: 2=图片, 3=视频, -1=未知/默认)。 */
+    /** 文件类型枚举描述 (出处: bean MediaFileDeviceUpload#getFileType: 2=图片, 3=视频, -1=未知/默认)。 */
     private static String describeFileType(int fileType) {
         switch (fileType) {
             case 2:  return "图片";
@@ -463,7 +563,7 @@ public class MediaServiceDemo extends ModuleDemo {
         }
     }
 
-    /** STS 业务模块类型描述(出处: bean GetMediaUploadStsParams#getModule: 2=飞行记录STS, 2001=SN加密, 其他(含0)=默认设备STS)。 */
+    /** STS 业务模块类型描述 (出处: bean GetMediaUploadStsParams#getModule: 2=飞行记录STS, 2001=SN加密, 其他 (含0)=默认设备STS)。 */
     private static String describeStsModule(int module) {
         switch (module) {
             case 2:    return "飞行记录 STS";
@@ -480,39 +580,4 @@ public class MediaServiceDemo extends ModuleDemo {
         return s.substring(0, 6) + "..." + s.substring(s.length() - 4);
     }
 
-    /** 纯控制台输出(不落日志文件), 用于菜单文案与结果回显。 */
-    private void console(String line) {
-        System.out.println(line);
-    }
-
-    /** 提示信息双写：既落日志文件(带 demo 名 tag)又回显控制台, 用于前置条件不满足、取消等需留痕的提示。 */
-    private void hint(String msg) {
-        DemoLog.info(name(), msg);
-        console("   " + msg);
-    }
-
-    /** 监听推送专用：只落日志文件不刷控制台, 避免推送打断菜单交互。 */
-    private void pushLog(String line) {
-        DemoLog.info(name(), line);
-    }
-
-    // ==================== 菜单文案 ====================
-
-    /**
-     * 主菜单文案：7 个菜单项覆盖 {@code MediaServiceModule} 的 9 个常用接口([1]/[2] 为订阅/取消 toggle,
-     * 见类 Javadoc 菜单树)。增删菜单项时须同步 {@link #run()} 中的 switch 分支与 {@code readIntInRange} 的取值上界。
-     */
-    private String menu() {
-        return "\n"
-            + "  === 媒体服务 (Media Service) ===\n"
-            + "  1.  订阅/取消 设备媒体回传通知    (listenMediaFileDeviceUploadMessage, toggle, 推送只落日志)\n"
-            + "  2.  订阅/取消 媒体后处理完成通知  (listenMediaFilePostProcessMessage, toggle, 推送只落日志)\n"
-            + "  3.  获取媒体文件列表              (getMediaFilesList)\n"
-            + "  4.  获取媒体文件下载地址          (getMediaFilesDownloadURL, 需输入 fileId)\n"
-            + "  5.  批量删除媒体文件              (deleteMediaFiles, 需输入 fileIds)\n"
-            + "  6.  获取媒体上传 STS 凭证         (getMediaUploadSts)\n"
-            + "  7.  媒体上传完成回调              (mediaUploadCallback)\n"
-            + "\n"
-            + "  q.  返回上级菜单\n";
-    }
 }

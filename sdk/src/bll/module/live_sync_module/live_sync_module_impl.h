@@ -12,7 +12,7 @@ namespace flight_hub_sdk {
 class LiveSyncModuleImpl : public ILiveSyncModule,
                             public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit LiveSyncModuleImpl();
+    explicit LiveSyncModuleImpl(int session_id);
     ~LiveSyncModuleImpl() override = default;
 
     void createLiveSync(
@@ -36,6 +36,8 @@ public:
 
     void getLiveSyncSummary(
         std::function<void(FlightHubError err, LiveSyncSummaryResult result)> callback) override;
+private:
+    int session_id_;
 };
 
 }  // namespace flight_hub_sdk

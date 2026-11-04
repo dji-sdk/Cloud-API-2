@@ -38,7 +38,8 @@ public final class GetWaylineEditorStsParams {
     /** 凭证有效期（秒），默认 3600（proto int64，实际值不超过 int 范围） */
     public int getExpire() { return expire; }
 
-    /** @param expire 凭证有效期（秒），默认 3600（proto int64，实际值不超过 int 范围） */
+    /** @param expire 凭证有效期（秒），默认 3600（proto int64，实际值不超过 int 范围）。注意：后端 STS 对有效期有合法下限，
+     *                过小的值（如 600）会被拒绝并返回 serverCode 200612（invalid token expiry），建议使用默认值 3600。 */
     public void setExpire(int expire) {
         this.expire = expire;
     }

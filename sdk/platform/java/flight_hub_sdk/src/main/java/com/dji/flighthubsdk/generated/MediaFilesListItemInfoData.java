@@ -67,6 +67,14 @@ public class MediaFilesListItemInfoData {
     return flighthubsdkmoduleJNI.MediaFilesListItemInfoData_flight_id_get(swigCPtr, this);
   }
 
+  public void setWayline_uuid(String value) {
+    flighthubsdkmoduleJNI.MediaFilesListItemInfoData_wayline_uuid_set(swigCPtr, this, value);
+  }
+
+  public String getWayline_uuid() {
+    return flighthubsdkmoduleJNI.MediaFilesListItemInfoData_wayline_uuid_get(swigCPtr, this);
+  }
+
   public void setWayline_action_uuid(String value) {
     flighthubsdkmoduleJNI.MediaFilesListItemInfoData_wayline_action_uuid_set(swigCPtr, this, value);
   }
@@ -148,12 +156,44 @@ public class MediaFilesListItemInfoData {
     return flighthubsdkmoduleJNI.MediaFilesListItemInfoData_payload_type_get(swigCPtr, this);
   }
 
+  public void setPreview_key(String value) {
+    flighthubsdkmoduleJNI.MediaFilesListItemInfoData_preview_key_set(swigCPtr, this, value);
+  }
+
+  public String getPreview_key() {
+    return flighthubsdkmoduleJNI.MediaFilesListItemInfoData_preview_key_get(swigCPtr, this);
+  }
+
   public void setType(int value) {
     flighthubsdkmoduleJNI.MediaFilesListItemInfoData_type_set(swigCPtr, this, value);
   }
 
   public int getType() {
     return flighthubsdkmoduleJNI.MediaFilesListItemInfoData_type_get(swigCPtr, this);
+  }
+
+  public void setPano_total_count(int value) {
+    flighthubsdkmoduleJNI.MediaFilesListItemInfoData_pano_total_count_set(swigCPtr, this, value);
+  }
+
+  public int getPano_total_count() {
+    return flighthubsdkmoduleJNI.MediaFilesListItemInfoData_pano_total_count_get(swigCPtr, this);
+  }
+
+  public void setPano_stitch_state(int value) {
+    flighthubsdkmoduleJNI.MediaFilesListItemInfoData_pano_stitch_state_set(swigCPtr, this, value);
+  }
+
+  public int getPano_stitch_state() {
+    return flighthubsdkmoduleJNI.MediaFilesListItemInfoData_pano_stitch_state_get(swigCPtr, this);
+  }
+
+  public void setPano_stitch_progress(int value) {
+    flighthubsdkmoduleJNI.MediaFilesListItemInfoData_pano_stitch_progress_set(swigCPtr, this, value);
+  }
+
+  public int getPano_stitch_progress() {
+    return flighthubsdkmoduleJNI.MediaFilesListItemInfoData_pano_stitch_progress_get(swigCPtr, this);
   }
 
   public MediaFilesListItemInfoData() {

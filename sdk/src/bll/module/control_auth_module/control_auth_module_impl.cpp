@@ -8,11 +8,10 @@
 
 using namespace flight_hub_sdk;
 
-ControlAuthModuleImpl::ControlAuthModuleImpl(
-    std::shared_ptr<FlightCtrlMgr> flight_ctrl_mgr,
-    std::shared_ptr<PayloadCtrlMgr> payload_ctrl_mgr)
+ControlAuthModuleImpl::ControlAuthModuleImpl(std::shared_ptr<FlightCtrlMgr> flight_ctrl_mgr,
+    std::shared_ptr<PayloadCtrlMgr> payload_ctrl_mgr, int session_id)
     : flight_ctrl_mgr_(std::move(flight_ctrl_mgr)),
-      payload_ctrl_mgr_(std::move(payload_ctrl_mgr)) {
+      payload_ctrl_mgr_(std::move(payload_ctrl_mgr)), session_id_(session_id) {
     LOG_INFO("[ControlAuthModuleImpl] constructor");
 }
 
@@ -26,7 +25,7 @@ void ControlAuthModuleImpl::acquireFlightControlAuthority(const std::function<vo
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_ACQUIRE_FLIGHT_CONTROL_AUTHORITY, state_err, "[ControlAuthModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_ACQUIRE_FLIGHT_CONTROL_AUTHORITY, state_err, session_id_, "[ControlAuthModuleImpl]");
 
         return;
     }
@@ -43,11 +42,33 @@ void ControlAuthModuleImpl::releaseFlightControlAuthority(const std::function<vo
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_RELEASE_FLIGHT_CONTROL_AUTHORITY, state_err, "[ControlAuthModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_RELEASE_FLIGHT_CONTROL_AUTHORITY, state_err, session_id_, "[ControlAuthModuleImpl]");
 
         return;
     }
     flight_ctrl_mgr_->releaseFlightControlAuthority(callback);
+}
+
+void ControlAuthModuleImpl::acquireFlightControlAuthorityWithResult(const ControlAuthResultHandler& callback) {
+    if (!flight_ctrl_mgr_) {
+        auto state_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_STATE);
+        if (callback) {
+            callback(state_err, ControlAuthResult{});
+        }
+        return;
+    }
+    flight_ctrl_mgr_->acquireFlightControlAuthorityWithResult(callback);
+}
+
+void ControlAuthModuleImpl::releaseFlightControlAuthorityWithResult(const ControlAuthResultHandler& callback) {
+    if (!flight_ctrl_mgr_) {
+        auto state_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_STATE);
+        if (callback) {
+            callback(state_err, ControlAuthResult{});
+        }
+        return;
+    }
+    flight_ctrl_mgr_->releaseFlightControlAuthorityWithResult(callback);
 }
 
 int ControlAuthModuleImpl::listenFlightControlAuthority(const std::function<void(bool)>& callback) {
@@ -76,7 +97,7 @@ void ControlAuthModuleImpl::acquirePayloadControlAuthority(const std::string& pa
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_ACQUIRE_PAYLOAD_CONTROL_AUTHORITY, state_err, "[ControlAuthModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_ACQUIRE_PAYLOAD_CONTROL_AUTHORITY, state_err, session_id_, "[ControlAuthModuleImpl]");
 
         return;
     }
@@ -93,11 +114,33 @@ void ControlAuthModuleImpl::releasePayloadControlAuthority(const std::string& pa
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_RELEASE_PAYLOAD_CONTROL_AUTHORITY, state_err, "[ControlAuthModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_RELEASE_PAYLOAD_CONTROL_AUTHORITY, state_err, session_id_, "[ControlAuthModuleImpl]");
 
         return;
     }
     payload_ctrl_mgr_->releasePayloadControlAuthority(payload_index, callback);
+}
+
+void ControlAuthModuleImpl::acquirePayloadControlAuthorityWithResult(const std::string& payload_index, const ControlAuthResultHandler& callback) {
+    if (!payload_ctrl_mgr_) {
+        auto state_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_STATE);
+        if (callback) {
+            callback(state_err, ControlAuthResult{});
+        }
+        return;
+    }
+    payload_ctrl_mgr_->acquirePayloadControlAuthorityWithResult(payload_index, callback);
+}
+
+void ControlAuthModuleImpl::releasePayloadControlAuthorityWithResult(const std::string& payload_index, const ControlAuthResultHandler& callback) {
+    if (!payload_ctrl_mgr_) {
+        auto state_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_STATE);
+        if (callback) {
+            callback(state_err, ControlAuthResult{});
+        }
+        return;
+    }
+    payload_ctrl_mgr_->releasePayloadControlAuthorityWithResult(payload_index, callback);
 }
 
 int ControlAuthModuleImpl::listenPayloadControlAuthority(const std::string& payload_index, const std::function<void(bool)>& callback) {

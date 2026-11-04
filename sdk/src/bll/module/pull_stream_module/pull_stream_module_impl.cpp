@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "pull_stream_module_impl.h"
+#include "api/session_manager.h"
 #include "common/util/async_capture_protect.h"
 #include "i_rtc_channel_manager.h"
 #include "i_live_stream_channel.h"
@@ -35,7 +36,7 @@ void PullStreamModuleImpl::start(const std::string& stream_url,
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PULL_STREAM_START, state_err, "[PullStreamModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PULL_STREAM_START, state_err, kDefaultSessionId, "[PullStreamModuleImpl]");
 
         callback(state_err.error_code);
         return;
@@ -48,7 +49,7 @@ void PullStreamModuleImpl::start(const std::string& stream_url,
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PULL_STREAM_START, FlightHubError::success(), "[PullStreamModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PULL_STREAM_START, FlightHubError::success(), kDefaultSessionId, "[PullStreamModuleImpl]");
 
         callback(FlightHubSdkErrorCode::SUCCESS);
         return;
@@ -77,7 +78,7 @@ void PullStreamModuleImpl::start(const std::string& stream_url,
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_PULL_STREAM_START, FlightHubError::success(), "[PullStreamModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_PULL_STREAM_START, FlightHubError::success(), kDefaultSessionId, "[PullStreamModuleImpl]");
 
                 callback(FlightHubSdkErrorCode::SUCCESS);
             } else {
@@ -89,7 +90,7 @@ void PullStreamModuleImpl::start(const std::string& stream_url,
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_PULL_STREAM_START, channel_err, "[PullStreamModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_PULL_STREAM_START, channel_err, kDefaultSessionId, "[PullStreamModuleImpl]");
 
                 callback(channel_err.error_code);
             }
@@ -104,7 +105,7 @@ void PullStreamModuleImpl::start(const std::string& stream_url,
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PULL_STREAM_START, add_channel_err, "[PullStreamModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PULL_STREAM_START, add_channel_err, kDefaultSessionId, "[PullStreamModuleImpl]");
 
         callback(add_channel_err.error_code);
     }
