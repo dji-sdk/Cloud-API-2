@@ -470,8 +470,8 @@ AI 调用 fh_takeoff →
 |------|------|--------|------|
 | `FH_SERVER_ADDRESS` | **是** | — | DJI Cloud API 2 服务器地址（如 `https://your-server.com`） |
 | `FH_SERVER_PORT` | 否 | `443` | 服务器端口 |
-| `FH_ACCESS_TOKEN` | 是* | — | 工作空间访问令牌（真实模式必填，须在服务启动前通过环境变量预设） |
-| `FH_WORKSPACE_UUID` | 是* | — | 工作空间绑定 UUID（真实模式必填，须在服务启动前通过环境变量预设） |
+| `FH_ACCESS_TOKEN` | 否* | — | 工作空间访问令牌（真实模式下连接真实服务端必填；缺失不影响服务启动，但 `fh_connect` 会失败。须在服务启动前通过环境变量预设） |
+| `FH_WORKSPACE_UUID` | 否* | — | 工作空间绑定 UUID（真实模式下连接真实服务端必填；缺失不影响服务启动，但 `fh_connect` 会失败。须在服务启动前通过环境变量预设） |
 | `FH_MOCK` | 否 | `false` | 设为 `true` 启用 Mock 模式（不调用真实 SDK） |
 | `FH_TRANSPORT` | 否 | `sse` | 传输模式：`sse` / `stdio`（代码默认 `stdio`，`.env.example` 预设 `sse`） |
 | `FH_SSE_PORT` | 否 | `8080` | SSE 模式监听端口 |
@@ -479,7 +479,8 @@ AI 调用 fh_takeoff →
 | `FH_OPERATOR_TOKEN` | 否* | — | L3 操作（紧急停止）所需的运营商二次鉴权 Token。启用 L3 时<b>必填</b>（缺失则 L3 拒绝执行），由真人带外提供，AI 不可代填 |
 | `FH_SSE_AUTH_TOKEN` | 是* | — | SSE 模式 Bearer Token。SSE profile 下<b>必填</b>（缺失或弱占位值将拒绝启动），请用 `openssl rand -hex 32` 生成 |
 
-> *`FH_ACCESS_TOKEN` 和 `FH_WORKSPACE_UUID` 在真实模式下必填，须在服务启动前通过环境变量配置；Mock 模式（`FH_MOCK=true`）下可不填。**这两个凭证不支持通过 `fh_connect` 参数运行时传入。**
+> *`FH_ACCESS_TOKEN` 和 `FH_WORKSPACE_UUID` 在真实模式下连接真实服务端时必填，须在服务启动前通过环境变量配置；Mock 模式（`FH_MOCK=true`）下可不填。**这两个凭证不支持通过 `fh_connect` 参数运行时传入。**
+> 注意：缺失这两个变量不会像 `FH_SSE_AUTH_TOKEN` 那样阻断服务启动（无启动时硬校验），只会导致真实模式下调用 `fh_connect` 时连接失败。
 
 复制 `.env.example` 并按需填写各配置项：
 
