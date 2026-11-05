@@ -19,6 +19,7 @@ package com.dji.flighthub.mcp.tools.connect;
 import com.dji.flighthub.mcp.config.FlightHubProperties;
 import com.dji.flighthub.mcp.context.RequestContext;
 import com.dji.flighthub.mcp.sdk.SdkService;
+import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
@@ -66,6 +67,16 @@ public class FhConnectTool extends AbstractMcpTool {
         this.properties = properties;
         this.sdkService = sdkService;
         this.clientRegistry = clientRegistry;
+    }
+
+    /**
+     * 声明工具级静态安全等级：READ_ONLY。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.READ_ONLY;
     }
 
     /**

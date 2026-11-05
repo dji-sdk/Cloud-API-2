@@ -18,6 +18,7 @@ package com.dji.flighthub.mcp.tools.diagnosis;
 
 import com.dji.flighthub.mcp.sdk.SdkCallbackBridge;
 import com.dji.flighthub.mcp.sdk.SdkService;
+import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
@@ -45,13 +46,15 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>支持 action：
  * <ul>
- *   <li>create — 创建自诊断任务（L0）</li>
- *   <li>get_report — 获取单份诊断报告（L0）</li>
- *   <li>list_reports — 分页查询诊断报告列表（L0）</li>
- *   <li>operate — 操作诊断（如取消）（L0）</li>
+ *   <li>create — 创建自诊断任务</li>
+ *   <li>get_report — 获取单份诊断报告</li>
+ *   <li>list_reports — 分页查询诊断报告列表</li>
+ *   <li>operate — 操作诊断（如取消）</li>
  * </ul>
  *
- * <p>所有操作均为 L0，无需人工确认。
+ * <p>安全等级：混合等级工具，工具级声明最低等级 L0（READ_ONLY，门控基线）；
+ * {@code create} / {@code operate} 为 L1，由 {@link #ACTION_SECURITY_LEVELS} 在 action 内抬高要求。
+ * per-action 门控只能抬高、不能降低。
  *
  * @author DJI FlightHub SDK Team
  */
@@ -69,6 +72,12 @@ public class FhDiagnosisTool extends AbstractMcpTool {
 
     /** 有效 action 集合 */
     private static final Set<String> VALID_ACTIONS_SET = Set.copyOf(VALID_ACTIONS);
+
+    /** 各 action 要求的安全等级（未列出的 action 为 L0，不需要拦截） */
+    private static final Map<String, SecurityLevel> ACTION_SECURITY_LEVELS = Map.of(
+            "create", SecurityLevel.REVERSIBLE,
+            "operate", SecurityLevel.REVERSIBLE
+    );
 
     /** 参数名常量 */
     private static final String PARAM_ACTION = "action";
@@ -101,6 +110,19 @@ public class FhDiagnosisTool extends AbstractMcpTool {
     public FhDiagnosisTool(SessionManager sessionManager, SdkService sdkService) {
         super(sessionManager);
         this.sdkService = sdkService;
+    }
+
+    /**
+     * 声明工具级静态安全等级：READ_ONLY（混合等级工具的门控基线）。
+     *
+     * <p>只读的 {@code get_report} / {@code list_reports} 不应被 L1 门控误拦，
+     * {@code create} / {@code operate} 由 action 内 {@code enforceSecurityLevel} 抬升至 L1。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.READ_ONLY;
     }
 
     @Override
@@ -145,6 +167,15 @@ public class FhDiagnosisTool extends AbstractMcpTool {
             return errorResult("Invalid or missing action", "Valid actions: " + VALID_ACTIONS);
         }
 
+        // 统一安全等级拦截：create/operate=L1
+        SecurityLevel requiredLevel = ACTION_SECURITY_LEVELS.get(action);
+        if (requiredLevel != null) {
+            Map<String, Object> denied = enforceSecurityLevel(requiredLevel);
+            if (denied != null) {
+                return denied;
+            }
+        }
+
         switch (action) {
             case "create":
                 return executeCreate(args);
@@ -164,7 +195,7 @@ public class FhDiagnosisTool extends AbstractMcpTool {
         return false;
     }
 
-    // ==================== create（L0） ====================
+    // ==================== create（L1） ====================
 
     private Map<String, Object> executeCreate(Map<String, Object> args) {
         String deviceSn = getStringArg(args, PARAM_DEVICE_SN, null);
@@ -435,7 +466,7 @@ public class FhDiagnosisTool extends AbstractMcpTool {
         }
     }
 
-    // ==================== operate（L0） ====================
+    // ==================== operate（L1） ====================
 
     private Map<String, Object> executeOperate(Map<String, Object> args) {
         String reportUuid = getStringArg(args, PARAM_REPORT_UUID, null);

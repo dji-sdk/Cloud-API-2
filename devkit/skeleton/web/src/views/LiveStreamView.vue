@@ -219,7 +219,7 @@ handleInitSDK()
           </span>
         </div>
         <div v-if="status === 'error'" class="sidebar-error">
-          {{ errorMsg }}
+          <span class="sidebar-error__text">{{ errorMsg }}</span>
           <button class="sidebar-error__retry" @click="handleInitSDK">重试</button>
         </div>
       </div>
@@ -316,8 +316,21 @@ handleInitSDK()
   font-size: 11px;
   color: var(--app-danger);
   display: flex;
-  align-items: center;
+  /* 错误文案是多行结构，居中会让首行与按钮错位，改为顶部对齐 */
+  align-items: flex-start;
   gap: 8px;
+}
+
+/*
+ * 侧边栏只有 280px，错误文案里含长 URL 和多行说明：
+ * min-width: 0 让 flex 子项可收缩，否则长串会把重试按钮挤出可视区。
+ */
+.sidebar-error__text {
+  flex: 1;
+  min-width: 0;
+  white-space: pre-line;
+  word-break: break-all;
+  line-height: 1.6;
 }
 
 .sidebar-error__retry {

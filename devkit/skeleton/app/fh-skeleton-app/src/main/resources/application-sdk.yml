@@ -10,8 +10,19 @@
 # 生产部署：建议用 Docker（等 A4 plan）。
 # Mac arm64 / Linux x86_64 开发：直接 java -jar 即可（jar 内已含 native lib）。
 #
-# 详见 skeleton/docs/sdk-profile-isv-guide.md。
+# 详见 skeleton/docs/sdk-profile-integrator-guide.md。
 # ============================================================================
+
+# Spring AI 的 Anthropic/OpenAI 自动配置只要 starter 在 classpath 上就会实例化，
+# 即便 FH_CHAT_ENABLED=false 也要求 api-key 非空，否则启动期 Bean 创建失败。
+# 这里给占位值兜底（与 application-mock.yml 一致）；真正启用 chat 时用环境变量覆盖。
+# 放在本 profile 而非仅 k8s ConfigMap，是为了让 sdk profile 脱离 k8s（systemd / 直接 java -jar）也能启动。
+spring:
+  ai:
+    anthropic:
+      api-key: ${SPRING_AI_ANTHROPIC_API_KEY:not-configured}
+    openai:
+      api-key: ${SPRING_AI_OPENAI_API_KEY:not-configured}
 
 fh:
   skeleton:
@@ -31,6 +42,10 @@ fh:
         osd-snapshot-ttl: 5s
         http-auth-header-key: ${FH_SKELETON_SDK_AUTH_HEADER_KEY:}
         http-auth-header-value: ${FH_SKELETON_SDK_AUTH_HEADER_VALUE:}
+        # 通知 WSS 证书校验：私有化 FH2 自签名证书时设为 false 跳过校验，
+        # 或保持 true 并用 ssl-ca-path 指定自签 CA（默认 true，保持安全默认）
+        verify-ssl: ${FH_SKELETON_SDK_VERIFY_SSL:true}
+        ssl-ca-path: ${FH_SKELETON_SDK_SSL_CA_PATH:}
 
 # sdk profile 下的日志级别
 logging:

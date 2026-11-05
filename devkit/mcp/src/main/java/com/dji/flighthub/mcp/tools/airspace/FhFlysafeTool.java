@@ -72,6 +72,16 @@ public class FhFlysafeTool extends AbstractMcpTool {
         this.sdkService = sdkService;
     }
 
+    /**
+     * 声明工具级静态安全等级：REVERSIBLE。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.REVERSIBLE;
+    }
+
     @Override
     public Map<String, Object> getToolDefinition() {
         Map<String, Object> def = new LinkedHashMap<>();

@@ -1,0 +1,95 @@
+# ci/templates/maven-settings.yml
+#
+# 跨子项目共享的 CI Maven settings 注入片段。
+#
+# mcp/.gitlab-ci.yml 与 skeleton/.gitlab-ci.yml 都是根 pipeline 通过
+# `trigger: include:` 拉起的子 pipeline，两边的 script 需要逐字一致才能保证
+# amd64 / arm64 两类 runner 行为相同。此前这段逻辑在两个文件里各存一份，
+# 已经出现过“只改了 mcp、skeleton 漏同步”的漂移（见 commit 20ee9ef9），
+# 因此抽到这里由两边 `include: local:` + `!reference` 引用。
+#
+# 使用方式（在子 pipeline 配置里）：
+#   include:
+#     - local: ci/templates/maven-settings.yml
+#   ...
+#   script:
+#     - !reference [.ci-maven-settings, script]
+#
+# 注意：改本文件不会自动触发子 pipeline，根 .gitlab-ci.yml 的 trigger rules
+# 已把 `ci/**/*` 列入 changes，改动会同时拉起 mcp 与 skeleton 两条子 pipeline。
+
+# ──────────────────────────────────────────
+# CI 专用 Maven settings 注入（不入库，构建前写入 workspace）
+# 集成商不会执行此步骤，其 Dockerfile 直接使用 config/settings.xml（Maven Central）
+#
+# 配置方式：在 GitLab CI/CD Variables 中设置：
+#   MAVEN_MIRROR_URL  内网 Maven 镜像地址（如未设置则用 Maven Central）
+# ──────────────────────────────────────────
+.ci-maven-settings:
+  script:
+    - |
+      MIRROR="${MAVEN_MIRROR_URL:-https://repo1.maven.org/maven2}"
+
+      # 转义写入 XML 文本节点的特殊字符。代理地址、nonProxyHosts 里一旦出现 `&`、`<`
+      # 等字符，直接拼接会让 settings.xml 整体不可解析（mvn 启动即报
+      # "Non-parseable settings"）。`&` 必须最先替换，否则会把后续转义出的 `&` 再转一次。
+      xml_escape() {
+        printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+      }
+
+      # Maven 不读 http_proxy/https_proxy 环境变量——与 curl/wget/apt 不同，它的 HTTP
+      # 客户端只认 settings.xml 里的 <proxies> 块。因此在只有代理出口、没有直连出口的
+      # 环境里（如受限网络环境的 arm64 runner），即使容器里 http_proxy 已正确设置、代理端口也连得通，
+      # mvn 依然会走直连并超时。此处按需把环境变量翻译成 <proxies> 配置。
+      #
+      # 仅当 MAVEN_USE_PROXY=true 时注入：amd64 等 runner 能直连内网 Nexus，
+      # 无需代理，保持原行为不变，避免引入回归。
+      PROXY_BLOCK=""
+      if [ "${MAVEN_USE_PROXY}" = "true" ] && [ -n "${http_proxy}" ]; then
+        PROXY_HOSTPORT="${http_proxy#*://}"
+        PROXY_HOSTPORT="${PROXY_HOSTPORT%/}"
+        PROXY_HOST="${PROXY_HOSTPORT%%:*}"
+        PROXY_PORT="${PROXY_HOSTPORT##*:}"
+        # Maven 的 nonProxyHosts 用 `|` 分隔、`*.` 通配，与 no_proxy 的逗号语法不同
+        NON_PROXY="${MAVEN_NON_PROXY_HOSTS:-localhost|127.0.0.1|docker}"
+        PROXY_HOST_XML="$(xml_escape "${PROXY_HOST}")"
+        PROXY_PORT_XML="$(xml_escape "${PROXY_PORT}")"
+        NON_PROXY_XML="$(xml_escape "${NON_PROXY}")"
+        PROXY_BLOCK="<proxies>
+          <proxy>
+            <id>ci-proxy</id>
+            <active>true</active>
+            <protocol>http</protocol>
+            <host>${PROXY_HOST_XML}</host>
+            <port>${PROXY_PORT_XML}</port>
+            <nonProxyHosts>${NON_PROXY_XML}</nonProxyHosts>
+          </proxy>
+          <proxy>
+            <id>ci-proxy-https</id>
+            <active>true</active>
+            <protocol>https</protocol>
+            <host>${PROXY_HOST_XML}</host>
+            <port>${PROXY_PORT_XML}</port>
+            <nonProxyHosts>${NON_PROXY_XML}</nonProxyHosts>
+          </proxy>
+        </proxies>"
+        echo "Maven proxy: ${PROXY_HOST}:${PROXY_PORT}, nonProxyHosts=${NON_PROXY}"
+      fi
+
+      cat > "${CI_PROJECT_DIR}/config/settings.xml" <<SETTINGS_EOF
+      <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                                    https://maven.apache.org/xsd/settings-1.0.0.xsd">
+        ${PROXY_BLOCK}
+        <mirrors>
+          <mirror>
+            <id>ci-mirror</id>
+            <mirrorOf>*</mirrorOf>
+            <name>CI Maven Mirror</name>
+            <url>$(xml_escape "${MIRROR}")</url>
+          </mirror>
+        </mirrors>
+      </settings>
+      SETTINGS_EOF
+      echo "Maven mirror: ${MIRROR}"

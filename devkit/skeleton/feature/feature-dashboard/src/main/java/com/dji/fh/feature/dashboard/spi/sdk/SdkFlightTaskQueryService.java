@@ -659,7 +659,13 @@ public class SdkFlightTaskQueryService implements FlightTaskQueryService {
      * <p>时间字段由 {@link DateTimeUtils#toEpochSeconds(Object)} 统一解析为 Unix 秒。
      * SDK 详情只返回 wayline_uuid 和 sn，不含名称，故航线名与设备名由本地反查补齐
      * （见 {@link #resolveWaylineName(String)} / {@link #resolveDeviceName(String)}）；
-     * planType / repeatType / vlmEnabled SDK 详情不返回，DTO 不包含这些字段。
+     * planType / repeatType / vlmEnabled / resumableStatus SDK 详情不返回，DTO 不包含这些字段。
+     *
+     * <p>{@code isBreakPointResume} 与 {@code resumableStatus} 不可互相推导：
+     * {@code TaskDetail} / {@code CommandTaskListItemData} 等任务查询返回结构只暴露
+     * {@code is_break_point_resume}；{@code resumableStatus} 仅存在于 SDK 内部的
+     * {@code FlightTask} 事件模型上，不属于任务详情 / 列表的返回字段，
+     * 因此详情接口无法回显创建时下发的续飞策略。
      *
      * @param detail SDK 任务详情
      * @return 详情 DTO
@@ -716,7 +722,7 @@ public class SdkFlightTaskQueryService implements FlightTaskQueryService {
      * 由航线 UUID 反查航线名称。
      *
      * <p>同理，航线名缺失不应导致详情接口失败；SPI 的 default 实现直接返回空 Map，
-     * 未实现该方法的 ISV 会走降级路径。
+     * 未实现该方法的集成商会走降级路径。
      *
      * @param waylineUuid 航线 UUID
      * @return 航线名称；查不到或查询失败时为 null

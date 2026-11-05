@@ -1,24 +1,26 @@
-# 4 组件总览 + 字段名差异对比
+# 7 组件总览 + 字段名差异对比
 
-DJI 上云API 2 4 个组件的初始化字段名 **不统一**，是 ISV 接入时最容易出错的地方。先看这张表，再去读具体组件文档。
+DJI Cloud API 2 的 7 个组件分成**自包含 SDK** 与 **paas.js 组件**两族，初始化字段名也不统一，是集成商接入时最容易出错的地方。先看这张表，再去读具体组件文档。
 
 ## 一、组件 × 依赖关系
 
 | 组件 | 入口 | 依赖 `paas.js` | 需调 `FH2.initConfig` | 额外 SDK 资源（CSS+JS） |
 |---|---|---|---|---|
-| 航线 - 创建/编辑 | `new WaylineEditor(opts)` | ✓ 需要（SDK 内部用 `window.FH2` 加载地图） | ✗ 不需要（SDK 内部已封装 initConfig + loadMap） | ✓ `wayline-edit-sdk/index.{css,js}` |
-| 航线 - 预览 | `window.FH2.loadWaylineView(domId, params)` | ✓ 需要 | ✓ 需要 | ✗ 不需要 |
-| 设备管理 - SDK 模式 | `window.UranusDeviceManagerApp.init(opts)` | ✗ 不需要 | ✗ 不需要 | ✓ `device-manager-sdk/index.{css,js}` |
-| 设备管理 - paas.js 模式 | `window.FH2.loadDevice(domId, params)` | ✓ 需要 | ✓ 需要 | ✗ 不需要 |
+| 航线 - 创建/编辑 | `new WaylineEditor(opts)` | ✗ 自包含 | ✗ 不需要 | Cesium + `wayline-edit-sdk/index.{css,js}` |
+| 航线 - 预览 | `new WaylineView(opts)`（`window.WaylineView`） | ✗ 自包含 | ✗ 不需要 | Cesium + `wayline-view-sdk/index.{css,js}` |
+| 设备管理 | `window.UranusDeviceManagerApp.setupDeviceManager(opts)` + `mountXxx()`（新版两层架构，推荐）或 `.init(opts)`（旧版整包，已不推荐但仍可用） | ✗ 自包含 | ✗ 不需要 | `device-manager-sdk/index.{css,js}` |
 | 驾驶舱 | `window.FH2.loadCockpit(domId, params)` | ✓ 需要 | ✓ 需要 | ✗ 不需要 |
-| 飞行记录回放 | `new FlyDataReplay(opts)` | ✓ 需要 | ✗ 不需要 | ✓ `fly-data-sdk/index.{css,js}` |
+| 飞行记录回放 | `new FlyDataReplay(opts)` | ✗ 自包含 | ✗ 不需要 | Cesium + `fly-data-sdk/index.{css,js}` |
+| 直播大屏 | `window.DJILivePlayer.initLivePlayer(opts)` + `new DjiLivePlayer(opts)` | ✗ 完全独立 | ✗ 不需要 | `multi-stream-cdn/sdk/sdk.umd.js` + `style.css` |
+| 设备小窗 | `window.FH2.loadDeviceWindow(domId, params)` | ✓ 需要 | ✓ 需要 | ✗ 不需要 |
+
+> ⚠️ **设备管理没有 paas.js 集成模式**——`window.FH2` 上不存在 `loadDevice`/`destroyDevice`。无论宿主页面是否已在用 `paas.js`，设备管理都走同一套独立 SDK，区别只是新旧两个 API 版本（见 `device-manager.md`）。7 个组件以此计。
 
 **速记**：
-- **完全独立**（只引一个 SDK 文件）：`UranusDeviceManagerApp`
-- **依赖 paas.js + 不调 initConfig**：`WaylineEditor`（创建/编辑）、`FlyDataReplay`
-- **依赖 paas.js + initConfig**：航线预览、设备管理 paas.js 模式、驾驶舱
+- **自包含**（引 Cesium + 自己的 SDK，不碰 `window.FH2`）：`WaylineEditor`、`WaylineView`、`UranusDeviceManagerApp`、`FlyDataReplay`；`DJILivePlayer` 更彻底（连 Cesium 都不需要）
+- **依赖 paas.js + initConfig**：驾驶舱、设备小窗（设备管理不在此列）
 
-⚠️ `paas.js` 必须**先于** SDK `index.js` 加载，否则 `window.FH2` 未就绪。
+⚠️ `paas.js` 必须**先于** `FH2.initConfig` / `FH2.loadXxx` 加载，否则 `window.FH2` 未就绪。**这条只适用于 paas.js 组件**；自包含 SDK 不加载 `paas.js`，与之无关。
 
 ## 二、初始化字段名对照表
 
@@ -26,10 +28,12 @@ DJI 上云API 2 4 个组件的初始化字段名 **不统一**，是 ISV 接入�
 
 | 含义 | `FH2.initConfig` | `WaylineEditor` | `FlyDataReplay` | `UranusDeviceManagerApp.init` |
 |---|---|---|---|---|
-| 前端服务地址 | `hostUrl` | `hostUrl` | `hostUrl` | —（不需要） |
+| 前端服务地址 | `hostUrl` | `hostUrl`（必填，非废弃） | `hostUrl`（必填，非废弃） | —（不需要） |
 | 后端 API | `serverUrl` | `api.baseUrl` | `api.baseUrl` | `serverUrl` |
 | WebSocket | `wssUrl` | `ws.url` | —（不需要） | `wsUrl`（通知中心） |
 | 鉴权 | —（看 `loadXxx` 内部） | `api.auth`（自动复用给 WS） | `api.auth` | `auth`（与 `AuthConfig` 同结构） |
+
+⚠️ `WaylineEditor` / `FlyDataReplay` 的 `hostUrl` 字段**仍是必填项**，不是废弃字段；新增的 `runtimeDepsBasePath` + `map.env.cesiumBaseUrl` 是额外的依赖资源路径配置，与 `hostUrl` **同时传入**，不是替代关系（见 `wayline-editor.md` / `fly-data-replay.md`）。
 
 ⚠️ `WaylineEditor` 的 WS 鉴权由 SDK **自动复用 `api.auth`**，不要单独传 `ws.auth`。
 
@@ -46,13 +50,14 @@ DJI 上云API 2 4 个组件的初始化字段名 **不统一**，是 ISV 接入�
 
 | 组件 | `wssUrl` / `ws.url` / `wsUrl` 的写法 |
 |---|---|
-| `FH2.initConfig` | `ws://host:30812/openapi/v0.9/notification/ws/v1/notifications`（推送中心地址）；**航线预览不需要 `wssUrl`** |
+| `FH2.initConfig` | `ws://host:30812/openapi/v0.9/notification/ws/v1/notifications`（推送中心地址） |
 | `WaylineEditor` `ws.url` | `ws://host:30812/openapi/v0.9/notification/ws/v1/notifications` |
+| `WaylineView` `map.notifyWsUrl` | 可选；doodle 插件据此实时更新地图元素，不传不影响基础渲染 |
 | `UranusDeviceManagerApp` `wsUrl` | `ws://host:30812/openapi/v0.9/notification/ws/v1/notifications`（推送中心地址） |
 
 ## 三、鉴权（auth）模式
 
-DJI 上云API 2 用动态请求头鉴权（每次请求时回调拿当前 token）。类型名 `AuthConfig`（`WaylineEditor` / `FlyDataReplay` 同结构）。
+DJI Cloud API 2 用动态请求头鉴权（每次请求时回调拿当前 token）。类型名 `AuthConfig`（`WaylineEditor` / `FlyDataReplay` 同结构）。
 
 ```ts
 interface AuthConfig {
@@ -83,27 +88,31 @@ var auth = {
 
 | 组件 | 销毁 |
 |---|---|
-| `WaylineEditor` 实例 | `editor.destroy()` —— 释放后必须重新 `new`；**同页面不能同时挂多实例**（FH2 / mapAppState 是全局单例） |
-| `FH2.loadWaylineView` | `window.FH2.destroyPaasView()` |
+| `WaylineEditor` 实例 | `editor.destroy()` —— 释放后必须重新 `new` |
+| `WaylineView` 实例 | `view.destroy()` —— 释放后必须重新 `new` |
 | `UranusDeviceManagerApp` | 暂无显式 destroy，由 SDK 内部管理（重新 `init()` 会复用容器） |
-| `FH2.loadDevice` | `window.FH2.destroyDevice()` → 返回 Promise |
-| `FH2.loadCockpit` | `window.FH2.destroyCockpit(self?)` → 返回 Promise；`self=true` 仅卸载驾驶舱保留地图 |
-| `FlyDataReplay` 实例 | `player.destroy()` —— 切 `taskId` 必须先销毁旧实例再 new；**同页面不能同时挂多实例**（同上） |
+| `FH2.loadCockpit` | `window.FH2.destroyCockpit(isEffect?)` → 返回 `void`（同步，不是 Promise）；`isEffect=true` 的语义未在真实代码中验证，见 `cockpit.md` 八 |
+| `FH2.loadDeviceWindow` | `window.FH2.destroyDeviceWindow(self?)` → 返回 Promise；`self=true` 仅销毁小窗保留地图；切换设备优先 `updateDeviceWindow` |
+| `FlyDataReplay` 实例 | `player.destroy()` —— 切 `taskId` 必须先销毁旧实例再 new |
+| `DJILivePlayer` / `DjiLivePlayer` | 实例 `player.destroy()`（幂等）；多路逐实例销毁 |
 
 ## 五、统一错误码
 
-`WaylineEditor` 和 `FlyDataReplay` 使用**同一份**错误码集合（通过 `editor.on('error', cb)` / `player.on('error', cb)` 抛出）：
+`WaylineEditor` 与 `FlyDataReplay` 共用同一数字码空间；下表是 **`WaylineEditor` 全集**。
+`FlyDataReplay` 的集成商 API 文档只列出 `5000 / 5001 / 6000 / 6002` 四个，`4001 / 4002 / 6001 / 7000`
+不要用于回放器。`WaylineView` 复用码值但语义不同（`6002` = WASM 依赖加载失败，`6003` = 地图初始化失败），
+详见 `wayline-view.md` 第八节。
 
 | 错误码 | 名称 | 含义 |
 |---|---|---|
-| 4001 | `WS_AUTH_ERROR` | WebSocket 鉴权失败（WS close code = 401） |
-| 4002 | `WS_DISCONNECTED` | WebSocket 连接断开 |
+| 4001 | `WS_AUTH_ERROR` | WebSocket 鉴权失败（WS close code = 4001，仅 `WaylineEditor`） |
+| 4002 | `WS_DISCONNECTED` | WebSocket 连接断开（仅 `WaylineEditor`） |
 | 5000 | `API_ERROR` | API 请求失败（网络 / 5xx） |
 | 5001 | `API_AUTH_ERROR` | API 鉴权失败（401/403） |
 | 6000 | `PARSE_ERROR` | 航线 KMZ 解析失败 |
-| 6001 | `WASM_LOAD_ERROR` | WASM 加载失败 |
-| 6002 | `MAP_INIT_ERROR` | 地图初始化失败 |
-| 7000 | `UPLOAD_ERROR` | OSS 上传失败 |
+| 6001 | `WASM_LOAD_ERROR` | WASM 加载失败（仅 `WaylineEditor`） |
+| 6002 | `MAP_INIT_ERROR` | 地图初始化失败（`WaylineEditor` / `FlyDataReplay`） |
+| 7000 | `UPLOAD_ERROR` | OSS 上传失败（仅 `WaylineEditor`） |
 
 详细处理建议见 `troubleshooting.md`。
 
@@ -147,7 +156,7 @@ var auth = {
 | `WaylineEditor` | `theme` | `Partial<WaylineTheme>` | `editor.setTheme(theme)` |
 | `FlyDataReplay` | `theme` | `Partial<FlyDataTheme>` | `player.setTheme(theme)` |
 | `UranusDeviceManagerApp` | — | — | — |
-| `FH2.loadCockpit` / `loadDevice` / `loadWaylineView` | — | — | — |
+| `FH2.loadCockpit` / `loadDeviceWindow` | — | — | — |
 
 **字段名一致（都叫 `theme`），调色板结构一致，但默认值不同。** SDK **不提供预置主题**，只暴露定制接口；12 个色板字段、两套默认值、自定义示例见 `theme.md`。
 

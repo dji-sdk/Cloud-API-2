@@ -14,6 +14,7 @@
     "lint:fix": "eslint src/ --ext .vue,.ts,.tsx --fix"
   },
   "dependencies": {
+    "dompurify": "^3.4.17",
     "echarts": "^6.1.0",
     "lucide-vue-next": "^1.0.0",
     "markdown-it": "^14.3.3",
@@ -38,8 +39,12 @@
     "eslint-plugin-vue": "^10.11.1",
     "jsdom": "^25.0.0",
     "typescript": "~5.9.3",
-    "vite": "^6.0.0",
-    "vitest": "^5.0.2",
+    "vite": "^6.4.5",
+    "vitest": "^5.0.5",
     "vue-tsc": "^3.2.5"
+  },
+  "overrides": {
+    "minimatch": "^11.0.1",
+    "glob": "^14.0.2"
   }
 }

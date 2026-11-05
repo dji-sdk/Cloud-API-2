@@ -1,5 +1,5 @@
 ---
-description: 生成DJI 上云API 2 直播大屏（DJILivePlayer 多路直播网格）的最小可运行 HTML
+description: 生成DJI Cloud API 2 直播大屏（DJILivePlayer 多路直播网格）的最小可运行 HTML
 argument-hint: [serverUrl] [sn1,sn2,...] [gridCols]
 ---
 

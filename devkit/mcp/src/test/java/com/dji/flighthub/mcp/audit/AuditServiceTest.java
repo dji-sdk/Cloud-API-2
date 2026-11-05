@@ -133,4 +133,24 @@ class AuditServiceTest {
         assertDoesNotThrow(() ->
                 service.logExecution("fh_connect", true, null, 100, false));
     }
+
+    @Test
+    void logExecution_shouldNotThrow_whenRateLimited() {
+        RequestContext.set("req-006", "fh_takeoff", "client-rl");
+        AuditService service = createService(true, null);
+
+        // 限流拒绝分支同样要能正常落审计
+        assertDoesNotThrow(() ->
+                service.logExecution("fh_takeoff", false, "Rate limit exceeded: 6 calls/min", 1, false, true, false));
+    }
+
+    @Test
+    void logExecution_shouldNotThrow_whenSecurityDenied() {
+        RequestContext.set("req-007", "fh_takeoff", "client-sec");
+        AuditService service = createService(true, null);
+
+        assertDoesNotThrow(() ->
+                service.logExecution("fh_takeoff", false,
+                        "Operation denied: insufficient security level", 1, false, false, true));
+    }
 }

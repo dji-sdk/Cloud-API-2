@@ -29,7 +29,7 @@ import com.dji.flighthubsdk.generated.FlightHubSdkErrorCode;
  * <p>仅暴露 A3b 实际用到的 11 个方法（同步 init / shutdown / 元方法 + workspace 级 listen +
  * getDeviceList + 5 个 drone 级 listen）。不复刻 SDK 完整 50+ listenXxx API。
  *
- * <p>需要其他 SDK 能力（如设备相机、wayline 管理）的 ISV 应直接调 {@code FlightHubSDK}
+ * <p>需要其他 SDK 能力（如设备相机、wayline 管理）的集成商应直接调 {@code FlightHubSDK}
  * 静态方法，不必扩展本 interface。
  *
  * <p>SDK callback 约定（javap 实查后确认）：

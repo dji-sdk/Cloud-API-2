@@ -30,8 +30,23 @@ mkdir -p "$TARGET_DIR"
 # 1. 从 fat jar 内提取内嵌的 flight-hub-sdk-*.jar
 unzip -j -o "$JAR" 'BOOT-INF/lib/flight-hub-sdk-*.jar' -d "$WORK_DIR" >/dev/null
 
-# 2. 从 SDK jar 内提取 linux-x86_64 原生库
-unzip -j -o "$WORK_DIR"/flight-hub-sdk-*.jar 'lib/linux-x86_64/*' -d "$TARGET_DIR" >/dev/null
+# 2. 按本机架构选择 SDK jar 内的原生库目录（SDK 分 amd64/arm64 两个包，
+#    每个包只带自己那一份 lib/linux-*，用错架构会解压出空目录或加载失败）
+case "$(uname -m)" in
+  x86_64 | amd64) SDK_LIB_DIR=linux-x86_64 ;;
+  aarch64 | arm64) SDK_LIB_DIR=linux-aarch64 ;;
+  *)
+    echo "不支持的本机架构: $(uname -m)（仅支持 x86_64 / aarch64）" >&2
+    exit 1
+    ;;
+esac
+
+if ! unzip -l "$WORK_DIR"/flight-hub-sdk-*.jar "lib/${SDK_LIB_DIR}/*" >/dev/null 2>&1; then
+  echo "SDK jar 内不含 lib/${SDK_LIB_DIR}/，请改用与本机架构匹配的 SDK 包重新构建" >&2
+  exit 1
+fi
+
+unzip -j -o "$WORK_DIR"/flight-hub-sdk-*.jar "lib/${SDK_LIB_DIR}/*" -d "$TARGET_DIR" >/dev/null
 
 # 3. 设置执行权限（部分 .so 需要）
 chmod 755 "$TARGET_DIR"/*.so*

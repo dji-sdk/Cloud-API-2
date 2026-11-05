@@ -39,6 +39,7 @@ import com.dji.flighthubsdk.FlightHubCallback;
 import com.dji.flighthubsdk.bean.Device;
 import com.dji.flighthubsdk.bean.DeviceTopo;
 import com.dji.flighthubsdk.bean.FlightHubError;
+import com.dji.flighthubsdk.bean.FlightHubSdkConfig;
 import com.dji.flighthubsdk.generated.FlightHubSdkErrorCode;
 import java.time.Clock;
 import java.time.Duration;
@@ -48,6 +49,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 /**
  * RealSdkStarter 单元测试。
@@ -71,13 +73,7 @@ class RealSdkStarterTest {
         sdkInvoker = mock(SdkInvoker.class);
         bus = mock(SdkEventBus.class);
         adapter = new RealSdkAdapter(bus);
-        props = new RealSdkProperties(
-                "t", "test.example.com", "443", "wss://test", "info",
-                Duration.ofMillis(500),  // 短超时让测试快
-                1000L, Duration.ofSeconds(5),
-                Duration.ofSeconds(1), 2,  // 重试延迟 1s，最多 2 次（测试用短值）
-                "user_id", "your-auth-value",
-                Duration.ZERO);  // 测试中关闭周期调和，避免干扰
+        props = newProps(null, null);  // verifySsl / sslCaPath 用默认
         osdAggregator = new OsdAggregator(bus, Clock.fixed(Instant.now(), ZoneOffset.UTC), props);
         starter = new RealSdkStarter(sdkInvoker, adapter, osdAggregator, props, bus);
     }
@@ -96,6 +92,50 @@ class RealSdkStarterTest {
                 && KernelReadyEvent.Mode.SDK.equals(e.mode())
                 && "2.0.0".equals(e.version())));
         assertThat(starter.workspaceListenId()).isEqualTo(7);
+    }
+
+    @Test
+    void onReady_shouldDisableWssCertVerify_whenVerifySslFalse() {
+        RealSdkProperties insecureProps = newProps(false, "/etc/ssl/fh2-ca.pem");
+        RealSdkStarter insecureStarter = starterWith(insecureProps);
+        when(sdkInvoker.initialize(any())).thenReturn(FlightHubSdkErrorCode.SUCCESS);
+        when(sdkInvoker.listenWorkspaceDeviceChanged(any())).thenReturn(7);
+        when(sdkInvoker.getVersion()).thenReturn("2.0.0");
+        stubGetDeviceListEmpty();
+
+        insecureStarter.onReady();
+
+        ArgumentCaptor<FlightHubSdkConfig> captor = ArgumentCaptor.forClass(FlightHubSdkConfig.class);
+        verify(sdkInvoker).initialize(captor.capture());
+        assertThat(captor.getValue().isVerifySsl()).isFalse();
+        assertThat(captor.getValue().getSslCaPath()).isEqualTo("/etc/ssl/fh2-ca.pem");
+    }
+
+    @Test
+    void onReady_shouldForwardDefaultVerifySslTrue_whenVerifySslNotConfigured() {
+        prepareInitializeAndListenIdsSuccess();
+        stubGetDeviceListEmpty();
+
+        // setup 中 props 的 verifySsl / sslCaPath 均为 null，验证默认值透传到 SDK
+        starter.onReady();
+
+        FlightHubSdkConfig config = captureInitConfig();
+        assertThat(config.isVerifySsl()).isTrue();
+        assertThat(config.getSslCaPath()).isEmpty();
+    }
+
+    @Test
+    void onReady_shouldNotSetSslCaPath_whenCaPathBlank() {
+        RealSdkProperties blankCaProps = newProps(true, "   ");
+        RealSdkStarter blankCaStarter = starterWith(blankCaProps);
+        prepareInitializeAndListenIdsSuccess();
+        stubGetDeviceListEmpty();
+
+        blankCaStarter.onReady();
+
+        FlightHubSdkConfig config = captureInitConfig();
+        assertThat(config.isVerifySsl()).isTrue();
+        assertThat(config.getSslCaPath()).isEmpty();
     }
 
     @Test
@@ -297,6 +337,35 @@ class RealSdkStarterTest {
         when(sdkInvoker.listenAircraftLocation(any(), any())).thenReturn(13);
         when(sdkInvoker.listenAircraftBatteryInfo(any(), any())).thenReturn(14);
         when(sdkInvoker.listenAircraftAttitude(any(), any())).thenReturn(15);
+    }
+
+    /**
+     * 构造一份仅 TLS 字段不同的测试配置（其余字段沿用 setup 中的短超时取值，让测试跑得快）。
+     */
+    private static RealSdkProperties newProps(Boolean verifySsl, String sslCaPath) {
+        return new RealSdkProperties(
+                "t", "test.example.com", "443", "wss://test", "info",
+                Duration.ofMillis(500), 1000L, Duration.ofSeconds(5),
+                Duration.ofSeconds(1), 2, "user_id", "your-auth-value",
+                Duration.ZERO, verifySsl, sslCaPath);
+    }
+
+    /**
+     * 用指定配置装配一个新的 starter（共享 sdkInvoker / bus 桩）。
+     */
+    private RealSdkStarter starterWith(RealSdkProperties customProps) {
+        OsdAggregator customAggregator =
+                new OsdAggregator(bus, Clock.fixed(Instant.now(), ZoneOffset.UTC), customProps);
+        return new RealSdkStarter(sdkInvoker, adapter, customAggregator, customProps, bus);
+    }
+
+    /**
+     * 取 initialize 时传入的 SDK 配置。
+     */
+    private FlightHubSdkConfig captureInitConfig() {
+        ArgumentCaptor<FlightHubSdkConfig> captor = ArgumentCaptor.forClass(FlightHubSdkConfig.class);
+        verify(sdkInvoker).initialize(captor.capture());
+        return captor.getValue();
     }
 
     private void stubGetDeviceListEmpty() {

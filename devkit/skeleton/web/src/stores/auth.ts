@@ -21,6 +21,7 @@ import {
   login as apiLogin,
   register as apiRegister,
   fetchMe,
+  MockTokenRejectedError,
 } from '@/api/auth'
 import type { LoginRequest, RegisterRequest } from '@/types/auth'
 
@@ -73,7 +74,13 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('x-user-token', token.value)
     try {
       user.value = await fetchMe()
-    } catch {
+    } catch (e: unknown) {
+      if (e instanceof MockTokenRejectedError) {
+        // 配置错误而非登录过期：保留 token，让用户在页面上继续看到接口报出的原因，
+        // 而不是被静默登出、以为系统随机掉线。此处不能再抛（main.ts 调用是 fire-and-forget）。
+        console.error(e.message)
+        return
+      }
       logout()
     }
   }

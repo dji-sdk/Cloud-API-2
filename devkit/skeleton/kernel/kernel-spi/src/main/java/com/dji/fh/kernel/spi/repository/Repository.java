@@ -21,7 +21,7 @@ import java.util.Optional;
 
 /**
  * 通用 CRUD Repository SPI。
- * 复杂查询、原生 SQL、JPA Specification 等请在 ISV 自家 module 内直接用 JPA / MyBatis。
+ * 复杂查询、原生 SQL、JPA Specification 等请在集成商自家 module 内直接用 JPA / MyBatis。
  *
  * @param <T>  实体类型
  * @param <ID> 主键类型（推荐 String / Long / UUID）

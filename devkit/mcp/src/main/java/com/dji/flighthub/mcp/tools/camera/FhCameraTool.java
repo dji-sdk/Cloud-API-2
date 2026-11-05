@@ -18,6 +18,7 @@ package com.dji.flighthub.mcp.tools.camera;
 
 import com.dji.flighthub.mcp.sdk.SdkCallbackBridge;
 import com.dji.flighthub.mcp.sdk.SdkService;
+import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
@@ -26,6 +27,8 @@ import com.dji.flighthubsdk.bean.CameraFocalLengthParams;
 import com.dji.flighthubsdk.bean.CameraState;
 import com.dji.flighthubsdk.bean.CameraZoomLensState;
 import com.dji.flighthubsdk.bean.GimbalState;
+import com.dji.flighthubsdk.bean.IntervalTakePhotoParam;
+import com.dji.flighthubsdk.bean.IntervalTakePhotoSetParam;
 import com.dji.flighthubsdk.bean.LookAtTargetParams;
 import com.dji.flighthubsdk.bean.PanoramaParam;
 import com.dji.flighthubsdk.bean.SetNightSceneModeParams;
@@ -59,7 +62,10 @@ import java.util.concurrent.atomic.AtomicReference;
  * 覆盖拍照、录像、变焦、框选放大、模式切换、镜头切换、夜景模式、存储设置、
  * 红外增益、全景拍摄、云台旋转、云台指向、云台复位以及状态查询等所有相机/云台功能。
  *
- * <p>安全等级：L0（纯观测/相机类操作，无需人工确认）
+ * <p>安全等级：混合等级工具，工具级声明最低等级 L0（READ_ONLY，门控基线）；
+ * 除 {@code get_camera_state} / {@code get_gimbal_state} / {@code get_lens_state} 三个只读
+ * action 外均为 L1，由 {@link #READ_ONLY_ACTIONS} 在 action 内判定是否需要抬高要求。
+ * per-action 门控只能抬高、不能降低。
  *
  * @author DJI FlightHub SDK Team
  */
@@ -88,6 +94,7 @@ public class FhCameraTool extends AbstractMcpTool {
     private static final String PARAM_ZOOM_FACTOR = "zoom_factor";
     private static final String PARAM_PITCH = "pitch";
     private static final String PARAM_YAW = "yaw";
+    private static final String PARAM_INTERVAL = "interval";
     private static final String PARAM_TARGET_LAT = "target_lat";
     private static final String PARAM_TARGET_LNG = "target_lng";
     private static final String PARAM_TARGET_HEIGHT = "target_height";
@@ -112,6 +119,9 @@ public class FhCameraTool extends AbstractMcpTool {
     private static final String ACTION_GET_CAMERA_STATE = "get_camera_state";
     private static final String ACTION_GET_GIMBAL_STATE = "get_gimbal_state";
     private static final String ACTION_GET_LENS_STATE = "get_lens_state";
+    private static final String ACTION_CAMERA_INTERVAL_SET = "camera_interval_set";
+    private static final String ACTION_CAMERA_INTERVAL_START = "camera_interval_start";
+    private static final String ACTION_CAMERA_STOP_PHOTO = "camera_stop_photo";
 
     /** 有效 action 集合 */
     private static final Set<String> VALID_ACTIONS = Set.of(
@@ -121,7 +131,18 @@ public class FhCameraTool extends AbstractMcpTool {
             ACTION_NIGHT_SCENE, ACTION_PHOTO_STORAGE, ACTION_VIDEO_STORAGE,
             ACTION_THERMAL_GAIN, ACTION_PANORAMA_START, ACTION_PANORAMA_STOP,
             ACTION_GIMBAL_RESET, ACTION_GET_CAMERA_STATE, ACTION_GET_GIMBAL_STATE,
-            ACTION_GET_LENS_STATE
+            ACTION_GET_LENS_STATE, ACTION_CAMERA_INTERVAL_SET, ACTION_CAMERA_INTERVAL_START,
+            ACTION_CAMERA_STOP_PHOTO
+    );
+
+    /** 必须显式传入 payload_index 的 action 集合（不做自动探测） */
+    private static final Set<String> ACTIONS_REQUIRING_PAYLOAD_INDEX = Set.of(
+            ACTION_CAMERA_INTERVAL_SET, ACTION_CAMERA_INTERVAL_START, ACTION_CAMERA_STOP_PHOTO
+    );
+
+    /** 只读 action 集合（L0，不拦截）；其余 action 一律要求 L1 */
+    private static final Set<String> READ_ONLY_ACTIONS = Set.of(
+            ACTION_GET_CAMERA_STATE, ACTION_GET_GIMBAL_STATE, ACTION_GET_LENS_STATE
     );
 
     /** 有效 action 排序列表 */
@@ -153,6 +174,9 @@ public class FhCameraTool extends AbstractMcpTool {
 
     /** zoom_factor 最大值 */
     private static final int ZOOM_FACTOR_MAX = 200;
+
+    /** interval 最小值（秒），必须大于 0 */
+    private static final double INTERVAL_MIN_SECONDS = 0.0;
 
     /** 云台俯仰角范围 */
     private static final double PITCH_MIN = -120.0;
@@ -193,6 +217,19 @@ public class FhCameraTool extends AbstractMcpTool {
         this.sdkService = sdkService;
     }
 
+    /**
+     * 声明工具级静态安全等级：READ_ONLY（混合等级工具的门控基线）。
+     *
+     * <p>三个状态查询 action 为 L0，不应被 L1 门控误拦；
+     * 其余 action 在 {@link #execute} 内由 {@code enforceSecurityLevel} 抬升至 L1。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.READ_ONLY;
+    }
+
     @Override
     public Map<String, Object> getToolDefinition() {
         Map<String, Object> def = new LinkedHashMap<>();
@@ -231,7 +268,7 @@ public class FhCameraTool extends AbstractMcpTool {
         props.put(PARAM_LENS_TYPE, Map.of(
                 "type", "string",
                 "enum", List.of("NORMAL", "WIDE", "ZOOM", "IR", "THERMAL"),
-                "description", "Lens type for switch_lens or zoom_at_target"
+                "description", "Lens type for camera_zoom, switch_lens or zoom_at_target"
         ));
         props.put(PARAM_CAMERA_MODE, Map.of(
                 "type", "string",
@@ -297,6 +334,10 @@ public class FhCameraTool extends AbstractMcpTool {
                 "type", "number",
                 "description", "Target height (for gimbal_look_at)"
         ));
+        props.put(PARAM_INTERVAL, Map.of(
+                "type", "number",
+                "description", "Interval in seconds (>0, for camera_interval_set)"
+        ));
 
         schema.put("properties", props);
         schema.put("required", List.of(PARAM_DRONE_SN, PARAM_ACTION));
@@ -329,13 +370,28 @@ public class FhCameraTool extends AbstractMcpTool {
         // 4. 解析 payload_index（null 表示用户未传，真实 SDK 模式下自动探测）
         String payloadIndex = getStringArg(args, PARAM_PAYLOAD_INDEX, null);
 
-        // 5. Mock 模式（含 workspace 为 null 的降级场景）
+        // 4.1 间隔拍照相关 action 必须显式指定 payload_index
+        if (payloadIndex == null && ACTIONS_REQUIRING_PAYLOAD_INDEX.contains(action)) {
+            return errorResult("Missing required parameter: payload_index for action " + action,
+                    "Provide payload_index (e.g. '53-0-0' for M3D, '42-0-0' for H20). "
+                            + "Use fh_device_list to check device model.");
+        }
+
+        // 5. 统一安全等级拦截：三个状态查询为 L0，其余 action 为 L1
+        if (!READ_ONLY_ACTIONS.contains(action)) {
+            Map<String, Object> denied = enforceSecurityLevel(SecurityLevel.REVERSIBLE);
+            if (denied != null) {
+                return denied;
+            }
+        }
+
+        // 6. Mock 模式（含 workspace 为 null 的降级场景）
         if (sdkService.isMockMode() || sdkService.getWorkspace() == null) {
             return dispatchMock(droneSn, action,
                     payloadIndex != null ? payloadIndex : DEFAULT_PAYLOAD_INDEX, args);
         }
 
-        // 6. 真实 SDK 调用
+        // 7. 真实 SDK 调用
         return executeWithRealSdk(droneSn, action, payloadIndex, args);
     }
 
@@ -377,6 +433,13 @@ public class FhCameraTool extends AbstractMcpTool {
             case ACTION_GET_CAMERA_STATE -> dispatchMockCameraState(sn, idx);
             case ACTION_GET_GIMBAL_STATE -> dispatchMockGimbalState(sn, idx);
             case ACTION_GET_LENS_STATE -> dispatchMockLensState(sn, idx);
+            case ACTION_CAMERA_INTERVAL_SET -> dispatchMockIntervalSet(sn, idx, args);
+            case ACTION_CAMERA_INTERVAL_START -> successResult(
+                    Map.of("drone_sn", sn, "action", action, "payload_index", idx, "status", "started"),
+                    "Interval photo capture started");
+            case ACTION_CAMERA_STOP_PHOTO -> successResult(
+                    Map.of("drone_sn", sn, "action", action, "payload_index", idx, "status", "stopped"),
+                    "Photo capture stopped");
             default -> errorResult("Unhandled action: " + action, "Report this bug.");
         };
     }
@@ -559,10 +622,37 @@ public class FhCameraTool extends AbstractMcpTool {
             return errorResult("Invalid zoom_factor: " + zoom,
                     "Must be between " + ZOOM_FACTOR_MIN + " and " + ZOOM_FACTOR_MAX + ".");
         }
+        String lensType = getStringArg(args, PARAM_LENS_TYPE, null);
+        if (lensType != null && !VALID_LENS_TYPES.contains(lensType)) {
+            return errorResult("Invalid lens_type: " + lensType,
+                    "Must be one of: " + VALID_LENS_TYPES);
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("drone_sn", sn);
+        data.put("action", ACTION_CAMERA_ZOOM);
+        data.put("payload_index", idx);
+        data.put("zoom_factor", zoom);
+        if (lensType != null) {
+            data.put("lens_type", lensType);
+        }
+        return successResult(data, "Zoom set to " + zoom + "x"
+                + (lensType != null ? " on lens " + lensType : ""));
+    }
+
+    /**
+     * Mock: 设置间隔拍照参数。
+     */
+    private Map<String, Object> dispatchMockIntervalSet(String sn, String idx,
+                                                        Map<String, Object> args) {
+        double interval = getDoubleArg(args, PARAM_INTERVAL, Double.NaN);
+        Map<String, Object> intervalError = validateInterval(interval);
+        if (intervalError != null) {
+            return intervalError;
+        }
         return successResult(
-                Map.of("drone_sn", sn, "action", ACTION_CAMERA_ZOOM,
-                        "payload_index", idx, "zoom_factor", zoom),
-                "Zoom set to " + zoom + "x");
+                Map.of("drone_sn", sn, "action", ACTION_CAMERA_INTERVAL_SET,
+                        "payload_index", idx, "interval", interval),
+                "Interval photo interval set to " + interval + "s");
     }
 
     /**
@@ -761,6 +851,9 @@ public class FhCameraTool extends AbstractMcpTool {
                         Map.of("drone_sn", droneSn, "action", action, "reset_mode", resetMode),
                         "Gimbal reset: " + describeResetMode(resetMode));
             }
+            case ACTION_CAMERA_INTERVAL_SET -> executeSdkIntervalSet(drone, droneSn, payloadIndex, args);
+            case ACTION_CAMERA_INTERVAL_START -> executeSdkIntervalStart(drone, droneSn, payloadIndex);
+            case ACTION_CAMERA_STOP_PHOTO -> executeSdkStopPhoto(drone, droneSn, payloadIndex);
             default -> errorResult("Unhandled command action: " + action, "Report this bug.");
         };
     }
@@ -837,13 +930,80 @@ public class FhCameraTool extends AbstractMcpTool {
             return errorResult("Invalid zoom_factor: " + zoomFactor,
                     "Must be between " + ZOOM_FACTOR_MIN + " and " + ZOOM_FACTOR_MAX + ".");
         }
+        String lensType = getStringArg(args, PARAM_LENS_TYPE, null);
+        if (lensType != null && !VALID_LENS_TYPES.contains(lensType)) {
+            return errorResult("Invalid lens_type: " + lensType,
+                    "Must be one of: " + VALID_LENS_TYPES);
+        }
+
         CameraFocalLengthParams focalParams = new CameraFocalLengthParams();
         focalParams.setPayloadIndex(payloadIndex);
         focalParams.setZoomFactor(zoomFactor);
+        // 未指定 lens_type 时不设置该字段，沿用 SDK 默认镜头
+        if (lensType != null) {
+            focalParams.setCameraType(CameraLensType.valueOf(lensType));
+        }
+
         SdkCallbackBridge.awaitVoid(cb -> drone.getCameraControlModule().drcSetFocalLength(focalParams, cb));
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("drone_sn", droneSn);
+        data.put("action", ACTION_CAMERA_ZOOM);
+        data.put("zoom_factor", zoomFactor);
+        if (lensType != null) {
+            data.put("lens_type", lensType);
+        }
+        return successResult(data, "Zoom set to " + zoomFactor + "x"
+                + (lensType != null ? " on lens " + lensType : ""));
+    }
+
+    /**
+     * SDK: 设置间隔拍照参数。
+     */
+    private Map<String, Object> executeSdkIntervalSet(Drone drone, String droneSn,
+                                                      String payloadIndex,
+                                                      Map<String, Object> args) throws Exception {
+        double interval = getDoubleArg(args, PARAM_INTERVAL, Double.NaN);
+        Map<String, Object> intervalError = validateInterval(interval);
+        if (intervalError != null) {
+            return intervalError;
+        }
+
+        IntervalTakePhotoSetParam params = new IntervalTakePhotoSetParam();
+        params.setPayloadIndex(payloadIndex);
+        params.setInterval(interval);
+
+        SdkCallbackBridge.awaitVoid(cb -> drone.getCameraControlModule().drcSetIntervalTakePhoto(params, cb));
         return successResult(
-                Map.of("drone_sn", droneSn, "action", ACTION_CAMERA_ZOOM, "zoom_factor", zoomFactor),
-                "Zoom set to " + zoomFactor + "x");
+                Map.of("drone_sn", droneSn, "action", ACTION_CAMERA_INTERVAL_SET,
+                        "payload_index", payloadIndex, "interval", interval),
+                "Interval photo interval set to " + interval + "s");
+    }
+
+    /**
+     * SDK: 开始间隔拍照。
+     */
+    private Map<String, Object> executeSdkIntervalStart(Drone drone, String droneSn,
+                                                        String payloadIndex) throws Exception {
+        IntervalTakePhotoParam params = new IntervalTakePhotoParam();
+        params.setPayloadIndex(payloadIndex);
+
+        SdkCallbackBridge.awaitVoid(cb -> drone.getCameraControlModule().drcIntervalTakePhoto(params, cb));
+        return successResult(
+                Map.of("drone_sn", droneSn, "action", ACTION_CAMERA_INTERVAL_START,
+                        "payload_index", payloadIndex, "status", "started"),
+                "Interval photo capture started");
+    }
+
+    /**
+     * SDK: 停止拍照。
+     */
+    private Map<String, Object> executeSdkStopPhoto(Drone drone, String droneSn,
+                                                    String payloadIndex) throws Exception {
+        SdkCallbackBridge.awaitVoid(cb -> drone.getCameraControlModule().drcStopTakePhoto(payloadIndex, cb));
+        return successResult(
+                Map.of("drone_sn", droneSn, "action", ACTION_CAMERA_STOP_PHOTO,
+                        "payload_index", payloadIndex, "status", "stopped"),
+                "Photo capture stopped");
     }
 
     /**
@@ -1329,6 +1489,24 @@ public class FhCameraTool extends AbstractMcpTool {
     }
 
     // ==================== 通用辅助方法 ====================
+
+    /**
+     * 校验间隔拍照的 interval 参数（必须为有限的正数，单位秒）。
+     *
+     * @param interval 间隔秒数
+     * @return null 表示校验通过，非 null 为错误响应
+     */
+    private static Map<String, Object> validateInterval(double interval) {
+        if (Double.isNaN(interval)) {
+            return errorResult("Missing required parameter: interval",
+                    "Provide interval in seconds (e.g. 5.0).");
+        }
+        if (Double.isInfinite(interval) || interval <= INTERVAL_MIN_SECONDS) {
+            return errorResult("Invalid interval: " + interval,
+                    "interval must be greater than " + INTERVAL_MIN_SECONDS + " seconds.");
+        }
+        return null;
+    }
 
     /**
      * 校验归一化坐标框（0~1 范围）。

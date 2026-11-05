@@ -22,7 +22,7 @@ import java.util.List;
 /**
  * 飞行任务查询 SPI，供看板聚合和飞行记录列表使用。
  *
- * <p>默认提供 mock 实现；ISV 接入真实 SDK 时通过声明自有 bean 覆盖。
+ * <p>默认提供 mock 实现；集成商 接入真实 SDK 时通过声明自有 bean 覆盖。
  *
  * @author DJI DevKit Team
  */
@@ -102,9 +102,9 @@ public interface FlightTaskQueryService {
      * <p>唯一性范围为整个工作空间，而非单个机场 SN：任务列表本就跨全部机场聚合展示，
      * 仅按设备维度限制无法解决「列表中分不清」的问题。
      *
-     * <p>默认抛出 {@link UnsupportedOperationException}。存量 ISV 实现未覆盖该方法时，
+     * <p>默认抛出 {@link UnsupportedOperationException}。存量集成商实现未覆盖该方法时，
      * 调用方（{@code FlightTaskRestController}）按 fail-open 处理并记录 WARN 日志，
-     * 避免接口变更导致存量 ISV 的创建/编辑功能整体不可用。
+     * 避免接口变更导致存量集成商的创建/编辑功能整体不可用。
      *
      * @param name            待校验的任务名称（调用方需先归一化，即去除首尾空白）
      * @param excludeTaskUuid 需排除的任务 UUID（编辑场景排除自身），创建场景传 null
@@ -161,7 +161,13 @@ public interface FlightTaskQueryService {
      *
      * <p>回显能力边界：{@code waylineName} / {@code deviceName} 由实现层反查补齐
      * （SDK 任务详情只返回 UUID 和 SN）；{@code planType} / {@code repeatType} /
-     * {@code vlmEnabled} SDK 详情接口不返回，编辑预填时前端保持默认值。
+     * {@code vlmEnabled} / {@code resumableStatus} SDK 详情接口不返回，编辑预填时前端保持默认值。
+     *
+     * <p>{@code isBreakPointResume} 只表达「本任务是否为断点续飞任务」，<b>不能</b>
+     * 反推自动续飞策略（{@code resumable_status}）：SDK 3.3.7 的 {@code TaskDetail}
+     * 与 {@code FlightTaskListResult} 均只暴露前者，{@code resumable_status} 仅存在于
+     * SDK 内部的 {@code FlightTask} 事件模型，不属于任务详情 / 列表的返回字段。
+     * 前端不得用本字段回填「自动断点续飞」开关。
      *
      * @param taskUuid       任务 UUID
      * @param name           任务名称

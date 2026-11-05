@@ -66,7 +66,10 @@ async function trigger(action: string) {
 <template>
   <div class="mock-debug">
     <h2>Mock 调试面板</h2>
-    <p class="hint">仅 VITE_MOCK_ENABLED=true（mock profile）可见，生产构建路由不存在。</p>
+    <p class="hint">
+      仅在运行时配置 MOCK_DEBUG_PANEL=true（容器改 config.js，本地改 .env 的 VITE_MOCK_DEBUG_PANEL）时注册此路由，
+      修改后需刷新页面。
+    </p>
 
     <div class="sn-row">
       <label>设备 SN：</label>
@@ -77,10 +80,12 @@ async function trigger(action: string) {
     </div>
 
     <div class="actions">
-      <button v-for="action in ['online', 'offline', 'osd', 'flight-task', 'hms']"
-              :key="action"
-              :disabled="loading"
-              @click="trigger(action)">
+      <button
+        v-for="action in ['online', 'offline', 'osd', 'flight-task', 'hms']"
+        :key="action"
+        :disabled="loading"
+        @click="trigger(action)"
+      >
         {{ action }}
       </button>
     </div>

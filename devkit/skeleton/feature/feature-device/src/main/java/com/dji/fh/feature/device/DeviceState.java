@@ -29,6 +29,9 @@ import java.util.List;
  *
  * @param sn            设备 SN
  * @param deviceType    设备类型（DRONE / DOCK）
+ * @param deviceClass   SDK 原始设备类别字符串（如 dock / base_station / drone），
+ *                      用于区分 deviceType 粒度无法区分的设备（基站与机场都归为 DOCK）；
+ *                      事件缓存兜底路径下可能为 null
  * @param model         设备型号（可能 null）
  * @param name          设备名称（可能 null）
  * @param online        当前是否在线
@@ -42,6 +45,7 @@ import java.util.List;
 public record DeviceState(
         String sn,
         DeviceType deviceType,
+        String deviceClass,
         String model,
         String name,
         boolean online,

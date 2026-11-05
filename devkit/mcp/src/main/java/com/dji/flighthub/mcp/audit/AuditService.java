@@ -69,7 +69,7 @@ public class AuditService {
     }
 
     /**
-     * 记录工具执行审计事件。
+     * 记录工具执行审计事件（不限流场景的便捷重载）。
      *
      * @param toolName      工具名
      * @param success       是否成功
@@ -79,6 +79,23 @@ public class AuditService {
      */
     public void logExecution(String toolName, boolean success, String errorMessage,
                              long durationMs, boolean idempotentHit) {
+        logExecution(toolName, success, errorMessage, durationMs, idempotentHit, false, false);
+    }
+
+    /**
+     * 记录工具执行审计事件。
+     *
+     * @param toolName       工具名
+     * @param success        是否成功
+     * @param errorMessage   错误信息（成功时为 null）
+     * @param durationMs     执行耗时
+     * @param idempotentHit  是否命中幂等缓存
+     * @param rateLimited    是否被工具级限流拒绝
+     * @param securityDenied 是否被派发层安全等级门控拒绝
+     */
+    public void logExecution(String toolName, boolean success, String errorMessage,
+                             long durationMs, boolean idempotentHit, boolean rateLimited,
+                             boolean securityDenied) {
         if (!enabled) {
             return;
         }
@@ -96,11 +113,14 @@ public class AuditService {
                 durationMs,
                 success,
                 errorMessage,
-                idempotentHit
+                idempotentHit,
+                rateLimited,
+                securityDenied
         );
 
         // 结构化日志输出
-        AUDIT_LOG.info("event_id={} tool={} success={} duration_ms={} session={} client={} request_id={} idempotent={}{}",
+        AUDIT_LOG.info("event_id={} tool={} success={} duration_ms={} session={} client={} request_id={} "
+                        + "idempotent={} rate_limited={} security_denied={}{}",
                 event.eventId(),
                 event.toolName(),
                 event.success(),
@@ -109,6 +129,8 @@ public class AuditService {
                 event.clientId(),
                 event.requestId(),
                 event.idempotentHit(),
+                event.rateLimited(),
+                event.securityDenied(),
                 errorMessage != null ? " error=\"" + errorMessage + "\"" : "");
 
         // 可选：远程上报（异步，不阻塞主流程）

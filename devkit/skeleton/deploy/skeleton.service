@@ -9,7 +9,7 @@
 # 查看日志：journalctl -u skeleton -f
 # ============================================================================
 [Unit]
-Description=FH Skeleton backend (DJI FlightHub PaaS SDK ISV skeleton)
+Description=FH Skeleton backend (DJI FlightHub PaaS SDK Integrator skeleton)
 After=network.target mysql.service
 Wants=mysql.service
 

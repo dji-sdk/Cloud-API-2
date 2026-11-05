@@ -29,6 +29,7 @@ import { useFH2Config } from '@/composables/useFH2Config'
 import { useSDKLoader } from '@/composables/useSDKLoader'
 import { ensureFH2Init } from '@/composables/useFH2'
 import { injectLink, injectScriptUMD } from '@/utils/sdk'
+import { formatPaasResourceErrorMessage } from '@/utils/paasMessages'
 import SDKLoadingMask from '@/components/SDKLoadingMask.vue'
 import WaylineLibrary from '@/components/wayline/WaylineLibrary.vue'
 import type { WaylineEditor } from '@/types/fh2'
@@ -58,11 +59,15 @@ function handleEdit(uuid: string): void {
 
 /** 加载编辑器 SDK 资源并实例化 WaylineEditor。 */
 async function loadEditorSDK(cfg: ReturnType<typeof useFH2Config>): Promise<WaylineEditor> {
+  const jsUrl = `${cfg.address}/paasjs-demo/wayline-edit-sdk/index.js`
   injectLink(`${cfg.address}/paasjs-demo/wayline-edit-sdk/index.css`)
-  await injectScriptUMD(`${cfg.address}/paasjs-demo/wayline-edit-sdk/index.js`, 'WaylineEditor')
+  await injectScriptUMD(jsUrl, 'WaylineEditor')
 
   if (!window.WaylineEditor || typeof window.WaylineEditor !== 'function') {
-    throw new Error('WaylineEditor SDK 加载完毕，但 window.WaylineEditor 未暴露。')
+    throw new Error(
+      `${formatPaasResourceErrorMessage('航线编辑器 SDK', jsUrl)}\n`
+      + '脚本已加载但未注册 window.WaylineEditor，通常是 SDK 版本不兼容，请核对底座版本。',
+    )
   }
 
   // 鉴权配置：api 和 ws 共用同一 auth 对象（对齐 demo.html）

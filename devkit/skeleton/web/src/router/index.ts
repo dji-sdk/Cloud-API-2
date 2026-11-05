@@ -52,8 +52,8 @@ const routes: RouteRecordRaw[] = [
   { path: '/models',          component: () => import('@/views/ModelsView.vue') },
 ]
 
-// MOCK_ENABLED=true 时条件注册 mock-debug 路由
-if (getRuntimeConfig('MOCK_ENABLED') === 'true') {
+// MOCK_DEBUG_PANEL=true 时条件注册 mock-debug 路由
+if (getRuntimeConfig('MOCK_DEBUG_PANEL') === 'true') {
   routes.push({
     path: '/mock-debug',
     component: () => import('@/views/MockDebugView.vue'),

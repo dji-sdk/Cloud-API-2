@@ -17,7 +17,7 @@ spec:
     app: skeleton-frontend
   ports:
     - port: 80
-      targetPort: 80
+      targetPort: 8080
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -46,11 +46,15 @@ spec:
           image: <REGISTRY>/paas-sdk-devkit/skeleton-ui:<TAG>
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 80
+            - containerPort: 8080
               name: http
           envFrom:
             - configMapRef:
                 name: skeleton-frontend-config
+            # 敏感项（FH2_USER_TOKEN / 地图 Key）单独走 Secret；missing 时用可选引用避免 Pod 起不来
+            - secretRef:
+                name: skeleton-frontend-secret
+                optional: true
           resources:
             requests:
               cpu: 100m
@@ -61,12 +65,12 @@ spec:
           readinessProbe:
             httpGet:
               path: /
-              port: 80
+              port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /
-              port: 80
+              port: 8080
             initialDelaySeconds: 15
             periodSeconds: 10

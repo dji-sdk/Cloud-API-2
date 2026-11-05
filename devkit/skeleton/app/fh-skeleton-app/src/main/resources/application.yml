@@ -20,7 +20,7 @@ spring:
   jpa:
     hibernate:
       # ddl-auto 默认由 KernelDefaultsEnvironmentPostProcessor 注入 update（最低优先级）
-      # 生产环境建议 ISV 显式设为 validate + Flyway/Liquibase 管理 schema
+      # 生产环境建议集成商显式设为 validate + Flyway/Liquibase 管理 schema
       ddl-auto: ${FH_DDL_AUTO:update}
     open-in-view: false
     properties:
@@ -56,7 +56,7 @@ fh:
       enabled: ${FH_USER_REGISTRATION_ENABLED:false}
       default-role: user
   chat:
-    enabled: false  # ISV 需显式设置为 true 才启用 Chat Bot 功能
+    enabled: false  # 集成商需显式设置为 true 才启用 Chat Bot 功能
     provider: openai
     max-history-turns: 20
     max-tokens: 8192
@@ -70,6 +70,19 @@ fh:
       auth-token: ${FH_CHAT_MCP_AUTH_TOKEN:}
       timeout: 30s
       connect-timeout: 10s
+      # 断线重连：指数退避 + 抖动，且全局只允许一条重连链（避免重连风暴打满 MCP 限流）
+      reconnect-enabled: ${FH_CHAT_MCP_RECONNECT_ENABLED:true}
+      reconnect-initial-delay: ${FH_CHAT_MCP_RECONNECT_INITIAL_DELAY:2s}
+      reconnect-max-delay: ${FH_CHAT_MCP_RECONNECT_MAX_DELAY:30s}
+      # 抖动只向下收缩（实际延迟 = [1-ratio, 1] × 退避值），多实例同时断连时可打散重连尖峰
+      reconnect-jitter-ratio: ${FH_CHAT_MCP_RECONNECT_JITTER_RATIO:0.2}
+      # 服务端 429 带 Retry-After 时的延迟绝对上限，必须大于 reconnect-max-delay，
+      # 否则 30s 的退避上限会把服务端要求的 60s 限流窗口截断
+      retry-after-max: ${FH_CHAT_MCP_RETRY_AFTER_MAX:120s}
+      # 心跳保活：主动 ping 间隔应小于服务端 heartbeat-timeout（默认 300s）的 1/3
+      keepalive-enabled: ${FH_CHAT_MCP_KEEPALIVE_ENABLED:true}
+      keepalive-interval: ${FH_CHAT_MCP_KEEPALIVE_INTERVAL:60s}
+      heartbeat-timeout: ${FH_CHAT_MCP_HEARTBEAT_TIMEOUT:90s}
     rag:
       enabled: true
       documents-path: classpath:chat-docs/

@@ -26,7 +26,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * <p>生产态：{@code java -jar fh-skeleton-app-0.1.0.jar --spring.profiles.active=sdk}
  * （需后续 plan 提供真 SDK adapter）。
  *
- * <p>ISV fork 时直接复制本类改包名 / 加 ComponentScan basePackages 即可。
+ * <p>集成商 fork 时直接复制本类改包名 / 加 ComponentScan basePackages 即可。
  *
  * @author DJI DevKit Team
  */

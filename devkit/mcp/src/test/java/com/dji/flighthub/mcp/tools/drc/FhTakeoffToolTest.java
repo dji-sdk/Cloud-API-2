@@ -362,6 +362,58 @@ class FhTakeoffToolTest {
     }
 
     @Test
+    void takeoff_dryRun_shouldNotAcquireControlOrConnectDrc() {
+        // 干跑必须在 ensureDrcLink 之前返回：不得抢控、不得建立 DRC 链路
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = takeoffTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "target_height", 50,
+                "dry_run", true
+        ));
+
+        assertEquals(true, result.get("success"));
+        assertEquals(true, result.get("_dry_run"));
+        assertFalse(session.hasControlOf(DRONE_SN), "dry_run 不应获取控制权");
+        assertFalse(session.hasDrcLinkTo(DRONE_SN), "dry_run 不应建立 DRC 链路");
+        assertEquals(FlightPhase.IDLE, session.getFlightPhase());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void takeoff_dryRun_shouldNotClaimDrcLinked() {
+        // 预览中的 prerequisites_checked 只列实际检查过的项，不能虚报 drc_linked
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = takeoffTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "target_height", 50,
+                "dry_run", true
+        ));
+
+        Map<String, Object> preview = (Map<String, Object>) result.get("would_execute");
+        java.util.List<?> checked = (java.util.List<?>) preview.get("prerequisites_checked");
+        assertFalse(checked.contains("drc_linked"), "预览不应声明 drc_linked");
+        assertTrue(checked.contains("params_valid"));
+    }
+
+    @Test
+    void takeoff_dryRun_shouldNotAcquireDrc_whenHeightInvalid() {
+        // 高度校验必须先于 DRC 建链：非法高度直接报错，且不产生任何建链副作用
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = takeoffTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "target_height", -1,
+                "dry_run", true
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertFalse(session.hasControlOf(DRONE_SN), "参数非法不应抢控");
+        assertFalse(session.hasDrcLinkTo(DRONE_SN), "参数非法不应建立 DRC 链路");
+    }
+
+    @Test
     void takeoff_shouldReturnError_whenRealSdkMode_andDockSnMissing() {
         // 真实 SDK 模式下 dock_sn 必填（用于获取机场 GPS 坐标）
         FlightHubProperties props = new FlightHubProperties();
@@ -647,6 +699,39 @@ class FhTakeoffToolTest {
 
         assertEquals(false, result.get("success"));
         assertTrue(result.get("error_message").toString().contains("timed out"));
+    }
+
+    @Test
+    void rth_dryRun_shouldNotAcquireControlOrChangePhase() {
+        // 干跑必须在 ensureControlAuthority 之前返回：不抢控、不改变飞行阶段
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = rthTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "dry_run", true
+        ));
+
+        assertEquals(true, result.get("success"));
+        assertEquals(true, result.get("_dry_run"));
+        assertFalse(session.hasControlOf(DRONE_SN), "dry_run 不应获取控制权");
+        assertEquals(FlightPhase.IDLE, session.getFlightPhase());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void rth_dryRun_shouldNotClaimControlAcquired() {
+        // 预览中的 prerequisites_checked 只列实际检查过的项，不能虚报 control_acquired
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = rthTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "dry_run", true
+        ));
+
+        Map<String, Object> preview = (Map<String, Object>) result.get("would_execute");
+        java.util.List<?> checked = (java.util.List<?>) preview.get("prerequisites_checked");
+        assertFalse(checked.contains("control_acquired"), "预览不应声明 control_acquired");
+        assertTrue(checked.contains("params_valid"));
     }
 
     @Test

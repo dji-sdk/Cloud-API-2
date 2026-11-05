@@ -1,0 +1,20 @@
+meta:
+  skill: {{skill-name}}
+  level: L3
+  author: {{author}}
+  min_pass_rate: 0.80
+  source: manual
+
+tests:
+  - description: "TODO: 质量评测用例描述"
+    vars:
+      prompt: "TODO: 用户输入"
+    assert:
+      - type: llm-rubric
+        value: |
+          检查 AI 的输出：
+          1. TODO: 评判维度 1
+          2. TODO: 评判维度 2
+          3. TODO: 评判维度 3
+          给出 1-5 分。
+        threshold: 0.8

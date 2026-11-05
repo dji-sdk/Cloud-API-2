@@ -32,6 +32,9 @@ export type DeviceType = 'DRONE' | 'DOCK'
 export interface DeviceState {
   sn: string
   deviceType: DeviceType
+  // SDK 原始设备类别（dock / base_station / drone），用于区分 deviceType 无法区分的基站与机场；
+  // 事件缓存兜底路径下后端可能返回 null/缺省，消费方需回退到 deviceType
+  deviceClass?: string | null
   model?: string
   name?: string
   online: boolean

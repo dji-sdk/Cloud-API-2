@@ -1,6 +1,6 @@
 # cloudapi2-device-management — 设备管理模块接入助手
 
-帮 ISV 开发者在 skeleton 后端项目中正确扩展设备管理功能，遵循 skeleton 的 feature 模块架构和 SDK 事件总线模式。
+帮集成商开发者在 skeleton 后端项目中正确扩展设备管理功能，遵循 skeleton 的 feature 模块架构和 SDK 事件总线模式。
 
 ## 能力
 
@@ -11,10 +11,11 @@
 | **HMS 告警** | 健康管理系统告警分级处理 |
 | **Feature 模块创建** | 新建符合 skeleton 架构的 feature 模块 |
 | **事件监听模式** | @EventListener + KernelEvent 标准模式 |
+| **设备运维长尾能力** | 机场辅助设备控制、设备调试、日志/工单/自诊断/RTK 标定/网络测试 |
 
 ## 安装
 
-推荐通过 `devkit@cloud-api2` Plugin 一键安装全套 Skill（见 [skills/README.md](../README.md#安装方式)）。
+推荐通过 `cloudapi2@dji` Plugin 一键安装全套 Skill（见 [skills/README.md](../README.md#安装方式)）。
 
 单独安装本 Skill：
 
@@ -40,6 +41,7 @@ cp -r skills/cloudapi2-device-management .github/skills/
 - DeviceStatusService、feature 模块
 - KernelEvent、EventListener
 - listen/cancel、getDroneInstance、getDockInstance
+- DockControlModule、DeviceDebugModule、LogManagementModule、MaintenanceManagementModule、DiagnosisManagementModule、RtkCalibrationModule、NetworkTestModule
 
 ## 使用示例
 
@@ -94,9 +96,12 @@ cloudapi2-device-management/
 ├── SKILL.md                  ← AI 主入口
 ├── constraints.yaml          ← 后端约束规则
 ├── references/
-│   ├── device-lifecycle.md   — 设备生命周期 6 步
+│   ├── device-lifecycle.md   — 设备生命周期 6 步 + 机场辅助设备控制（DockControlModule）
 │   ├── osd-subscription.md   — OSD 订阅/取消模式
-│   └── hms-alert-handling.md — HMS 告警分级处理
+│   ├── hms-alert-handling.md — HMS 告警分级处理
+│   ├── firmware-management.md — 固件升级（FirmwareManageModule，工作空间级）
+│   ├── device-debug.md       — 设备调试与运维控制（DeviceDebugModule，59 方法）
+│   └── ops-reporting.md      — 长尾运维模块（日志/工单/自诊断/RTK 标定/网络测试）
 ├── playbooks/
 │   └── add-device-feature.yaml — "添加设备功能"方案
 └── snippets/

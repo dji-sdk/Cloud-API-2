@@ -16,6 +16,7 @@
 
 import type { FH2InitConfig } from '@/types/fh2'
 import { useFH2Config } from './useFH2Config'
+import { formatPaasResourceErrorMessage } from '@/utils/paasMessages'
 
 /** 模块级单例：保证 paas.js 只加载一次，window.FH2 只初始化一次。 */
 let _loadPromise: Promise<void> | null = null
@@ -53,7 +54,11 @@ function waitForFH2(timeout = 30000, paasUrl?: string): Promise<void> {
         resolve()
       } else if (Date.now() - start > timeout) {
         clearInterval(check)
-        reject(new Error(`Timeout waiting for window.FH2 — paas.js: ${paasUrl ?? 'unknown'}`))
+        reject(new Error(
+          `底座 SDK 初始化超时：paas.js 已加载，但 ${timeout / 1000} 秒内 window.FH2 仍未就绪。\n`
+          + `资源地址：${paasUrl ?? '未知'}\n`
+          + '请确认该地址打开的页面能正常加载（未跳转登录页、无证书错误），然后刷新重试。',
+        ))
       }
     }, 100)
   })
@@ -94,7 +99,7 @@ function loadPaasScript(address: string): Promise<void> {
     }
     script.onerror = () => {
       _loadPromise = null
-      reject(new Error(`Failed to load paas.js from ${paasUrl}`))
+      reject(new Error(formatPaasResourceErrorMessage('底座 SDK（paas.js）', paasUrl)))
     }
     document.head.appendChild(script)
   })

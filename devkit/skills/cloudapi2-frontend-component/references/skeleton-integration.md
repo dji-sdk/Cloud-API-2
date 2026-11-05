@@ -141,7 +141,7 @@ VITE_FH2_PRJ_ID=your-project-id
 
 ### 设备管理（DeviceManager）
 
-设备管理使用 `FH2.loadDevice(containerId, options)` 模式：
+设备管理不走 `FH2.loadXxx`（没有这个方法）——用 `injectScriptUMD()` 独立加载 `UranusDeviceManagerApp`，自动检测新版（`setupDeviceManager()` + `mountDeviceList()`）或旧版（`init()`）API，参考 `DeviceManagerView.vue`：
 
 ```html
 <div id="device-manager-container" style="width: 100%; height: 100%;" />

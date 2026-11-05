@@ -186,20 +186,22 @@ public class FhReturnHomeTool extends AbstractMcpTool {
             }
         }
 
-        // 5. 确保飞行控制权（RTH 使用管理通道，无需 DRC，自动获取控制权）— 确认通过后才执行
-        Map<String, Object> controlError = ensureControlAuthority(session, droneSn, sdkService);
-        if (controlError != null) {
-            return controlError;
-        }
-
-        // 6. dry_run 模式：参数校验通过，返回预览（无需 confirm）
+        // 5. dry_run 模式：参数校验通过，返回预览（无需 confirm）
+        //    必须在 ensureControlAuthority 之前返回，保证干跑不抢控；
+        //    因此预览中的前置条件只列已实际检查的项，不能声明 control_acquired
         if (isDryRun(args)) {
             return dryRunResult(
                     "Would execute return-home '" + action + "' on drone " + droneSn,
                     buildDryRunPreview(TOOL_NAME, action, droneSn,
                             Map.of("action", action),
-                            List.of("session_active", "security_level_allowed", "control_acquired", "params_valid"),
+                            List.of("session_active", "security_level_allowed", "params_valid"),
                             getSecurityLevel(), requiresHumanConfirmation()));
+        }
+
+        // 6. 确保飞行控制权（RTH 使用管理通道，无需 DRC，自动获取控制权）— 确认通过后才执行
+        Map<String, Object> controlError = ensureControlAuthority(session, droneSn, sdkService);
+        if (controlError != null) {
+            return controlError;
         }
 
         // 7. 人工确认已在 step 4 完成

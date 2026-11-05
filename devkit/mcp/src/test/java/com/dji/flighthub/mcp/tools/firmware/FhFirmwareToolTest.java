@@ -208,6 +208,32 @@ class FhFirmwareToolTest {
     }
 
     @Test
+    void executeUpgrade_shouldReturnError_whenSessionLevelIsL1() {
+        // 固件写操作已升级为 L2：session 上限 L1 拒绝 upgrade
+        FlightHubProperties l1Props = new FlightHubProperties();
+        l1Props.getSecurity().setMaxLevel(1);
+        SessionManager l1Sessions = new SessionManager(l1Props);
+        l1Sessions.createSession("uuid", "ws");
+        SdkService l1Sdk = new SdkService() {
+            @Override
+            public boolean isMockMode() {
+                return true;
+            }
+        };
+        FhFirmwareTool l1Tool = new FhFirmwareTool(l1Sessions, l1Sdk);
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "upgrade");
+        args.put("device_sns", List.of("DOCK-001"));
+        args.put("confirm", true);
+
+        Map<String, Object> result = l1Tool.execute(args);
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("insufficient security level"));
+    }
+
+    @Test
     void executeUpgrade_shouldRequireConfirm() {
         sessionManager.createSession("uuid", "ws");
 

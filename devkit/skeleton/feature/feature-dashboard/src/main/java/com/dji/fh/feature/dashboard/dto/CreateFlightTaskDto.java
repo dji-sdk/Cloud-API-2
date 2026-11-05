@@ -65,12 +65,33 @@ public class CreateFlightTaskDto {
     @JsonProperty("wayline_precision_type")
     private Integer waylinePrecisionType;
 
+    /**
+     * 自动续飞策略：1=自动续飞（SDK 下发 {@code resumable_status="auto"}），
+     * 其余值=手动续飞（下发 {@code "manual"}），null=不下发，沿用平台默认。
+     *
+     * <p><b>与 {@code is_break_point_resume} 的区别</b>：本字段是「出了断点后如何续飞」的
+     * 策略；{@code is_break_point_resume} 是「本任务是否为断点续飞任务」的任务标识。
+     * 两者语义不同，不可互相赋值。
+     *
+     * <p><b>已知局限</b>：仅创建路径生效。{@code EditTaskReq}（独立类，非
+     * {@code CreateTaskReq} 子类）没有该字段的 setter，编辑任务无法改变续飞策略；
+     * 任务详情 / 列表接口也只返回 {@code is_break_point_resume}，不回显本字段。
+     * 编辑路径提交本字段时 BFF 会记录 WARN 并丢弃。
+     */
     @JsonProperty("resumable_status")
     private Integer resumableStatus;
 
     @JsonProperty("rth_mode")
     private Integer rthMode;
 
+    /**
+     * 多模态识别开关。
+     *
+     * <p><b>已知局限（SDK 3.3.7）</b>：{@code CreateTaskReq} / {@code EditTaskReq} 均无
+     * {@code vlm_enabled} 承载位，原生库请求字符串表中也没有任何 {@code vlm} 字段。
+     * 本字段仅能被正确接收与校验，不能送达服务端；提交 {@code true} 时 BFF 会记录 WARN
+     * 并丢弃，需 SDK 侧补齐字段后才能生效。
+     */
     @JsonProperty("vlm_enabled")
     private Boolean vlmEnabled;
 
@@ -83,7 +104,7 @@ public class CreateFlightTaskDto {
     /**
      * 连续执行时段配置，形如 {@code [[startSeconds, endSeconds], ...]}。
      *
-     * <p>HTTP 契约（{@code docs/接口协议文档.md} B6.2）与前端
+     * <p>HTTP 契约（创建航线任务 B6.2 接口）与前端
      * （{@code types/flightTask.ts} 的 {@code continuousPeriods: [number, number][]}）
      * 均为「二维数组」，与 SaaS 通道的 {@code continuous_task_periods?: Array<Array<number>>} 一致。
      * 本字段原为 {@code String}，一旦前端真的下发数组会直接反序列化失败，故对齐为嵌套列表。

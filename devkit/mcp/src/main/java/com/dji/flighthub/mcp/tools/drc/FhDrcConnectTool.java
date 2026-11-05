@@ -18,6 +18,7 @@ package com.dji.flighthub.mcp.tools.drc;
 
 import com.dji.flighthub.mcp.sdk.SdkCallbackBridge;
 import com.dji.flighthub.mcp.sdk.SdkService;
+import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
@@ -37,7 +38,8 @@ import java.util.concurrent.CompletableFuture;
  * 执行起飞、指点飞行、兴趣点环绕或摇杆控制命令前必须先建立 DRC 链路。
  * 前置条件：必须已获取飞行控制权（fh_control_acquire）。
  *
- * <p>安全等级：L0（建立 DRC 链路是可逆操作，可通过 disconnect 断开；无需确认）
+ * <p>安全等级：工具级声明 L2（FLIGHT，门控基线）。
+ * 建立链路本身可由 disconnect 撤销；本工具要求人工确认，无额外 per-action 门控。
  *
  * @author DJI FlightHub SDK Team
  */
@@ -51,6 +53,9 @@ public class FhDrcConnectTool extends AbstractMcpTool {
 
     /** drone_sn 参数名 */
     private static final String PARAM_DRONE_SN = "drone_sn";
+
+    /** 操作标识（用于 confirm 校验与日志） */
+    private static final String ACTION_CONNECT = "drc_connect";
 
     private final SdkService sdkService;
 
@@ -73,7 +78,19 @@ public class FhDrcConnectTool extends AbstractMcpTool {
 
     @Override
     public boolean requiresHumanConfirmation() {
-        return false;
+        return true;
+    }
+
+    /**
+     * 声明工具级静态安全等级：FLIGHT。
+     * DRC 低延迟链路是后续飞行指令（起飞/指点/环绕/摇杆）的前提通道，
+     * 与 fh_control_acquire 同级按接管级操作（L2）门控，并要求人工确认。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.FLIGHT;
     }
 
     @Override
@@ -120,6 +137,22 @@ public class FhDrcConnectTool extends AbstractMcpTool {
         if (droneSn == null) {
             return errorResult("Missing required parameter: drone_sn",
                     "Provide drone_sn. Use fh_device_list to get available drone SNs.");
+        }
+
+        // 2.5 安全等级硬拦截（session.maxSecurityLevel < L2 时直接拒绝）
+        Map<String, Object> denied = enforceToolSecurityLevel();
+        if (denied != null) {
+            return denied;
+        }
+
+        // 2.6 建立 DRC 链路前人工确认（授权不可被 confirm 绕过，确认仅在授权范围内放行）
+        //    dry_run 模式无需确认，直接走预览分支
+        if (!isDryRun(args)) {
+            Map<String, Object> confirmError = requireHumanConfirm(args, ACTION_CONNECT, droneSn,
+                    "Establish DRC link for drone " + droneSn + "?");
+            if (confirmError != null) {
+                return confirmError;
+            }
         }
 
         // 3. 校验飞行控制权

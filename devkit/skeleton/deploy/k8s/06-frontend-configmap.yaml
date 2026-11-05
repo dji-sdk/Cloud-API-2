@@ -1,6 +1,6 @@
 # 前端运行时变量 ConfigMap
 # 容器启动时 docker-entrypoint.sh 读取这些环境变量生成 /usr/share/nginx/html/config.js
-# 敏感项（BING_KEY / TIANDITU_KEY）放在 Secret 中，避免明文进 ConfigMap。
+# 敏感项（BING_KEY / TIANDITU_KEY / FH2_USER_TOKEN）放在 Secret 中，避免明文进 ConfigMap。
 # 修改后需重启前端 Pod 生效（无需重新构建镜像）。
 apiVersion: v1
 kind: ConfigMap
@@ -10,8 +10,22 @@ metadata:
 data:
   VITE_FH2_ADDRESS: <REPLACE_ME>
   VITE_FH2_PORT: "30812"
+  # 同源反代前缀：浏览器只与骨架本源通信，由 nginx 反代到 FH2，规避 FH2 无 CORS 头的跨域拦截。
+  # 留空则直连 VITE_FH2_ADDRESS（跨域，需 FH2 侧放行）。示例：
+  #   VITE_FH2_ASSET_HOST: https://<骨架对外域名>/fh2-assets
+  #   VITE_FH2_BASE_URL:   https://<骨架对外域名>/fh2-gw
+  VITE_FH2_ASSET_HOST: ""
+  VITE_FH2_BASE_URL: ""
+  # 通知 ws 推送完整地址；同源反代部署时指向 /fh2-gw/ 前缀（wss 协议随对外 HTTPS 而定）
   VITE_FH2_WSS_URL: <REPLACE_ME>
+  # 上游 TLS 校验（fail-closed，安全审计 CICD-09）：默认 on。现场自签名证书需显式设 off；
+  # 内部 CA 用 FH2_PROXY_SSL_CA 指定（容器内路径）
+  FH2_PROXY_SSL_VERIFY: "on"
+  FH2_PROXY_SSL_CA: ""
   VITE_FH2_PRJ_ID: <REPLACE_ME>
+  # SDK 附加鉴权头 key/value（如 user_id / paas_test），随 X-User-Token 一并由反代注入
+  VITE_FH2_SDK_AUTH_KEY: ""
+  VITE_FH2_SDK_AUTH_VALUE: ""
   VITE_DEFAULT_THEME: light
   VITE_PRIMARY_COLOR: "#1a73e8"
   VITE_PRIMARY_HOVER_COLOR: ""

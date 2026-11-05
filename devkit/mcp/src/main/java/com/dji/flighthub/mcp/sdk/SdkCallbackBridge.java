@@ -161,6 +161,18 @@ public class SdkCallbackBridge {
             this.errorCode = errorCode;
         }
 
+        /**
+         * 保留根因的构造方法，供反射调用等需要向上传递原始异常的场景使用。
+         *
+         * @param errorCode 错误码
+         * @param message   错误描述
+         * @param cause     根因异常
+         */
+        public SdkException(int errorCode, String message, Throwable cause) {
+            super(message, cause);
+            this.errorCode = errorCode;
+        }
+
         public int getErrorCode() {
             return errorCode;
         }

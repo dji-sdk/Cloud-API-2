@@ -18,6 +18,7 @@ package com.dji.flighthub.mcp.tools.hms;
 
 import com.dji.flighthub.mcp.sdk.SdkCallbackBridge;
 import com.dji.flighthub.mcp.sdk.SdkService;
+import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
@@ -25,10 +26,15 @@ import com.dji.flighthub.mcp.annotation.Generated;
 import com.dji.flighthubsdk.core.HMSModule;
 import com.dji.flighthubsdk.core.Workspace;
 import com.dji.flighthubsdk.bean.HistoryHmsDataParam;
+import com.dji.flighthubsdk.bean.HistoryHmsDataResult;
+import com.dji.flighthubsdk.bean.HistoryHmsDataResultArgs;
+import com.dji.flighthubsdk.bean.HistoryHmsDataResultItem;
+import com.dji.flighthubsdk.bean.HistoryHmsDataResultPagination;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -77,6 +83,16 @@ public class FhHmsTool extends AbstractMcpTool {
     public FhHmsTool(SessionManager sessionManager, SdkService sdkService) {
         super(sessionManager);
         this.sdkService = sdkService;
+    }
+
+    /**
+     * 声明工具级静态安全等级：READ_ONLY。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.READ_ONLY;
     }
 
     @Override
@@ -233,7 +249,7 @@ public class FhHmsTool extends AbstractMcpTool {
                 data.put("end_time", endTime);
                 data.put("page", page);
                 data.put("page_size", pageSize);
-                data.put("result", result.toString());
+                data.put("result", buildStructuredHistory(result));
                 future.complete(data);
             });
 
@@ -248,5 +264,105 @@ public class FhHmsTool extends AbstractMcpTool {
             return errorResult("HMS query failed: " + e.getMessage(),
                     "Check device connectivity and retry.");
         }
+    }
+
+    /**
+     * 将 HMS 历史查询结果映射为结构化 Map，避免 {@code toString()} 透传导致输出不可解析。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param result SDK 返回的历史告警结果，可为 null
+     * @return 包含分页信息与告警列表的结构化结果；入参为 null 时返回 null
+     */
+    Map<String, Object> buildStructuredHistory(HistoryHmsDataResult result) {
+        if (result == null) {
+            return null;
+        }
+        Map<String, Object> structured = new LinkedHashMap<>();
+        structured.put("pagination", buildPagination(result.getPagination()));
+        structured.put("list", buildAlertItems(result.getList()));
+        return structured;
+    }
+
+    /**
+     * 映射分页信息。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param pagination SDK 分页对象，可为 null
+     * @return 分页信息；入参为 null 时返回 null
+     */
+    Map<String, Object> buildPagination(HistoryHmsDataResultPagination pagination) {
+        if (pagination == null) {
+            return null;
+        }
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("page_num", pagination.getPageNum());
+        row.put("page_size", pagination.getPageSize());
+        row.put("total", pagination.getTotal());
+        return row;
+    }
+
+    /**
+     * 映射告警条目列表。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param items SDK 告警条目列表，可为 null
+     * @return 结构化告警列表，入参为 null 时返回空列表
+     */
+    List<Map<String, Object>> buildAlertItems(List<HistoryHmsDataResultItem> items) {
+        if (items == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> mapped = new ArrayList<>(items.size());
+        for (HistoryHmsDataResultItem item : items) {
+            if (item == null) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("alert_id", item.getMongoId());
+            row.put("sn", item.getSn());
+            row.put("level", item.getLevel());
+            row.put("module", item.getModule());
+            row.put("code", item.getCode());
+            row.put("message", item.getMessage());
+            row.put("status", item.getStatus());
+            row.put("device_type", item.getDeviceType());
+            row.put("domain_type", item.getDomainType());
+            row.put("in_the_sky", item.getInTheSky());
+            row.put("imminent", item.getImminent());
+            row.put("device_create_time", item.getDeviceDataCreateTime());
+            row.put("device_update_time", item.getDeviceDataUpdateTime());
+            row.put("create_time", item.getCreateTime());
+            row.put("update_time", item.getUpdateTime());
+            row.put("args", buildAlertArgs(item.getArgs()));
+            mapped.add(row);
+        }
+        return mapped;
+    }
+
+    /**
+     * 映射告警附加参数。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param args SDK 告警参数对象，可为 null
+     * @return 结构化参数；入参为 null 时返回 null
+     */
+    Map<String, Object> buildAlertArgs(HistoryHmsDataResultArgs args) {
+        if (args == null) {
+            return null;
+        }
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("alarm_info", args.getAlarmInfo());
+        row.put("component_index", args.getComponentIndex());
+        row.put("sensor_index", args.getSensorIndex());
+        row.put("device_id", args.getDeviceId());
+        row.put("display_scene", args.getDisplayScene());
+        row.put("ignore", args.getIgnore());
+        row.put("sender_host_id", args.getSenderHostId());
+        row.put("create_timestamp", args.getCreateTimestamp());
+        return row;
     }
 }

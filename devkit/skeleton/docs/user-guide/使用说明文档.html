@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DJI 大疆上云 API 2 — 无人机管理平台使用说明</title>
+<title>DJI Cloud API 2 — 无人机管理平台使用说明</title>
 <style>
   :root {
     /* 主题色板 */
@@ -367,9 +367,9 @@
 
   <!-- ===== Hero ===== -->
   <section class="hero">
-    <div class="eyebrow">✦ FlightHub PaaS · ISV 接入骨架</div>
-    <h1>DJI 大疆上云 API 2<br>无人机管理平台使用说明</h1>
-    <p class="sub">基于 FlightHub PaaS SDK 构建的全功能无人机运营管理系统 —— 从设备接入、实时监控到航线规划、任务调度与三维重建，一站式的专业机队管理解决方案。</p>
+    <div class="eyebrow">✦ DJI Cloud API 2 · 集成商接入骨架</div>
+    <h1>DJI Cloud API 2<br>无人机管理平台使用说明</h1>
+    <p class="sub">基于 DJI Cloud API 2 SDK 构建的全功能无人机运营管理系统 —— 从设备接入、实时监控到航线规划、任务调度与三维重建，一站式的专业机队管理解决方案。</p>
     <div class="meta">
       <span>📅 更新日期：2026-08-08</span>
       <span>🖥 适用系统：FH Skeleton</span>
@@ -477,7 +477,7 @@
     <div class="chapter-head">
       <div class="num">01</div>
       <h2>平台概述</h2>
-      <p class="lead">DJI 大疆上云 API 2 无人机管理平台是基于 <strong>FlightHub PaaS SDK</strong> 构建的全功能无人机运营管理系统，为 ISV（独立软件供应商）提供一站式专业机队管理能力。平台涵盖设备接入、实时监控、航线规划、任务调度、媒体管理、空域管控与三维重建等完整业务闭环。</p>
+      <p class="lead">DJI Cloud API 2 无人机管理平台是基于 <strong>DJI Cloud API 2 SDK</strong> 构建的全功能无人机运营管理系统，为集成商（独立软件供应商）提供一站式专业机队管理能力。平台涵盖设备接入、实时监控、航线规划、任务调度、媒体管理、空域管控与三维重建等完整业务闭环。</p>
     </div>
 
     <h3><span class="dot">◆</span>核心能力一览</h3>
@@ -527,7 +527,7 @@
     </div>
 
     <h3><span class="dot">◆</span>2.1 登录</h3>
-    <p>访问平台地址后进入登录页面。登录是进入平台所有功能的前提，安全会话通过 JWT 令牌维持。</p>
+    <p>访问平台地址后，未登录状态会先展示<strong>引导着陆页</strong>（欢迎页），点击<strong>「登录进入系统」</strong>按钮进入登录页面；直接访问受保护页面（如数据看板）时同样会跳转到该着陆页。登录是进入平台所有功能的前提，安全会话通过 JWT 令牌维持。</p>
     <div class="screenshot"><img src="./登陆页.png" alt="登录页"><div class="caption">登录页</div></div>
     <div class="steps">
       <div class="step"><span class="n">1</span><span class="c">输入<strong>用户名</strong></span></div>
@@ -545,48 +545,87 @@
       <tbody>
         <tr><td>用户名</td><td><span class="tag red">必填</span></td><td>3~64 个字符，用于登录。</td></tr>
         <tr><td>昵称</td><td><span class="tag gray">可选</span></td><td>平台内展示的显示名称。</td></tr>
-        <tr><td>邮箱</td><td><span class="tag gray">可选</span></td><td>用于密码找回。</td></tr>
+        <tr><td>邮箱</td><td><span class="tag gray">可选</span></td><td>联系方式，仅作记录，平台不提供自助找回密码。</td></tr>
         <tr><td>密码</td><td><span class="tag red">必填</span></td><td>至少 8 位，建议使用大小写字母 + 数字组合。</td></tr>
         <tr><td>确认密码</td><td><span class="tag red">必填</span></td><td>需与密码保持一致。</td></tr>
       </tbody>
     </table>
     </div>
 
-    <div class="callout info">
-      <span class="ico">👑</span>
-      <div><strong>首个用户自动成为管理员</strong>系统部署后，第一个成功注册的用户将被自动授予 admin 角色，可访问用户管理页面。后续注册用户默认为普通用户（user）。</div>
+    <p>提交注册后进入<strong>审核流程</strong>：</p>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><span class="c">提交注册后页面提示<strong>「注册成功，请等待管理员审核」</strong>，<strong>不会自动登录</strong></span></div>
+      <div class="step"><span class="n">2</span><span class="c">新账号状态为<span class="tag orange">待审核</span>（Pending），管理员在「用户管理」页点击 <strong>Approve</strong> 通过</span></div>
+      <div class="step"><span class="n">3</span><span class="c">审核通过后状态变为<span class="tag green">已通过</span>（Approved），方可正常登录</span></div>
+      <div class="step"><span class="n">4</span><span class="c">被拒绝（Rejected）的账号无法登录</span></div>
     </div>
 
-    <h3><span class="dot">◆</span>2.3 用户管理入口</h3>
-    <p>管理员登录后，点击右上角<strong>用户头像</strong>展开下拉菜单，选择「用户管理」进入管理页面。</p>
-    <div class="screenshot"><img src="./用户管理入口.png" alt="用户管理入口"><div class="caption">用户管理入口</div></div>
-    <p><strong>用户菜单选项：</strong></p>
-    <ul class="list">
-      <li><strong>用户管理</strong> — 仅管理员可见，进入用户管理页面。</li>
-      <li><strong>主题色切换</strong> — 快速切换平台主题外观。</li>
-      <li><strong>退出登录</strong> — 结束当前会话，返回登录页。</li>
-    </ul>
+    <div class="callout info">
+      <span class="ico">👑</span>
+      <div><strong>首个用户自动成为管理员</strong>系统部署后，第一个成功注册的用户将被自动授予 admin 角色并直接通过审核，可访问用户管理页面。后续注册用户默认为普通用户（user）。</div>
+    </div>
 
-    <h3><span class="dot">◆</span>2.4 用户管理页面</h3>
-    <div class="screenshot"><img src="./用户管理页面.png" alt="用户管理页面"><div class="caption">用户管理页面</div></div>
-    <p>管理员可在此页面对平台所有用户进行集中管理，支持的角色与操作如下：</p>
+    <div class="callout warn">
+      <span class="ico">⚠️</span>
+      <div><strong>开放注册默认关闭</strong>后端配置 <code>FH_USER_REGISTRATION_ENABLED</code> 默认为 <code>false</code>。如注册页提示不可注册，需由运维临时开启注册，或直接通过初始化 SQL / CLI 创建账号。</div>
+    </div>
+
+    <h3><span class="dot">◆</span>2.3 用户菜单</h3>
+    <p>点击右上角<strong>用户头像</strong>展开下拉菜单。</p>
+    <div class="screenshot"><img src="./用户管理入口.png" alt="用户管理入口"><div class="caption">用户管理入口</div></div>
     <div class="table-wrap">
     <table>
-      <thead><tr><th>操作</th><th>说明</th></tr></thead>
+      <thead><tr><th>菜单项</th><th>说明</th></tr></thead>
       <tbody>
-        <tr><td><strong>Reset Pwd</strong></td><td>重置指定用户的密码。</td></tr>
-        <tr><td><strong>设为 Admin</strong></td><td>将普通用户提升为管理员。</td></tr>
-        <tr><td><strong>取消 Admin</strong></td><td>撤销管理员权限，降级为普通用户。</td></tr>
-        <tr><td><strong>Delete</strong></td><td>删除用户（操作不可恢复，请谨慎）。</td></tr>
-        <tr><td><strong>修改密码</strong></td><td>修改自己的密码（仅当前用户行可见）。</td></tr>
+        <tr><td><strong>用户名 / 角色</strong></td><td>菜单顶部显示当前账号用户名及角色（管理员 / 普通用户）。</td></tr>
+        <tr><td><strong>用户管理</strong></td><td>仅管理员可见，进入用户管理页面。</td></tr>
+        <tr><td><strong>主题色</strong></td><td>取色器，切换平台主题强调色。</td></tr>
+        <tr><td><strong>使用说明</strong></td><td>新标签页打开本文档。</td></tr>
+        <tr><td><strong>Mock Debug</strong></td><td>仅在开启调试面板（<code>VITE_MOCK_DEBUG_PANEL=true</code>）时显示。</td></tr>
+        <tr><td><strong>退出登录</strong></td><td>退出并返回引导着陆页。</td></tr>
       </tbody>
     </table>
     </div>
-    <p><strong>角色标识：</strong></p>
-    <ul class="list">
-      <li><span class="tag red">管理员</span> 红色标签，拥有用户管理权限。</li>
-      <li><span class="tag gray">用户</span> 灰色标签，普通用户权限。</li>
-    </ul>
+
+    <h3><span class="dot">◆</span>2.4 用户管理页面</h3>
+    <div class="screenshot"><img src="./用户管理页面.png" alt="用户管理页面"><div class="caption">用户管理页面</div></div>
+    <p>管理员可在此页面对所有用户进行管理。</p>
+
+    <p><strong>列表字段：</strong></p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>字段</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><strong>ID</strong></td><td>用户唯一标识。</td></tr>
+        <tr><td><strong>用户名</strong></td><td>登录账号，当前登录用户行带<strong>「我」</strong>标记。</td></tr>
+        <tr><td><strong>角色</strong></td><td>管理员（高亮标签）/ 用户。</td></tr>
+        <tr><td><strong>状态</strong></td><td><span class="tag green">Approved</span>（已通过）/ <span class="tag orange">Pending</span>（待审核）/ <span class="tag red">Rejected</span>（已拒绝）。</td></tr>
+        <tr><td><strong>邮箱</strong></td><td>注册时填写，可为空，空值显示 <code>-</code>。</td></tr>
+        <tr><td><strong>注册时间</strong></td><td>账号创建时间。</td></tr>
+        <tr><td><strong>操作</strong></td><td>见下方操作表。</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p><strong>操作说明：</strong></p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>操作</th><th>显示条件</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Approve</strong></td><td>仅待审核（Pending）用户</td><td>审核通过，通过后方可登录。</td></tr>
+        <tr><td><strong>修改密码</strong></td><td>仅当前用户行</td><td>修改自己的密码，需输入旧密码。</td></tr>
+        <tr><td><strong>Reset Pwd</strong></td><td>其他用户行</td><td>管理员直接重置他人密码，仅需新密码。</td></tr>
+        <tr><td><strong>设为 Admin</strong></td><td>非自己且当前为普通用户</td><td>将普通用户提升为管理员。</td></tr>
+        <tr><td><strong>取消 Admin</strong></td><td>非自己且当前为管理员</td><td>撤销管理员权限。</td></tr>
+        <tr><td><strong>Delete</strong></td><td>非自己</td><td>待审核用户表示<strong>拒绝注册</strong>；已通过用户表示<strong>删除账号（不可恢复）</strong>。</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="callout info">
+      <span class="ico">ℹ️</span>
+      <div>管理员不能删除或修改自己的角色，避免误操作导致无人可管理。表头右侧<strong>「刷新」</strong>按钮可重新拉取用户列表。</div>
+    </div>
   </section>
 
   <!-- ========================================================= -->
@@ -627,8 +666,8 @@
     </ul>
 
     <h3><span class="dot">◆</span>3.4 时间筛选</h3>
-    <p>支持按时间范围切换数据展示，满足不同的运营分析周期：</p>
-    <p><span class="tag blue">本周</span> <span class="tag blue">近一周</span> <span class="tag blue">近一月</span> <span class="tag blue">近半年</span> <span class="tag blue">近一年</span></p>
+    <p>支持按时间范围切换数据展示，满足不同的运营分析周期，共 6 档：</p>
+    <p><span class="tag blue">本周</span> <span class="tag blue">本月</span> <span class="tag blue">近一周</span> <span class="tag blue">近一月</span> <span class="tag blue">近半年</span> <span class="tag blue">近一年</span></p>
   </section>
 
   <!-- ========================================================= -->
@@ -662,20 +701,20 @@
     </ul>
 
     <h3><span class="dot">◆</span>4.3 添加播放器</h3>
-    <p>在左侧面板底部，可通过以下两种方式添加视频源：</p>
+    <p>左侧「添加播放器」面板支持两种方式添加视频源：</p>
     <div class="steps">
-      <div class="step"><span class="n">1</span><span class="c">输入设备 SN 并点击<strong>「添加」</strong></span></div>
-      <div class="step"><span class="n">2</span><span class="c">或从<strong>「在线设备」</strong>列表中选择设备直接查看</span></div>
+      <div class="step"><span class="n">1</span><span class="c">在<strong>「输入设备 SN」</strong>框中填入 SN 后点击<strong>「添加」</strong></span></div>
+      <div class="step"><span class="n">2</span><span class="c">或从下方<strong>「在线设备」</strong>列表中点选设备卡片直接加入画面</span></div>
     </div>
+    <p>「在线设备」标题右侧的「⟳」按钮可刷新列表；无设备在线时显示「暂无在线设备」。</p>
 
     <h3><span class="dot">◆</span>4.4 视频画面操作</h3>
-    <p>每个视频窗口提供独立的控制菜单，支持：</p>
-    <ul class="list">
-      <li><strong>设置</strong> — 画质 / 码流切换。</li>
-      <li><strong>刷新</strong> — 重新拉流，解决画面卡顿。</li>
-      <li><strong>全屏</strong> — 单窗口全屏查看。</li>
-      <li><strong>关闭</strong> — 移除当前播放器。</li>
-    </ul>
+    <p>每个视频窗口在鼠标悬停时，顶部显示一条悬浮条：左侧为<strong>设备 SN</strong> 和<strong>播放状态</strong>（如 playing / error），右侧为「×」关闭按钮，点击可关闭该路画面。</p>
+    <p>画质、码流、OSD 叠加等参数请在「画面设置」面板中统一调整（见 4.2）。</p>
+    <div class="callout info">
+      <span class="ico">ℹ️</span>
+      <div><strong>说明</strong>：未分配视频源的窗口显示「无视频」占位；播放失败时窗口内会显示错误信息。</div>
+    </div>
   </section>
 
   <!-- ========================================================= -->
@@ -688,6 +727,10 @@
       <p class="lead">设备管理页面集中展示平台下所有已接入的<strong>机场</strong>与<strong>飞行器</strong>信息，是设备接入后的统一管理入口，支持状态监控、固件管理与维保。</p>
     </div>
     <div class="screenshot"><img src="./设备管理.png" alt="设备管理"><div class="caption">设备管理页面</div></div>
+    <div class="callout info">
+      <span class="ico">ℹ️</span>
+      <div><strong>说明</strong>：页面主体由内嵌的 FH2 设备管理组件（<code>UranusDeviceManagerApp</code>）渲染；组件加载失败时会自动回退到后端的简化设备列表视图。</div>
+    </div>
 
     <h3><span class="dot">◆</span>5.1 设备分类</h3>
     <p>页面顶部提供 Tab 切换，按设备类型分类浏览：</p>
@@ -782,15 +825,11 @@
     </ul>
 
     <h4>右下 — 操控按钮</h4>
-    <ul class="list">
-      <li><strong>返航</strong> — 一键返回起飞点 / 机场。</li>
-      <li><strong>紧急降落</strong> — 触发紧急降落流程。</li>
-      <li><strong>急停</strong> <kbd>Space</kbd> — 紧急停止电机。</li>
-    </ul>
+    <p>飞行操控面板由 SDK 驾驶舱组件内置渲染，具体按钮以实际页面为准。点击左上角<strong>「切换设备」</strong>可销毁当前驾驶舱并返回设备选择页。</p>
 
     <div class="callout warn">
       <span class="ico">⚠️</span>
-      <div><strong>急停操作提示</strong>急停（Space）会立即停止飞行动作，属于高风险操作，仅在出现安全隐患时使用。执行前请确认周边环境安全。</div>
+      <div><strong>高风险操作提示</strong>起飞、返航、紧急停止等指令属于高风险操作，执行前请确认周边环境安全。</div>
     </div>
   </section>
 
@@ -811,25 +850,25 @@
     <table>
       <thead><tr><th>字段</th><th>说明</th></tr></thead>
       <tbody>
-        <tr><td colspan="2">航线名称、类型、航点数、距离、机型、负载、更新时间</td></tr>
+        <tr><td colspan="2">复选框、航线名称、类型、航点数、距离、机型、负载、更新时间、操作（编辑）</td></tr>
       </tbody>
     </table>
     </div>
-    <p><strong>航线类型</strong>（彩色标签）：</p>
+    <p><strong>航线类型</strong>（彩色标签，共 7 种）：</p>
     <ul class="list">
-      <li><span class="tag purple">贴近摄影航线</span> 精细化倾斜摄影建模。</li>
-      <li><span class="tag blue">面状航线</span> 区域覆盖式测绘。</li>
-      <li><span class="tag green">航点航线</span> 逐点巡航巡检。</li>
+      <li><span class="tag blue">航点航线</span> <span class="tag purple">AI巡逻航线</span> 逐点巡航巡检。</li>
+      <li><span class="tag green">面状航线</span> <span class="tag green">带状航线</span> 区域覆盖式测绘。</li>
+      <li><span class="tag orange">斜面航线</span> <span class="tag orange">几何体航线</span> <span class="tag orange">贴近摄影航线</span> 精细化倾斜摄影建模。</li>
     </ul>
     <p><strong>操作按钮：</strong></p>
     <ul class="list">
       <li><strong>+ 创建航线</strong> — 新建航线。</li>
       <li><strong>导入</strong> — 导入 KMZ 航线文件。</li>
-      <li><strong>导出</strong> — 导出选中航线。</li>
-      <li><strong>拼接航线</strong> — 合并多条航线。</li>
-      <li><strong>删除</strong> — 批量删除。</li>
+      <li><strong>导出</strong> — 导出选中航线；未勾选时置灰，勾选后按钮显示选中数量。</li>
+      <li><strong>拼接航线</strong> — 合并多条航线，<strong>至少勾选 2 条</strong>才可用。</li>
+      <li><strong>删除</strong> — 批量删除，未勾选时置灰。</li>
     </ul>
-    <p>同时支持按<strong>机型、负载</strong>筛选，按<strong>名称</strong>搜索。</p>
+    <p>支持按<strong>机型、负载</strong>下拉筛选，按<strong>航线名称</strong>搜索（占位符「搜索航线名称…」），右侧「⟳」可刷新列表；无数据时显示「暂无航线数据」。</p>
 
     <h3><span class="dot">◆</span>7.2 创建新航线</h3>
     <div class="screenshot"><img src="./创建航线.png" alt="创建航线"><div class="caption">创建航线对话框</div></div>
@@ -864,7 +903,7 @@
     <p>输入航线名称后点击<strong>「确定」</strong>进入编辑器。</p>
 
     <h3><span class="dot">◆</span>7.3 航线编辑</h3>
-    <div class="screenshot"><img src="./航线遍及.png" alt="航线编辑"><div class="caption">航线编辑界面</div></div>
+    <div class="screenshot"><img src="./航线编辑.png" alt="航线编辑"><div class="caption">航线编辑界面</div></div>
     <p>进入航线编辑器后，可在 3D 地图上进行航线规划：</p>
     <ul class="list">
       <li><strong>左侧参数面板</strong> — 选择镜头（广角 / 红外）、GSD 分辨率设置（cm / pixel）、相对被摄面距离、安全起飞高度、测区顶部 / 底部高度（ASL）。</li>
@@ -895,26 +934,44 @@
 
     <h3><span class="dot">◆</span>8.1 任务列表</h3>
     <div class="screenshot"><img src="./任务管理列表.png" alt="任务管理列表"><div class="caption">任务管理列表</div></div>
+    <p><strong>顶部工具栏</strong>：左侧为状态筛选下拉与「共 N 条任务」计数；右侧为「刷新」和「新建任务」。</p>
     <div class="table-wrap">
     <table>
       <thead><tr><th>字段</th><th>说明</th></tr></thead>
       <tbody>
-        <tr><td><strong>任务名称</strong></td><td>自定义任务名称。</td></tr>
+        <tr><td><strong>任务名称</strong></td><td>自定义任务名称；与其他任务时间窗冲突时附「时间冲突」标记。</td></tr>
         <tr><td><strong>设备 SN</strong></td><td>执行任务的设备序列号。</td></tr>
-        <tr><td><strong>状态</strong></td><td><span class="tag green">成功</span> <span class="tag red">失败</span> <span class="tag blue">执行中</span> <span class="tag orange">已暂停</span> 待执行 已取消</td></tr>
-        <tr><td><strong>类型</strong></td><td>即时 / 定时。</td></tr>
+        <tr><td><strong>任务 ID</strong></td><td>任务 UUID。</td></tr>
+        <tr><td><strong>状态</strong></td><td><span class="tag green">成功</span> <span class="tag red">失败</span> <span class="tag blue">执行中</span> 准备中 起飞排队中 <span class="tag orange">已暂停</span> 已取消 待执行</td></tr>
+        <tr><td><strong>类型</strong></td><td>立即 / 单次定时 / 重复定时 / 连续执行。</td></tr>
         <tr><td><strong>创建时间</strong></td><td>任务创建时间。</td></tr>
-        <tr><td><strong>操作</strong></td><td>回放 / 暂停 / 取消 / 执行。</td></tr>
+        <tr><td><strong>操作</strong></td><td>随状态变化，见下表。</td></tr>
       </tbody>
     </table>
     </div>
-    <p><strong>状态与操作对应：</strong></p>
-    <ul class="list">
-      <li>成功 / 失败 → <strong>回放</strong></li>
-      <li>执行中 → <strong>暂停</strong> / <strong>取消</strong></li>
-      <li>待执行 → <strong>执行</strong></li>
-    </ul>
-    <p>支持按状态筛选，点击「+ 新建任务」创建任务。</p>
+    <p><strong>操作按钮随状态变化：</strong></p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>任务状态</th><th>可用操作</th></tr></thead>
+      <tbody>
+        <tr><td>待执行</td><td>执行（置灰）、编辑（视条件）、删除</td></tr>
+        <tr><td>执行中</td><td>暂停、取消（置灰）</td></tr>
+        <tr><td>准备中 / 起飞排队中</td><td>无操作按钮，仅展示状态</td></tr>
+        <tr><td>已暂停</td><td>恢复</td></tr>
+        <tr><td>成功 / 失败</td><td>回放</td></tr>
+        <tr><td>已取消</td><td>无操作按钮</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="callout warn">
+      <span class="ico">⚠️</span>
+      <div><strong>平台能力限制</strong>当前平台协议的任务状态接口只能表达「暂停 / 恢复」，无法表达「立即执行」和「取消」，因此这两个按钮固定置灰，悬停提示「平台协议仅支持暂停/恢复任务，暂不支持立即执行与取消」。定时类任务（单次定时 / 重复定时）的「执行」按钮额外提示「定时任务将在预定时间自动执行，不支持手动触发」。</div>
+    </div>
+    <div class="callout info">
+      <span class="ico">ℹ️</span>
+      <div><strong>编辑条件</strong>仅「待执行」任务可编辑；即时任务、试飞任务、断点续飞任务不可编辑，按钮置灰并给出原因。</div>
+    </div>
+    <p>点击任意任务行（操作列除外）可进入该任务的回放页面。</p>
 
     <h3><span class="dot">◆</span>8.2 新建任务</h3>
     <div class="screenshot"><img src="./新建任务.png" alt="新建任务"><div class="caption">新建任务</div></div>
@@ -923,20 +980,37 @@
     <table>
       <thead><tr><th>配置</th><th>选项 / 说明</th></tr></thead>
       <tbody>
-        <tr><td><strong>计划名称</strong></td><td>自定义输入。</td></tr>
-        <tr><td><strong>任务类型</strong></td><td>普通任务 / 蛙跳任务 / 手飞任务。</td></tr>
-        <tr><td><strong>执行航线</strong></td><td>从航线库选择。</td></tr>
-        <tr><td><strong>选择设备</strong></td><td>从在线设备选择。</td></tr>
-        <tr><td><strong>多模态识别</strong></td><td>开 / 关。</td></tr>
+        <tr><td><strong>计划名称</strong></td><td>必填，最多 50 个字符。</td></tr>
+        <tr><td><strong>任务类型</strong></td><td>普通任务（可用）/ 蛙跳任务 / 手飞任务。</td></tr>
+        <tr><td><strong>执行航线</strong></td><td>从航线库选择；<strong>手飞任务不显示此项</strong>。</td></tr>
+        <tr><td><strong>选择设备</strong></td><td>从在线设备中选择执行任务的机场。</td></tr>
+        <tr><td><strong>多模态识别</strong></td><td><strong>暂不支持</strong>：SDK 创建 / 编辑请求均无承载位，开关仅保留展示，选中不会下发到设备。</td></tr>
         <tr><td><strong>任务精度</strong></td><td>高精度 RTK / GNSS。</td></tr>
         <tr><td><strong>任务策略</strong></td><td>立即 / 单次定时 / 重复定时 / 连续执行。</td></tr>
-        <tr><td><strong>自动断点续飞</strong></td><td>开 / 关。</td></tr>
+        <tr><td><strong>断点续飞策略（自动断点续飞）</strong></td><td>开 / 关，映射为 <code>resumable_status</code>（1=auto，0=manual）；<strong>仅新建时下发</strong>，编辑态无承载位，详情也不回显，故编辑页不提交该字段。</td></tr>
         <tr><td><strong>智能规划最佳返航路线</strong></td><td>开 / 关。</td></tr>
-        <tr><td><strong>最低返航高度</strong></td><td>相对机场，默认 100m。</td></tr>
+        <tr><td><strong>最低返航高度（相对机场）</strong></td><td>默认 100 m，可调范围 20 ~ 1500 m。</td></tr>
         <tr><td><strong>航线飞行中失联</strong></td><td>返航 / 继续执行。</td></tr>
       </tbody>
     </table>
     </div>
+    <p><strong>任务策略与附加项：</strong></p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>策略</th><th>可用性</th><th>附加配置</th></tr></thead>
+      <tbody>
+        <tr><td>立即</td><td>可用</td><td>无</td></tr>
+        <tr><td>单次定时</td><td>可用</td><td>执行时间（日期时间选择器）</td></tr>
+        <tr><td>重复定时</td><td>置灰</td><td>选中后才会显示开始 / 截止时间与重复周期，当前不可达</td></tr>
+        <tr><td>连续执行</td><td>置灰</td><td>选中后才会显示最低执行电量（%，10 ~ 100，默认 50），当前不可达</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="callout warn">
+      <span class="ico">⚠️</span>
+      <div><strong>平台能力限制</strong>任务类型中的「蛙跳任务」「手飞任务」以及任务策略中的「重复定时」「连续执行」在当前平台协议下不可用，选项置灰，悬停提示「当前平台协议暂不支持该选项」。编辑已有任务时，若原任务使用了不支持的策略，页面会提示「当前平台协议无法保留该任务策略，保存后重复规则将丢失，任务只会执行一次」。<br>「断点续飞策略」只在新建时可设置；编辑页该开关下方会提示「自动续飞策略仅在创建任务时下发，当前 SDK 编辑接口无该字段，保存不会改变原有策略」，且不会提交该字段。任务列表 / 详情里的「断点续飞」标识表示「本任务是否断点续飞任务」，与续飞策略不是同一个概念，不能据此判断自动续飞是否开启。</div>
+    </div>
+    <p>页面底部为「取消」和「确定」按钮（提交过程中「确定」显示为「提交中...」）。</p>
 
     <h3><span class="dot">◆</span>8.3 任务回放</h3>
     <div class="screenshot"><img src="./任务回放.png" alt="任务回放"><div class="caption">任务回放</div></div>
@@ -980,11 +1054,12 @@
       </tbody>
     </table>
     </div>
+    <p>勾选文件后，工具栏左侧显示「已选 N 项」及「批量下载」「批量删除」按钮；未勾选时显示「共 N 个文件」。</p>
 
     <h3><span class="dot">◆</span>9.3 分页</h3>
     <ul class="list">
-      <li>默认每页 50 条。</li>
-      <li>显示总文件数（如「共 1967 个文件」）。</li>
+      <li>每页可选 20 / 50 / 100 条（默认 50 条 / 页）。</li>
+      <li>显示当前区间与总数（如「1-50 / 共 1967 条」）。</li>
       <li>支持翻页浏览。</li>
     </ul>
   </section>
@@ -1001,30 +1076,59 @@
 
     <h3><span class="dot">◆</span>10.1 空域列表</h3>
     <div class="screenshot"><img src="./空域管理.png" alt="空域管理"><div class="caption">空域管理</div></div>
+    <p>空域管理在 Cesium 3D 地图上可视化展示和管理飞行区域。<strong>左侧面板</strong>包含三个 Tab：</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Tab</th><th>内容</th></tr></thead>
+      <tbody>
+        <tr><td><strong>自定义飞行区域</strong></td><td>自定义作业区 / 限飞区 / 禁降区的绘制与管理。</td></tr>
+        <tr><td><strong>地形障碍物</strong></td><td>地形障碍物模型的状态、版本、更新时间，及启用开关。</td></tr>
+        <tr><td><strong>空域告警</strong></td><td>DJI AirSense（机载 ADS-B 告警）与空域 safeS（三方服务）开关，以及告警距离阈值配置。</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p><strong>自定义飞行区域 Tab：</strong></p>
     <ul class="list">
-      <li><strong>左侧面板</strong>：类型筛选 / 状态筛选、区域名称搜索、已创建的区域列表（带颜色指示）。</li>
-      <li><strong>地图视图</strong>：绿色区域 = 作业区（允许飞行）、红色区域 = 限飞区（禁止飞行）、橙色区域 = 禁降区（禁止降落）。</li>
+      <li><strong>筛选</strong> — 类型（全部类型 / 自定义作业区 / 自定义限飞区 / 自定义禁降区）、状态（全部状态 / 启用 / 禁用）。</li>
+      <li><strong>搜索</strong> — 区域名称搜索（占位符「搜索区域名称...」）。</li>
+      <li><strong>区域列表</strong> — 每条可单独启用 / 禁用或删除，删除前弹出确认框「确认删除「区域名称」？删除后无法恢复。」。</li>
     </ul>
+    <p><strong>地图视图的颜色标识：</strong></p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>区域类型</th><th>颜色</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><strong>自定义作业区</strong></td><td><span class="tag green">绿色 #00FF00</span></td><td>允许飞行的作业范围。</td></tr>
+        <tr><td><strong>自定义限飞区</strong></td><td><span class="tag red">红色 #FF0000</span></td><td>禁止飞行的范围。</td></tr>
+        <tr><td><strong>自定义禁降区</strong></td><td><span class="tag orange">橙色 #FF9900</span></td><td>禁止降落的范围。</td></tr>
+        <tr><td><strong>已禁用区域</strong></td><td><span class="tag gray">灰色 #606060</span></td><td>已关闭的区域以灰色渲染。</td></tr>
+      </tbody>
+    </table>
+    </div>
 
     <h3><span class="dot">◆</span>10.2 创建空域</h3>
     <div class="screenshot"><img src="./空域创建.png" alt="空域创建"><div class="caption">空域创建</div></div>
-    <p>点击右上角编辑按钮后，可选择创建的区域类型和形状：</p>
+    <p>点击<strong>「绘制区域」</strong>按钮，弹出「选择类型和形状」菜单：</p>
     <div class="table-wrap">
     <table>
-      <thead><tr><th>区域类型</th><th>形状选项</th><th>颜色标识</th></tr></thead>
+      <thead><tr><th>菜单项</th><th>对应类型</th></tr></thead>
       <tbody>
-        <tr><td><strong>作业区</strong></td><td>多边形 / 圆形</td><td><span class="tag green">绿色</span></td></tr>
-        <tr><td><strong>限飞区</strong></td><td>多边形 / 圆形</td><td><span class="tag red">红色</span></td></tr>
-        <tr><td><strong>禁降区</strong></td><td>多边形</td><td><span class="tag orange">橙色</span></td></tr>
+        <tr><td>作业区 - 多边形 / 作业区 - 圆形</td><td><strong>自定义作业区</strong></td></tr>
+        <tr><td>限飞区 - 多边形 / 限飞区 - 圆形</td><td><strong>自定义限飞区</strong></td></tr>
+        <tr><td>禁降区 - 多边形</td><td><strong>自定义禁降区</strong>（仅支持多边形）</td></tr>
       </tbody>
     </table>
     </div>
     <p><strong>操作步骤：</strong></p>
     <div class="steps">
-      <div class="step"><span class="n">1</span><span class="c">选择区域类型和形状。</span></div>
+      <div class="step"><span class="n">1</span><span class="c">点击「绘制区域」，选择区域类型和形状。</span></div>
       <div class="step"><span class="n">2</span><span class="c">在地图上点击绘制区域边界。</span></div>
-      <div class="step"><span class="n">3</span><span class="c">设置区域名称和参数。</span></div>
-      <div class="step"><span class="n">4</span><span class="c">保存并同步到设备。</span></div>
+      <div class="step"><span class="n">3</span><span class="c">在弹出框中填写「区域名称」（唯一字段，必填）。</span></div>
+      <div class="step"><span class="n">4</span><span class="c">点击「确认创建」提交，提交过程中按钮显示「创建中...」。</span></div>
+    </div>
+    <div class="callout info">
+      <span class="ico">ℹ️</span>
+      <div><strong>说明</strong>创建时仅填写区域名称，没有额外的参数设置项；区域也不支持「同步到设备」，创建后在平台侧保存并由服务端下发生效。</div>
     </div>
   </section>
 
@@ -1040,24 +1144,52 @@
 
     <h3><span class="dot">◆</span>11.1 模型列表</h3>
     <div class="screenshot"><img src="./模型列表.png" alt="模型列表"><div class="caption">模型列表</div></div>
+    <p><strong>左侧导航（资源库，可折叠）：</strong></p>
     <ul class="list">
-      <li><strong>左侧导航</strong>：资源库（模型、二维模型、三维模型）、重建任务。</li>
-      <li><strong>模型卡片</strong>：网格视图 / 列表视图切换、显示模型名称和创建时间、支持导入、创建文件夹、按名称搜索、筛选。</li>
+      <li><strong>模型</strong>（可展开，标题右侧显示已用总容量，如 <code>12.5 GB</code>）
+        <ul class="list">
+          <li>二维模型（附容量占用）</li>
+          <li>三维模型（附容量占用）</li>
+        </ul>
+      </li>
+      <li><strong>重建任务</strong></li>
     </ul>
+    <p><strong>顶部工具栏（模型视图下）：</strong></p>
+    <ul class="list">
+      <li><strong>左侧</strong> — 「模型重建」（主按钮）、「导入」（置灰，暂不可用）、「创建文件夹」（置灰，暂不可用）。</li>
+      <li><strong>右侧</strong> — 勾选模型后出现「批量删除 (N)」、「刷新」、网格视图 / 列表视图切换、「筛选」下拉（全部类型 / 正射影像 / 三维网格 / 点云 / 全景）、搜索框（占位符「按文件名称搜索」）。</li>
+    </ul>
+    <p><strong>模型卡片菜单：</strong>下载（置灰，SDK 未提供有效下载链接）、质量报告、查看影像、删除。</p>
+    <p><strong>重建任务 Tab：</strong>每条任务显示任务 ID、状态标签（<span class="tag blue">处理中</span> <span class="tag green">已完成</span> <span class="tag red">失败</span>）、处理进度百分比（处理中）、输出路径（已完成）；操作按钮随状态为「停止」（处理中）、「重试」（失败）、「查看报告」（已完成）。无任务时显示「暂无重建任务」。</p>
+    <p>底部为分页条：每页 20 / 50 / 100 条，显示总条数与总页数。</p>
 
     <h3><span class="dot">◆</span>11.2 新建模型重建</h3>
     <div class="screenshot"><img src="./模型重建.png" alt="模型重建"><div class="caption">模型重建</div></div>
-    <p>配置步骤：</p>
-    <div class="steps">
-      <div class="step"><span class="n">1</span><span class="c"><strong>模型名称</strong> — 自动生成时间戳命名，可修改。</span></div>
-      <div class="step"><span class="n">2</span><span class="c"><strong>选择数据</strong> — 按航线选择（从已执行的航线任务中选择）或按文件夹选择（手动输入媒体文件夹 UUID）。</span></div>
-      <div class="step"><span class="n">3</span><span class="c"><strong>像控点</strong> — 开 / 关。</span></div>
-      <div class="step"><span class="n">4</span><span class="c"><strong>模型成果</strong> — 二维（正射）/ 三维（Mesh）。</span></div>
-      <div class="step"><span class="n">5</span><span class="c"><strong>兴趣区域</strong> — 开 / 关。</span></div>
-      <div class="step"><span class="n">6</span><span class="c"><strong>坐标系选择</strong> — WGS 84 EPSG:4326 等。</span></div>
-      <div class="step"><span class="n">7</span><span class="c"><strong>模型存储位置</strong> — 云端建模。</span></div>
+    <p>点击工具栏<strong>「模型重建」</strong>会打开全屏三栏重建面板：<strong>左侧配置栏</strong> / <strong>中间照片选择</strong> / <strong>右侧地图</strong>。</p>
+    <p><strong>左侧配置栏：</strong></p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>配置项</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><strong>模型名称</strong></td><td>默认自动生成为「新建模型重建-YYYY-MM-DD HH:mm:ss (UTC+08)」，可修改，最多 50 个字符。</td></tr>
+        <tr><td><strong>选择数据</strong></td><td>显示已选照片数量与文件夹数量。</td></tr>
+        <tr><td><strong>媒体文件夹</strong></td><td>手动输入媒体文件夹 UUID（每行一个）；一旦在中间面板勾选了航线执行或文件夹，此处自动回填对应 ID 并变为只读。</td></tr>
+        <tr><td><strong>像控点</strong></td><td>开 / 关，默认关。</td></tr>
+        <tr><td><strong>模型成果</strong></td><td>二维（提交为 2D 正射影像）/ 三维（提交为 3D 网格模型），默认三维。</td></tr>
+        <tr><td><strong>兴趣区域</strong></td><td>开 / 关，默认关；开启后在右侧地图上框选。</td></tr>
+        <tr><td><strong>坐标系选择</strong></td><td>固定为 WGS 84 / EPSG:4326。</td></tr>
+        <tr><td><strong>模型存储位置</strong></td><td>固定为「云端建模」。</td></tr>
+      </tbody>
+    </table>
     </div>
-    <p>配置完成后点击<strong>「开始重建」</strong>提交任务。</p>
+    <p><strong>中间选择面板</strong>（选择方式三选一，两个 Tab 互斥，切换 Tab 会清空另一个 Tab 的选择）：</p>
+    <ul class="list">
+      <li><strong>按航线选择</strong>：从已执行的航线任务中选择，勾选后显示「已选 N 个执行，M 张照片」。</li>
+      <li><strong>按文件夹选择</strong>：在列表中勾选已有媒体文件的文件夹，勾选后显示「已选 N 个文件夹」。列表为服务端缓存（TTL 约 10 分钟），新上传的文件夹可能稍后才出现；加载失败时提供「重试」。</li>
+      <li><strong>高级</strong>：未勾选任何航线或文件夹时，也可在「媒体文件夹」输入框中手动输入文件夹 UUID（每行一个）；此时提交的是 UUID 而非文件夹 ID。</li>
+    </ul>
+    <p>两个 Tab 均支持按关键词搜索，底部实时显示已选数量。</p>
+    <p><strong>提交：</strong>左侧栏底部「开始重建」按钮。未选择数据时按钮置灰并提示「请输入媒体文件夹 UUID 后开始重建」；仅在「选择数据」已有输入、或已选照片数 ≥ 5 时可用。提交失败时以底部提示条展示错误信息。</p>
   </section>
 
   <!-- ========================================================= -->
@@ -1072,7 +1204,8 @@
     <div class="screenshot"><img src="./Copilot.png" alt="AI 助手"><div class="caption">AI 助手 Copilot</div></div>
 
     <h3><span class="dot">◆</span>12.1 入口</h3>
-    <p>点击顶部导航栏右侧<strong>「AI 助手」</strong>按钮，打开右侧 Copilot 面板。</p>
+    <p>点击顶部导航栏右侧<strong>「AI 助手」</strong>按钮（快捷键 <kbd>Ctrl</kbd> + <kbd>/</kbd>，macOS 为 <kbd>Cmd</kbd> + <kbd>/</kbd>），从右侧滑出 Copilot 抽屉；再次按快捷键或点击抽屉右上角「✕」关闭。</p>
+    <p>抽屉左边缘可拖拽调整宽度。标题栏标识为「Copilot」并带「意图驱动」徽标，右侧依次为「清空对话」和「关闭」按钮。</p>
 
     <h3><span class="dot">◆</span>12.2 功能特性</h3>
     <div class="feat-grid">
@@ -1080,25 +1213,51 @@
       <div class="feat"><div class="f-ico">📡</div><strong>设备查询</strong><p>询问设备在线状态、型号信息。</p></div>
       <div class="feat"><div class="f-ico">📋</div><strong>任务下发</strong><p>通过对话创建和管理飞行任务。</p></div>
       <div class="feat"><div class="f-ico">📊</div><strong>数据汇总</strong><p>自动聚合设备、航线、任务等运营数据。</p></div>
-      <div class="feat"><div class="f-ico">💬</div><strong>智能提示</strong><p>根据设备状态给出注意事项和建议。</p></div>
+      <div class="feat"><div class="f-ico">🛡️</div><strong>高风险操作确认</strong><p>涉及写操作的工具调用会先以卡片形式展示工具名并等待用户「批准」或「拒绝」，处理后卡片标记为「已批准」/「已拒绝」。</p></div>
     </div>
 
     <h3><span class="dot">◆</span>12.3 使用示例</h3>
-    <p>在对话框中输入自然语言指令即可，例如：</p>
+    <p>输入框占位符为「用一句话下发任务…」。空对话时展示欢迎页「你好，我是 CloudAPI2 平台 AI 助手」及快捷提问按钮，例如：</p>
     <ul class="list">
-      <li>「查看当前在线设备」</li>
-      <li>「帮我查看惠州 142 号机场的状态」</li>
-      <li>「创建一个巡检任务」</li>
+      <li>查询在线设备列表</li>
+      <li>查一下今天的告警统计</li>
+      <li>帮我查一下航线库有哪些航线</li>
+      <li>查看最近的媒体文件</li>
     </ul>
+    <p>输入框右侧的麦克风按钮支持语音输入（点击开始录音，再次点击结束，识别结果实时回填到输入框；浏览器不支持语音识别时按钮不可用）。</p>
     <p>AI 助手会以结构化表格返回结果，并提供操作建议。</p>
 
     <h3><span class="dot">◆</span>12.4 启用条件</h3>
-    <p>AI 助手需要后端配置以下环境变量：</p>
+    <p>AI 助手依赖后端 <code>feature-chat</code> 模块，需满足：</p>
     <ul class="list">
-      <li><code>FH_CHAT_ENABLED=true</code> — 启用 Chat 功能。</li>
-      <li><code>SPRING_AI_OPENAI_API_KEY</code>（或 Anthropic Key）— AI 模型密钥。</li>
-      <li><code>FH_CHAT_MCP_URL</code> — MCP Server 地址。</li>
+      <li><strong>在配置文件中显式开启</strong> — <code>fh.chat.enabled</code> 在 <code>application.yml</code> 中<strong>硬编码为 <code>false</code></strong>，且没有环境变量绑定，集成商需直接修改配置文件改为 <code>true</code>（仅设置环境变量无效）。</li>
+      <li><strong>模型接入</strong> — <code>SPRING_AI_OPENAI_API_KEY</code>（或 <code>SPRING_AI_ANTHROPIC_API_KEY</code>）。</li>
+      <li><strong>MCP 工具通道</strong> — <code>FH_CHAT_MCP_URL</code>（MCP Server 地址）、<code>FH_CHAT_MCP_AUTH_TOKEN</code>（与 MCP Server 的 <code>FH_SSE_AUTH_TOKEN</code> 一致，留空表示不鉴权）。</li>
+      <li><strong>模型名称</strong>（可选） — <code>FH_CHAT_MODEL</code>（主模型）、<code>FH_CHAT_LIGHT_MODEL</code>（L0 只读查询使用的轻量模型）。</li>
     </ul>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- 附录：快捷键与操作提示 -->
+  <!-- ========================================================= -->
+  <section class="chapter" id="附录-快捷键与操作提示">
+    <div class="chapter-head">
+      <div class="num">★</div>
+      <h2>附录：快捷键与操作提示</h2>
+      <p class="lead">常用交互快捷键与操作提示汇总，便于快速上手。</p>
+    </div>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>操作</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><strong>地图缩放</strong></td><td>鼠标滚轮。</td></tr>
+        <tr><td><strong>地图旋转</strong></td><td>按住右键拖拽。</td></tr>
+        <tr><td><strong>刷新数据</strong></td><td>各页面右上角刷新按钮。</td></tr>
+        <tr><td><strong>打开 / 关闭 AI 助手</strong></td><td><kbd>Ctrl</kbd> + <kbd>/</kbd>（macOS 为 <kbd>Cmd</kbd> + <kbd>/</kbd>）。</td></tr>
+        <tr><td><strong>关闭驾驶舱「设备小窗」</strong></td><td><kbd>Esc</kbd>。</td></tr>
+      </tbody>
+    </table>
+    </div>
   </section>
 
   <!-- ===== 页脚 ===== -->
@@ -1106,7 +1265,7 @@
     <div class="links">
       <a href="#toc">返回目录</a>
     </div>
-    <p>DJI 大疆上云 API 2 · 无人机管理平台使用说明 · v1.0 · 2026-08-08</p>
+    <p>DJI Cloud API 2 · 无人机管理平台使用说明 · v1.0 · 2026-08-08</p>
     <p>如有使用问题，请联系平台管理员。</p>
   </footer>
 

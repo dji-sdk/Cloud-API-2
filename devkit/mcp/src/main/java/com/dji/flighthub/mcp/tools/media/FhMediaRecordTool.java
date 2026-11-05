@@ -22,9 +22,12 @@ import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
+import com.dji.flighthub.mcp.tools.subscription.ListenChannelSupport;
+import com.dji.flighthub.mcp.tools.subscription.SubscriptionBuffer;
 import com.dji.flighthub.mcp.annotation.Generated;
 import com.dji.flighthubsdk.bean.LiveInfo;
 import com.dji.flighthubsdk.bean.LiveRecordItem;
+import com.dji.flighthubsdk.bean.LiveRecordStateInfo;
 import com.dji.flighthubsdk.core.Drone;
 import com.dji.flighthubsdk.core.LiveRecordModule;
 import org.slf4j.Logger;
@@ -38,12 +41,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 /**
  * fh_media_record — 直播录制控制：开始/停止录制或列出录制记录。
  * 前置条件：已建立 session 且 workspace 可用。
  *
- * <p>安全等级：L1（start/stop 影响录制状态，需 confirm；list 只读但合并在同一工具）
+ * <p>安全等级：混合
+ * <ul>
+ *   <li>start/stop — L1（影响录制状态，需 confirm）</li>
+ *   <li>list — L0（只读，合并在同一工具）</li>
+ *   <li>listen_state / events / listen_stop — L0（录制状态变更订阅三元组，只读）</li>
+ * </ul>
  *
  * @author DJI FlightHub SDK Team
  */
@@ -60,29 +69,51 @@ public class FhMediaRecordTool extends AbstractMcpTool {
     private static final String PARAM_ACTION = "action";
     private static final String PARAM_CONFIRM = "confirm";
     private static final String PARAM_PAYLOAD_INDEX = "payload_index";
+    private static final String PARAM_CHANNELS = "channels";
+    private static final String PARAM_SINCE_SEQ = "since_seq";
+    private static final String PARAM_LIMIT = "limit";
 
     /** 操作常量 */
     private static final String ACTION_START = "start";
     private static final String ACTION_STOP = "stop";
     private static final String ACTION_LIST = "list";
+    private static final String ACTION_LISTEN_STATE = "listen_state";
+    private static final String ACTION_EVENTS = "events";
+    private static final String ACTION_LISTEN_STOP = "listen_stop";
 
     /** 有效操作列表 */
-    private static final List<String> VALID_ACTIONS = List.of(ACTION_START, ACTION_STOP, ACTION_LIST);
+    private static final List<String> VALID_ACTIONS = List.of(
+            ACTION_START, ACTION_STOP, ACTION_LIST,
+            ACTION_LISTEN_STATE, ACTION_EVENTS, ACTION_LISTEN_STOP
+    );
 
     /** 默认 payload 索引（与 FhLiveStartTool 一致） */
     private static final String DEFAULT_PAYLOAD_INDEX = "81-0-0";
 
+    /** 订阅 channel 常量：录制状态变更（本工具只有这一个 channel） */
+    private static final String CHANNEL_RECORD_STATE = "record_state";
+
+    /** 订阅注册表命名空间（与 Tool 名对应） */
+    private static final String SUBSCRIBE_NAMESPACE = "media_record";
+
+    /** events 动作默认读取条数 */
+    private static final int DEFAULT_EVENTS_LIMIT = 50;
+
     private final SdkService sdkService;
+    private final ListenChannelSupport listenSupport;
 
     /**
      * 构造函数。
      *
      * @param sessionManager session 管理器
      * @param sdkService     SDK 服务
+     * @param listenSupport  订阅 channel 通用支持组件
      */
-    public FhMediaRecordTool(SessionManager sessionManager, SdkService sdkService) {
+    public FhMediaRecordTool(SessionManager sessionManager, SdkService sdkService,
+                              ListenChannelSupport listenSupport) {
         super(sessionManager);
         this.sdkService = sdkService;
+        this.listenSupport = listenSupport;
     }
 
     /**
@@ -99,6 +130,16 @@ public class FhMediaRecordTool extends AbstractMcpTool {
      *
      * @return MCP 工具定义 Map
      */
+    /**
+     * 声明工具级静态安全等级：REVERSIBLE。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.REVERSIBLE;
+    }
+
     @Override
     public Map<String, Object> getToolDefinition() {
         Map<String, Object> def = new LinkedHashMap<>();
@@ -108,7 +149,10 @@ public class FhMediaRecordTool extends AbstractMcpTool {
                 + "or list recorded sessions for a device. "
                 + "IMPORTANT: This records the LIVE STREAM (server-side storage), NOT onboard SD card. "
                 + "fh_live_start MUST be called first to start the live stream before recording. "
-                + "For onboard SD card recording, use fh_camera(camera_video_start) instead.");
+                + "For onboard SD card recording, use fh_camera(camera_video_start) instead. "
+                + "Subscription actions for the record_state channel: listen_state (subscribe once), "
+                + "events (poll buffered events via a since_seq cursor), "
+                + "listen_stop (release the subscription).");
 
         Map<String, Object> schema = new LinkedHashMap<>();
         schema.put("type", "object");
@@ -121,16 +165,34 @@ public class FhMediaRecordTool extends AbstractMcpTool {
         props.put(PARAM_ACTION, Map.of(
                 "type", "string",
                 "enum", VALID_ACTIONS,
-                "description", "start: begin recording | stop: end recording | list: show recording history"
+                "description", "start: begin recording | stop: end recording | list: show recording history | "
+                        + "listen_state: subscribe to record-state change events (channel: record_state) | "
+                        + "events: poll buffered events for the record_state channel via since_seq cursor | "
+                        + "listen_stop: unsubscribe the record_state channel"
         ));
         props.put(PARAM_CONFIRM, Map.of(
                 "type", "boolean",
-                "description", "Required for start/stop actions (not needed for list)"
+                "description", "Required for start/stop actions (not needed for list/listen_state/events/listen_stop)"
         ));
         props.put(PARAM_PAYLOAD_INDEX, Map.of(
                 "type", "string",
                 "description", "Camera payload index (e.g. '81-0-0'), default: primary camera. "
                         + "Use fh_camera(get_camera_state) to discover the actual value."
+        ));
+        props.put(PARAM_CHANNELS, Map.of(
+                "type", "array",
+                "items", Map.of("type", "string", "enum", List.of(CHANNEL_RECORD_STATE)),
+                "description", "Channel names for events/listen_stop (optional; defaults to all "
+                        + "currently active channels for this device when omitted)"
+        ));
+        props.put(PARAM_SINCE_SEQ, Map.of(
+                "type", "integer",
+                "description", "Cursor for events: only return events with _seq greater than this value (default 0)"
+        ));
+        props.put(PARAM_LIMIT, Map.of(
+                "type", "integer",
+                "description", "Max events to return per channel for events action (default "
+                        + DEFAULT_EVENTS_LIMIT + ")"
         ));
         schema.put("properties", props);
         schema.put("required", List.of(PARAM_DEVICE_SN, PARAM_ACTION));
@@ -171,7 +233,12 @@ public class FhMediaRecordTool extends AbstractMcpTool {
                     "action must be one of: " + VALID_ACTIONS);
         }
 
-        // 4. start/stop 需要安全等级 L1 + 人工确认；list 不需要
+        // 4. 订阅类 action（READ_ONLY，不进入 start/stop 确认流程）单独分发
+        if (isSubscriptionAction(action)) {
+            return dispatchSubscription(action, deviceSn, args);
+        }
+
+        // 5. start/stop 需要安全等级 L1 + 人工确认；list 不需要
         if (!ACTION_LIST.equals(action)) {
             Map<String, Object> denied = enforceSecurityLevel(SecurityLevel.REVERSIBLE);
             if (denied != null) {
@@ -185,10 +252,10 @@ public class FhMediaRecordTool extends AbstractMcpTool {
             }
         }
 
-        // 5. 获取 payload_index 参数（null 表示用户未传，后续自动发现）
+        // 6. 获取 payload_index 参数（null 表示用户未传，后续自动发现）
         String payloadIndex = getStringArg(args, PARAM_PAYLOAD_INDEX, null);
 
-        // 6. 分发到对应路径
+        // 7. 分发到对应路径
         return sdkService.isMockMode()
                 ? dispatchMockMode(deviceSn, action)
                 : dispatchRealSdk(deviceSn, action, payloadIndex);
@@ -429,6 +496,201 @@ public class FhMediaRecordTool extends AbstractMcpTool {
 
         return successResult(data,
                 "Found " + recordList.size() + " recordings for device " + deviceSn + ".");
+    }
+
+    // ── 订阅分发 ──
+
+    /**
+     * 判断是否为订阅类 action（listen_state/events/listen_stop）。
+     */
+    private boolean isSubscriptionAction(String action) {
+        return ACTION_LISTEN_STATE.equals(action)
+                || ACTION_EVENTS.equals(action)
+                || ACTION_LISTEN_STOP.equals(action);
+    }
+
+    /**
+     * 订阅类 action 分发入口。
+     *
+     * @param action   操作名
+     * @param deviceSn 目标设备 SN（订阅作用域按设备区分）
+     * @param args     输入参数
+     * @return 执行结果
+     */
+    private Map<String, Object> dispatchSubscription(String action, String deviceSn, Map<String, Object> args) {
+        SessionContext session = requireSession();
+        return switch (action) {
+            case ACTION_LISTEN_STATE -> handleListenState(session, deviceSn);
+            case ACTION_EVENTS -> handleEvents(session, deviceSn, args);
+            case ACTION_LISTEN_STOP -> handleStopListen(session, deviceSn, args);
+            default -> errorResult("Unknown action: " + action, "");
+        };
+    }
+
+    /**
+     * 处理 listen_state：订阅 record_state channel，返回 listen_id。
+     */
+    private Map<String, Object> handleListenState(SessionContext session, String deviceSn) {
+        String registryKey = ListenChannelSupport.registryKey(SUBSCRIBE_NAMESPACE, deviceSn, CHANNEL_RECORD_STATE);
+        String scope = SubscriptionBuffer.scope(session, deviceSn);
+        boolean mock = sdkService.isMockMode();
+
+        int listenId = listenSupport.startChannel(session, registryKey, CHANNEL_RECORD_STATE, scope,
+                CHANNEL_RECORD_STATE, mock,
+                this::mockRecordStateEvent,
+                onEvent -> startRealListenRecordState(deviceSn, onEvent),
+                listenId2 -> cancelRealListenRecordState(deviceSn, listenId2));
+
+        if (listenId < 0) {
+            return errorResult("Failed to start listening on channel: " + CHANNEL_RECORD_STATE,
+                    "Check SDK connectivity and try again.");
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_LISTEN_STATE);
+        data.put("channel", CHANNEL_RECORD_STATE);
+        data.put("listen_id", listenId);
+        return successResult(data, "Subscribed to channel '" + CHANNEL_RECORD_STATE + "'. Poll with action=events.");
+    }
+
+    /**
+     * 处理 events：按游标轮询一个或多个已订阅 channel 的缓冲事件。
+     */
+    private Map<String, Object> handleEvents(SessionContext session, String deviceSn, Map<String, Object> args) {
+        List<String> channels = resolveChannels(session, deviceSn, args);
+        long sinceSeq = getLongArg(args, PARAM_SINCE_SEQ, 0L);
+        int limit = getIntArg(args, PARAM_LIMIT, DEFAULT_EVENTS_LIMIT);
+
+        Map<String, Object> streams = new LinkedHashMap<>();
+        for (String channel : channels) {
+            String registryKey = ListenChannelSupport.registryKey(SUBSCRIBE_NAMESPACE, deviceSn, channel);
+            String scope = SubscriptionBuffer.scope(session, deviceSn);
+            streams.put(channel, listenSupport.readChannel(session, registryKey, scope, channel, sinceSeq, limit));
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_EVENTS);
+        data.put("streams", streams);
+        return successResult(data, "Polled " + streams.size() + " channel(s).");
+    }
+
+    /**
+     * 处理 listen_stop：停止一个/多个/全部已订阅的 channel。
+     */
+    private Map<String, Object> handleStopListen(SessionContext session, String deviceSn, Map<String, Object> args) {
+        List<String> requested = getStringListArg(args, PARAM_CHANNELS);
+        List<String> channels = (requested != null && !requested.isEmpty())
+                ? requested
+                : listenSupport.activeChannels(session, subscribePrefix(deviceSn));
+
+        ListenChannelSupport.StopResult result = listenSupport.stopChannels(session, channels,
+                channel -> ListenChannelSupport.registryKey(SUBSCRIBE_NAMESPACE, deviceSn, channel), log);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_LISTEN_STOP);
+        data.put("stopped", result.stopped());
+        data.put("not_active", result.notActive());
+        data.put("failed", result.failed());
+        return successResult(data, "Stopped " + result.stopped().size() + " channel(s).");
+    }
+
+    /**
+     * 解析 events 要轮询的 channel 列表：显式传入 channels 则用它，否则取当前全部已激活 channel。
+     */
+    private List<String> resolveChannels(SessionContext session, String deviceSn, Map<String, Object> args) {
+        List<String> requested = getStringListArg(args, PARAM_CHANNELS);
+        if (requested != null && !requested.isEmpty()) {
+            return requested;
+        }
+        return listenSupport.activeChannels(session, subscribePrefix(deviceSn));
+    }
+
+    /**
+     * 本工具订阅注册表 key 的前缀（namespace::deviceSn::）。
+     */
+    private String subscribePrefix(String deviceSn) {
+        return SUBSCRIBE_NAMESPACE + "::" + deviceSn + "::";
+    }
+
+    /**
+     * Mock — 录制状态变更事件，字段镜像 LiveRecordStateInfo。
+     */
+    private Map<String, Object> mockRecordStateEvent() {
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("bid", "mock_record_bid");
+        event.put("sn", "mock_sn");
+        event.put("camera", DEFAULT_PAYLOAD_INDEX);
+        event.put("video", "mock_video_id");
+        event.put("state", "recording");
+        event.put("created_by", "mock-user");
+        event.put("duration", 0L);
+        event.put("create_time", Instant.now().toEpochMilli());
+        event.put("_mock", true);
+        return event;
+    }
+
+    /**
+     * 按 dispatchRealSdk 中已验证的方式获取指定设备的 LiveRecordModule：
+     * 自动发现（或回退默认）payload_index，构建 LiveInfo 后取模块。
+     * 设备不存在时返回 null。
+     */
+    private LiveRecordModule resolveLiveRecordModule(String deviceSn) {
+        Drone drone = sdkService.getDrone(deviceSn);
+        if (drone == null) {
+            return null;
+        }
+
+        String payloadIndex = sdkService.resolvePayloadIndex(drone);
+        if (payloadIndex == null) {
+            payloadIndex = DEFAULT_PAYLOAD_INDEX;
+        }
+
+        LiveInfo liveInfo = new LiveInfo();
+        liveInfo.setDeviceSn(deviceSn);
+        liveInfo.setPayloadIndex(payloadIndex);
+        liveInfo.setVideoId(deviceSn + "/" + payloadIndex);
+
+        return drone.getLiveRecord(liveInfo);
+    }
+
+    /**
+     * 真实 SDK — 调用 LiveRecordModule.listenRecordState 订阅录制状态变更，返回 listenId；
+     * 模块不可用时返回负数。
+     */
+    private int startRealListenRecordState(String deviceSn, Consumer<Map<String, Object>> onEvent) {
+        LiveRecordModule module = resolveLiveRecordModule(deviceSn);
+        if (module == null) {
+            return -1;
+        }
+        return module.listenRecordState(msg -> onEvent.accept(toMap(msg)));
+    }
+
+    /**
+     * 真实 SDK — 调用 LiveRecordModule.cancelListenRecordState 取消订阅。
+     */
+    private void cancelRealListenRecordState(String deviceSn, int listenId) {
+        LiveRecordModule module = resolveLiveRecordModule(deviceSn);
+        if (module == null) {
+            return;
+        }
+        module.cancelListenRecordState(listenId);
+    }
+
+    /**
+     * 将 LiveRecordStateInfo 转换为事件 Map。
+     * state 为 SDK 枚举类型，统一转为字符串存储，避免非 JSON 可序列化问题。
+     */
+    private Map<String, Object> toMap(LiveRecordStateInfo msg) {
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("bid", msg.getBid());
+        event.put("sn", msg.getSn());
+        event.put("camera", msg.getCamera());
+        event.put("video", msg.getVideo());
+        event.put("state", String.valueOf(msg.getState()));
+        event.put("created_by", msg.getCreatedBy());
+        event.put("duration", msg.getDuration());
+        event.put("create_time", msg.getCreateTime());
+        return event;
     }
 
     /**

@@ -1,91 +1,74 @@
 # dji-flighthub-devkit
 
-> DJI Cloud API 2 SDK — ISV AI 易接入一站式开发者套件
+> DJI Cloud API 2 SDK — 集成商 AI 易接入一站式开发者套件
 
 ## 快速入口
 
 ```
 你属于哪种场景？
-├─ 我要快速搭建新项目              → 用骨架（skeleton/）
-├─ 我有现有项目要加 DJI 能力        → 装 Skill + 参考骨架代码
+├─ 我要快速 demo / 新项目起步       → 用骨架（skeleton/，✅ 可用）
+├─ 我有现有项目要加 DJI 能力        → 装 Skill（skills/，Plugin 一键安装）
 ├─ 我要让 AI Agent 操控无人机       → 用 MCP Server（mcp/）
 ├─ 我只需要 AI 写代码时遵循规范     → 装 Skill（skills/）
-├─ 我要把 SDK 知识喂给 LLM         → 用 llms.txt（knowledge/）
-└─ 我有完整工程体系，只要范式参考    → 装 Skill，护栏自配
+└─ 我有完整工程体系，只要范式参考    → 装 Skill，按需裁剪
 ```
 
 ## 仓库结构
 
-| 目录 | 方向 | 状态 | 说明 | 文档 |
-|---|---|---|---|---|
-| `skeleton/` | 方向 2 | ✅ **可用** | ISV 接入骨架 — Spring Boot 3 + Vue 3 + Spring AI，含 8 个 feature 模块、Mock/SDK 双模式、Docker Compose 一键启动 | [快速开始](skeleton/README.md) |
-| `skills/` | 方向 2 | ✅ **可用** | AI Skill 集合（10 个 `cloudapi2-*` Skill）— 教 AI 正确生成 SDK 集成代码 | [总览](skills/README.md) |
-| `mcp/` | 方向 1 | ✅ **可用** | MCP Server — 让 AI Agent 运行时操控无人机（57 个 Tool，21 个模块） | [快速开始](mcp/README.md) |
-| `knowledge/` | 方向 3 | ✅ **可用** | 领域知识库（SSOT）— 提供 `llms.txt` 标准索引，供 LLM / RAG 按需加载 SDK 知识 | [说明](knowledge/README.md) |
-| `libs/` | — | ✅ **可用** | 私有 SDK JAR（`flight-hub-sdk-3.3.7.jar`）— 不在 Maven Central，需本地安装 | [安装说明](libs/README.md) |
-| `fov-demo/` | 方向 2 | ✅ **可用** | ISV 培训 Demo — FHSDK Java 自研前后端的直播、OSD、SEI、地图与手动操控全栈参考实现 | [快速开始](fov-demo/README.md) |
-| `config/` | — | ✅ **可用** | 共享构建配置（checkstyle、Maven settings） | — |
-| `scripts/` | — | ✅ **可用** | 自动化脚本（打包发布等） | — |
-
----
-
-## Skeleton 骨架（`skeleton/`）
-
-**一句话**：开箱即用的 ISV 接入骨架 — Spring Boot 3 + Vue 3 + Spring AI，Mock/SDK 双模式，Docker Compose 一键启动。
-
-### 模块概览
-
-| 层级 | 模块 | 说明 |
-|------|------|------|
-| Kernel | kernel-spi / kernel-impl / kernel-mock-sdk / kernel-real-sdk | SDK 封装与事件总线，ISV 不可修改 |
-| Feature | feature-device / feature-wayline / feature-media / feature-terra / feature-flight-area / feature-dashboard / feature-user / feature-chat | 8 个可插拔功能模块 |
-| App | fh-skeleton-app | 启动装配层 |
-| Web | web/ | Vue 3 + TypeScript + Vite 前端 |
-
-### 快速启动
-
-```bash
-# Docker Compose（推荐，零配置）
-cd skeleton/docker && docker compose up --build
-
-# 本地开发（Mock 模式）
-cd skeleton && mvn clean package -DskipTests
-java -jar app/fh-skeleton-app/target/fh-skeleton-app-0.1.0.jar
-```
-
-→ [完整文档](skeleton/README.md)
+| 目录 | 状态 | 说明 | 文档 |
+|---|---|---|---|
+| `skills/` | ✅ **可用** | AI Skill 集合（14 个 `cloudapi2-*` Skill 目录，全部安装可用）— 教 AI 正确生成 SDK 集成代码 | [总览](skills/README.md) |
+| `mcp/` | ✅ **可用** | MCP Server — 让 AI Agent 运行时操控无人机（71 个 Tool：67 个 `fh_*` + 4 个 `sim_*`） | [快速开始](mcp/README.md) · [工具手册](docs/mcp-tools-guide.md) |
+| `skeleton/` | ✅ **可用** | 集成商接入骨架 — Spring Boot 3.4.1 BFF（Kernel/Feature 可插拔架构）+ Vue 3 前端 | [快速开始](skeleton/README.md) |
+| `fov-demo/` | ✅ **可用** | 集成商培训 Demo — FHSDK Java 自研前后端的直播、OSD、SEI、地图与手动操控全栈参考实现（独立工程，不参与 skeleton 构建） | [快速开始](fov-demo/README.md) · [实战案例](fov-demo/docs/case-study/集成商自研Demo实战案例.md) |
+| `knowledge/` | ✅ **可用** | 团队知识库（文档收录 + 索引重建，配套 `cloudapi2-knowledge-ingest` Skill） | [总览](knowledge/README.md) |
+| `libs/` | ✅ **可用** | 私有 SDK JAR（`flight-hub-sdk-3.3.7`，`amd64/` + `arm64/` 两包，按架构装到本地 Maven 仓库） | [说明](libs/README.md) |
+| `config/` | — | 跨项目共享的 Maven `settings.xml` 与 Checkstyle 规则 | — |
+| `scripts/` | — | 发布打包脚本（`make release` 依赖） | — |
+| `docs/` | — | 集成商产品文档（MCP 工具使用手册） | [工具手册](docs/mcp-tools-guide.md) |
+| `ci/` | — | CI 辅助脚本（含仅限内部使用的 `verify-multiarch.sh`）与 Maven settings 片段模板 | — |
+| `cli/` | 🚧 计划中 | `@dji/security-init` 安全护栏注入 CLI（目录尚未创建） | — |
+| `llms/` | 🚧 计划中 | llms.txt / llms-full.txt 生成器（目录尚未创建，当前 `knowledge/llms.txt` 为手工维护） | — |
 
 ---
 
 ## AI Skill（`skills/`）
 
-**一句话**：安装后，AI 在你写 Cloud API 2 SDK 集成代码时自动加载对应知识，防止 NPE、资源泄漏、权限错误。
+**一句话**：安装后，AI 在你写 DJI Cloud API 2 SDK 集成代码时自动加载对应知识，防止 NPE、资源泄漏、权限错误。
 
 ### 安装
 
+方式 1（推荐）：通过 Claude Code Plugin 一次装齐 14 个可用 Skill。
+
 ```bash
-# 方式 1：Claude Code Plugin 一键安装（推荐）
-claude plugin marketplace add dji-sdk/Cloud-API-2
+# 1. 注册 marketplace（只需一次）
+claude plugin marketplace add https://github.com/dji-sdk/dji-cloudapi2-devkit.git
+
+# 2. 安装 plugin（marketplace 名 dji，plugin 名 cloudapi2）
 claude plugin install cloudapi2@dji
+```
 
-# 方式 2：npx skills add（自动检测 IDE）
-npx skills add https://github.com/dji-sdk/Cloud-API-2
+私有部署环境把地址换成内部 Git 仓库地址即可；marketplace / plugin 标识以仓库内
+[`.claude-plugin/`](.claude-plugin/) 为准：`marketplace.json` 的 `name` 为 `dji`，
+`plugin.json` 的 `name` 为 `cloudapi2`。
 
-# 方式 3：手动拷贝
+方式 2：手动拷贝单个 Skill
+
+```bash
 cp -r skills/cloudapi2-sdk-core ~/.claude/skills/    # Claude Code
-cp -r skills/cloudapi2-sdk-core ~/.codebuddy/skills/   # CodeBuddy
-cp -r skills/cloudapi2-sdk-core ~/.trae/skills/        # Trae
+cp -r skills/cloudapi2-sdk-core .cursor/skills/      # Cursor
+cp -r skills/cloudapi2-sdk-core .github/skills/      # GitHub Copilot (VS Code)
 ```
 
 ### 能力
 
 | 能力 | 说明 |
 |------|------|
-| 核心规则引导 | 5 条硬约束（initialize 检查、errorCode、listen/cancel、飞控权、null 防御） |
+| 核心规则引导 | 6 条硬约束（JNI 加载 + 鉴权头注入 → initialize 检查、errorCode、listenId/cancel、飞控抢权/释放、null 防御、危险操作风险警告） |
 | 错误码诊断 | 4 层错误结构（SDK → HTTP → 服务端 → 设备）自动定位 |
-| 接入质量评估 | 三级风险检查清单 |
-| 业务场景 Prompt | 设备列表 / OSD 监听 / 直播 / 航线 / 飞控 / 媒体 6 个标准化范本 |
-| Java 代码模板 | SDK 适配器 / Service 层 / 回调桥接工具 3 套模板 |
+| 代码质量自检 | 按 6 条核心规则逐条 review 生成/存量调用代码 |
+| 业务场景 Prompt | 设备列表 / OSD 监听 / 直播 / 航线 / 飞控 / 媒体 / 航线资产 7 个标准化范本 |
+| Java 代码模板 | SDK 适配器 / Service 层 / 回调桥接 3 套模板（`.tpl`） |
 
 ### 触发方式
 
@@ -102,58 +85,47 @@ cp -r skills/cloudapi2-sdk-core ~/.trae/skills/        # Trae
 
 **一句话**：让 AI Agent 在运行时直接操控无人机（设备查询、状态监听、飞行控制）。
 
-57 个 Tool，覆盖 21 个模块：设备管理、飞行控制（DRC）、航线任务、相机、媒体、直播、空域安全、重建、探照灯、PSDK 挂载、固件、诊断、模拟器、运维等。
-
 ```bash
+# 先安装私有 SDK JAR（首次，按本机架构选 amd64/arm64，详见 libs/README.md）
 cd mcp && mvn package -DskipTests
 # 启动后 AI Agent 通过 JSON-RPC 调用 SDK 工具
 ```
 
-→ [快速开始](mcp/README.md)
+> 本地无 Linux 环境时用 Mock 模式运行：`FH_MOCK=true FH_SERVER_ADDRESS=http://placeholder`（见 [mcp/README.md](mcp/README.md)）。
+
+→ [快速开始](mcp/README.md) · [工具使用手册](docs/mcp-tools-guide.md)
 
 ---
 
-## Knowledge Base（`knowledge/`）
+## Skill vs MCP Server
 
-**一句话**：SDK 领域知识的单一源头（SSOT），提供 `llms.txt` 标准索引，供 LLM / RAG 按需加载。
+| 维度 | Skill | MCP Server |
+|------|-------|------------|
+| 作用时机 | AI **写代码**时 | AI **运行时调用工具**时 |
+| 核心能力 | 教 AI "怎么写对"（规则 + 模板） | 让 AI 直接操控设备（工具调用） |
+| 是否需要 SDK 运行 | ❌ 不需要 | ✅ 需要连接 DJI Cloud API 2 服务 |
+| 安装方式 | Claude Code Plugin（或拷贝 .md 到 IDE） | 启动 Java 服务进程 |
+| 目标用户 | 集成商开发者 | AI Agent 开发者 |
 
-覆盖模块：系统架构、快速入门、API 参考、错误码、飞控权限、运维部署、FAQ 等。
-
-使用方式：
-- **AI Agent / LLM**：Fetch `knowledge/llms.txt` → 按需加载具体文档
-- **Claude Code 用户**：安装 Skills 即可，Skills 自动引用知识库内容
-- **人类开发者**：直接阅读 `.md` 文件
-
-→ [详细说明](knowledge/README.md)
-
----
-
-## 组件关系
-
-| 维度 | Skeleton | Skill | MCP Server | Knowledge |
-|------|----------|-------|------------|-----------|
-| 作用时机 | **开发时**（项目骨架） | AI **写代码**时 | AI **运行时调用工具**时 | AI **理解 SDK**时 |
-| 核心能力 | 开箱即用的项目模板 | 教 AI "怎么写对" | 让 AI 直接操控设备 | 提供 SDK 领域知识 |
-| 是否需要 SDK 运行 | Mock 模式不需要 | ❌ 不需要 | ✅ 需要连接底座 | ❌ 不需要 |
-| 目标用户 | ISV 开发者 | ISV 开发者 | AI Agent 开发者 | 任何 LLM / 开发者 |
-
-**四者互补**：Knowledge 提供知识源头 → Skill 引用知识教 AI 生成正确代码 → Skeleton 提供项目骨架 → MCP Server 让 AI 直接调试/验证。
+**两者互补**：Skill 保证生成的代码正确，MCP Server 让 AI 直接调试/验证。
 
 ---
 
 ## 边界声明
 
-- 本仓库**不包含** DJI Cloud API 2 SDK 本身——SDK 以 JAR 依赖方式引入
+- 本仓库**不包含** DJI Cloud API 2 SDK 的源码——只内置 `flight-hub-sdk:3.3.7` 的预编译 JAR（`libs/amd64`、`libs/arm64`），需手动 install 到本地 Maven 仓库后构建
 - 本仓库**不替代** SDK 的任何能力——只降低接入成本
 - Skill 是**认知层工具**——教 AI 正确生成代码，不提供运行时保护
 - MCP Server 是**能力层工具**——提供运行时 SDK 调用，不生成代码
 
 ## 适用版本
 
-- DJI Cloud API 2 Java SDK v3.3.7
-- Spring Boot 3.x
+- DJI Cloud API 2 Java SDK **3.3.7**（`libs/` 内置，非 Maven Central）
+- JDK **17**
+- Spring Boot **3.x**（`mcp/`、`skeleton/` 为 3.4.1；`fov-demo/` 为 3.2.5）
+- 运行平台：SDK 原生库仅支持 **Linux x86_64 / aarch64**；macOS / Windows 使用 Mock 模式（`FH_MOCK=true`）调试
 - IDE：Claude Code / Cursor / GitHub Copilot / 任何支持 Agent Skills 的工具
 
 ## License
 
-MIT
+Apache License 2.0（以仓库根目录 [LICENSE](./LICENSE) 为准）

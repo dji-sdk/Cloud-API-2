@@ -51,7 +51,7 @@ public record ModuleProvides(
     }
 
     /**
-     * @return 各列表均为空列表（非 null）的实例，便于 ISV 不声明任何能力时直接使用
+     * @return 各列表均为空列表（非 null）的实例，便于集成商不声明任何能力时直接使用
      */
     public static ModuleProvides empty() {
         return new ModuleProvides(null, null, null, null, null, null, null);
@@ -62,7 +62,7 @@ public record ModuleProvides(
      *
      * @param interfaceName SPI 接口 FQN
      * @param type          泛型 T 的具体类型（可空）
-     * @param bean          Spring bean 名（用于 ISV override）
+     * @param bean          Spring bean 名（用于 集成商 override）
      */
     public record SpiImpl(String interfaceName, String type, String bean) {
     }

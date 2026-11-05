@@ -22,7 +22,7 @@ import java.util.List;
  * Module 元数据 section。
  *
  * @param category 模块类别：kernel / feature / starter / extension
- * @param tier     档位：must / should / could（first-party 用，ISV module 可省略）
+ * @param tier     档位：must / should / could（first-party 用，集成商 module 可省略）
  * @param authors  作者列表
  * @param homepage 主页 URL
  * @param license  许可证标识（SPDX，如 "Apache-2.0"）

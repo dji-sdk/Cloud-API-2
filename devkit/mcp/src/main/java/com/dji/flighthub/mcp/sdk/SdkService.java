@@ -24,8 +24,10 @@ import com.dji.flighthubsdk.core.Drone;
 import com.dji.flighthubsdk.core.FlightHubSdkManager;
 import com.dji.flighthubsdk.core.Workspace;
 import com.dji.flighthubsdk.generated.FlightHubSdkErrorCode;
+import com.dji.flighthub.mcp.config.FlightHubProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -86,6 +88,26 @@ public class SdkService {
     private volatile boolean initialized = false;
     private volatile long sdkSessionId = -1;
     private volatile Workspace workspace;
+
+    /** 连接配置（TLS 校验开关 / CA 路径从 {@code flighthub.server.*} 读取） */
+    private final FlightHubProperties properties;
+
+    /**
+     * 测试用构造器：使用默认连接配置（WSS 证书校验开启，无自定义 CA）。
+     */
+    public SdkService() {
+        this(new FlightHubProperties());
+    }
+
+    /**
+     * Spring 注入构造器。
+     *
+     * @param properties 连接配置
+     */
+    @Autowired
+    public SdkService(FlightHubProperties properties) {
+        this.properties = properties;
+    }
 
     /**
      * 初始化 SDK 并注册 workspace session。
@@ -284,10 +306,31 @@ public class SdkService {
     // ==================== Private Methods ====================
 
     private void initializeSdkCore(String serverAddress, int port, String notificationServerAddress) {
+        FlightHubSdkConfig config = createSdkConfig(serverAddress, port, notificationServerAddress);
+
+        FlightHubSdkErrorCode initResult = FlightHubSDK.initialize(config);
+        if (initResult != FlightHubSdkErrorCode.SUCCESS
+                && initResult != FlightHubSdkErrorCode.ERROR_ALREADY_INITIALIZED) {
+            throw new IllegalStateException("SDK initialize failed: " + initResult);
+        }
+    }
+
+    /**
+     * 构建 SDK 初始化配置（含 TLS 校验透传）。
+     *
+     * <p>包级可见，便于单元测试断言配置内容，避免必须触发真实 SDK 初始化。
+     *
+     * @param serverAddress             服务器地址
+     * @param port                      服务器端口
+     * @param notificationServerAddress WebSocket 通知服务器地址
+     * @return SDK 初始化配置
+     */
+    FlightHubSdkConfig createSdkConfig(String serverAddress, int port, String notificationServerAddress) {
         FlightHubSdkConfig config = new FlightHubSdkConfig();
         config.setAddress(serverAddress);
         config.setPort(String.valueOf(port));
         config.setLogLevel("INFO");
+        configureTls(config);
 
         // 显式设置 WebSocket 通知服务器地址
         // SDK 原生层（notification_sever_address，注：typo 来自 SDK）需要一个完整 ws:// URL；
@@ -298,11 +341,36 @@ public class SdkService {
         } else {
             log.warn("notification_server_address 未设置，SDK 将尝试自动推断（可能失败）");
         }
+        return config;
+    }
 
-        FlightHubSdkErrorCode initResult = FlightHubSDK.initialize(config);
-        if (initResult != FlightHubSdkErrorCode.SUCCESS
-                && initResult != FlightHubSdkErrorCode.ERROR_ALREADY_INITIALIZED) {
-            throw new IllegalStateException("SDK initialize failed: " + initResult);
+    /**
+     * 透传 WSS 证书校验配置到 SDK。
+     *
+     * <p>语义与 skeleton 的 {@code RealSdkStarter#configureTls} 保持一致：
+     * {@code verify-ssl} 未配置时按 {@code true} 处理（安全默认），
+     * {@code ssl-ca-path} 为空则不设置、沿用 SDK 默认信任库。
+     *
+     * @param config SDK 配置
+     */
+    private void configureTls(FlightHubSdkConfig config) {
+        Boolean configured = properties.getServer().getVerifySsl();
+        boolean verifySsl = !Boolean.FALSE.equals(configured);
+        String caPath = properties.getServer().getSslCaPath();
+        boolean hasCaPath = caPath != null && !caPath.isBlank();
+
+        config.setVerifySsl(verifySsl);
+        if (hasCaPath) {
+            config.setSslCaPath(caPath);
+        }
+
+        if (!verifySsl) {
+            log.warn("SDK WSS 证书校验：已关闭（verify-ssl=false），仅建议用于内网私有化自签名部署{}",
+                    hasCaPath ? "；ssl-ca-path 在校验关闭时不生效" : "");
+        } else if (hasCaPath) {
+            log.info("SDK WSS 证书校验：开启，CA 路径={}", caPath);
+        } else {
+            log.info("SDK WSS 证书校验：开启，使用 SDK 默认信任库");
         }
     }
 

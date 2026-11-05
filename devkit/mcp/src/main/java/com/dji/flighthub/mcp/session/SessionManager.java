@@ -466,6 +466,15 @@ public class SessionManager {
             session.clearDrcDevice();
         }
 
+        for (var entry : session.getListenRegistry().entrySet()) {
+            try {
+                entry.getValue().cancelAction().run();
+                log.info("Cancelled listen: key={}, label={}", entry.getKey(), entry.getValue().label());
+            } catch (Exception e) {
+                log.warn("Failed to cancel listen key={}, label={}: {}",
+                        entry.getKey(), entry.getValue().label(), e.getMessage());
+            }
+        }
         for (Integer listenId : session.getActiveListenIds()) {
             log.debug("Cancelling listen: id={}", listenId);
         }

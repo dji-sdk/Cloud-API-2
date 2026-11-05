@@ -306,7 +306,7 @@ class FhUnlockLicenseToolTest {
         assertEquals(true, result.get("success"));
         Map<String, Object> data = (Map<String, Object>) result.get("data");
         assertEquals("/tmp/license.lic", data.get("file_path"));
-        assertNotNull(data.get("file_key"));
+        assertNotNull(data.get("file_store_dir"));
         assertEquals("uploaded", data.get("status"));
         assertEquals(true, data.get("_mock"));
     }

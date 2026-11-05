@@ -1,0 +1,58 @@
+meta:
+  skill: {{skill-name}}
+  level: L1
+  author: {{author}}
+  min_pass_rate: 0.85
+  source: manual
+
+tests:
+  # ---- 正向：应该触发本 Skill ----
+  - description: "TODO: 正向用例 1 描述"
+    vars:
+      prompt: "TODO: 替换为真实用户输入"
+    assert:
+      - type: tool_called
+        value: "{{skill-name}}"
+    assert_fail:
+      - type: contains
+        value: "TODO: 相邻 Skill 名"
+    tags: [positive]
+
+  - description: "TODO: 正向用例 2 描述"
+    vars:
+      prompt: "TODO: 替换为真实用户输入"
+    assert:
+      - type: tool_called
+        value: "{{skill-name}}"
+    tags: [positive]
+
+  - description: "TODO: 正向用例 3 描述"
+    vars:
+      prompt: "TODO: 替换为真实用户输入"
+    assert:
+      - type: tool_called
+        value: "{{skill-name}}"
+    tags: [positive]
+
+  # ---- 负向：不应触发本 Skill ----
+  - description: "TODO: 负向用例 1 描述"
+    vars:
+      prompt: "TODO: 替换为应路由到其他 Skill 的输入"
+    assert:
+      - type: tool_called
+        value: "TODO: 正确的目标 Skill"
+    assert_fail:
+      - type: contains
+        value: "{{skill-name}}"
+    tags: [negative]
+
+  - description: "TODO: 负向用例 2 描述"
+    vars:
+      prompt: "TODO: 替换为应路由到其他 Skill 的输入"
+    assert:
+      - type: tool_called
+        value: "TODO: 正确的目标 Skill"
+    assert_fail:
+      - type: contains
+        value: "{{skill-name}}"
+    tags: [negative]

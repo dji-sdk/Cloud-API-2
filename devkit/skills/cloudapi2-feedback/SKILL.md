@@ -1,18 +1,18 @@
 ---
 name: cloudapi2-feedback
 description: |
-  DJI CloudAPI2 SDK 问题反馈助手。把用户的口语问题变成结构化 GitHub issue，走完「采集→脱敏→确认→提交」闭环。支持 4 类反馈：问题（Bug）、需求、咨询、其他。
+  DJI Cloud API 2 SDK 问题反馈助手。把用户的口语问题变成结构化 GitHub issue，走完「采集→脱敏→确认→提交」闭环。支持 4 类反馈：问题（Bug）、需求、咨询、其他。
   触发词：反馈、我要反馈、反馈问题、反馈一下、提个 issue、报个问题、提交问题、issue 提交、提交 GitHub、report a bug、file an issue、submit feedback、提个需求、有个建议、想咨询一下。
   不触发：有明确错误码的排障（走 troubleshooting）、新功能开发（走对应业务 Skill）、Jira issue 分析（走 issue-analyzer）。
 version: 1.0.0
-author: DJI CloudAPI2 Team
+author: DJI Cloud API 2 Team
 ---
 
-# DJI CloudAPI2 SDK 问题反馈助手
+# DJI Cloud API 2 SDK 问题反馈助手
 
 ## 这是什么
 
-把用户的一句话变成结构化 GitHub issue。ISV 说"我要反馈一个问题"时往往**既没有错误码、也没复现步骤**，只有一句口语描述。本 Skill 驱动 `diag.sh session` 闭环，自动完成「采集→脱敏→确认→提交」，让用户零门槛提交高质量反馈。
+把用户的一句话变成结构化 GitHub issue。集成商说"我要反馈一个问题"时往往**既没有错误码、也没复现步骤**，只有一句口语描述。本 Skill 驱动 `diag.sh session` 闭环，自动完成「采集→脱敏→确认→提交」，让用户零门槛提交高质量反馈。
 
 脚本实现在 `cloudapi2-troubleshooting/scripts/diag.sh`（共享脚本，本 Skill 不单独维护脚本副本）。
 
@@ -44,7 +44,7 @@ author: DJI CloudAPI2 Team
 
 | 类型 | 说明 | 日志采集深度 |
 |------|------|-------------|
-| **问题**（默认） | ISV 遇到 bug、异常、报错 | 完整采集（环境 + 容器日志 + SDK 日志） |
+| **问题**（默认） | 集成商遇到 bug、异常、报错 | 完整采集（环境 + 容器日志 + SDK 日志） |
 | **需求** | 功能建议、改进意见 | 弱化采集（仅环境信息，跳过容器日志） |
 | **咨询** | 使用方法、能力确认 | 弱化采集（仅环境信息） |
 | **其他** | 不属于以上分类 | 按需采集 |
@@ -380,14 +380,14 @@ Loki 查询自动带上 session 的 `trace_id` 作为过滤条件（如果有）
 | `*thing-access*` / `*tas-*` | 设备接入 |
 | `*inventory-collector*` | 资产采集 |
 
-> `*beacon-reporter*`（埋点上报）已从采集范围排除，不会出现在证据包中——该服务属于内部遥测基础设施，对 ISV 问题诊断无价值且暴露内部容器信息。
+> `*beacon-reporter*`（埋点上报）已从采集范围排除，不会出现在证据包中——该服务属于内部遥测基础设施，对集成商问题诊断无价值且暴露内部容器信息。
 
 ## 增强特性
 
 1. **脱敏扩展**：新增 IPv6、MAC 地址、IMEI（15位数字）、JWT 三段式、PEM 私钥/证书块、GPS 经纬度降精度（保留小数点后 2 位）、设备 SN 码（key=value 和 JSON 两种格式）。命中统计从 6 类扩展到 11 类
 2. **session 限频**：同一机器 10 分钟内不可重复创建 session（`DIAG_SESSION_MIN_INTERVAL` 环境变量可调）
 3. **内容指纹去重**：`session collect` 后对 evidence.txt 做 MD5 哈希，与已有 session 比对提示重复
-4. **per-ISV 提单配额**：默认每企业上限 20 个 issued session（`DIAG_MAX_ISSUES_PER_ISV` 可调），超限警告不阻断
+4. **集成商提单配额**：默认每企业上限 20 个 issued session（`DIAG_MAX_ISSUES_PER_ISV` 可调），超限警告不阻断
 5. **相似单检测**：`session issue` 前比对 error_text 前 30 字符，提示已有相似已提交单
 6. **包大小上限**：zip 打包后检查大小，200MB 警告 / 500MB 自动裁剪最大日志文件（`DIAG_MAX_PACKAGE_SIZE_MB` 可调）
 7. **TTL 清理**：`diag.sh cleanup [--days N]` 清理过期 session，`session start` 时自动静默清理 >30 天的（`DIAG_SESSION_TTL_DAYS` 可调）

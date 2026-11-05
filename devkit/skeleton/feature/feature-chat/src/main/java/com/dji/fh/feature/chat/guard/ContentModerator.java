@@ -20,7 +20,7 @@ package com.dji.fh.feature.chat.guard;
  * 内容审核 SPI 接口。
  *
  * <p>默认实现为关键词正则匹配（{@link DefaultContentModerator}）。
- * ISV 可通过 Spring Bean 覆盖（{@code @ConditionalOnMissingBean}）接入企业内容安全 API
+ * 集成商 可通过 Spring Bean 覆盖（{@code @ConditionalOnMissingBean}）接入企业内容安全 API
  * （如阿里绿网、自建 guardrails 等）。
  *
  * @author DJI DevKit Team

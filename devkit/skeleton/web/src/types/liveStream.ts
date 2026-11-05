@@ -87,6 +87,11 @@ export interface LogEntry {
 /** 在线设备简要信息（用于快速添加） */
 export interface LiveDeviceInfo {
   name: string
+  /** 基站节点（仅 340 等「基站挂机场」拓扑下存在） */
+  baseStation?: {
+    model: string
+    sn: string
+  }
   dock: {
     model: string
     sn: string

@@ -104,6 +104,65 @@ class SessionContextTest {
         assertFalse(ctx.hasDrcLink());
     }
 
+    @Test
+    void markDrcExplicitlyDisconnected_shouldClearLinkAndSetFlag() {
+        // 显式断开：既要断开链路，又要留下"用户主动断开"标记，阻止 ensureDrcLink 静默自愈
+        SessionContext ctx = new SessionContext("sess_1", "u", "n", 3);
+        ctx.setActiveDrcDevice("DOCK-001");
+
+        ctx.markDrcExplicitlyDisconnected("DOCK-001");
+
+        assertFalse(ctx.hasDrcLink());
+        assertTrue(ctx.isDrcExplicitlyDisconnected("DOCK-001"));
+        assertFalse(ctx.isDrcExplicitlyDisconnected("DOCK-999"));
+        assertNull(ctx.getDrcConnectedAt());
+    }
+
+    @Test
+    void clearDrcDevice_shouldNotMarkExplicitlyDisconnected() {
+        // 自动重连、会话释放等内部清理不得留下显式断开标记，否则自愈能力会被永久禁用
+        SessionContext ctx = new SessionContext("sess_1", "u", "n", 3);
+        ctx.setActiveDrcDevice("DOCK-001");
+
+        ctx.clearDrcDevice();
+
+        assertFalse(ctx.isDrcExplicitlyDisconnected("DOCK-001"));
+    }
+
+    @Test
+    void setActiveDrcDevice_shouldClearExplicitDisconnectFlag() {
+        // 用户重新调用 fh_drc_connect 建链后，标记必须解除
+        SessionContext ctx = new SessionContext("sess_1", "u", "n", 3);
+        ctx.setActiveDrcDevice("DOCK-001");
+        ctx.markDrcExplicitlyDisconnected("DOCK-001");
+
+        ctx.setActiveDrcDevice("DOCK-001");
+
+        assertTrue(ctx.hasDrcLinkTo("DOCK-001"));
+        assertFalse(ctx.isDrcExplicitlyDisconnected("DOCK-001"));
+    }
+
+    @Test
+    void markDrcExplicitlyDisconnected_shouldMarkDeviceWithoutLink() {
+        // 本地链路已掉线时用户仍可能显式调用 fh_drc_disconnect：
+        // 必须留下标记，否则后续飞行指令会静默重建链路，覆盖用户的断开意图
+        SessionContext ctx = new SessionContext("sess_1", "u", "n", 3);
+
+        ctx.markDrcExplicitlyDisconnected("DOCK-001");
+
+        assertTrue(ctx.isDrcExplicitlyDisconnected("DOCK-001"));
+        assertFalse(ctx.hasDrcLink());
+    }
+
+    @Test
+    void markDrcExplicitlyDisconnected_shouldIgnoreNullDeviceSn() {
+        SessionContext ctx = new SessionContext("sess_1", "u", "n", 3);
+
+        ctx.markDrcExplicitlyDisconnected(null);
+
+        assertFalse(ctx.hasDrcLink());
+    }
+
     // ==================== Listen IDs ====================
 
     @Test

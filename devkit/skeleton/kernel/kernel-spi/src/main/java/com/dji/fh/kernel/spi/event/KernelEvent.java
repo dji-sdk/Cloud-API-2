@@ -19,7 +19,7 @@ package com.dji.fh.kernel.spi.event;
 import java.time.Instant;
 
 /**
- * 所有 Kernel + ISV 事件的顶层标记接口。
+ * 所有 Kernel + 集成商 事件的顶层标记接口。
  * 提供事件追踪 / 幂等所需的最小元数据。
  *
  * <p>事件 schema 进严格 SemVer 契约 —— 一旦发布破坏即 major。
@@ -39,7 +39,7 @@ public interface KernelEvent {
     Instant occurredAt();
 
     /**
-     * @return 触发来源（例如 "kernel-sdk" / "feature-device" / "isv.acme.inspection"）
+     * @return 触发来源（例如 "kernel-sdk" / "feature-device" / "integrator.acme.inspection"）
      */
     String source();
 }

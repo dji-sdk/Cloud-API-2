@@ -27,6 +27,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -40,6 +41,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -76,8 +78,17 @@ public class StdioTransport implements CommandLineRunner, ClientBridge {
     private static final int JSON_RPC_METHOD_NOT_FOUND = -32601;
     private static final int JSON_RPC_INVALID_PARAMS = -32602;
 
+    /** JSON-RPC 内部错误（工具执行抛出异常等） */
+    private static final int JSON_RPC_INTERNAL_ERROR = -32603;
+
+    /** params 不是 JSON 对象时的错误文案（两个入口共用） */
+    private static final String PARAMS_MUST_BE_OBJECT = "params must be an object";
+
     /** elicitation 反向请求方法名（MCP 协议约定） */
     private static final String METHOD_ELICITATION_CREATE = "elicitation/create";
+
+    /** tools/call 方法名 */
+    private static final String METHOD_TOOLS_CALL = "tools/call";
 
     /** 反向请求 id 前缀，避免与 client 正向请求 id 冲突 */
     private static final String REVERSE_ID_PREFIX = "fh-elicit-";
@@ -122,15 +133,43 @@ public class StdioTransport implements CommandLineRunner, ClientBridge {
     /** client 是否声明了 elicitation 能力（initialize 阶段探测） */
     private volatile boolean clientSupportsElicitation = false;
 
-    /** 出站流引用，便于测试替换 */
-    private final PrintStream out = System.out;
+    /** 出站流：生产环境为 System.out，契约测试注入捕获流 */
+    private final PrintStream out;
 
+    /**
+     * 生产用构造函数：出站写到 {@link System#out}。
+     *
+     * @param toolRegistry   Tool 注册表
+     * @param promptRegistry Prompt 注册表
+     * @param objectMapper   Jackson 实例
+     * @param properties     FlightHub 配置
+     */
+    @Autowired
     public StdioTransport(McpToolRegistry toolRegistry, McpPromptRegistry promptRegistry,
                           ObjectMapper objectMapper, FlightHubProperties properties) {
+        this(toolRegistry, promptRegistry, objectMapper, properties, System.out);
+    }
+
+    /**
+     * 测试用构造函数：注入出站流。
+     *
+     * <p>包可见，仅供同包（{@code com.dji.flighthub.mcp.transport}）的契约测试使用，
+     * 生产代码一律使用 4 参 public 构造函数。</p>
+     *
+     * @param toolRegistry   Tool 注册表
+     * @param promptRegistry Prompt 注册表
+     * @param objectMapper   Jackson 实例
+     * @param properties     FlightHub 配置
+     * @param out            出站流（测试捕获流）
+     */
+    StdioTransport(McpToolRegistry toolRegistry, McpPromptRegistry promptRegistry,
+                   ObjectMapper objectMapper, FlightHubProperties properties, PrintStream out) {
         this.toolRegistry = toolRegistry;
         this.promptRegistry = promptRegistry;
         this.objectMapper = objectMapper;
         this.properties = properties;
+        // 出站流为 null 时写回异常会被 writeMessage 的 catch 吞掉，测试只会表现为「读不到响应」，故提前快速失败
+        this.out = Objects.requireNonNull(out, "out");
     }
 
     @Override
@@ -147,18 +186,33 @@ public class StdioTransport implements CommandLineRunner, ClientBridge {
                 processLine(line);
             }
         } finally {
-            toolExecutor.shutdownNow();
+            shutdown();
         }
 
         log.info("Stdin closed. Shutting down...");
     }
 
     /**
+     * 立即关闭 transport 持有的线程池与调度器。
+     *
+     * <p>包可见是为了让同包的契约测试在直接调用 {@link #processLine(String)} 驱动消息后
+     * 显式释放线程资源。测试不会调用 {@link #run(String...)}，其 finally 里的清理不会执行，
+     * 每个 {@code StdioJsonRpcClient} 实例都会遗留一个 tool 线程池和一个超时调度器。</p>
+     */
+    void shutdown() {
+        toolExecutor.shutdownNow();
+        timeoutScheduler.shutdownNow();
+    }
+
+    /**
      * 处理一行入站 JSON。区分三类：反向响应、通知（无 id）、正向请求。
      *
-     * @param line 入站 JSON 文本行
+     * <p>包可见是为测试驱动用：契约测试从同包直接喂原始文本，
+     * 从而覆盖「解析 → 分发 → 写回」完整链路（反射调 handleRequest 会绕过它）。</p>
+     *
+     * @param line 一行原始文本（可以是非法 JSON）
      */
-    private void processLine(String line) {
+    void processLine(String line) {
         Map<String, Object> message;
         try {
             message = objectMapper.readValue(line, MAP_TYPE_REF);
@@ -227,8 +281,16 @@ public class StdioTransport implements CommandLineRunner, ClientBridge {
      * @param request 入站请求
      */
     private void dispatchClientRequest(Map<String, Object> request) {
-        String method = (String) request.get("method");
-        if ("tools/call".equals(method)) {
+        // 通知必须携带 method；既无 id 又取不到方法名的消息是无效请求，交给 handleRequest 返回 -32601
+        if (request.get("id") == null && asMethodName(request.get("method")) != null) {
+            // JSON-RPC 通知：不得产生任何响应；tools/call 通知额外不执行（结果无处回传，执行只会产生不可观测的副作用）
+            if (METHOD_TOOLS_CALL.equals(asMethodName(request.get("method")))) {
+                logIgnoredToolCallNotification(request);
+            }
+            return;
+        }
+        String method = asMethodName(request.get("method"));
+        if (METHOD_TOOLS_CALL.equals(method)) {
             // tool 可能发起反向请求，必须移出 reader 主循环到工作线程执行
             executeToolAsync(request);
             return;
@@ -240,14 +302,73 @@ public class StdioTransport implements CommandLineRunner, ClientBridge {
     }
 
     /**
+     * 记录被静默丢弃的无 id tools/call 通知。
+     *
+     * <p>caller 无从接收执行结果，执行只会产生不可观测的副作用，因此不执行；
+     * 日志带上工具名与参数键名，便于定位误发通知的 client。</p>
+     *
+     * @param request 无 id 的 tools/call 通知
+     */
+    private static void logIgnoredToolCallNotification(Map<String, Object> request) {
+        Object params = request.get("params");
+        Map<?, ?> paramMap = params instanceof Map<?, ?> map ? map : Map.of();
+        Object rawArguments = paramMap.get("arguments");
+        Object argumentKeys = rawArguments instanceof Map<?, ?> arguments
+                ? arguments.keySet() : Map.of().keySet();
+        log.warn("Ignoring tools/call notification without id: name={}, argumentKeys={}",
+                paramMap.get("name"), argumentKeys);
+    }
+
+    /**
+     * 把 method 字段安全地取成字符串：非字符串一律视为「无方法名」。
+     *
+     * <p>两个调用点的处理不同：</p>
+     * <ul>
+     *   <li>通知短路：只有取到方法名且 id 缺失时才视为通知并静默丢弃——通知必须携带 method；</li>
+     *   <li>其余消息：取不到方法名时交给 {@link #handleRequest} 统一返回 {@code -32601}，
+     *       id 缺失的无效请求响应中 {@code id} 为 {@code null}。</li>
+     * </ul>
+     *
+     * @param rawMethod method 原始值
+     * @return 方法名；不是字符串时返回 null
+     */
+    private static String asMethodName(Object rawMethod) {
+        return rawMethod instanceof String name ? name : null;
+    }
+
+    /**
+     * 把 JSON-RPC {@code params} 安全地取成对象：缺省或 null 视为空对象，其余非对象类型视为非法。
+     *
+     * <p>集中在这里而不是各调用点强转：避免 {@code params: []} 之类的畸形请求
+     * 让 {@link ClassCastException} 一路冒泡，最终变成无响应或 {@code -32603}。</p>
+     *
+     * @param rawParams params 原始值
+     * @return params 对象；不是对象时返回 null（调用方负责返回 {@code -32602}）
+     */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> asParamsMap(Object rawParams) {
+        if (rawParams == null) {
+            return Map.of();
+        }
+        if (rawParams instanceof Map<?, ?> map) {
+            return (Map<String, Object>) map;
+        }
+        return null;
+    }
+
+    /**
      * 在工作线程上执行 tools/call，执行期间绑定本 transport 为 client bridge。
      *
      * @param request tools/call 请求
      */
-    @SuppressWarnings("unchecked")
     private void executeToolAsync(Map<String, Object> request) {
         Object id = request.get("id");
-        Map<String, Object> params = (Map<String, Object>) request.getOrDefault("params", Map.of());
+        Map<String, Object> params = asParamsMap(request.get("params"));
+        if (params == null) {
+            // params 不是对象：在派发线程上直接回错误，不占用工作线程
+            writeErrorResponse(id, JSON_RPC_INVALID_PARAMS, PARAMS_MUST_BE_OBJECT);
+            return;
+        }
         int timeoutSeconds = properties.getTransport().getToolTimeoutSeconds();
         AtomicBoolean responded = new AtomicBoolean(false);
         try {
@@ -261,7 +382,7 @@ public class StdioTransport implements CommandLineRunner, ClientBridge {
                 } catch (Exception e) {
                     log.error("Tool execution error: {}", e.getMessage(), e);
                     if (responded.compareAndSet(false, true)) {
-                        writeMessage(createErrorResponse(id, JSON_RPC_PARSE_ERROR,
+                        writeMessage(createErrorResponse(id, JSON_RPC_INTERNAL_ERROR,
                                 "Tool execution error: " + e.getMessage()));
                     }
                 } finally {
@@ -283,22 +404,29 @@ public class StdioTransport implements CommandLineRunner, ClientBridge {
         } catch (java.util.concurrent.RejectedExecutionException e) {
             log.warn("Tool executor saturated, rejecting request id={}: {}", id, e.getMessage());
             if (responded.compareAndSet(false, true)) {
-                writeMessage(createErrorResponse(id, -32603,
+                writeMessage(createErrorResponse(id, JSON_RPC_INTERNAL_ERROR,
                         "Server busy — too many concurrent tool calls. Please retry later."));
             }
         }
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> handleRequest(Map<String, Object> request) {
-        String method = (String) request.get("method");
+        Object rawMethod = request.get("method");
         Object id = request.get("id");
-        Map<String, Object> params = (Map<String, Object>) request.getOrDefault("params", Map.of());
 
-        log.debug("Received request: method={}, id={}", method, id);
+        log.debug("Received request: method={}, id={}", rawMethod, id);
 
-        if (method == null) {
+        if (rawMethod == null) {
             return createErrorResponse(id, JSON_RPC_METHOD_NOT_FOUND, "Method is null");
+        }
+        if (!(rawMethod instanceof String method)) {
+            return createErrorResponse(id, JSON_RPC_METHOD_NOT_FOUND, "Method must be a string");
+        }
+
+        // 方法名合法后再校验 params 形状：避免把「方法不存在」误报成「参数非法」
+        Map<String, Object> params = asParamsMap(request.get("params"));
+        if (params == null) {
+            return createErrorResponse(id, JSON_RPC_INVALID_PARAMS, PARAMS_MUST_BE_OBJECT);
         }
 
         return switch (method) {
@@ -399,32 +527,19 @@ public class StdioTransport implements CommandLineRunner, ClientBridge {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> handleToolsCall(Object id, Map<String, Object> params) {
-        String toolName = (String) params.get("name");
-        Object rawArgs = params.getOrDefault("arguments", Map.of());
-        Map<String, Object> arguments = (rawArgs instanceof Map) ? (Map<String, Object>) rawArgs : Map.of();
-
-        log.info("Tool call: name={}, id={}", toolName, id);
-
-        RequestContext.set(id, toolName, RequestContext.STDIO_CLIENT_ID);
+        ToolCallParams call;
         try {
-            Map<String, Object> toolResult = toolRegistry.executeTool(toolName, arguments);
+            call = ToolCallParams.parse(params);
+        } catch (InvalidParamsException e) {
+            return createErrorResponse(id, JSON_RPC_INVALID_PARAMS, e.getMessage());
+        }
 
-            String resultText;
-            try {
-                resultText = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(toolResult);
-            } catch (Exception e) {
-                resultText = toolResult.toString();
-            }
+        log.info("Tool call: name={}, id={}", call.toolName(), id);
 
-            boolean isError = !Boolean.TRUE.equals(toolResult.get("success"));
-
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("content", List.of(Map.of("type", "text", "text", resultText)));
-            result.put("isError", isError);
-
-            return createSuccessResponse(id, result);
+        RequestContext.set(id, call.toolName(), RequestContext.STDIO_CLIENT_ID);
+        try {
+            return buildToolResponse(id, toolRegistry.executeTool(call.toolName(), call.arguments()));
         } finally {
             RequestContext.clear();
         }

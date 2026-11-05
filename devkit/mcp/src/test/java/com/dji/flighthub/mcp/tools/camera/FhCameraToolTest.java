@@ -468,4 +468,189 @@ class FhCameraToolTest {
         assertFalse(description.contains("fh_payload"),
                 "description 不应包含误导性的 fh_payload 引用");
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getToolDefinition_shouldExposeIntervalActionsAndParam() {
+        Map<String, Object> def = tool.getToolDefinition();
+        Map<String, Object> schema = (Map<String, Object>) def.get("inputSchema");
+        Map<String, Object> props = (Map<String, Object>) schema.get("properties");
+
+        Map<String, Object> actionProp = (Map<String, Object>) props.get("action");
+        List<String> actions = (List<String>) actionProp.get("enum");
+        assertTrue(actions.contains("camera_interval_set"));
+        assertTrue(actions.contains("camera_interval_start"));
+        assertTrue(actions.contains("camera_stop_photo"));
+        assertTrue(props.containsKey("interval"), "schema 应暴露 interval 参数");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldSucceed_cameraIntervalSet() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "camera_interval_set",
+                "payload_index", "53-0-0",
+                "interval", 5.0
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("camera_interval_set", data.get("action"));
+        assertEquals("53-0-0", data.get("payload_index"));
+        assertEquals(5.0, data.get("interval"));
+    }
+
+    @Test
+    void execute_shouldReturnError_cameraIntervalSet_missingInterval() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "camera_interval_set",
+                "payload_index", "53-0-0"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("interval"));
+    }
+
+    @Test
+    void execute_shouldReturnError_cameraIntervalSet_invalidInterval() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "camera_interval_set",
+                "payload_index", "53-0-0",
+                "interval", 0.0
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("interval"));
+    }
+
+    @Test
+    void execute_shouldReturnError_intervalAction_missingPayloadIndex() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "camera_interval_start"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("payload_index"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldSucceed_cameraIntervalStart() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "camera_interval_start",
+                "payload_index", "53-0-0"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("camera_interval_start", data.get("action"));
+        assertEquals("started", data.get("status"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldSucceed_cameraStopPhoto() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "camera_stop_photo",
+                "payload_index", "53-0-0"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("camera_stop_photo", data.get("action"));
+        assertEquals("stopped", data.get("status"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldSucceed_cameraZoomWithLensType() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "camera_zoom",
+                "zoom_factor", 10,
+                "lens_type", "ZOOM"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("camera_zoom", data.get("action"));
+        assertEquals(10, data.get("zoom_factor"));
+        assertEquals("ZOOM", data.get("lens_type"));
+    }
+
+    @Test
+    void execute_shouldReturnError_cameraZoom_invalidLensType() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "camera_zoom",
+                "zoom_factor", 10,
+                "lens_type", "MACRO"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("lens_type"));
+    }
+
+    // ==================== 混合等级 per-action 门控 ====================
+
+    @Test
+    void execute_shouldDenyAction_whenSessionLevelIsL0() {
+        FhCameraTool l0Tool = createToolWithMaxLevel(0);
+
+        Map<String, Object> result = l0Tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "camera_photo"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("insufficient security level"));
+    }
+
+    @Test
+    void execute_shouldAllowReadOnlyAction_whenSessionLevelIsL0() {
+        FhCameraTool l0Tool = createToolWithMaxLevel(0);
+
+        Map<String, Object> result = l0Tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "get_camera_state"
+        ));
+
+        assertEquals(true, result.get("success"));
+    }
+
+    /**
+     * 构造指定 maxSecurityLevel 且已建立 session 的工具实例。
+     *
+     * @param maxLevel session 允许的最高安全等级
+     * @return 使用该 session 的工具实例
+     */
+    private static FhCameraTool createToolWithMaxLevel(int maxLevel) {
+        FlightHubProperties properties = new FlightHubProperties();
+        properties.getSecurity().setMaxLevel(maxLevel);
+        SessionManager sessions = new SessionManager(properties);
+        sessions.createSession("uuid", "ws");
+        return new FhCameraTool(sessions, new SdkService());
+    }
 }

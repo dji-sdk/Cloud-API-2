@@ -28,6 +28,12 @@ public class FhsdkBootstrap {
 
     private static final Logger log = LoggerFactory.getLogger(FhsdkBootstrap.class);
 
+    /** SDK 日志单文件上限（字节） */
+    private static final long LOG_MAX_FILE_SIZE_BYTES = 4L * 1024 * 1024;
+
+    /** SDK 日志文件轮转保留个数 */
+    private static final int LOG_MAX_FILES = 100;
+
     private final FhsdkProperties properties;
     private volatile boolean initialized;
 
@@ -41,23 +47,7 @@ public class FhsdkBootstrap {
         }
         JniLibraryLoader.loadLibrary();
 
-        FlightHubSdkConfig sdkConfig = new FlightHubSdkConfig();
-        sdkConfig.setAddress(properties.getAddress());
-        sdkConfig.setPort(properties.getPort());
-        sdkConfig.setNotificationServerAddress(properties.getNotificationServer());
-        sdkConfig.setLogLevel(properties.getLogLevel());
-        sdkConfig.setLogToConsole(properties.isLogToConsole());
-        sdkConfig.setLogFilePath(properties.getLogFilePath());
-        sdkConfig.setLogMaxFileSize(4 * 1024 * 1024);
-        sdkConfig.setLogMaxFiles(100);
-
-        String drtcConfigPath = resolveDrtcConfigPath();
-        if (drtcConfigPath != null) {
-            sdkConfig.setDrtcConfigPath(drtcConfigPath);
-            log.info("Using DRTC config path: {}", drtcConfigPath);
-        } else {
-            log.warn("DRTC config path not found (checked env FHSDK_DRTC_CONFIG, property fhsdk.drtc-config-path, and ./drtc_config_node.json). DRTC live/DRC may fail.");
-        }
+        FlightHubSdkConfig sdkConfig = buildSdkConfig();
 
         List<HeaderKeyValue> headers = new ArrayList<>();
         String authKey = properties.getAuthHeaderKey();
@@ -76,6 +66,64 @@ public class FhsdkBootstrap {
         }
         initialized = true;
         log.info("FHSDK initialized, version={}", FlightHubSDK.getVersion());
+    }
+
+    /**
+     * 构建 SDK 初始化配置（含 WSS 证书校验透传）。
+     *
+     * <p>包级可见，便于单元测试断言配置内容，避免触发 JNI 加载。
+     *
+     * @return SDK 初始化配置
+     */
+    FlightHubSdkConfig buildSdkConfig() {
+        FlightHubSdkConfig sdkConfig = new FlightHubSdkConfig();
+        sdkConfig.setAddress(properties.getAddress());
+        sdkConfig.setPort(properties.getPort());
+        sdkConfig.setNotificationServerAddress(properties.getNotificationServer());
+        sdkConfig.setLogLevel(properties.getLogLevel());
+        sdkConfig.setLogToConsole(properties.isLogToConsole());
+        sdkConfig.setLogFilePath(properties.getLogFilePath());
+        sdkConfig.setLogMaxFileSize(LOG_MAX_FILE_SIZE_BYTES);
+        sdkConfig.setLogMaxFiles(LOG_MAX_FILES);
+        configureTls(sdkConfig);
+
+        String drtcConfigPath = resolveDrtcConfigPath();
+        if (drtcConfigPath != null) {
+            sdkConfig.setDrtcConfigPath(drtcConfigPath);
+            log.info("Using DRTC config path: {}", drtcConfigPath);
+        } else {
+            log.warn("DRTC config path not found (checked env FHSDK_DRTC_CONFIG, property fhsdk.drtc-config-path, and ./drtc_config_node.json). DRTC live/DRC may fail.");
+        }
+        return sdkConfig;
+    }
+
+    /**
+     * 透传 WSS 证书校验配置到 SDK。
+     *
+     * <p>与 skeleton {@code RealSdkStarter#configureTls} 语义一致：{@code verify-ssl}
+     * 未配置时按 {@code true} 处理（安全默认），{@code ssl-ca-path} 为空则不设置。
+     *
+     * @param sdkConfig SDK 配置
+     */
+    private void configureTls(FlightHubSdkConfig sdkConfig) {
+        Boolean configured = properties.getVerifySsl();
+        boolean verifySsl = !Boolean.FALSE.equals(configured);
+        String caPath = properties.getSslCaPath();
+        boolean hasCaPath = caPath != null && !caPath.isBlank();
+
+        sdkConfig.setVerifySsl(verifySsl);
+        if (hasCaPath) {
+            sdkConfig.setSslCaPath(caPath);
+        }
+
+        if (!verifySsl) {
+            log.warn("SDK WSS 证书校验：已关闭（verify-ssl=false），仅建议用于内网私有化自签名部署{}",
+                    hasCaPath ? "；ssl-ca-path 在校验关闭时不生效" : "");
+        } else if (hasCaPath) {
+            log.info("SDK WSS 证书校验：开启，CA 路径={}", caPath);
+        } else {
+            log.info("SDK WSS 证书校验：开启，使用 SDK 默认信任库");
+        }
     }
 
     public boolean isInitialized() {

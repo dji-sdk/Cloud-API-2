@@ -3,10 +3,11 @@
 本文件记录随本仓库分发的三方组件及其来源、许可证状态，供接受方核对各厂商的再分发授权。
 
 > **状态说明（2026-10-10，SDK 3.3.7）**：SDK 3.1.5+ 已移除 Agora / VolcEngine / ByteRTC
-> 等商业组件（CL-02 解除）。以下列表反映 `libs/flight-hub-sdk-3.3.7.jar` 的实际内容，
+> 等商业组件（CL-02 解除）。以下列表反映 `libs/amd64/flight-hub-sdk-3.3.7.jar` 与
+> `libs/arm64/flight-hub-sdk-3.3.7.jar` 两份按架构分发的包的实际内容，
 > 与 JAR 内 `THIRD_PARTY_LICENSES/README.md` 保持一致。
 
-## 一、随 libs/flight-hub-sdk-3.3.7.jar 分发的组件
+## 一、随 libs/{amd64,arm64}/flight-hub-sdk-3.3.7.jar 分发的组件
 
 以下 native 库内嵌于私有 SDK JAR，随 JAR 一并分发。
 
@@ -50,7 +51,7 @@
 |------|------|--------|------|
 | Wibu CodeMeter Runtime (`codemeter-lite_*.deb`) | Wibu Systems 官方发布包 | 专有 EULA | 仅私有化构建使用，见 `skeleton/packages/x86/NOTICE` |
 
-> **注意**：CodeMeter .deb 未随 git 仓库分发（已加入 `.gitignore`），ISV 需从 Wibu 官方或 DJI 安装包单独获取。
+> **注意**：CodeMeter .deb 未随 git 仓库分发（已加入 `.gitignore`），集成商需从 Wibu 官方或 DJI 安装包单独获取。
 
 ## 三、已知开源许可的依赖
 

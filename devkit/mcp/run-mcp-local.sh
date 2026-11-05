@@ -1,5 +1,5 @@
 #!/bin/bash
-# FlightHub MCP Server launcher for Claude Code (stdio mode)
+# DJI Cloud API 2 MCP Server launcher for Claude Code (stdio mode)
 # Filters stdout to only pass JSON-RPC lines (starting with '{'),
 # redirecting JVM warnings and other non-JSON output to stderr.
 

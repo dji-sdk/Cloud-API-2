@@ -28,9 +28,9 @@ import org.springframework.core.Ordered;
  *
  * <p>提供名为 {@code "securityFilter"} 的 {@link FilterRegistrationBean}，
  * 包装 {@link NoOpSecurityFilter} 拦截 {@code /*}，order = {@code HIGHEST_PRECEDENCE + 100}
- * 让 ISV 自家 filter 默认在其之后运行。
+ * 让集成商自家 filter 默认在其之后运行。
  *
- * <p>ISV 想换真鉴权 filter：定义自家 {@code @Bean(name="securityFilter") FilterRegistrationBean<MyFilter>}，
+ * <p>集成商 想换真鉴权 filter：定义自家 {@code @Bean(name="securityFilter") FilterRegistrationBean<MyFilter>}，
  * 本默认 bean 因 {@link ConditionalOnMissingBean} 而让位。
  *
  * @author DJI DevKit Team
@@ -42,13 +42,13 @@ public class SecurityFilterAutoConfiguration {
      * {@link PublicPaths}（安全发布专项）。
      *
      * <p>feature-user 禁用时本段随 NoOp filter 同步放行，保证 NoOp 模式下挂载的
-     * 公开端点仍可达。保留本字段仅为向后兼容 ISV 对 {@code PUBLIC_PATHS} 的引用，
+     * 公开端点仍可达。保留本字段仅为向后兼容集成商对 {@code PUBLIC_PATHS} 的引用，
      * 内容与 {@link PublicPaths#paths()} 完全一致，不再单独维护第二套清单。
      */
     public static final String[] PUBLIC_PATHS = PublicPaths.paths();
 
     /**
-     * 默认 filter 的 order，留 100 余量让 ISV filter 排在其之后。
+     * 默认 filter 的 order，留 100 余量让 集成商 filter 排在其之后。
      */
     public static final int DEFAULT_ORDER = Ordered.HIGHEST_PRECEDENCE + 100;
 

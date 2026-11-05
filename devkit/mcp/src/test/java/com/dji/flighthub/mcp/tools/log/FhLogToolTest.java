@@ -19,9 +19,11 @@ package com.dji.flighthub.mcp.tools.log;
 import com.dji.flighthub.mcp.config.FlightHubProperties;
 import com.dji.flighthub.mcp.sdk.SdkService;
 import com.dji.flighthub.mcp.session.SessionManager;
+import com.dji.flighthubsdk.bean.DeviceLogListResultFileItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -270,7 +272,7 @@ class FhLogToolTest {
 
         Map<String, Object> result = tool.execute(Map.of(
                 "action", "upload",
-                "file_path", "/tmp/drone-log-20250601.log"
+                "file_path", "/var/log/flighthub/drone-log-20250601.log"
         ));
 
         assertEquals(true, result.get("success"));
@@ -278,5 +280,183 @@ class FhLogToolTest {
         assertEquals("uploaded", data.get("status"));
         assertNotNull(data.get("object_key"));
         assertTrue(data.get("object_key").toString().startsWith("logs/"));
+    }
+
+    @Test
+    void execute_upload_shouldReturnError_whenFilePathOutsideAllowedDir() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "action", "upload",
+                "file_path", "/tmp/drone-log-20250601.log"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("file_path must be within"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_upload_shouldReturnMockSuccess_whenCustomUploadDir() {
+        FlightHubProperties properties = new FlightHubProperties();
+        properties.getSecurity().setMaxLevel(3);
+        SessionManager sessions = new SessionManager(properties);
+        sessions.createSession("uuid", "ws");
+
+        SdkService mockSdk = new SdkService() {
+            @Override
+            public boolean isMockMode() {
+                return true;
+            }
+        };
+        FhLogTool customTool = new FhLogTool(sessions, mockSdk, "/var/log/test");
+
+        Map<String, Object> result = customTool.execute(Map.of(
+                "action", "upload",
+                "file_path", "/var/log/test/drone.log"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("uploaded", data.get("status"));
+    }
+
+    // ==================== 日志文件列表截断 ====================
+
+    /**
+     * 构造指定数量的 SDK 日志文件条目。
+     *
+     * @param count 条目数量
+     * @return SDK 文件列表
+     */
+    private List<DeviceLogListResultFileItem> buildSdkFiles(int count) {
+        List<DeviceLogListResultFileItem> files = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            DeviceLogListResultFileItem item = new DeviceLogListResultFileItem();
+            item.setDeviceSn("SN-001");
+            item.setModule("Flight Controller");
+            item.setLogType(1);
+            item.setObjectKey("logs/" + i + ".log");
+            files.add(item);
+        }
+        return files;
+    }
+
+    @Test
+    void buildLogFiles_shouldReturnAll_whenCountBelowLimit() {
+        List<Map<String, Object>> files = tool.buildLogFiles(buildSdkFiles(10));
+
+        assertEquals(10, files.size());
+        assertEquals("logs/0.log", files.get(0).get("object_key"));
+    }
+
+    @Test
+    void buildLogFiles_shouldTruncate_whenCountExceedsLimit() {
+        List<Map<String, Object>> files = tool.buildLogFiles(buildSdkFiles(500));
+
+        assertEquals(200, files.size(), "超过上限应截断到 MAX_QUERY_FILES");
+    }
+
+    @Test
+    void buildLogFiles_shouldReturnEmpty_whenSdkFilesNull() {
+        assertTrue(tool.buildLogFiles(null).isEmpty());
+    }
+
+    @Test
+    void buildLogFiles_shouldSkipNullItems() {
+        List<DeviceLogListResultFileItem> sdkFiles = new ArrayList<>();
+        sdkFiles.add(buildSdkFiles(1).get(0));
+        sdkFiles.add(null);
+
+        assertEquals(1, tool.buildLogFiles(sdkFiles).size());
+    }
+
+    // ==================== 混合等级 per-action 门控 ====================
+
+    @Test
+    void execute_shouldDenyUpload_whenSessionLevelIsL0() {
+        FhLogTool l0Tool = createToolWithMaxLevel(0);
+
+        Map<String, Object> result = l0Tool.execute(Map.of(
+                "action", "upload",
+                "file_path", "/var/log/flighthub/drone-log.log"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("insufficient security level"));
+    }
+
+    @Test
+    void execute_shouldDenyCreateReport_whenSessionLevelIsL0() {
+        FhLogTool l0Tool = createToolWithMaxLevel(0);
+
+        Map<String, Object> result = l0Tool.execute(Map.of(
+                "action", "create_report",
+                "device_sn", "DRONE-LOG-001"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("insufficient security level"));
+    }
+
+    @Test
+    void execute_shouldAllowQuery_whenSessionLevelIsL0() {
+        FhLogTool l0Tool = createToolWithMaxLevel(0);
+
+        Map<String, Object> result = l0Tool.execute(Map.of(
+                "action", "query",
+                "device_sn", "DRONE-LOG-001"
+        ));
+
+        assertEquals(true, result.get("success"));
+    }
+
+    @Test
+    void execute_shouldDenyOperateDelete_whenSessionLevelIsL0() {
+        FhLogTool l0Tool = createToolWithMaxLevel(0);
+
+        Map<String, Object> result = l0Tool.execute(Map.of(
+                "action", "operate",
+                "report_id", "RPT-123",
+                "operation", "delete",
+                "confirm", true
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("insufficient security level"));
+    }
+
+    @Test
+    void execute_shouldAllowOperateDownload_whenSessionLevelIsL0() {
+        FhLogTool l0Tool = createToolWithMaxLevel(0);
+
+        Map<String, Object> result = l0Tool.execute(Map.of(
+                "action", "operate",
+                "report_id", "RPT-456",
+                "operation", "download"
+        ));
+
+        assertEquals(true, result.get("success"));
+    }
+
+    /**
+     * 构造指定 maxSecurityLevel 且已建立 session 的工具实例。
+     *
+     * @param maxLevel session 允许的最高安全等级
+     * @return 使用该 session 的工具实例
+     */
+    private static FhLogTool createToolWithMaxLevel(int maxLevel) {
+        FlightHubProperties properties = new FlightHubProperties();
+        properties.getSecurity().setMaxLevel(maxLevel);
+        SessionManager sessions = new SessionManager(properties);
+        sessions.createSession("uuid", "ws");
+
+        SdkService sdkService = new SdkService() {
+            @Override
+            public boolean isMockMode() {
+                return true;
+            }
+        };
+        return new FhLogTool(sessions, sdkService);
     }
 }

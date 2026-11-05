@@ -17,6 +17,10 @@ public class FhsdkProperties {
     private String drtcConfigPath;
     private String authHeaderKey = "user_id";
     private String authHeaderValue = "";
+    /** 是否校验 WSS 通知通道的服务端 TLS 证书；null 视为 true（安全默认） */
+    private Boolean verifySsl;
+    /** WSS 通知通道的自签 CA 证书路径；为空则沿用 SDK 默认信任库 */
+    private String sslCaPath;
 
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
@@ -36,4 +40,8 @@ public class FhsdkProperties {
     public void setAuthHeaderKey(String authHeaderKey) { this.authHeaderKey = authHeaderKey; }
     public String getAuthHeaderValue() { return authHeaderValue; }
     public void setAuthHeaderValue(String authHeaderValue) { this.authHeaderValue = authHeaderValue; }
+    public Boolean getVerifySsl() { return verifySsl; }
+    public void setVerifySsl(Boolean verifySsl) { this.verifySsl = verifySsl; }
+    public String getSslCaPath() { return sslCaPath; }
+    public void setSslCaPath(String sslCaPath) { this.sslCaPath = sslCaPath; }
 }

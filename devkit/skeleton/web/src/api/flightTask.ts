@@ -151,7 +151,7 @@ function assertMockNameUnique(name: string, excludeTaskUuid?: string): void {
  * Mock 模式下模拟 BFF / 平台的编辑门禁，与 {@link FlightTaskRestController}
  * 的 {@code validateTaskEditable} 判定条件保持一致。
  *
- * 用途是让 ISV 在离线 mock 下也能复现「编辑任务失败」并看到具体原因
+ * 用途是让集成商在离线 mock 下也能复现「编辑任务失败」并看到具体原因
  * （对应内部工单跟踪的断点续飞任务编辑门禁场景），而不是只修好真实链路。
  *
  * @param taskUuid 被编辑的任务 UUID

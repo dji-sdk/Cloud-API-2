@@ -25,7 +25,7 @@ import java.util.Collection;
  * PermissionEvaluator 默认实现 —— 从 {@link SecurityContext#attributes()} 的
  * {@code "permissions"} key 读 {@link Collection}，{@code contains} 即视为有权限。
  *
- * <p>ISV 想接 Casbin / OPA / 公司权限引擎 → 实现 {@link PermissionEvaluator} 覆盖此 bean。
+ * <p>集成商 想接 Casbin / OPA / 公司权限引擎 → 实现 {@link PermissionEvaluator} 覆盖此 bean。
  *
  * <p>容错：若 {@code attributes["permissions"]} 不是 Collection 类型，返回 {@code false}
  * 而不抛异常（防止配置/数据错误导致的认证大面积失败）。

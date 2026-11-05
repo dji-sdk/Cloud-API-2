@@ -1,7 +1,7 @@
-# cloudapi2-feedback — DJI CloudAPI2 问题反馈助手
+# cloudapi2-feedback — DJI Cloud API 2 问题反馈助手
 
 > **版本**：v1.0.0 | **更新**：2026-09-22
-> **适用对象**：ISV 集成工程师、售后支持、开发者
+> **适用对象**：集成商工程师、售后支持、开发者
 
 把用户的一句话变成结构化 GitHub issue。无需错误码即可启动反馈闭环：采集环境证据 → 脱敏 → 用户确认 → 自动创建 issue。支持 4 类反馈：问题（Bug）、需求、咨询、其他。
 
@@ -55,7 +55,7 @@
 
 ### 方式 1：Plugin 一键安装（推荐）
 
-通过 `devkit@cloud-api2` Plugin 安装全套 Skill（见 `skills/README.md`），本 Skill 包含在内。
+通过 `cloudapi2@dji` Plugin 安装全套 Skill（见 `skills/README.md`），本 Skill 包含在内。
 
 ### 方式 2：手动安装
 
@@ -177,7 +177,6 @@ skills/cloudapi2-feedback/
 | Skill | 关系 |
 |-------|------|
 | `cloudapi2-troubleshooting` | **共享 diag.sh 脚本**。feedback 面向"没有错误码但想反馈"；troubleshooting 面向"有错误码要排查"。反馈过程中发现错误码 → 转交 troubleshooting |
-| `cloudapi2-diagnosis` | 已弃用，能力并入 troubleshooting |
 | 其它业务 Skill | 不直接关联。任何 Skill 排障过程中需要反馈 → 路由到本 Skill |
 
 ---

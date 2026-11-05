@@ -32,7 +32,7 @@ import org.springframework.beans.factory.SmartInitializingSingleton;
  * 否则会破坏合法的本地调试场景。
  *
  * <p>本校验器仅在 {@code fh.chat.mcp.url} 已指向非本机地址（很可能是生产/测试环境）且
- * {@code fh.chat.mcp.auth-token} 仍为空时输出 WARN 级提醒，帮助 ISV 在连接真实 MCP Server
+ * {@code fh.chat.mcp.auth-token} 仍为空时输出 WARN 级提醒，帮助集成商在连接真实 MCP Server
  * 前发现"忘记配置鉴权 token"的配置疏漏，弥补与服务端侧防呆校验之间的防御深度不对称。
  *
  * @author DJI DevKit Team

@@ -142,6 +142,67 @@ class FhFlightRecordToolTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void getToolDefinition_shouldExposeContentTypeProperty() {
+        Map<String, Object> def = tool.getToolDefinition();
+
+        Map<String, Object> schema = (Map<String, Object>) def.get("inputSchema");
+        Map<String, Object> props = (Map<String, Object>) schema.get("properties");
+        assertTrue(props.containsKey("content_type"), "schema 必须暴露 content_type 参数");
+        Map<String, Object> contentTypeProp = (Map<String, Object>) props.get("content_type");
+        assertEquals("string", contentTypeProp.get("type"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldUseDefaultContentType_whenExportOmitsIt() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "action", "export",
+                "user_id", "user-001",
+                "flight_task_ids", List.of("task-001")
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("details", data.get("content_type"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldEchoContentType_whenExportSpecifiesIt() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "action", "export",
+                "user_id", "user-001",
+                "flight_task_ids", List.of("task-001"),
+                "content_type", "summary"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("summary", data.get("content_type"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldEchoContentType_whenGetProgress() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "action", "get_progress",
+                "export_id", "exp_12345",
+                "content_type", "summary"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("summary", data.get("content_type"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void execute_shouldReturnMockProgressList_withoutExportId() {
         sessionManager.createSession("uuid", "ws");
 
@@ -154,5 +215,55 @@ class FhFlightRecordToolTest {
         assertNotNull(data.get("records"));
         List<?> records = (List<?>) data.get("records");
         assertFalse(records.isEmpty());
+    }
+
+    // ==================== 分页兜底 ====================
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldFallbackPageSize_whenPageSizeExceedsMax() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "action", "get_progress",
+                "page", 2,
+                "page_size", 100_000
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals(20, data.get("page_size"), "越界的 page_size 应回退默认值");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldFallbackPageSize_whenPageSizeNotPositive() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "action", "get_progress",
+                "page_size", 0
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals(20, data.get("page_size"), "非正数 page_size 应回退默认值");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldFallbackPage_whenPageNotPositive() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "action", "get_progress",
+                "page", -5,
+                "page_size", 30
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals(1, data.get("page"), "非正数 page 应回退默认值");
+        assertEquals(30, data.get("page_size"), "合法范围内应保留原值");
     }
 }

@@ -1,5 +1,5 @@
 ---
-description: 生成DJI 上云API 2 航线编辑器（WaylineEditor）或航线预览（WaylineView / FH2.loadWaylineView）的最小可运行 HTML
+description: 生成DJI Cloud API 2 航线编辑器（WaylineEditor）或航线预览（WaylineView）的最小可运行 HTML
 argument-hint: [mode: create|edit|preview] [serverUrl] [waylineId?]
 ---
 
@@ -54,11 +54,13 @@ $ARGUMENTS
    - `create`：`new WaylineEditor(opts)` → `loadMap()` → `mount()` → `editor.create({ centerPoint? })`
    - `edit`：`new WaylineEditor(opts)` → `loadMap()` → `mount()` → `editor.render('edit', { waylineId })`
    - `preview`：`new WaylineView(opts)` → `loadMap()` → `mount()` → `view.render({ waylineIds: [waylineId] })`
+
+> ⚠️ **存疑待确认**：目前找到的唯一真实参考实现（skeleton/web 的 `WaylineView.vue`）并未使用独立的 `window.WaylineView` SDK，其"航线预览"需求是复用同一个 `WaylineEditor` 实例调用 `editor.render('edit', ...)` 实现的；该环境的 `fh2.d.ts` 类型定义里也搜不到 `WaylineView` 这个独立类。不能排除其他部署环境确实提供了独立 `wayline-view-sdk`，但生成代码前建议先向平台方确认该 SDK 是否真实存在，避免 `window.WaylineView` 在运行时是 `undefined`。
 5. **构造参数**：
    - `api: { baseUrl, auth }`（必填）
    - `map: { mode: 'internal' }`（使用内置 Cesium）
    - `runtimeDepsBasePath`（WPMZ/PPE WASM 资源根路径）
-   - **不要传 `hostUrl`** —— 已废弃
+   - **`hostUrl` 必填** —— 不是废弃字段，必须传入前端服务地址；与 `map.env.cesiumBaseUrl` 同时传，不互斥
 6. **`AuthConfig` 用真实结构**：`authKeys` + `headers: () => ({...})`（推荐函数形式）。**不要传 `ws.auth`** —— SDK 自动复用 `api.auth`
 7. **协议一致性提醒**：HTTPS 页面必须用 `https://` + `wss://`
 8. **销毁示例**：`beforeunload` 调 `editor.destroy()` 或 `view.destroy()`
@@ -71,9 +73,9 @@ $ARGUMENTS
 ## 不要做
 
 - **不要引入 `paas.js`** —— WaylineEditor 和 WaylineView 都是自包含 SDK，不依赖 FH2 生态
-- 不要调 `FH2.initConfig` / `FH2.loadMap` / `FH2.loadWaylineView` —— 那是旧 API，已被独立 WaylineView SDK 替代
+- 不要调 `FH2.initConfig` / `FH2.loadMap` —— 本命令只生成独立 WaylineEditor/WaylineView SDK 模式，不混用 paas.js；`FH2.loadWaylineView`（paas.js 模式的航线预览，`fh2.d.ts` 里确有声明）与独立 `window.WaylineView` 孰优孰劣/是否已废弃未经确认，不要凭印象断言，详见 `references/wayline-view.md` 的存疑说明
 - 不要写 React/Vue 包装 —— vanilla JS / SDK 模式
 - 不要为 `create()` 后跟 `render('edit')` 都新建实例 —— 同一 `editor` 实例复用
 - 不要把 `enabledWaylineTypes` / `supportedDrones` / `theme` 全塞进最小模板，除非用户明确要
-- **不要在同一页面挂多个 WaylineEditor 实例** —— `mapAppState` 是全局单例
-- **不要用 `hostUrl`** —— 已废弃，使用 `runtimeDepsBasePath` + `map.env.cesiumBaseUrl`
+- **推荐单实例**：不要在同一页面挂多个 WaylineEditor 实例 —— 它们通过 `<teleport>` / `appendChild` 向同一批固定选择器（`#wayline-header` / `#project-middle-container`）投递，UI 互相覆盖
+- **不要删除 `hostUrl`** —— 它是必填字段，不是废弃字段；`runtimeDepsBasePath` + `map.env.cesiumBaseUrl` 是额外新增配置，与 `hostUrl` 同时传入

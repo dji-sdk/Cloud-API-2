@@ -36,7 +36,19 @@ const MOCK_USER: UserInfo = {
   createdAt: null,
 }
 
-const MOCK_TOKEN = 'mock-jwt-token-for-local-dev'
+/** 前端 mock 模式签发的假 token，真实后端必然拒绝。 */
+export const MOCK_TOKEN = 'mock-jwt-token-for-local-dev'
+
+/**
+ * 假 token 被真实后端拒绝（401）时抛出。
+ * 调用方据此区分「token 过期」与「配置错了」：前者应登出，后者应保留登录态并提示用户改配置。
+ */
+export class MockTokenRejectedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'MockTokenRejectedError'
+  }
+}
 
 /**
  * 获取 localStorage 中的 JWT token。
@@ -68,6 +80,16 @@ export async function authFetch(url: string, init?: RequestInit): Promise<Respon
   }
   const res = await fetch(url, { ...init, headers })
   if (res.status === 401) {
+    if (token === MOCK_TOKEN) {
+      // 前端 mock 模式产生的假 token 必然被真实后端拒绝；此时清态跳转只会让用户
+      // 以为自己随机掉线。抛出可定位错误，且不动 localStorage —— 用户停在当前页即可看到原因。
+      // 开关有两个来源（运行时 config.js 优先于构建期 VITE_*），提示里都要点名，否则容器部署会改错地方。
+      throw new MockTokenRejectedError(
+        '当前为前端 Mock 模式，假 token 无法访问真实后端；' +
+        '请把 MOCK_ENABLED（容器部署时改 config.js，本地开发时改 .env 的 VITE_MOCK_ENABLED）' +
+        '置为 false 后重新登录。',
+      )
+    }
     localStorage.removeItem('auth')
     window.location.href = '/welcome'
     // 抛出异常阻止 caller 继续处理 response，避免二次错误提示

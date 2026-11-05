@@ -119,7 +119,8 @@ async function handleDeviceWindow(gatewaySn: string, droneSn: string): Promise<v
   try {
     await ensureFH2Init()
 
-    const devices = droneSn ? `${gatewaySn},${droneSn}` : gatewaySn
+    // 340 组网拓扑下网关 SN 即飞行器 SN，去重避免传出 "SN,SN"
+    const devices = droneSn && droneSn !== gatewaySn ? `${gatewaySn},${droneSn}` : gatewaySn
     const windows = await window.FH2.loadDeviceWindow('real-time-app-container', {
       devices,
       map: true,

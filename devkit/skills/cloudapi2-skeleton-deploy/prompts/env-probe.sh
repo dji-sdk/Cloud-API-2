@@ -14,10 +14,10 @@ echo "===== FH Skeleton 部署环境探测 ====="
 # ─── OS / 架构 ─────────────────────────────────────────────────────────────
 echo "[OS]"
 uname -s -m 2>/dev/null || echo "uname 不可用"
-# 架构判断：SDK JNI 原生库仅支持 Linux x86_64（amd64）
+# 架构判断：SDK 分 amd64 / arm64 两个包，Linux x86_64 与 Linux aarch64 均可用
 case "$(uname -m 2>/dev/null)" in
-  x86_64|amd64) echo "  arch: amd64 (sdk 模式可用)" ;;
-  aarch64|arm64) echo "  arch: arm64 (⚠️ sdk 模式不可用，native lib 仅 amd64)" ;;
+  x86_64|amd64) echo "  arch: amd64 (sdk 模式可用，构建需 SDK_ARCH=amd64)" ;;
+  aarch64|arm64) echo "  arch: arm64 (Linux 上 sdk 模式可用，构建需 SDK_ARCH=arm64；macOS 走 mock/Docker)" ;;
   *) echo "  arch: 未知" ;;
 esac
 

@@ -104,11 +104,11 @@ class DocumentInitializerTest {
         List<Document> docs = vectorStore.getCapturedDocuments();
         assertThat(docs).isNotEmpty();
 
-        // getting-started.md 包含 "FlightHub"，切分后至少一个 chunk 应含有该关键词
-        boolean containsFlightHub = docs.stream()
-                .anyMatch(doc -> doc.getText() != null && doc.getText().contains("FlightHub"));
-        assertThat(containsFlightHub)
-                .as("至少一个文档块应包含 'FlightHub' 关键词")
+        // getting-started.md 包含 "DJI Cloud API 2"，切分后至少一个 chunk 应含有该关键词
+        boolean containsKeyword = docs.stream()
+                .anyMatch(doc -> doc.getText() != null && doc.getText().contains("DJI Cloud API 2"));
+        assertThat(containsKeyword)
+                .as("至少一个文档块应包含 'DJI Cloud API 2' 关键词")
                 .isTrue();
     }
 

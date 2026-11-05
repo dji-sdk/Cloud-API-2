@@ -82,5 +82,4 @@ config.js 内容 → .env 变量完整性 → FH2 网关路径白名单 → WebS
 
 ## 相关文档
 
-- [204 环境 auth_keys 鉴权排查记录](../../docs/) — FH2 网关 auth_keys 鉴权协议详解
 - [部署指南](deployment.md)

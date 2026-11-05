@@ -29,7 +29,7 @@ import java.util.Optional;
 /**
  * Kernel Repository SPI 的 JPA 默认实现基类。
  *
- * <p>ISV 在自家 module 中通过继承使用：
+ * <p>集成商 在自家 module 中通过继承使用：
  * <pre>
  *   &#064;Repository
  *   public class DeviceRepository extends JpaRepositoryAdapter&lt;Device, Long&gt; {
@@ -40,7 +40,7 @@ import java.util.Optional;
  * </pre>
  *
  * <p>本类只实现 {@link Repository} 的 7 个方法，<b>不继承</b> Spring Data Repository hierarchy
- * （刻意保持轻量；ISV 想用 Spring Data 复杂特性可直接 {@code extends JpaRepository}，与本类共存）。
+ * （刻意保持轻量；集成商 想用 Spring Data 复杂特性可直接 {@code extends JpaRepository}，与本类共存）。
  *
  * <p>事务行为：write 方法（{@link #save}/{@link #deleteById}）标注 {@code @Transactional}；
  * read 方法不标，沿用调用方事务（或无事务读）。

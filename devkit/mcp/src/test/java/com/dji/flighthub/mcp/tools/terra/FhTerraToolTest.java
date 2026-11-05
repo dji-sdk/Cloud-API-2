@@ -19,9 +19,12 @@ package com.dji.flighthub.mcp.tools.terra;
 import com.dji.flighthub.mcp.config.FlightHubProperties;
 import com.dji.flighthub.mcp.sdk.SdkService;
 import com.dji.flighthub.mcp.session.SessionManager;
+import com.dji.flighthub.mcp.tools.subscription.ListenChannelSupport;
+import com.dji.flighthub.mcp.tools.subscription.SubscriptionBuffer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -36,6 +39,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class FhTerraToolTest {
 
     private SessionManager sessionManager;
+    private SdkService sdkService;
+    private ListenChannelSupport listenSupport;
     private FhTerraTool terraTool;
 
     @BeforeEach
@@ -44,8 +49,9 @@ class FhTerraToolTest {
         properties.getSecurity().setMaxLevel(3);
         sessionManager = new SessionManager(properties);
 
-        SdkService sdkService = TerraTestHelper.createSdkServiceWithWorkspace();
-        terraTool = new FhTerraTool(sessionManager, sdkService);
+        sdkService = TerraTestHelper.createSdkServiceWithWorkspace();
+        listenSupport = new ListenChannelSupport(new SubscriptionBuffer());
+        terraTool = new FhTerraTool(sessionManager, sdkService, listenSupport);
     }
 
     // ── 工具定义测试 ──
@@ -68,7 +74,7 @@ class FhTerraToolTest {
         Map<String, Object> actionProp = (Map<String, Object>) props.get("action");
         List<String> enumValues = (List<String>) actionProp.get("enum");
 
-        assertEquals(8, enumValues.size());
+        assertEquals(15, enumValues.size());
         assertTrue(enumValues.contains("create_reconstruction"));
         assertTrue(enumValues.contains("create_panorama"));
         assertTrue(enumValues.contains("status"));
@@ -77,6 +83,29 @@ class FhTerraToolTest {
         assertTrue(enumValues.contains("quality_report"));
         assertTrue(enumValues.contains("delete_model"));
         assertTrue(enumValues.contains("retry"));
+        assertTrue(enumValues.contains("stop"));
+        assertTrue(enumValues.contains("get_sfm"));
+        assertTrue(enumValues.contains("batch_delete_model"));
+        assertTrue(enumValues.contains("get_images"));
+        assertTrue(enumValues.contains("listen_status"));
+        assertTrue(enumValues.contains("events"));
+        assertTrue(enumValues.contains("listen_stop"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getToolDefinition_shouldExposeChannelSchema() {
+        Map<String, Object> def = terraTool.getToolDefinition();
+        Map<String, Object> schema = (Map<String, Object>) def.get("inputSchema");
+        Map<String, Object> props = (Map<String, Object>) schema.get("properties");
+
+        Map<String, Object> channelProp = (Map<String, Object>) props.get("channel");
+        List<String> channelEnum = (List<String>) channelProp.get("enum");
+        assertEquals(List.of("status_changed", "unzip_progress", "model_status_changed"), channelEnum);
+
+        assertNotNull(props.get("channels"));
+        assertNotNull(props.get("since_seq"));
+        assertNotNull(props.get("limit"));
     }
 
     // ── session / workspace 校验 ──
@@ -97,7 +126,7 @@ class FhTerraToolTest {
                 return true;
             }
         };
-        FhTerraTool tool = new FhTerraTool(sessionManager, noWorkspace);
+        FhTerraTool tool = new FhTerraTool(sessionManager, noWorkspace, listenSupport);
         sessionManager.createSession("uuid", "ws");
 
         Map<String, Object> result = tool.execute(Map.of("action", "status", "task_id", "t1"));
@@ -545,5 +574,381 @@ class FhTerraToolTest {
         assertEquals("recon_failed_001", data.get("task_id"));
         assertEquals("processing", data.get("state"));
         assertEquals(true, data.get("_mock"));
+    }
+
+    // ── stop 参数校验及 mock ──
+
+    @Test
+    void execute_shouldReturnError_whenStopMissingFileUuid() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = terraTool.execute(Map.of(
+                "action", "stop",
+                "confirm", true
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("file_uuid"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenStopMissingConfirm() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = terraTool.execute(Map.of(
+                "action", "stop",
+                "file_uuid", "recon_stop_001"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Confirmation required"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldStopReconstruction_inMockMode() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = terraTool.execute(Map.of(
+                "action", "stop",
+                "confirm", true,
+                "file_uuid", "recon_stop_001"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("stop", data.get("action"));
+        assertEquals("recon_stop_001", data.get("file_uuid"));
+        assertEquals(true, data.get("stopped"));
+        assertEquals(true, data.get("_mock"));
+    }
+
+    // ── get_sfm 参数校验及 mock ──
+
+    @Test
+    void execute_shouldReturnError_whenGetSfmMissingFileUuid() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = terraTool.execute(Map.of("action", "get_sfm"));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("file_uuid"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldReturnSfmResult_inMockMode() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = terraTool.execute(Map.of(
+                "action", "get_sfm",
+                "file_uuid", "recon_sfm_001"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("get_sfm", data.get("action"));
+        assertEquals("recon_sfm_001", data.get("file_uuid"));
+        assertNotNull(data.get("sfm_json_url"));
+        assertNotNull(data.get("sfm_report_json_url"));
+        assertNotNull(data.get("gcp_out_json_url"));
+        assertNotNull(data.get("re_projection_error_pic_url_list"));
+        assertEquals(true, data.get("_mock"));
+    }
+
+    // ── batch_delete_model 参数校验及 mock ──
+
+    @Test
+    void execute_shouldReturnError_whenBatchDeleteModelMissingFileIds() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = terraTool.execute(Map.of(
+                "action", "batch_delete_model",
+                "confirm", true
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("file_ids"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenBatchDeleteModelFileIdsExceedsMax() {
+        sessionManager.createSession("uuid", "ws");
+
+        List<Integer> tooMany = new ArrayList<>();
+        for (int i = 1; i <= 101; i++) {
+            tooMany.add(i);
+        }
+
+        Map<String, Object> result = terraTool.execute(Map.of(
+                "action", "batch_delete_model",
+                "confirm", true,
+                "file_ids", tooMany
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("file_ids"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenBatchDeleteModelMissingConfirm() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = terraTool.execute(Map.of(
+                "action", "batch_delete_model",
+                "file_ids", List.of(101, 102)
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Confirmation required"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldBatchDeleteModel_inMockMode() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = terraTool.execute(Map.of(
+                "action", "batch_delete_model",
+                "confirm", true,
+                "file_ids", List.of(101, 102, 103)
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("batch_delete_model", data.get("action"));
+        assertEquals(3, data.get("deleted_count"));
+        assertEquals(true, data.get("_mock"));
+    }
+
+    // ── get_images 参数校验及 mock ──
+
+    @Test
+    void execute_shouldReturnError_whenGetImagesMissingFileUuid() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = terraTool.execute(Map.of("action", "get_images"));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("file_uuid"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldReturnImages_inMockMode() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = terraTool.execute(Map.of(
+                "action", "get_images",
+                "file_uuid", "recon_images_001"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("get_images", data.get("action"));
+        assertEquals("recon_images_001", data.get("file_uuid"));
+        List<?> images = (List<?>) data.get("images");
+        assertNotNull(images);
+        assertFalse(images.isEmpty());
+        assertEquals(true, data.get("_mock"));
+    }
+
+    // ── listen_status 参数校验及 mock ──
+
+    @Test
+    void execute_shouldReturnError_whenListenStatusMissingChannel() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = terraTool.execute(Map.of("action", "listen_status"));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("channel"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenListenStatusChannelInvalid() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = terraTool.execute(Map.of(
+                "action", "listen_status",
+                "channel", "not_a_channel"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("channel"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenListenStatusHasNoSession() {
+        Map<String, Object> result = terraTool.execute(Map.of(
+                "action", "listen_status",
+                "channel", "status_changed"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("No active session"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldListenStatus_inMockMode() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = terraTool.execute(Map.of(
+                "action", "listen_status",
+                "channel", "status_changed"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("listen_status", data.get("action"));
+        assertEquals("status_changed", data.get("channel"));
+        assertTrue((int) data.get("listen_id") > 0);
+    }
+
+    @Test
+    void execute_shouldNotLeakRegistration_whenListenRepeated() {
+        sessionManager.createSession("uuid", "ws");
+
+        terraTool.execute(Map.of("action", "listen_status", "channel", "unzip_progress"));
+        terraTool.execute(Map.of("action", "listen_status", "channel", "unzip_progress"));
+
+        Map<String, Object> stop = terraTool.execute(Map.of("action", "listen_stop"));
+        Map<String, Object> data = (Map<String, Object>) stop.get("data");
+
+        assertEquals(List.of("unzip_progress"), data.get("stopped"));
+        assertTrue(((List<?>) data.get("not_active")).isEmpty());
+    }
+
+    // ── events 游标读取 ──
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldReadEvents_whenChannelActive() {
+        sessionManager.createSession("uuid", "ws");
+        terraTool.execute(Map.of("action", "listen_status", "channel", "status_changed"));
+
+        Map<String, Object> result = terraTool.execute(Map.of(
+                "action", "events",
+                "channels", List.of("status_changed")
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("events", data.get("action"));
+        Map<String, Object> streams = (Map<String, Object>) data.get("streams");
+        Map<String, Object> stream = (Map<String, Object>) streams.get("status_changed");
+        assertEquals(true, stream.get("active"));
+        assertEquals(1, stream.get("count"));
+        List<Map<String, Object>> events = (List<Map<String, Object>>) stream.get("events");
+        assertEquals("Reconstruction_mock", events.get(0).get("name"));
+        assertTrue(events.get(0).containsKey("_seq"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldReturnEmptyStreams_whenEventsCalledWithNoActiveChannels() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = terraTool.execute(Map.of("action", "events"));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        Map<String, Object> streams = (Map<String, Object>) data.get("streams");
+        assertTrue(streams.isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldFilterBySinceSeq_whenEventsCursorAdvanced() {
+        sessionManager.createSession("uuid", "ws");
+        terraTool.execute(Map.of("action", "listen_status", "channel", "model_status_changed"));
+        terraTool.execute(Map.of("action", "listen_status", "channel", "model_status_changed"));
+
+        Map<String, Object> first = terraTool.execute(Map.of(
+                "action", "events",
+                "channels", List.of("model_status_changed"),
+                "limit", 1
+        ));
+        Map<String, Object> firstStream = (Map<String, Object>)
+                ((Map<String, Object>) ((Map<String, Object>) first.get("data")).get("streams"))
+                        .get("model_status_changed");
+        List<Map<String, Object>> firstEvents = (List<Map<String, Object>>) firstStream.get("events");
+        assertEquals(1, firstEvents.size());
+        long lastSeq = (long) firstEvents.get(0).get("_seq");
+
+        Map<String, Object> second = terraTool.execute(Map.of(
+                "action", "events",
+                "channels", List.of("model_status_changed"),
+                "since_seq", lastSeq
+        ));
+        Map<String, Object> secondStream = (Map<String, Object>)
+                ((Map<String, Object>) ((Map<String, Object>) second.get("data")).get("streams"))
+                        .get("model_status_changed");
+        List<Map<String, Object>> secondEvents = (List<Map<String, Object>>) secondStream.get("events");
+
+        assertEquals(1, secondEvents.size());
+        assertTrue((long) secondEvents.get(0).get("_seq") > lastSeq);
+    }
+
+    // ── listen_stop 显式 channel 与"全部"两条路径 ──
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldStopOnlyRequestedChannel_whenChannelsGiven() {
+        sessionManager.createSession("uuid", "ws");
+        terraTool.execute(Map.of("action", "listen_status", "channel", "status_changed"));
+        terraTool.execute(Map.of("action", "listen_status", "channel", "unzip_progress"));
+
+        Map<String, Object> result = terraTool.execute(Map.of(
+                "action", "listen_stop",
+                "channels", List.of("status_changed")
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("listen_stop", data.get("action"));
+        assertEquals(List.of("status_changed"), data.get("stopped"));
+        assertTrue(((List<?>) data.get("failed")).isEmpty());
+
+        Map<String, Object> remaining = terraTool.execute(Map.of("action", "events"));
+        Map<String, Object> streams = (Map<String, Object>)
+                ((Map<String, Object>) remaining.get("data")).get("streams");
+        assertEquals(List.of("unzip_progress"), new ArrayList<>(streams.keySet()));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldStopAllChannels_whenChannelsOmitted() {
+        sessionManager.createSession("uuid", "ws");
+        terraTool.execute(Map.of("action", "listen_status", "channel", "status_changed"));
+        terraTool.execute(Map.of("action", "listen_status", "channel", "model_status_changed"));
+
+        Map<String, Object> result = terraTool.execute(Map.of("action", "listen_stop"));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals(List.of("model_status_changed", "status_changed"), data.get("stopped"));
+
+        Map<String, Object> after = terraTool.execute(Map.of("action", "events"));
+        Map<String, Object> streams = (Map<String, Object>)
+                ((Map<String, Object>) after.get("data")).get("streams");
+        assertTrue(streams.isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldReportNotActive_whenStopUnknownChannel() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = terraTool.execute(Map.of(
+                "action", "listen_stop",
+                "channels", List.of("unzip_progress")
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertTrue(((List<?>) data.get("stopped")).isEmpty());
+        assertEquals(List.of("unzip_progress"), data.get("not_active"));
     }
 }

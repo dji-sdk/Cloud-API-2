@@ -76,7 +76,25 @@ public record RealSdkProperties(
          * {@link com.dji.fh.kernel.spi.event.DeviceOnlineEvent}，充当心跳替代。
          * 间隔应小于 {@code liveness-timeout}（默认 5 分钟），设为 {@link Duration#ZERO} 可关闭。
          */
-        Duration reconcileInterval
+        Duration reconcileInterval,
+        /**
+         * 是否校验通知 WebSocket（WSS）的服务端 TLS 证书（默认 {@code true}）。
+         *
+         * <p>私有化 FH2 常用自签名证书，SDK 的 libwebsockets 通知通道默认开启证书校验
+         * （注意 SDK 的 HTTP 客户端并不校验），会以 {@code self signed certificate in
+         * certificate chain} 拒绝连接。内网私有化部署可设为 {@code false} 跳过校验，
+         * 或保持 {@code true} 并通过 {@link #sslCaPath} 指定自签 CA。
+         * 对应 SDK {@code FlightHubSdkConfig#setVerifySsl(boolean)}。
+         */
+        Boolean verifySsl,
+        /**
+         * 通知 WebSocket（WSS）的 CA 证书文件路径（默认空，不设置）。
+         *
+         * <p>当 {@link #verifySsl} 为 {@code true} 且服务端使用自签名证书时，指向签发该
+         * 证书的 CA 文件以通过校验；为空则沿用 SDK 默认信任库。对应 SDK
+         * {@code FlightHubSdkConfig#setSslCaPath(String)}。
+         */
+        String sslCaPath
 ) {
 
     /** 缺省值：日志级别 */
@@ -99,6 +117,9 @@ public record RealSdkProperties(
 
     /** 缺省值：设备状态调和间隔 */
     private static final Duration DEFAULT_RECONCILE_INTERVAL = Duration.ofMinutes(2);
+
+    /** 缺省值：WSS 证书校验开关（默认开启，保持安全默认） */
+    private static final boolean DEFAULT_VERIFY_SSL = true;
 
     /**
      * 紧凑构造器：对非必填字段做 null/blank/非正值兜底。
@@ -124,6 +145,9 @@ public record RealSdkProperties(
         }
         if (reconcileInterval == null || reconcileInterval.isNegative()) {
             reconcileInterval = DEFAULT_RECONCILE_INTERVAL;
+        }
+        if (verifySsl == null) {
+            verifySsl = DEFAULT_VERIFY_SSL;
         }
     }
 }

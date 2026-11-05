@@ -265,6 +265,31 @@ class FhFlightAreaManageToolTest {
     }
 
     @Test
+    void execute_shouldReturnError_whenSessionLevelIsL1() {
+        // 工具已升级为 L2（uniform FLIGHT）：session 上限 L1 时 create/update/delete 全部拒绝
+        FlightHubProperties l1Props = new FlightHubProperties();
+        l1Props.getSecurity().setMaxLevel(1);
+        SessionManager l1Sessions = new SessionManager(l1Props);
+        l1Sessions.createSession("uuid", "ws");
+        SdkService l1Sdk = new SdkService() {
+            @Override
+            public boolean isMockMode() {
+                return true;
+            }
+        };
+        FhFlightAreaManageTool l1Tool = new FhFlightAreaManageTool(l1Sessions, l1Sdk);
+
+        Map<String, Object> result = l1Tool.execute(Map.of(
+                "action", "delete",
+                "flight_area_id", "area_001",
+                "confirm", true
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("insufficient security level"));
+    }
+
+    @Test
     void requiresHumanConfirmation_shouldReturnTrue() {
         assertTrue(manageTool.requiresHumanConfirmation());
     }

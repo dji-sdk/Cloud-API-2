@@ -1,15 +1,15 @@
 ---
 name: cloudapi2-frontend-component
-description: Cloud API 2.0 前端组件（DJI 上云API 2 / paas.js / FH2）前端组件接入助手。当用户要在 skeleton/web（Vue 3）项目或独立 HTML 页面中接入 7 大前端组件——WaylineEditor（航线创建/编辑/拼接）、WaylineView（航线预览）、UranusDeviceManagerApp（设备管理）、FH2.loadCockpit（驾驶舱）、FlyDataReplay（飞行记录回放）、DJILivePlayer（直播大屏）、FH2.loadDeviceWindow（设备小窗）任一组件，或问 initConfig/auth/销毁/事件订阅/错误码/cockpitConfig/主题定制/跨域(Mixed Content)/Whistle 代理调试时调用。触发词：DJI 上云API 2、paas.js、FH2、WaylineEditor、WaylineView、FlyDataReplay、UranusDeviceManagerApp、DJILivePlayer、DjiLivePlayer、loadCockpit、loadDevice、loadDeviceWindow、loadWaylineView、loadFlightPath、initConfig、initLivePlayer、setupDeviceManager、mountDeviceList、concatWayline、cockpitConfig、setCockpitConfig、setCockpitTheme、setCockpitPreset、runtimeDepsBasePath、frontHost/serverHost/wssHost、useFH2、ensureFH2Init、CockpitView、useSDKLoader、航线编辑器、航线预览、航线规划、航线拼接、航点编辑、画航线、wayline editor、wayline view、route planner、航线页面、飞行路径编辑、驾驶舱页面、设备管理页面、飞行回放、直播大屏、设备小窗、多路直播、地图组件、嵌入地图、设备拓扑。
+description: DJI Cloud API 2 前端组件（DJI Cloud API 2 / paas.js / FH2）前端组件接入助手。当用户要在 skeleton/web（Vue 3）项目或独立 HTML 页面中接入 7 大前端组件——WaylineEditor（航线创建/编辑/拼接）、WaylineView（航线预览）、UranusDeviceManagerApp（设备管理）、FH2.loadCockpit（驾驶舱）、FlyDataReplay（飞行记录回放）、DJILivePlayer（直播大屏）、FH2.loadDeviceWindow（设备小窗）任一组件，或问 initConfig/auth/销毁/事件订阅/错误码/cockpitConfig/主题定制/跨域(Mixed Content)/Whistle 代理调试时调用。触发词：DJI Cloud API 2、paas.js、FH2、WaylineEditor、WaylineView、FlyDataReplay、UranusDeviceManagerApp、DJILivePlayer、DjiLivePlayer、loadCockpit、loadDevice、loadDeviceWindow、loadFlightPath、initConfig、initLivePlayer、setupDeviceManager、mountDeviceList、concatWayline、cockpitConfig、setCockpitConfig、setCockpitTheme、setCockpitPreset、runtimeDepsBasePath、frontHost/serverHost/wssHost、useFH2、ensureFH2Init、CockpitView、useSDKLoader、航线编辑器、航线预览、航线规划、航线拼接、航点编辑、画航线、wayline editor、wayline view、route planner、航线页面、飞行路径编辑、驾驶舱页面、设备管理页面、飞行回放、直播大屏、设备小窗、多路直播、地图组件、嵌入地图、设备拓扑。
 version: 2.0.1
-author: DJI CloudAPI2 Team
+author: DJI Cloud API 2 Team
 ---
 
-# DJI 上云API 2 前端组件接入助手
+# DJI Cloud API 2 前端组件接入助手
 
 ## 这个 Skill 是干什么的
 
-帮 ISV 开发者在 **skeleton/web（Vue 3 + Vite + TypeScript）** 项目或 **独立 HTML 页面** 中正确接入 DJI 上云API 2 **7 大组件**，并准确处理初始化、鉴权、销毁、跨域等关键细节。
+帮集成商开发者在 **skeleton/web（Vue 3 + Vite + TypeScript）** 项目或 **独立 HTML 页面** 中正确接入 DJI Cloud API 2 **7 大组件**，并准确处理初始化、鉴权、销毁、跨域等关键细节。
 
 ## 7 大组件一览
 
@@ -25,7 +25,7 @@ author: DJI CloudAPI2 Team
 
 ## 何时触发
 
-- 用户要"接入 / 集成 / 嵌入"DJI 上云API 2 / FH2 / paas.js 任一组件
+- 用户要"接入 / 集成 / 嵌入"DJI Cloud API 2 / FH2 / paas.js 任一组件
 - 用户提到 skeleton/web 中的 FH2 相关文件（`useFH2`、`ensureFH2Init`、`CockpitView`、`WaylineView`、`useSDKLoader`）
 - 用户问 `WaylineEditor` / `WaylineView` / `FlyDataReplay` / `UranusDeviceManagerApp` / `DJILivePlayer` / `FH2.loadCockpit` / `FH2.loadDevice` / `FH2.loadDeviceWindow` 的用法
 - 用户问 `initConfig` / `frontHost` / `serverHost` / `wssHost` / `paas.js` 加载
@@ -96,8 +96,8 @@ Vue 模式下这些通过 `.env` 环境变量配置（`VITE_FH2_ADDRESS` / `VITE
 4. **容器尺寸**：DOM 容器必须有显式宽高
 5. **销毁时机**：切页面/路由前必须 `destroy()` 旧实例
 6. **DOM 结构不可修改**：依赖 paas.js 的组件需要特定 DOM ID 和类名结构
-7. **单实例**：同页面不能挂多个 WaylineEditor 或 FlyDataReplay 实例（DJILivePlayer 除外，它就是多实例拼网格）
-8. **hostUrl 已废弃**：WaylineEditor / FlyDataReplay 的 `hostUrl` 字段已废弃，应使用 `runtimeDepsBasePath` + `map.env.cesiumBaseUrl`
+7. **推荐单实例**：同一页面只挂一个 WaylineEditor 或 FlyDataReplay（它们是页面级固定挂载点，多实例互相覆盖；切换航线/任务用 `destroy()` 后重建）。DJILivePlayer 除外，它就是多实例拼网格
+8. **hostUrl 仍是必填项**：WaylineEditor / FlyDataReplay 的 `hostUrl` 字段不是废弃字段，是必填（non-optional）字段，必须传入前端服务地址；`runtimeDepsBasePath` + `map.env.cesiumBaseUrl` 是额外新增的依赖资源路径配置，与 `hostUrl` 同时传入，不是替代关系，不要删除 `hostUrl`
 9. **Cesium 同步加载**：自包含 SDK（WaylineEditor / WaylineView / FlyDataReplay）必须先同步加载 Cesium.js
 
 ### 第 5 步：排查问题
@@ -122,7 +122,7 @@ Vue 模式下这些通过 `.env` 环境变量配置（`VITE_FH2_ADDRESS` / `VITE
 
 ## 权威参考
 
-`references/` 下的内容是DJI 上云API 2 7 大组件 ISV 接入的完整向导。
+`references/` 下的内容是DJI Cloud API 2 7 大组件集成商接入的完整向导。
 `snippets/` 下有 Vue 组件模板和独立 HTML 模板供参考。
 `commands/` 下有 6 个快捷命令可直接调用。
 

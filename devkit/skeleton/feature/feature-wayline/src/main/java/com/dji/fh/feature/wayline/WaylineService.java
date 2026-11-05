@@ -25,7 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * 航线库管理 service（默认空实现）。
  *
- * <p>默认返回空列表。ISV 接入真实 SDK 时由 {@code SdkWaylineService} 覆盖
+ * <p>默认返回空列表。集成商 接入真实 SDK 时由 {@code SdkWaylineService} 覆盖
  * （{@link WaylineAutoConfiguration} 用 {@code @ConditionalOnMissingBean}）。
  *
  * @author DJI DevKit Team
@@ -68,7 +68,7 @@ public class WaylineService {
     /**
      * 查询航线关联的飞行执行列表（默认返回 mock 数据）。
      *
-     * <p>ISV 接入真实 SDK 时由 {@code SdkWaylineService} 覆盖，
+     * <p>集成商 接入真实 SDK 时由 {@code SdkWaylineService} 覆盖，
      * 通过飞行任务和媒体模块查询实际执行记录。
      *
      * @param waylineUuid 航线 UUID
@@ -84,7 +84,7 @@ public class WaylineService {
     /**
      * 批量删除航线（默认空实现）。
      *
-     * <p>ISV 接入真实 SDK 时由 {@code SdkWaylineService} 覆盖。
+     * <p>集成商 接入真实 SDK 时由 {@code SdkWaylineService} 覆盖。
      *
      * @param uuids 待删除的航线 UUID 列表
      */
@@ -95,7 +95,7 @@ public class WaylineService {
     /**
      * 批量下载航线（默认空实现）。
      *
-     * <p>ISV 接入真实 SDK 时由 {@code SdkWaylineService} 覆盖。
+     * <p>集成商 接入真实 SDK 时由 {@code SdkWaylineService} 覆盖。
      *
      * @param uuids 待下载的航线 UUID 列表
      * @return 空的下载响应
@@ -108,7 +108,7 @@ public class WaylineService {
     /**
      * 检查指定 UUID 的航线是否存在（默认返回 true）。
      *
-     * <p>ISV 接入真实 SDK 时由 {@code SdkWaylineService} 覆盖，
+     * <p>集成商 接入真实 SDK 时由 {@code SdkWaylineService} 覆盖，
      * 通过查询航线列表匹配 UUID 判断航线是否仍存在。
      *
      * @param uuid 航线 UUID
@@ -122,7 +122,7 @@ public class WaylineService {
     /**
      * 导入航线（默认空实现）。
      *
-     * <p>ISV 接入真实 SDK 时由 {@code SdkWaylineService} 覆盖。
+     * <p>集成商 接入真实 SDK 时由 {@code SdkWaylineService} 覆盖。
      *
      * @param file        KMZ 文件
      * @param waylineName 航线名称

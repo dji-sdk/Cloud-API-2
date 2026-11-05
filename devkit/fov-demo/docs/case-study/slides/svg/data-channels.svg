@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 380" role="img" aria-label="Three data channels">
+  <rect width="920" height="380" fill="#f8fafc" rx="12"/>
+  <text x="460" y="40" text-anchor="middle" fill="#0f172a" font-family="PingFang SC, sans-serif" font-size="20" font-weight="700">三层数据：选对通道，别硬提 MQTT 频率</text>
+
+  <rect x="40" y="70" width="260" height="260" rx="12" fill="#fff" stroke="#64748b" stroke-width="2"/>
+  <rect x="40" y="70" width="260" height="48" rx="12" fill="#64748b"/>
+  <rect x="40" y="106" width="260" height="12" fill="#64748b"/>
+  <text x="170" y="100" text-anchor="middle" fill="#fff" font-size="16" font-weight="700" font-family="PingFang SC, sans-serif">MQTT OSD</text>
+  <text x="60" y="145" fill="#334155" font-size="13" font-family="PingFang SC, sans-serif">Rate: ~0.5Hz (fixed)</text>
+  <text x="60" y="172" fill="#334155" font-size="13" font-family="PingFang SC, sans-serif">Need: device online</text>
+  <text x="60" y="199" fill="#334155" font-size="13" font-family="PingFang SC, sans-serif">Use: OSD bar, aircraft model</text>
+  <text x="60" y="226" fill="#334155" font-size="13" font-family="PingFang SC, sans-serif">API: listenAircraft*</text>
+  <text x="60" y="265" fill="#dc2626" font-size="12" font-weight="600" font-family="PingFang SC, sans-serif">✗ 不能对齐视频帧</text>
+  <text x="60" y="290" fill="#64748b" font-size="11" font-family="PingFang SC, sans-serif">文档: 0_整体方案 §6</text>
+
+  <rect x="330" y="70" width="260" height="260" rx="12" fill="#fff" stroke="#059669" stroke-width="2"/>
+  <rect x="330" y="70" width="260" height="48" rx="12" fill="#059669"/>
+  <rect x="330" y="106" width="260" height="12" fill="#059669"/>
+  <text x="460" y="100" text-anchor="middle" fill="#fff" font-size="16" font-weight="700" font-family="PingFang SC, sans-serif">DRC fast</text>
+  <text x="350" y="145" fill="#334155" font-size="13" font-family="PingFang SC, sans-serif">Rate: high after DRC link</text>
+  <text x="350" y="172" fill="#334155" font-size="13" font-family="PingFang SC, sans-serif">Need: connectDrcLink</text>
+  <text x="350" y="199" fill="#334155" font-size="13" font-family="PingFang SC, sans-serif">Use: green laser dot, stick</text>
+  <text x="350" y="226" fill="#334155" font-size="13" font-family="PingFang SC, sans-serif">API: listenCameraMeasureTarget</text>
+  <text x="350" y="265" fill="#059669" font-size="12" font-weight="600" font-family="PingFang SC, sans-serif">✓ 设备实测落点</text>
+  <text x="350" y="290" fill="#64748b" font-size="11" font-family="PingFang SC, sans-serif">文档: 2_前端方案</text>
+
+  <rect x="620" y="70" width="260" height="260" rx="12" fill="#fff" stroke="#d97706" stroke-width="2"/>
+  <rect x="620" y="70" width="260" height="48" rx="12" fill="#d97706"/>
+  <rect x="620" y="106" width="260" height="12" fill="#d97706"/>
+  <text x="750" y="100" text-anchor="middle" fill="#fff" font-size="16" font-weight="700" font-family="PingFang SC, sans-serif">SEI</text>
+  <text x="640" y="145" fill="#334155" font-size="13" font-family="PingFang SC, sans-serif">Rate: ~30fps</text>
+  <text x="640" y="172" fill="#334155" font-size="13" font-family="PingFang SC, sans-serif">Need: LiveModule.start</text>
+  <text x="640" y="199" fill="#334155" font-size="13" font-family="PingFang SC, sans-serif">Use: axes, frustum, optical axis</text>
+  <text x="640" y="226" fill="#334155" font-size="13" font-family="PingFang SC, sans-serif">API: subscribeAr/FovSeiInfo</text>
+  <text x="640" y="265" fill="#d97706" font-size="12" font-weight="600" font-family="PingFang SC, sans-serif">✓ 与 DRC 无关</text>
+  <text x="640" y="290" fill="#64748b" font-size="11" font-family="PingFang SC, sans-serif">文档: 1_后端方案 §3.6</text>
+
+  <text x="460" y="360" text-anchor="middle" fill="#475569" font-size="13" font-family="PingFang SC, sans-serif">地图双落点：DRC 绿点（实测） vs SEI 橙点（几何）</text>
+</svg>

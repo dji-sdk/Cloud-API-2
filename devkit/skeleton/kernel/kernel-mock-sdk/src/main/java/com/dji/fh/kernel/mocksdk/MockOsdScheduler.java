@@ -36,7 +36,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * {@link MockFlightHubSdk#fireOsd(String, Map)}。
  *
  * <p>OSD 数据为伪造的合理范围随机值（battery_percent / altitude / mode / longitude / latitude），
- * 供 ISV demo 看起来像真设备。
+ * 供 集成商 demo 看起来像真设备。
  *
  * <p>每个设备根据 SN 哈希分配一个稳定的"基站坐标"（从中国主要城市池选取），
  * 后续 Tick 在基站附近小幅偏移，模拟真实飞行或静止状态。

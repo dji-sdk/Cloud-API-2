@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { formatPaasResourceErrorMessage } from './paasMessages'
+
 /**
  * 向 <head> 动态注入 CSS link 标签（幂等：同 href 不重复注入）。
  */
@@ -39,7 +41,7 @@ export function injectScript(src: string): Promise<void> {
     const script = document.createElement('script')
     script.src    = src
     script.onload  = () => resolve()
-    script.onerror = () => reject(new Error(`Failed to load script: ${src}`))
+    script.onerror = () => reject(new Error(formatPaasResourceErrorMessage('脚本', src)))
     document.head.appendChild(script)
   })
 }
@@ -84,7 +86,7 @@ export function injectScriptUMD(src: string, globalName: string): Promise<void> 
       if (savedModule !== undefined) { win.module = savedModule }
       if (savedExports !== undefined) { win.exports = savedExports }
       if (savedDefine !== undefined) { win.define = savedDefine }
-      reject(new Error(`Failed to load UMD script: ${src}`))
+      reject(new Error(formatPaasResourceErrorMessage(`${globalName} SDK`, src)))
     }
     document.head.appendChild(script)
   })

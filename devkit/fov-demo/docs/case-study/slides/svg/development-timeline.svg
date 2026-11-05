@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 520" role="img" aria-label="Development timeline">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#64748b"/>
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <rect width="1100" height="520" fill="#f8fafc" rx="12"/>
+  <text x="550" y="34" text-anchor="middle" fill="#0f172a" font-size="20" font-weight="700" font-family="PingFang SC, Hiragino Sans GB, sans-serif">fhsdk_demo 开发历程（线性 · 交付与常见问题）</text>
+  <text x="550" y="56" text-anchor="middle" fill="#64748b" font-size="12" font-family="PingFang SC, Hiragino Sans GB, sans-serif">左 → 右 = 时间顺序 · 绿 = 里程碑 · 红 = 常见问题 · 紫 = 文档沉淀</text>
+
+  <!-- main axis -->
+  <line x1="60" y1="200" x2="1040" y2="200" stroke="#94a3b8" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- milestone nodes -->
+  <g font-family="PingFang SC, Hiragino Sans GB, sans-serif">
+    <!-- 0 需求 -->
+    <circle cx="80" cy="200" r="22" fill="#0ea5e9" filter="url(#shadow)"/>
+    <text x="80" y="206" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">需求</text>
+    <rect x="28" y="118" width="104" height="58" rx="6" fill="#fff" stroke="#0ea5e9"/>
+    <text x="80" y="138" text-anchor="middle" fill="#0369a1" font-size="10" font-weight="600">三层数据分工</text>
+    <text x="80" y="154" text-anchor="middle" fill="#475569" font-size="9">双落点对比</text>
+    <text x="80" y="168" text-anchor="middle" fill="#475569" font-size="9">BFF 边界</text>
+
+    <!-- 1 架构 -->
+    <circle cx="200" cy="200" r="22" fill="#0ea5e9"/>
+    <text x="200" y="206" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">架构</text>
+    <rect x="148" y="118" width="104" height="58" rx="6" fill="#fff" stroke="#0ea5e9"/>
+    <text x="200" y="138" text-anchor="middle" fill="#0369a1" font-size="10" font-weight="600">REST/WS/WHEP</text>
+    <text x="200" y="154" text-anchor="middle" fill="#475569" font-size="9">分项 listen</text>
+    <text x="200" y="168" text-anchor="middle" fill="#475569" font-size="9">分步状态机</text>
+
+    <!-- A -->
+    <circle cx="340" cy="200" r="26" fill="#059669" filter="url(#shadow)"/>
+    <text x="340" y="206" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">A</text>
+    <rect x="278" y="108" width="124" height="68" rx="6" fill="#ecfdf5" stroke="#059669"/>
+    <text x="340" y="128" text-anchor="middle" fill="#047857" font-size="10" font-weight="600">基础链路 [完成]</text>
+    <text x="340" y="144" text-anchor="middle" fill="#475569" font-size="9">WS·WHEP·Payload</text>
+    <text x="340" y="158" text-anchor="middle" fill="#475569" font-size="9">MQTT·DRC 绿点</text>
+    <text x="340" y="172" text-anchor="middle" fill="#475569" font-size="9">SEI 三轴</text>
+
+    <!-- B -->
+    <circle cx="500" cy="200" r="26" fill="#059669"/>
+    <text x="500" y="206" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">B</text>
+    <rect x="438" y="108" width="124" height="68" rx="6" fill="#ecfdf5" stroke="#059669"/>
+    <text x="500" y="128" text-anchor="middle" fill="#047857" font-size="10" font-weight="600">光轴落点 [完成]</text>
+    <text x="500" y="144" text-anchor="middle" fill="#475569" font-size="9">射线求交</text>
+    <text x="500" y="158" text-anchor="middle" fill="#475569" font-size="9">橙点 vs 绿点</text>
+    <text x="500" y="172" text-anchor="middle" fill="#475569" font-size="9">seiNed.ts</text>
+
+    <!-- C -->
+    <circle cx="660" cy="200" r="26" fill="#059669"/>
+    <text x="660" y="206" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">C</text>
+    <rect x="598" y="108" width="124" height="68" rx="6" fill="#ecfdf5" stroke="#059669"/>
+    <text x="660" y="128" text-anchor="middle" fill="#047857" font-size="10" font-weight="600">视锥贴地 [完成]</text>
+    <text x="660" y="144" text-anchor="middle" fill="#475569" font-size="9">FOV→角度</text>
+    <text x="660" y="158" text-anchor="middle" fill="#475569" font-size="9">地面交线</text>
+    <text x="660" y="172" text-anchor="middle" fill="#475569" font-size="9">可选 WHEP 贴地</text>
+
+    <!-- D -->
+    <circle cx="820" cy="200" r="26" fill="#059669"/>
+    <text x="820" y="206" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">D</text>
+    <rect x="758" y="108" width="124" height="68" rx="6" fill="#ecfdf5" stroke="#059669"/>
+    <text x="820" y="128" text-anchor="middle" fill="#047857" font-size="10" font-weight="600">操控 [完成]</text>
+    <text x="820" y="144" text-anchor="middle" fill="#475569" font-size="9">R/F Q/E 杆量</text>
+    <text x="820" y="158" text-anchor="middle" fill="#475569" font-size="9">直播拖拽云台</text>
+    <text x="820" y="172" text-anchor="middle" fill="#475569" font-size="9">50ms stick</text>
+
+    <!-- 文档沉淀 -->
+    <circle cx="960" cy="200" r="22" fill="#7c3aed" filter="url(#shadow)"/>
+    <text x="960" y="198" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">文档</text>
+    <text x="960" y="212" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">沉淀</text>
+    <rect x="908" y="108" width="104" height="68" rx="6" fill="#f5f3ff" stroke="#7c3aed"/>
+    <text x="960" y="128" text-anchor="middle" fill="#6d28d9" font-size="10" font-weight="600">实战案例</text>
+    <text x="960" y="144" text-anchor="middle" fill="#475569" font-size="9">问题→文档</text>
+    <text x="960" y="158" text-anchor="middle" fill="#475569" font-size="9">实战案例 MD</text>
+    <text x="960" y="172" text-anchor="middle" fill="#475569" font-size="9">本时间线图</text>
+
+    <!-- D' pending -->
+    <circle cx="1040" cy="200" r="18" fill="#94a3b8" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4"/>
+    <text x="1040" y="205" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">D'</text>
+    <text x="1040" y="248" text-anchor="middle" fill="#64748b" font-size="9">起飞·返航</text>
+    <text x="1040" y="262" text-anchor="middle" fill="#64748b" font-size="9">规划中</text>
+  </g>
+
+  <!-- pitfall connectors and boxes below axis -->
+  <g font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="9">
+    <!-- pit 1-2 at A -->
+    <line x1="310" y1="222" x2="280" y2="268" stroke="#ef4444" stroke-width="1.5"/>
+    <line x1="370" y1="222" x2="400" y2="268" stroke="#ef4444" stroke-width="1.5"/>
+    <rect x="180" y="268" width="200" height="52" rx="6" fill="#fef2f2" stroke="#fca5a5"/>
+    <text x="280" y="286" text-anchor="middle" fill="#b91c1c" font-weight="700" font-size="10">坑 · 阶段 A</text>
+    <text x="280" y="302" text-anchor="middle" fill="#475569">SEI 绑 DRC → live==null 永不订</text>
+    <text x="280" y="316" text-anchor="middle" fill="#475569">MQTT 激光无推送 → 改 DRC 绿点</text>
+
+    <!-- pit 3 at B -->
+    <line x1="500" y1="226" x2="500" y2="340" stroke="#ef4444" stroke-width="1.5"/>
+    <rect x="420" y="340" width="160" height="52" rx="6" fill="#fef2f2" stroke="#fca5a5"/>
+    <text x="500" y="358" text-anchor="middle" fill="#b91c1c" font-weight="700" font-size="10">坑 · 阶段 B</text>
+    <text x="500" y="374" text-anchor="middle" fill="#475569">SEI roll != gimbal_roll</text>
+    <text x="500" y="388" text-anchor="middle" fill="#475569">写 SEI相机坐标系说明.md</text>
+
+    <!-- pit 4 at C -->
+    <line x1="640" y1="226" x2="620" y2="340" stroke="#f97316" stroke-width="1.5"/>
+    <rect x="540" y="340" width="160" height="64" rx="6" fill="#fff7ed" stroke="#fdba74"/>
+    <text x="620" y="358" text-anchor="middle" fill="#c2410c" font-weight="700" font-size="10">坑 · 阶段 C</text>
+    <text x="620" y="374" text-anchor="middle" fill="#475569">FOV(um) / 风速(dm/s) / 高度(mm)</text>
+    <text x="620" y="388" text-anchor="middle" fill="#475569">FFmpeg 须透传 H.264</text>
+    <text x="620" y="402" text-anchor="middle" fill="#475569">→ formatOsd.ts 对齐</text>
+
+    <!-- pit 5 cross-cutting after fix -->
+    <line x1="760" y1="226" x2="780" y2="268" stroke="#ef4444" stroke-width="1.5"/>
+    <rect x="700" y="268" width="160" height="52" rx="6" fill="#fef2f2" stroke="#fca5a5"/>
+    <text x="780" y="286" text-anchor="middle" fill="#b91c1c" font-weight="700" font-size="10">坑 · 联调修复</text>
+    <text x="780" y="302" text-anchor="middle" fill="#475569">SEI 图层绑 drcConnected</text>
+    <text x="780" y="316" text-anchor="middle" fill="#475569">→ 改 liveStarted</text>
+
+    <!-- pit 6 training UI -->
+    <line x1="860" y1="226" x2="880" y2="340" stroke="#f97316" stroke-width="1.5"/>
+    <rect x="800" y="340" width="160" height="52" rx="6" fill="#fff7ed" stroke="#fdba74"/>
+    <text x="880" y="358" text-anchor="middle" fill="#c2410c" font-weight="700" font-size="10">坑 · 培训 UI</text>
+    <text x="880" y="374" text-anchor="middle" fill="#475569">MapLegend grid 竖条</text>
+    <text x="880" y="388" text-anchor="middle" fill="#475569">→ flex 分组布局</text>
+  </g>
+
+  <!-- fix bar -->
+  <rect x="60" y="430" width="980" height="72" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+  <text x="80" y="452" fill="#15803d" font-size="11" font-weight="700" font-family="PingFang SC, Hiragino Sans GB, sans-serif">关键修复链</text>
+  <text x="80" y="472" fill="#334155" font-size="10" font-family="PingFang SC, Hiragino Sans GB, sans-serif">SeiSubscriptionService（开流订 SEI）</text>
+  <text x="80" y="488" fill="#64748b" font-size="9" font-family="PingFang SC, Hiragino Sans GB, sans-serif">→ 前端 liveStarted → 单位脚注 → 培训说明 UI → 文档沉淀</text>
+  <text x="620" y="472" fill="#6d28d9" font-size="10" font-weight="600" font-family="PingFang SC, Hiragino Sans GB, sans-serif">参考: 0_整体方案 · SEI相机坐标系说明</text>
+  <text x="620" y="488" fill="#6d28d9" font-size="9" font-family="PingFang SC, Hiragino Sans GB, sans-serif">fhsdk-overview · fhsdk-live-whep · fhsdk-sei-map-geometry</text>
+
+  <!-- legend -->
+  <circle cx="72" cy="248" r="6" fill="#059669"/>
+  <text x="84" y="252" fill="#64748b" font-size="9" font-family="PingFang SC, Hiragino Sans GB, sans-serif">阶段交付</text>
+  <circle cx="152" cy="248" r="6" fill="#ef4444"/>
+  <text x="164" y="252" fill="#64748b" font-size="9" font-family="PingFang SC, Hiragino Sans GB, sans-serif">常见问题</text>
+  <circle cx="212" cy="248" r="6" fill="#7c3aed"/>
+  <text x="224" y="252" fill="#64748b" font-size="9" font-family="PingFang SC, Hiragino Sans GB, sans-serif">文档沉淀</text>
+</svg>

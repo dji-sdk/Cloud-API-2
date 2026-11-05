@@ -16,9 +16,15 @@
 
 import type { DashboardStats, TimeRange } from '@/types/dashboard'
 import { authFetch } from '@/api/auth'
+import { getRuntimeConfig } from '@/utils/runtimeConfig'
 import { API_BASE } from './baseUrl'
 
 const BASE = `${API_BASE}/api/v1/dashboard`
+
+/** 前端假数据开关：走运行时配置，容器内由 config.js 注入。 */
+function isMockEnabled(): boolean {
+  return getRuntimeConfig('MOCK_ENABLED') === 'true'
+}
 
 const MOCK_STATS: DashboardStats = {
   docks: { total: 2, idle: 1, working: 1, debugging: 0, offline: 0 },
@@ -54,7 +60,7 @@ export async function fetchDashboardStats(
   start?: string,
   end?: string,
 ): Promise<DashboardStats> {
-  if (import.meta.env.VITE_MOCK_ENABLED === 'true') {
+  if (isMockEnabled()) {
     // 返回深拷贝，防止调用方变更污染模块级常量
     return structuredClone(MOCK_STATS)
   }

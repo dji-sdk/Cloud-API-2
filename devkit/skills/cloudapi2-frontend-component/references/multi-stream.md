@@ -153,7 +153,7 @@ Object.keys(players).forEach(function (sn) { players[sn].destroy() })
 
 ## 十、错误码
 
-> **重要**：本组件使用**独立的字符串错误码**，与 `WaylineEditor`/`FlyDataReplay` 共用的数字错误码（`4001/5000/6002...`）**不是**同一套体系。
+> **重要**：本组件使用**独立的字符串错误码**，与 `WaylineEditor`/`FlyDataReplay` 的数字错误码（`5000/5001/6000/6002` 等）**不是**同一套体系。
 
 | 错误码（string） | 含义 |
 |------|------|

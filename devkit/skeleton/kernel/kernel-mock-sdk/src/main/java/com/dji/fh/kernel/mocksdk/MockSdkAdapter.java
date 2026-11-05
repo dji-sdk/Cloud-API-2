@@ -38,7 +38,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * 把 {@link MockFlightHubSdk} 的 5 种 callback 转成 Kernel SPI 的 KernelEvent，
  * 通过 {@link SdkEventBus#publish} 发到 Spring 事件总线。
  *
- * <p>所有发出的 KernelEvent 的 {@code source} 都是 {@code "mock-sdk"}，便于 ISV 区分。
+ * <p>所有发出的 KernelEvent 的 {@code source} 都是 {@code "mock-sdk"}，便于集成商区分。
  *
  * <p>使用方式：
  * <ol>

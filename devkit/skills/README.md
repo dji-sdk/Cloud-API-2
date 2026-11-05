@@ -1,22 +1,24 @@
-# Skills 总览 — Cloud API 2 SDK AI 能力包
+# Skills 总览 — DJI Cloud API 2 SDK AI 能力包
 
-本目录包含面向 AI Agent 的 Skill（能力包），安装后 AI 在你编写 Cloud API 2 集成代码或操控设备时**自动加载**对应知识，确保生成正确、安全、符合规范的代码。
+本目录包含面向 AI Agent 的 Skill（能力包），安装后 AI 在你编写 DJI Cloud API 2 集成代码或操控设备时**自动加载**对应知识，确保生成正确、安全、符合规范的代码。
 
 ## Skill 列表
 
 | Skill | 层级 | 方向 | 说明 |
 |-------|------|------|------|
-| [`cloudapi2-sdk-core`](cloudapi2-sdk-core/) | 水平基础 | 后端 Java SDK | 6 条核心规则 + 6 场景范本 + 代码模板，教 AI 写正确的 SDK 集成代码 |
+| [`cloudapi2-sdk-core`](cloudapi2-sdk-core/) | 水平基础 | 后端 Java SDK | 6 条核心规则 + 7 场景范本 + 代码模板，教 AI 写正确的 SDK 集成代码 |
 | [`cloudapi2-frontend-component`](cloudapi2-frontend-component/) | 水平基础 | 前端组件 | FH2 PaaS 4 大前端组件（航线/驾驶舱/设备/回放）接入助手 |
 | [`cloudapi2-mcp-guide`](cloudapi2-mcp-guide/) | 水平基础 | MCP 工具路由 | 教 AI 在运行时选对 MCP Tool、编排多步调用 |
 | [`cloudapi2-device-management`](cloudapi2-device-management/) | 垂直场景 | 设备管理 | 设备管理模块扩展（OSD 订阅/HMS 告警/feature 模块创建） |
 | [`cloudapi2-sei-osd`](cloudapi2-sei-osd/) | 垂直场景 | SEI/OSD 遥测 | 帧级位置数据(SEI) + 设备遥测(OSD) 接入，含前端 Cesium 可视化 |
+| [`cloudapi2-map`](cloudapi2-map/) | 垂直场景 | 地图域 | 自定义飞行区/离线地图/解锁证书/地图元素接入（`SafetyServiceModule`/`ElementModule`） |
+| [`cloudapi2-payload`](cloudapi2-payload/) | 垂直场景 | PSDK 负载域 | 探照灯/喊话器/PSDK Widget/浮窗/UI 资源接入（`PsdkControlModule`/`PsdkResourceModule`），含喊话器音频 STS 直传 |
+| [`cloudapi2-ai`](cloudapi2-ai/) | 垂直场景 | AI 域 | AI Box 应用/机载 AI 识别与跟踪/AI 主动告警/AI Inside 算法生命周期/AI 目标检测告警接入（`AIBoxModule`/`OnboardAiModule`/`AIInsideManageModule`/`AiAlertModule`） |
 | [`cloudapi2-skeleton-deploy`](cloudapi2-skeleton-deploy/) | 垂直场景 | 部署 | FH Skeleton 三形态部署引导（普通机器/Docker/K8s），半自动 + 排障 |
 | [`cloudapi2-mcp-deploy`](cloudapi2-mcp-deploy/) | 垂直场景 | 部署 | DJI Cloud API 2 MCP Server Docker 部署引导（SSE 远程/stdio 本地），半自动 + 排障 |
-| [`cloudapi2-troubleshooting`](cloudapi2-troubleshooting/) | 横切 | 本地诊断 + 排障 | 本地采集/脱敏/静态判级（L1/L2/L3）+ 4 阶段 RCA + 错误码词典，单一入口一条流水线；`v2.0.0` 起并入原 `cloudapi2-diagnosis` |
+| [`cloudapi2-troubleshooting`](cloudapi2-troubleshooting/) | 横切 | 本地诊断 + 排障 | 本地采集/脱敏/静态判级（L1/L2/L3）+ 4 阶段 RCA + 错误码词典，单一入口一条流水线；`v2.0.0` 起并入原 `cloudapi2-diagnosis`（已删除） |
 | [`cloudapi2-feedback`](cloudapi2-feedback/) | 横切 | 问题反馈 | 问题反馈闭环（session 采集→脱敏→确认→issue 自动创建），无需错误码即可启动；共享 troubleshooting 的 `diag.sh` 脚本 |
-| [`cloudapi2-knowledge-ingest`](cloudapi2-knowledge-ingest/) | 横切 | 知识库入库 | 自动完成知识文档入库：获取内容 → 分析归属模块 → 格式化（含 LLM 生成 summary）→ 写入 + 重建索引 + Git 提交 |
-| [`cloudapi2-diagnosis`](cloudapi2-diagnosis/) | 横切 | 本地诊断（**已弃用**） | ⚠️ 已并入 `cloudapi2-troubleshooting` v2.0.0——固定命令集采集 + 正则脱敏 + 静态判级（L0-L3）本地闭环；目录保留作历史与设计走查，新实现请走 troubleshooting |
+| [`cloudapi2-knowledge-ingest`](cloudapi2-knowledge-ingest/) | 横切 | 知识库入库 | 把文档/URL/文本/飞书/Confluence 内容收录进 `knowledge/` 知识库并重建索引 |
 | [`_shared`](_shared/) | — | 共享模板 | SOP 模板 + 共享约束 SSOT + Skill 路由规则 + 输出格式标准（其他 Skill 引用） |
 
 > **层级说明**：水平基础层教通用规则（被垂直层引用）；垂直场景层教具体业务接入（引用水平层）；横切层不受场景限制。
@@ -48,18 +50,18 @@ claude plugin install superpowers
 
 ### 方式 1：Plugin 一键安装（推荐）
 
-本套 Skill 已打包为 `cloudapi2@dji` Plugin，一次安装即可获得全部 10 个 Skill。
+本套 Skill 已打包为 `cloudapi2@dji` Plugin（marketplace 名 `dji`，plugin 名 `cloudapi2`），一次安装即可获得全部 13 个安装可用 Skill。
 
 #### 前置条件
 
 - 已安装 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI（版本 ≥ 1.0）
-- 已有 Plugin 仓库（公开 Git 仓库地址）的读取权限
+- 能访问本仓库（`https://github.com/dji-sdk/dji-cloudapi2-devkit.git`；私有部署环境换成内部 Git 仓库地址）
 - Git 已配置可访问该仓库的凭证（HTTPS 或 SSH）
 
 #### 第 1 步：添加 Marketplace
 
 ```bash
-claude plugin marketplace add dji-sdk/Cloud-API-2
+claude plugin marketplace add https://github.com/dji-sdk/dji-cloudapi2-devkit.git
 ```
 
 > 此命令将 `dji` marketplace 注册到你的 Claude Code 配置中。只需执行一次。
@@ -70,7 +72,7 @@ claude plugin marketplace add dji-sdk/Cloud-API-2
 claude plugin install cloudapi2@dji
 ```
 
-> 此命令启用 `cloudapi2` plugin（包含全部 10 个 Skill）。安装完成后新开会话即生效。
+> 此命令启用 `cloudapi2` plugin（包含全部 13 个安装可用 Skill）。安装完成后新开会话即生效。
 
 #### 第 3 步：验证安装
 
@@ -103,8 +105,8 @@ claude plugin install cloudapi2@dji
 #### 第 1 步：Clone 仓库
 
 ```bash
-git clone https://github.com/dji-sdk/Cloud-API-2.git
-# 记住 clone 后的绝对路径，例如：/Users/yourname/projects/Cloud-API-2
+git clone https://github.com/dji-sdk/dji-cloudapi2-devkit.git
+# 记住 clone 后的绝对路径，例如：/Users/yourname/projects/dji-cloudapi2-devkit
 ```
 
 #### 第 2 步：编辑 settings.json
@@ -122,7 +124,7 @@ git clone https://github.com/dji-sdk/Cloud-API-2.git
     "dji": {
       "source": {
         "source": "directory",
-        "path": "/Users/yourname/projects/Cloud-API-2"  // ← 替换为实际路径
+        "path": "/Users/yourname/projects/dji-flighthub-devkit"  // ← 替换为实际路径
       }
     }
   }
@@ -147,7 +149,7 @@ claude   # 新开会话
 ### 方式 3：手动拷贝（不想配置 Plugin 时使用）
 
 ```bash
-cd Cloud-API-2/devkit
+cd dji-flighthub-devkit
 
 # Claude Code — 全部安装
 for d in skills/cloudapi2-*/; do cp -r "$d" ~/.claude/skills/; done
@@ -183,6 +185,9 @@ for d in skills/cloudapi2-*/; do cp -r "$d" .github/skills/; done
 | "接入航线编辑器组件" | `cloudapi2-frontend-component` | 提到 WaylineEditor / paas.js |
 | "添加 OSD 订阅功能" | `cloudapi2-device-management` | 提到 @EventListener / OsdUpdateEvent |
 | "怎么获取帧级位置数据" | `cloudapi2-sei-osd` | 提到 SEI / subscribeArSeiInfo |
+| "写代码创建一个圆形限飞区" | `cloudapi2-map` | 提到 `SafetyServiceModule` / `createCustomizedFlightAreas` / `syncCustomizedFlightAreas` |
+| "写代码控制 PSDK 探照灯" | `cloudapi2-payload` | 提到 `PsdkControlModule` / `connectDrcLink` / `searchlightModeSet` |
+| "写代码开启机载 AI 识别并跟踪目标" | `cloudapi2-ai` | 提到 `OnboardAiModule` / `AIIdentifySet` / `DrcAISpotlightZoomSelect` |
 | "帮我把 MCP Server 部署到服务器" | `cloudapi2-mcp-deploy` | 提到环境探测 / SSE 部署 / FH_SSE_AUTH_TOKEN |
 | "SDK 返回 error_code: 4001" | `cloudapi2-troubleshooting` | 提到 4 阶段 RCA |
 
@@ -195,7 +200,7 @@ for d in skills/cloudapi2-*/; do cp -r "$d" .github/skills/; done
 **Q: Plugin 安装后没有触发？**
 
 1. 确认 `claude plugin list` 输出中 `cloudapi2@dji` 状态为 enabled
-2. 如果用方式 2：确认 `path` 是绝对路径，指向仓库根目录（包含 `devkit/` 子目录的那一级）
+2. 如果用方式 2：确认 `path` 是绝对路径，指向仓库根目录（不是 `skills/` 子目录）
 3. 确认 JSON 格式正确 — 运行 `cat ~/.claude/settings.json | python3 -m json.tool` 验证
 4. 重启 Claude Code（新开终端窗口）
 
@@ -207,7 +212,7 @@ for d in skills/cloudapi2-*/; do cp -r "$d" .github/skills/; done
 
 **Q: 可以只安装部分 Skill 吗？**
 
-Plugin 模式安装全部 10 个 Skill（推荐）。如果只需要部分 Skill，使用方式 3 手动拷贝指定的 Skill 目录。
+Plugin 模式安装全部 13 个安装可用 Skill（推荐）。如果只需要部分 Skill，使用方式 3 手动拷贝指定的 Skill 目录。
 
 ---
 
@@ -233,9 +238,13 @@ Plugin 模式安装全部 10 个 Skill（推荐）。如果只需要部分 Skill
 
 ## 贡献指南
 
-1. 新建 Skill 目录：`skills/<skill-name>/`
-2. 编写 `SKILL.md`（必须包含 YAML frontmatter：name、description、version、author）
-3. 按需添加 `references/`、`snippets/`、`commands/` 子目录
-4. 编写 `README.md` 使用说明
-5. 更新本文件的 Skill 列表
-6. 提交 MR
+新增 Skill 请参照 **[CONTRIBUTING.md](CONTRIBUTING.md)**，包含：
+- 完整的目录结构和 SKILL.md 编写规范
+- 评测用例要求（L1 路由 eval 强制）
+- 发布前检查清单
+- CLI 脚手架一键生成骨架目录
+
+快速上手：
+```bash
+cd skill-eval && npm run eval -- scaffold <skill-name>
+```

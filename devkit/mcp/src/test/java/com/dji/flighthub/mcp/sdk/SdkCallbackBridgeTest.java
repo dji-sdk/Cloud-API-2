@@ -216,6 +216,18 @@ class SdkCallbackBridgeTest {
         assertTrue(ex instanceof RuntimeException);
     }
 
+    @Test
+    void sdkException_shouldKeepCause_whenCauseProvided() {
+        IllegalStateException rootCause = new IllegalStateException("反射调用失败");
+
+        SdkCallbackBridge.SdkException ex =
+                new SdkCallbackBridge.SdkException(-1, "Failed to set fly-to target", rootCause);
+
+        assertEquals(-1, ex.getErrorCode());
+        assertEquals("Failed to set fly-to target", ex.getMessage());
+        assertSame(rootCause, ex.getCause());
+    }
+
     // ==================== SdkTimeoutException ====================
 
     @Test

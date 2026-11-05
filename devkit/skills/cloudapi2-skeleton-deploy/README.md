@@ -1,6 +1,6 @@
 # cloudapi2-skeleton-deploy — FH Skeleton 部署助手
 
-帮 ISV 开发者将 FH Skeleton 部署到自有环境，**半自动引导式**：AI 探测环境、推荐形态、生成密钥与配置、给出精确命令，用户执行系统级操作并回报，AI 校验继续、遇错排障。
+帮集成商开发者将 FH Skeleton 部署到自有环境，**半自动引导式**：AI 探测环境、推荐形态、生成密钥与配置、给出精确命令，用户执行系统级操作并回报，AI 校验继续、遇错排障。
 
 ## 能力
 
@@ -16,7 +16,7 @@
 
 ## 安装
 
-推荐通过 `devkit@cloud-api2` Plugin 一键安装（见 [skills/README.md](../README.md#安装方式)）。
+推荐通过 `cloudapi2@dji` Plugin 一键安装（见 [skills/README.md](../README.md#安装方式)）。
 
 单独安装：
 

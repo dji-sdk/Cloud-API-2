@@ -45,7 +45,7 @@ import java.util.concurrent.CompletableFuture;
  * fh_flight_area_manage — 管理自定义飞行区（创建/更新/删除）。
  * 前置条件：已建立 session 且 workspace 可用。
  *
- * <p>安全等级：L1（写操作需确认；delete 不可逆）
+ * <p>安全等级：L2（uniform FLIGHT；写与删除均需确认）
  *
  * @author DJI FlightHub SDK Team
  */
@@ -100,7 +100,7 @@ public class FhFlightAreaManageTool extends AbstractMcpTool {
 
     @Override
     public SecurityLevel getSecurityLevel() {
-        return SecurityLevel.REVERSIBLE;
+        return SecurityLevel.FLIGHT;
     }
 
     /**
@@ -180,7 +180,7 @@ public class FhFlightAreaManageTool extends AbstractMcpTool {
             return noSessionError();
         }
 
-        // 1.5 安全等级硬拦截（session.maxSecurityLevel < L1 时直接拒绝）
+        // 1.5 安全等级硬拦截（session.maxSecurityLevel < L2 时直接拒绝）
         Map<String, Object> denied = enforceToolSecurityLevel();
         if (denied != null) {
             return denied;

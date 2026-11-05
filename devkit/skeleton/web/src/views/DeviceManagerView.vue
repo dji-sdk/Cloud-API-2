@@ -17,14 +17,20 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { getRuntimeConfig } from '@/utils/runtimeConfig'
-import { useFH2Config } from '@/composables/useFH2Config'
+import { useFH2Config, toWebSocketUrl } from '@/composables/useFH2Config'
 import { useSDKLoader } from '@/composables/useSDKLoader'
 import { injectLink, injectScriptUMD } from '@/utils/sdk'
+import { formatUnknownError } from '@/utils/paasMessages'
+import { usePaasAvailability, describePaasUnavailability } from '@/composables/usePaasAvailability'
 import SDKLoadingMask from '@/components/SDKLoadingMask.vue'
 import DevicesView from '@/views/DevicesView.vue'
 
-const { status, errorMsg, markReady, markError } = useSDKLoader()
+const { status, errorMsg, markReady } = useSDKLoader()
+// 与 AppTopNav 共用同一份探测结果，横幅文案才能说清「缺什么 + 当前配置 + 怎么补」
+const paas = usePaasAvailability()
 const useFallback = ref(false)
+/** 回退到后端设备列表的原因；为空表示主动按配置关闭 SDK，无需告警 */
+const fallbackReason = ref('')
 
 function isDeviceSdkEnabled(): boolean {
   return getRuntimeConfig('FH2_DEVICE_SDK_ENABLED', 'true') !== 'false'
@@ -39,13 +45,14 @@ onMounted(async () => {
 
   try {
     const cfg = useFH2Config()
-    const ip  = new URL(cfg.address).hostname
 
     // ① 预设 SDK 运行时环境变量（SDK 在加载阶段会读取这些值）
     const win = window as Record<string, unknown>
     win.CURRENT_BE_ENV_CONFIG = {
       server_url: cfg.baseUrl,
-      ws_url_web: `ws://${ip}:${cfg.port}/duplex/web`,
+      // ws 地址从 baseUrl 推导：协议随部署走 https→wss（避免 HTTPS 页面被 mixed content 拦截），
+      // 同源反代时保留 /fh2-gw 前缀，与 HTTP 请求走同一入口。
+      ws_url_web: toWebSocketUrl(cfg.baseUrl, '/duplex/web'),
       zone_id: '',
       zone_name: '',
       map_engine: 't',
@@ -69,8 +76,8 @@ onMounted(async () => {
       )
     }
 
-    // ④ 推送中心 WebSocket 地址
-    const wsUrl = `ws://${ip}:${cfg.port}/openapi/v0.9/notification/ws/v1/notifications`
+    // ④ 推送中心 WebSocket 地址：直接复用配置解析结果（协议随 https 切 wss、支持 FH2_WSS_URL 覆盖）
+    const wsUrl = cfg.wssUrl
 
     // ⑤ 鉴权配置（闭包形式，每次请求动态读取 token）
     const auth = {
@@ -114,7 +121,12 @@ onMounted(async () => {
 
     markReady()
   } catch (e: unknown) {
-    console.warn('[DeviceManagerView] FH2 SDK 加载失败，回退到后端设备列表:', e)
+    // 回退到后端设备列表仍然可用，属降级而非失败：记录原因后继续渲染，
+    // 不调用 markError（否则遮罩会盖住本可用的回退页面）。
+    console.warn('[DeviceManagerView] 底座设备管理 SDK 加载失败，回退到后端设备列表:', e)
+    // 优先用底座探测的结论：它知道是「未配置地址」还是「地址不通」，能给出可操作指引。
+    // 探测尚未完成（reason 为 null）或底座其实可达时返回空串，此时退回异常本身的信息。
+    fallbackReason.value = describePaasUnavailability(paas.availability.value) || formatUnknownError(e)
     useFallback.value = true
     markReady()
   }
@@ -134,7 +146,17 @@ onMounted(async () => {
     </template>
 
     <!-- 回退模式：FH2 SDK 不可用时展示后端设备列表 -->
-    <DevicesView v-else />
+    <template v-else>
+      <!--
+        降级提示：回退页面本身可用，但用户看到的信息比 SDK 模式少，
+        必须说明「为什么降级」，否则会被当成正常状态。
+      -->
+      <div v-if="fallbackReason" class="fallback-banner" role="status">
+        <span class="fallback-banner__title">已降级为后端设备列表</span>
+        <span class="fallback-banner__reason">{{ fallbackReason }}</span>
+      </div>
+      <DevicesView />
+    </template>
   </div>
 </template>
 
@@ -145,6 +167,29 @@ onMounted(async () => {
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.fallback-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 16px;
+  background: var(--app-warning-bg, #fffbe6);
+  border-bottom: 1px solid var(--app-warning-border, #ffe58f);
+  font-size: 12px;
+  color: var(--app-warning, #d48806);
+  flex-shrink: 0;
+}
+
+.fallback-banner__title {
+  font-weight: 600;
+}
+
+/* 错误文案含换行与长 URL，必须保留换行并允许断词 */
+.fallback-banner__reason {
+  white-space: pre-line;
+  word-break: break-all;
+  line-height: 1.6;
 }
 
 /* SDK 容器：白色底色供 SDK 浅色主题渲染，不设 overflow hidden（SDK 弹窗需要溢出） */

@@ -61,7 +61,7 @@ class AnnotationDrivenExecutionTest {
     /**
      * 只读 Tool：仅需 session，无 confirm，安全等级 L0。
      */
-    @McpTool(name = "test_read", description = "Read-only test tool")
+    @McpTool(name = "test_read", description = "Read-only test tool", securityLevel = SecurityLevel.READ_ONLY)
     static class ReadOnlyTool extends AbstractMcpTool {
 
         @McpParam(description = "Target device serial number", required = true)
@@ -109,6 +109,22 @@ class AnnotationDrivenExecutionTest {
                     Map.of("drone", ctx.getString("drone_sn"),
                             "action", ctx.getString("action")),
                     "Control command sent");
+        }
+    }
+
+    /**
+     * 测试注解默认值：securityLevel 省略时应返回 CRITICAL（fail-closed）。
+     */
+    @McpTool(name = "test_default_level", description = "Tool with default security level omitted")
+    static class DefaultLevelTool extends AbstractMcpTool {
+
+        DefaultLevelTool(SessionManager sm) {
+            super(sm);
+        }
+
+        @Override
+        protected Map<String, Object> doExecute(ToolContext ctx) {
+            return successResult(Map.of("result", "ok"), "Default level tool executed");
         }
     }
 
@@ -251,6 +267,13 @@ class AnnotationDrivenExecutionTest {
 
         ControlTool controlTool = new ControlTool(mockSessionManager);
         assertEquals(SecurityLevel.REVERSIBLE, controlTool.getSecurityLevel());
+    }
+
+    @Test
+    void annotatedTool_getSecurityLevel_shouldReturnCritical_whenSecurityLevelOmitted() {
+        // 注解中省略 securityLevel 时，应使用默认的 CRITICAL（fail-closed）
+        DefaultLevelTool tool = new DefaultLevelTool(mockSessionManager);
+        assertEquals(SecurityLevel.CRITICAL, tool.getSecurityLevel());
     }
 
     // ==================== confirm 校验 ====================

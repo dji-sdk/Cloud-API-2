@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 200" role="img" aria-label="Subscription lifecycle">
+  <rect width="920" height="200" fill="#fffbeb" rx="12" stroke="#fcd34d" stroke-width="1"/>
+  <text x="460" y="32" text-anchor="middle" fill="#92400e" font-family="PingFang SC, sans-serif" font-size="16" font-weight="700">推荐操作顺序（分步按钮，便于培训）</text>
+
+  <g font-family="PingFang SC, sans-serif">
+    <rect x="20" y="55" width="118" height="52" rx="8" fill="#e0f2fe" stroke="#0284c7"/>
+    <text x="79" y="78" text-anchor="middle" fill="#0369a1" font-size="11" font-weight="600">session/init</text>
+    <text x="79" y="95" text-anchor="middle" fill="#64748b" font-size="10">SDK init</text>
+
+    <text x="145" y="86" fill="#94a3b8" font-size="18">-&gt;</text>
+
+    <rect x="155" y="55" width="118" height="52" rx="8" fill="#e0f2fe" stroke="#0284c7"/>
+    <text x="214" y="78" text-anchor="middle" fill="#0369a1" font-size="11" font-weight="600">select device</text>
+    <text x="214" y="95" text-anchor="middle" fill="#64748b" font-size="10">MQTT slow</text>
+
+    <text x="280" y="86" fill="#94a3b8" font-size="18">-&gt;</text>
+
+    <rect x="290" y="55" width="100" height="52" rx="8" fill="#ccfbf1" stroke="#0d9488"/>
+    <text x="340" y="78" text-anchor="middle" fill="#0f766e" font-size="11" font-weight="600">WS connect</text>
+    <text x="340" y="95" text-anchor="middle" fill="#64748b" font-size="10">mqtt_osd</text>
+
+    <text x="398" y="86" fill="#94a3b8" font-size="18">-&gt;</text>
+
+    <rect x="408" y="55" width="100" height="52" rx="8" fill="#fef3c7" stroke="#d97706"/>
+    <text x="458" y="78" text-anchor="middle" fill="#b45309" font-size="11" font-weight="600">payload</text>
+    <text x="458" y="95" text-anchor="middle" fill="#64748b" font-size="10">pick lens</text>
+
+    <text x="516" y="86" fill="#94a3b8" font-size="18">-&gt;</text>
+
+    <rect x="526" y="55" width="118" height="52" rx="8" fill="#ffedd5" stroke="#ea580c"/>
+    <text x="585" y="78" text-anchor="middle" fill="#c2410c" font-size="11" font-weight="600">live/start</text>
+    <text x="585" y="95" text-anchor="middle" fill="#dc2626" font-size="10" font-weight="600">* subscribe SEI</text>
+
+    <text x="652" y="86" fill="#94a3b8" font-size="18">-&gt;</text>
+
+    <rect x="662" y="55" width="118" height="52" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="721" y="78" text-anchor="middle" fill="#15803d" font-size="11" font-weight="600">drc-link</text>
+    <text x="721" y="95" text-anchor="middle" fill="#64748b" font-size="10">laser + stick</text>
+
+    <text x="788" y="86" fill="#94a3b8" font-size="18">-&gt;</text>
+
+    <rect x="798" y="55" width="100" height="52" rx="8" fill="#f3e8ff" stroke="#9333ea"/>
+    <text x="848" y="86" text-anchor="middle" fill="#7e22ce" font-size="11" font-weight="600">stick/drag</text>
+  </g>
+
+  <rect x="40" y="130" width="840" height="52" rx="8" fill="#fef2f2" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="460" y="152" text-anchor="middle" fill="#b91c1c" font-size="12" font-weight="700" font-family="PingFang SC, sans-serif">反模式：在 connectDrc 里订 SEI，且 live==null 时跳过</text>
+  <text x="460" y="172" text-anchor="middle" fill="#991b1b" font-size="11" font-family="PingFang SC, sans-serif">参考: 0_整体方案 §7.4 · SeiSubscriptionService</text>
+</svg>

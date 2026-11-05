@@ -2,12 +2,16 @@
 
 设备管理 SDK（`UranusDeviceManagerApp`）是独立的 UMD bundle，**不依赖 `paas.js`**，可直接嵌入任何 HTML 页面使用。
 
-有 **两种接入模式**，根据是否已经在用 `paas.js` 选其一：
+> ⚠️ 设备管理**没有** `window.FH2.loadDevice` 这种 paas.js 集成模式——`FH2` 全局对象上不存在 `loadDevice`/`destroyDevice` 方法。无论是否已经在用 `paas.js`，接入设备管理都走同一套独立 SDK，只是存在新旧两个 API 版本（见下）。
 
-| 模式 | 入口 | 依赖 paas.js | 适用场景 |
-|---|---|---|---|
-| SDK 模式（推荐） | `setupDeviceManager` + `mountXxx` | 否 | ISV 独立页面 / 宿主自有 tab 体系按需加载各模块 |
-| paas.js 模式 | `window.FH2.loadDevice` | 是 | 与驾驶舱、航线等组件组合使用 |
+有 **两个 API 版本**，根据 SDK 构建批次选其一：
+
+| 版本 | 入口 | 适用场景 |
+|---|---|---|
+| 两层架构（KOC3+，推荐） | `setupDeviceManager` + `mountXxx` | 新项目 / 需要模块化挂载、主题定制 |
+| 旧版整包（已废弃，仅兼容） | `init()` | 遗留项目，SDK 尚未升级到 KOC3 |
+
+两者都通过同一份 `index.js`/`index.css` 加载，运行时通过判断 `window.UranusDeviceManagerApp` 上存在 `setupDeviceManager` 还是 `init` 方法来决定走哪条分支——建议接入代码同时兼容两种 API（见 1.6 完整示例的"自动检测"写法）。
 
 ---
 
@@ -121,7 +125,7 @@ handle.unmount()
 
 返回值为 `MountHandle`，包含 `unmount()` 方法用于卸载。
 
-> 完整模块列表（`mountDeviceList`、`mountDeviceDetail`、`mountHms` 等）及各模块 `props` / `on` 参数详见平台侧模块化文档（ISV 可向平台方索取）。
+> 完整模块列表（`mountDeviceList`、`mountDeviceDetail`、`mountHms` 等）及各模块 `props` / `on` 参数详见平台侧模块化文档（集成商可向平台方索取）。
 
 ### 1.6 完整初始化示例（推荐）
 
@@ -190,7 +194,7 @@ window.addEventListener('load', async function () {
 
 ### 1.8 旧版 `init()` 接口（已废弃，仅兼容）
 
-> **Deprecated**：KOC3 起不再推荐使用。新宿主请直接使用 `setupDeviceManager` + `mountXxx` 两层架构。旧版 `init()` 仍然可用，但不支持模块化挂载、插槽、`antThemeBaseUrl` 等新能力。
+> **Deprecated**：KOC3 起不再推荐使用。新宿主请直接使用 `setupDeviceManager` + `mountXxx` 两层架构。旧版 `init()` 仍然可用，`antThemeBaseUrl` 等主题相关字段**照样支持**（`IDeviceManagerInitOptions` 类型里就有），真正不支持的是**模块化挂载和插槽**——`init()` 是整包一次性渲染，没有 `mountXxx`/`unmount()` 这种按模块独立挂载/卸载的能力。
 
 ```typescript
 window.UranusDeviceManagerApp.init(options: IDeviceManagerOptions): Promise<void>
@@ -316,45 +320,14 @@ await window.UranusDeviceManagerApp.setupDeviceManager({
 
 ---
 
-## 三、paas.js 模式 `FH2.loadDevice`
+## 三、新旧两版 API 对比
 
-### 3.1 前置条件
-
-- 已加载 `paas.js`
-- 已调用 `FH2.initConfig`（见 paas.js 初始化流程）
-
-### 3.2 DOM 容器
-
-```html
-<div id="device-manager-app-container"></div>
-<div id="map-app-global"></div>
-```
-
-### 3.3 调用
-
-```javascript
-window.FH2.loadDevice('device-manager-app-container', {
-  deviceType: 'airport',   // 'airport' = 机场列表，'aircraft' = 无人机列表
-})
-```
-
-`deviceType` 可选；不传默认显示机场列表。
-
-### 3.4 销毁
-
-```javascript
-window.FH2.destroyDevice()  // 返回 Promise
-  .then(function () { console.log('设备管理已卸载') })
-```
-
----
-
-## 四、SDK 模式与 paas.js 模式对比
-
-| 对比项 | SDK 模式（`setupDeviceManager` + `mountXxx`） | paas.js 模式（`FH2.loadDevice`） |
+| 对比项 | 两层架构（`setupDeviceManager` + `mountXxx`，推荐） | 旧版整包（`init()`，已废弃） |
 |---|---|---|
-| 依赖 paas.js | 否，完全独立 | 是，需先加载 paas.js |
-| 接入复杂度 | 低，单文件引入 + 全局 `setupDeviceManager` 一次 + 按需 `mountXxx` | 较高，需配合 FH2 完整初始化流程 |
-| 模块化挂载 | 支持，各模块独立 mount/unmount | 不支持，整体加载 |
-| 主题定制 | 完整支持（light/dark/自定义 ThemeTokens） | 受限于 FH2 全局主题 |
-| 适用场景 | ISV 独立页面 / 宿主自有 tab 体系按需加载各模块 | 与驾驶舱、航线等组件组合使用 |
+| 接入复杂度 | 全局 `setupDeviceManager` 一次 + 按需 `mountXxx` | 一次 `init()` 调用整体渲染 |
+| 模块化挂载 | 支持，各模块独立 mount/unmount | 不支持，整体加载/卸载 |
+| 容器传入时机 | `mountXxx({ container })`，挂载各模块时传 | `init({ containerId })`，初始化时一次性传 |
+| 主题定制 | 完整支持（light/dark/自定义 ThemeTokens，`antThemeBaseUrl` 均支持） | 同样支持（`antThemeBaseUrl` 等主题字段两版都有） |
+| 适用场景 | 新项目 | 遗留项目兼容，不建议新代码使用 |
+
+> 两版都是**完全独立于 paas.js** 的同一个 UMD SDK，差异只在新旧 API 层面，不存在"是否依赖 paas.js"的分野。实际接入代码建议像 skeleton/web 的 `DeviceManagerView.vue` 一样，运行时探测 `window.UranusDeviceManagerApp.setupDeviceManager`/`.init` 哪个存在，自动选择对应分支，以兼容不同批次的 SDK 构建。

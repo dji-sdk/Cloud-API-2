@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -34,10 +35,13 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
@@ -69,7 +73,7 @@ public class McpClient {
      *
      * <p>SSE 连接 URL = baseUrl + MCP_BASE_PATH + "/sse"。
      * MCP Server 在 sse profile 下始终配置该 base-path，故此处按常量处理；
-     * 若 ISV 自定义 mcp base-path，需同步调整。
+     * 若集成商自定义 mcp base-path，需同步调整。
      */
     private static final String MCP_BASE_PATH = "/pf-devkit/ai-plugin/mcp";
 
@@ -77,7 +81,7 @@ public class McpClient {
      * 历史遗留 base-path 前缀清单（升级兼容）。
      *
      * <p>{@link #MCP_BASE_PATH} 由 {@code /ai-plugin/mcp} 变更为 {@code /pf-devkit/ai-plugin/mcp} 后，
-     * 上一版本若 ISV 把完整旧前缀写进 {@code fh.chat.mcp.url}
+     * 上一版本若集成商把完整旧前缀写进 {@code fh.chat.mcp.url}
      * （如 {@code http://host:8080/ai-plugin/mcp}），旧代码会剥离为 {@code http://host:8080}；
      * 新常量只认新前缀，旧前缀不再被剥离，会导致 connect() 拼出双重路径而 404。
      * 此处保留对历史前缀的幂等剥离，保证平滑升级。设计约定仍要求 url 仅填 host:port。
@@ -121,8 +125,23 @@ public class McpClient {
     /** 重连最大延迟（毫秒） */
     private final long reconnectMaxDelayMs;
 
+    /** 重连退避抖动比例（0 表示关闭抖动） */
+    private final double reconnectJitterRatio;
+
+    /** 重连延迟的绝对上限（毫秒），用于约束异常大的 Retry-After */
+    private final long retryAfterMaxMs;
+
     /** 重连调度器 */
     private final ScheduledExecutorService reconnectScheduler;
+
+    /**
+     * 心跳保活调度器。
+     *
+     * <p>与 {@link #reconnectScheduler} 分开，原因是重连任务会同步阻塞在
+     * {@link #connectAndInitialize()}（最长 {@code connectTimeout}），
+     * 若共用单线程，一次阻塞的重连会连带饿死保活检查，把"连接慢"放大成"心跳超时"。
+     */
+    private final ScheduledExecutorService keepaliveScheduler;
 
     /** 是否启用心跳保活 */
     private final boolean keepaliveEnabled;
@@ -136,8 +155,44 @@ public class McpClient {
     /** ping 请求超时（毫秒），固定 5 秒 */
     private static final long PING_TIMEOUT_MS = 5000L;
 
+    /**
+     * 判定连接"稳定可用"的最短存活时长（毫秒）。
+     *
+     * <p>连接存活超过该时长后再次断开，视为一次独立故障，退避重置回 attempt=1；
+     * 短于该时长的连接视为"连上即断"，退避继续累加，避免在服务端尚未恢复时反复打满重连。
+     */
+    private static final long MIN_STABLE_CONNECTION_MS = 30_000L;
+
+    /** 服务端未返回 Retry-After 时的兜底等待时长（毫秒） */
+    private static final long DEFAULT_RETRY_AFTER_MS = 60_000L;
+
+    /** Retry-After 响应头名 */
+    private static final String RETRY_AFTER_HEADER = "Retry-After";
+
+    /** HTTP 限流状态码 */
+    private static final int HTTP_TOO_MANY_REQUESTS = 429;
+
+    /** 指数退避的最大移位数，避免 {@code 1L << n} 溢出为负数 */
+    private static final int MAX_BACKOFF_SHIFT = 30;
+
     /** 最后一次收到服务端 heartbeat 事件的时间（毫秒） */
     private volatile long lastHeartbeatReceivedAt = 0;
+
+    /** 最后一次 SSE 连接成功建立的时间（毫秒），用于判断连接是否曾稳定 */
+    private volatile long lastConnectSucceededAt = 0;
+
+    /** 服务端要求的最早可重试时刻（epoch 毫秒），0 表示无限制 */
+    private volatile long retryNotBeforeEpochMs = 0;
+
+    /**
+     * 重连链占用标志（single-flight）。
+     *
+     * <p>不变量：<b>任意时刻最多只有一条重连链</b>。断连事件可能来自 SSE reader finally、
+     * 请求超时、保活检查、callTool 同步重连等多个入口，若无此标志，
+     * 每个入口都会从 attempt=1 拉起一条独立的重连链，链数量指数增长后，
+     * 客户端自身流量就足以把服务端限流打满，形成 429 死锁。
+     */
+    private final AtomicBoolean reconnectInFlight = new AtomicBoolean(false);
 
     /** 定时保活任务引用 */
     private volatile ScheduledFuture<?> keepaliveTask = null;
@@ -158,6 +213,14 @@ public class McpClient {
     private volatile Runnable onReconnectedCallback = null;
 
     /**
+     * 最近一条重连链生效的 attempt。
+     *
+     * <p>连接"连上即断"（存活短于 {@link #MIN_STABLE_CONNECTION_MS}）时，下一条链从该值继续累加，
+     * 避免每次断开都从 attempt=1（初始延迟）重新开始，把指数退避退化成固定间隔。
+     */
+    private final AtomicInteger lastReconnectAttempt = new AtomicInteger(0);
+
+    /**
      * 构造 McpClient。
      *
      * @param properties MCP 连接配置
@@ -171,6 +234,8 @@ public class McpClient {
         this.reconnectMaxAttempts = properties.getReconnectMaxAttempts();
         this.reconnectInitialDelayMs = properties.getReconnectInitialDelay().toMillis();
         this.reconnectMaxDelayMs = properties.getReconnectMaxDelay().toMillis();
+        this.reconnectJitterRatio = properties.getReconnectJitterRatio();
+        this.retryAfterMaxMs = properties.getRetryAfterMax().toMillis();
         this.keepaliveEnabled = properties.isKeepaliveEnabled();
         this.keepaliveIntervalMs = properties.getKeepaliveInterval().toMillis();
         this.heartbeatTimeoutMs = properties.getHeartbeatTimeout().toMillis();
@@ -182,15 +247,20 @@ public class McpClient {
             t.setDaemon(true);
             return t;
         });
+        this.keepaliveScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "mcp-keepalive");
+            t.setDaemon(true);
+            return t;
+        });
     }
 
     /**
-     * 规范化 baseUrl：去除尾部斜杠；若 ISV 已在 url 中带上 MCP_BASE_PATH 前缀则剥离并告警，
+     * 规范化 baseUrl：去除尾部斜杠；若集成商已在 url 中带上 MCP_BASE_PATH 前缀则剥离并告警，
      * 避免 connect() 再拼一次 MCP_BASE_PATH 造成双重前缀（如
      * {@code http://host:8080/pf-devkit/ai-plugin/mcp} + {@code /pf-devkit/ai-plugin/mcp/sse}）。
      *
      * <p>设计约定（见设计文档 D5）：{@code fh.chat.mcp.url} 仅填 host:port，不带 base-path。
-     * 此处做幂等兜底，捕获 ISV 把前缀写进 url 的常见误配。
+     * 此处做幂等兜底，捕获集成商把前缀写进 url 的常见误配。
      *
      * <p>同时兼容历史前缀（{@link #LEGACY_MCP_BASE_PATHS}）：从上一版本升级且 url 仍带旧 base-path
      * （如 {@code /ai-plugin/mcp}）时同样剥离，避免升级后静默 404。
@@ -245,6 +315,9 @@ public class McpClient {
             this.initialized = true;
             this.connected = true;
             this.lastHeartbeatReceivedAt = System.currentTimeMillis();
+            this.lastConnectSucceededAt = System.currentTimeMillis();
+            // 连接成功说明限流窗口已过，清空服务端要求的最早重试时刻
+            this.retryNotBeforeEpochMs = 0;
             startKeepalive();
             LOG.info("McpClient 连接并初始化成功，messageEndpoint={}", messageEndpoint.get());
         } catch (Exception e) {
@@ -260,6 +333,9 @@ public class McpClient {
     private void connect() {
         String sseUrl = baseUrl + MCP_BASE_PATH + "/sse";
         LOG.info("连接 MCP Server SSE: {}", sseUrl);
+
+        // 先中断旧 reader：旧线程若仍阻塞在 readLine 上，会一直占着连接和线程
+        interruptStaleSseThread();
 
         CompletableFuture<String> endpointFuture = new CompletableFuture<>();
 
@@ -284,6 +360,24 @@ public class McpClient {
     }
 
     /**
+     * 中断残留的旧 SSE reader 线程。
+     *
+     * <p>新连接建立前，旧 reader 可能仍阻塞在 {@code readLine()} 上（例如服务端非 200 返回后
+     * 未关闭 body、或半开连接），不中断会持续占用线程与连接。
+     *
+     * <p>先清空 {@link #activeSseThread} 再中断：旧 reader 的 finally 会比对自身是否为活跃 reader，
+     * 若此时引用仍指向旧线程，它会误判为"当前连接断开"而把刚建立的新连接标记为断连。
+     */
+    private void interruptStaleSseThread() {
+        Thread stale = activeSseThread;
+        activeSseThread = null;
+        if (stale != null && stale.isAlive() && stale != Thread.currentThread()) {
+            LOG.info("中断残留的 SSE reader 线程: {}", stale.getName());
+            stale.interrupt();
+        }
+    }
+
+    /**
      * 持续读取 SSE 流，解析事件并分发响应。
      *
      * @param sseUrl SSE 连接 URL
@@ -297,12 +391,19 @@ public class McpClient {
             applyAuthHeader(requestBuilder);
             HttpRequest request = requestBuilder.build();
 
-            HttpResponse<java.io.InputStream> response = httpClient.send(request,
+            HttpResponse<InputStream> response = httpClient.send(request,
                     HttpResponse.BodyHandlers.ofInputStream());
 
             if (response.statusCode() != 200) {
+                int statusCode = response.statusCode();
+                // 429 时记录服务端要求的重试时刻，供后续退避计算使用；必须先于关闭 body 读取 header
+                if (statusCode == HTTP_TOO_MANY_REQUESTS) {
+                    recordRetryNotBefore(response.headers().firstValue(RETRY_AFTER_HEADER).orElse(null));
+                }
+                // 非 200 也必须关闭 body，否则连接与底层线程会泄漏（对应线上线程数暴涨）
+                closeQuietly(response.body());
                 endpointFuture.completeExceptionally(
-                        new McpClientException("SSE 连接失败，HTTP " + response.statusCode()));
+                        new McpClientException("SSE 连接失败，HTTP " + statusCode));
                 return;
             }
 
@@ -346,22 +447,42 @@ public class McpClient {
             }
         } finally {
             // 仅当前线程是活跃 reader 时才触发状态变更和重连（防止旧 reader 覆盖新连接）
-            boolean isActiveReader = Thread.currentThread() == activeSseThread;
-            if (isActiveReader) {
-                connected = false;
-                messageEndpoint.set(null);
-                McpClientException disconnectEx =
-                        new McpClientException("SSE 连接已断开，请求无法完成");
-                pendingRequests.forEach((id, future) -> future.completeExceptionally(disconnectEx));
-                pendingRequests.clear();
-            }
-
-            // 触发自动重连（仅活跃 reader 断开、曾经初始化成功且未关闭时）
-            if (isActiveReader && initialized && reconnectEnabled && !shuttingDown) {
-                LOG.info("SSE 连接断开，将启动自动重连...");
-                scheduleReconnect(1);
+            if (Thread.currentThread() == activeSseThread) {
+                notifyDisconnected("SSE 流结束");
             }
         }
+    }
+
+    /**
+     * 统一处理"连接已断开"：清理连接态并向重连链移交。
+     *
+     * <p>所有断连入口（SSE reader 结束、请求超时、保活失败）都必须经过此方法，
+     * 保证三件事同时发生：标记断连、取消保活、交由 single-flight 重连链处理。
+     * 各入口若自行拼装这几步，容易出现遗漏（例如漏停保活，导致保活线程另起一条重连链）。
+     *
+     * @param reason 断连原因，仅用于日志
+     */
+    private void notifyDisconnected(String reason) {
+        stopKeepalive();
+        connected = false;
+        messageEndpoint.set(null);
+        McpClientException disconnectEx = new McpClientException("SSE 连接已断开，请求无法完成");
+        pendingRequests.forEach((id, future) -> future.completeExceptionally(disconnectEx));
+        pendingRequests.clear();
+
+        if (!initialized || !reconnectEnabled || shuttingDown) {
+            return;
+        }
+        // 连接存活足够久才视为独立故障、重置退避；"连上即断"要继续累加，避免退避名存实亡
+        long now = System.currentTimeMillis();
+        int nextAttempt = 1;
+        if (lastConnectSucceededAt > 0 && now - lastConnectSucceededAt < MIN_STABLE_CONNECTION_MS) {
+            nextAttempt = lastReconnectAttempt.get() + 1;
+            LOG.info("{}：上次连接存活仅 {}ms（< {}ms），沿用退避进度 attempt={}",
+                    reason, now - lastConnectSucceededAt, MIN_STABLE_CONNECTION_MS, nextAttempt);
+        }
+        LOG.info("{}，将启动自动重连...", reason);
+        scheduleReconnect(nextAttempt);
     }
 
     /**
@@ -403,36 +524,156 @@ public class McpClient {
     /**
      * 调度一次重连尝试，使用指数退避策略。
      *
+     * <p><b>single-flight 语义</b>：方法通过 {@link #reconnectInFlight} 保证任意时刻只有一条重连链。
+     * 未抢到标志的调用方说明已有链在跑，直接返回——这正是旧实现的问题所在：
+     * 旧代码每个断连入口都无条件拉起一条从 attempt=1 开始的新链，链数量随失败次数增长，
+     * 最终客户端自身流量就打满服务端限流。
+     *
+     * <p>标志只在三种情况下释放：重连成功、达到最大尝试次数、关闭/禁用重连。
+     * 单次失败<b>不释放</b>，而是以 {@code attempt + 1} 继续调度，从而保持退避单调递增。
+     *
      * @param attempt 当前尝试次数（从 1 开始）
      */
     private void scheduleReconnect(int attempt) {
         if (!reconnectEnabled || shuttingDown) {
+            reconnectInFlight.set(false);
             return;
         }
         if (attempt > reconnectMaxAttempts) {
             LOG.error("SSE 重连失败，已达到最大尝试次数 {}，放弃重连", reconnectMaxAttempts);
+            reconnectInFlight.set(false);
+            return;
+        }
+        if (!reconnectInFlight.compareAndSet(false, true)) {
+            // 已有重连链在跑，本次断连事件并入既有链（其 attempt 已在累加）
+            LOG.debug("已有重连链在执行，忽略本次重连请求（attempt={}）", attempt);
             return;
         }
 
-        long delay = Math.min(
-                reconnectInitialDelayMs * (1L << Math.min(attempt - 1, 30)),
-                reconnectMaxDelayMs
-        );
+        lastReconnectAttempt.set(attempt);
+        scheduleReconnectAttempt(attempt);
+    }
+
+    /**
+     * 按退避延迟调度第 {@code attempt} 次重连。
+     *
+     * <p>调用前必须已持有 {@link #reconnectInFlight}，方法内部不做抢占。
+     *
+     * @param attempt 尝试次数（从 1 开始）
+     */
+    private void scheduleReconnectAttempt(int attempt) {
+        long delay = computeReconnectDelayMs(attempt);
         LOG.info("SSE 重连调度：第 {} 次尝试，延迟 {}ms", attempt, delay);
 
-        reconnectScheduler.schedule(() -> {
-            if (shuttingDown) {
+        try {
+            reconnectScheduler.schedule(() -> performReconnectAttempt(attempt),
+                    delay, TimeUnit.MILLISECONDS);
+        } catch (RejectedExecutionException e) {
+            // 调度器已关闭（shutdown 竞态），交还标志避免状态永久卡住
+            LOG.debug("重连调度器已关闭，放弃本次重连调度");
+            reconnectInFlight.set(false);
+        }
+    }
+
+    /**
+     * 执行第 {@code attempt} 次重连，失败则沿同一条链继续下一次。
+     *
+     * @param attempt 尝试次数（从 1 开始）
+     */
+    private void performReconnectAttempt(int attempt) {
+        if (shuttingDown) {
+            reconnectInFlight.set(false);
+            return;
+        }
+        try {
+            connectAndInitialize();
+            LOG.info("SSE 重连成功（第 {} 次尝试），messageEndpoint={}", attempt, messageEndpoint.get());
+            lastReconnectAttempt.set(0);
+            // 成功后才交还标志，保证链内 attempt 单调递增
+            reconnectInFlight.set(false);
+            invokeReconnectedCallback();
+        } catch (Exception e) {
+            LOG.warn("SSE 重连失败（第 {} 次尝试）: {}", attempt, e.getMessage());
+            // 不释放标志：沿同一条链以 attempt + 1 继续，保持退避累加。
+            // 此处必须直接调 scheduleReconnectAttempt——再走 scheduleReconnect 会被自己的 CAS 挡掉
+            int nextAttempt = attempt + 1;
+            if (nextAttempt > reconnectMaxAttempts) {
+                LOG.error("SSE 重连失败，已达到最大尝试次数 {}，放弃重连", reconnectMaxAttempts);
+                reconnectInFlight.set(false);
                 return;
             }
+            lastReconnectAttempt.set(nextAttempt);
+            scheduleReconnectAttempt(nextAttempt);
+        }
+    }
+
+    /**
+     * 计算第 {@code attempt} 次重连的延迟（毫秒）。
+     *
+     * <p>基础值是指数退避 {@code min(initial * 2^(attempt-1), maxDelay)}，再叠加抖动打散多实例同步重连。
+     * 若服务端通过 429 的 {@code Retry-After} 给出了最早可重试时刻，则不得早于该时刻——
+     * 此时改用 {@link #retryAfterMaxMs} 作为上限，否则 {@code reconnectMaxDelay}（默认 30s）
+     * 会把服务端要求的 60s 窗口截断，等于无视限流继续打。
+     *
+     * @param attempt 尝试次数（从 1 开始）
+     * @return 延迟毫秒数
+     */
+    private long computeReconnectDelayMs(int attempt) {
+        long backoff = reconnectInitialDelayMs * (1L << Math.min(attempt - 1, MAX_BACKOFF_SHIFT));
+        backoff = Math.max(backoff, reconnectInitialDelayMs);
+        backoff = Math.min(backoff, reconnectMaxDelayMs);
+
+        // 抖动只向下收缩（[1-jitter, 1]），保证不会超过已确定的退避上限
+        if (reconnectJitterRatio > 0) {
+            double factor = 1.0 - ThreadLocalRandom.current().nextDouble() * reconnectJitterRatio;
+            backoff = (long) (backoff * factor);
+        }
+
+        long notBefore = retryNotBeforeEpochMs;
+        if (notBefore <= 0) {
+            return backoff;
+        }
+        long wait = notBefore - System.currentTimeMillis();
+        if (wait <= 0) {
+            return backoff;
+        }
+        // 有 Retry-After 时以 retryAfterMaxMs 为上限，而不是 reconnectMaxDelayMs
+        return Math.min(Math.max(backoff, wait), retryAfterMaxMs);
+    }
+
+    /**
+     * 记录服务端要求的最早可重试时刻（来自 HTTP 429 的 {@code Retry-After}）。
+     *
+     * @param retryAfterHeader Retry-After 头值（秒）；为空或非法时使用兜底值
+     */
+    private void recordRetryNotBefore(String retryAfterHeader) {
+        long seconds = DEFAULT_RETRY_AFTER_MS / 1000L;
+        if (retryAfterHeader != null && !retryAfterHeader.isBlank()) {
             try {
-                connectAndInitialize();
-                LOG.info("SSE 重连成功（第 {} 次尝试），messageEndpoint={}", attempt, messageEndpoint.get());
-                invokeReconnectedCallback();
-            } catch (Exception e) {
-                LOG.warn("SSE 重连失败（第 {} 次尝试）: {}", attempt, e.getMessage());
-                scheduleReconnect(attempt + 1);
+                seconds = Long.parseLong(retryAfterHeader.trim());
+            } catch (NumberFormatException e) {
+                LOG.debug("无法解析 Retry-After={}，使用兜底 {}ms", retryAfterHeader, DEFAULT_RETRY_AFTER_MS);
+                seconds = DEFAULT_RETRY_AFTER_MS / 1000L;
             }
-        }, delay, TimeUnit.MILLISECONDS);
+        }
+        this.retryNotBeforeEpochMs = System.currentTimeMillis() + seconds * 1000L;
+        LOG.warn("MCP Server 限流，最早可重试时刻距今 {}s", seconds);
+    }
+
+    /**
+     * 静默关闭输入流，忽略关闭异常。
+     *
+     * @param stream 待关闭的流，可为 null
+     */
+    private static void closeQuietly(InputStream stream) {
+        if (stream == null) {
+            return;
+        }
+        try {
+            stream.close();
+        } catch (IOException e) {
+            LOG.debug("关闭 SSE 响应流失败: {}", e.getMessage());
+        }
     }
 
     /**
@@ -451,7 +692,7 @@ public class McpClient {
     }
 
     /**
-     * 关闭 McpClient，停止重连调度器。
+     * 关闭 McpClient，停止重连与保活调度器。
      *
      * <p>由 Spring 容器在 bean 销毁时调用。
      */
@@ -459,7 +700,10 @@ public class McpClient {
         shuttingDown = true;
         connected = false;
         stopKeepalive();
+        keepaliveScheduler.shutdownNow();
         reconnectScheduler.shutdownNow();
+        // 释放重连锁标志，避免关闭后仍有调用方 CAS 失败而误判"正在重连"
+        reconnectInFlight.set(false);
         McpClientException shutdownEx = new McpClientException("McpClient 正在关闭");
         pendingRequests.forEach((id, future) -> future.completeExceptionally(shutdownEx));
         pendingRequests.clear();
@@ -518,15 +762,7 @@ public class McpClient {
     public String callTool(String toolName, Map<String, Object> arguments) {
         // 若已知断连，先同步重连再调用
         if (!connected && initialized && reconnectEnabled && !shuttingDown) {
-            LOG.info("callTool 检测到断连状态，尝试同步重连...");
-            try {
-                connectAndInitialize();
-                LOG.info("同步重连成功，继续执行 tool={}", toolName);
-                invokeReconnectedCallback();
-            } catch (Exception e) {
-                LOG.warn("同步重连失败: {}", e.getMessage());
-                throw new McpClientException("MCP Server 连接已断开且重连失败: " + e.getMessage(), e);
-            }
+            syncReconnectBeforeCall(toolName);
         }
 
         ensureInitialized();
@@ -557,6 +793,41 @@ public class McpClient {
             }
         }
         return result != null ? result.toString() : "{}";
+    }
+
+    /**
+     * 调用前发现断连时，同步执行一次重连。
+     *
+     * <p>同步路径与后台重连链共享 {@link #reconnectInFlight}：若后台链正在跑，
+     * 这里不再另起一次连接（否则又是一条并发重连），直接快速失败让上层稍后重试。
+     * 同步路径是一次性的、不成链，因此无论成功失败都要释放标志。
+     *
+     * @param toolName 即将调用的 tool 名称，仅用于日志
+     * @throws McpClientException 后台正在重连、处于限流窗口内，或本次重连失败时抛出
+     */
+    private void syncReconnectBeforeCall(String toolName) {
+        long notBefore = retryNotBeforeEpochMs;
+        if (notBefore > System.currentTimeMillis()) {
+            // 处于服务端限流窗口内，此时重连只会继续吃 429
+            throw new McpRateLimitedException(
+                    "MCP Server 限流中，请稍后重试（约 " + (notBefore - System.currentTimeMillis()) + "ms 后）",
+                    notBefore - System.currentTimeMillis());
+        }
+        if (!reconnectInFlight.compareAndSet(false, true)) {
+            throw new McpClientException("MCP Server 正在重连中，请稍后重试");
+        }
+
+        LOG.info("callTool 检测到断连状态，尝试同步重连...");
+        try {
+            connectAndInitialize();
+            LOG.info("同步重连成功，继续执行 tool={}", toolName);
+            invokeReconnectedCallback();
+        } catch (Exception e) {
+            LOG.warn("同步重连失败: {}", e.getMessage());
+            throw new McpClientException("MCP Server 连接已断开且重连失败: " + e.getMessage(), e);
+        } finally {
+            reconnectInFlight.set(false);
+        }
     }
 
     /**
@@ -618,14 +889,17 @@ public class McpClient {
         try {
             postMessage(request);
             return responseFuture.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (McpRateLimitedException e) {
+            // 限流不是断连：连接仍在，重连只会把限流窗口内剩余配额继续打满。
+            // 因此这里既不标记断连、也不触发重连，直接把异常抛给调用方。
+            pendingRequests.remove(id);
+            throw e;
         } catch (TimeoutException e) {
             pendingRequests.remove(id);
-            // SSE 连接表面存活但 session 已失效（MCP Server 重启），标记断连触发重连
+            // SSE 连接表面存活但 session 已失效（MCP Server 重启），标记断连触发重连。
+            // 走 notifyDisconnected 而非手工置位，确保保活任务一并停止（否则保活会另起一条重连链）
             LOG.warn("JSON-RPC 响应超时 method={}，疑似 SSE session 失效，触发重连", method);
-            connected = false;
-            if (initialized && reconnectEnabled && !shuttingDown) {
-                scheduleReconnect(1);
-            }
+            notifyDisconnected("JSON-RPC 响应超时");
             throw new McpClientException("JSON-RPC 响应超时 method=" + method
                     + "（已触发重连，请稍后重试）", e);
         } catch (Exception e) {
@@ -676,6 +950,16 @@ public class McpClient {
             HttpResponse<String> response = httpClient.send(request,
                     HttpResponse.BodyHandlers.ofString());
 
+            if (response.statusCode() == HTTP_TOO_MANY_REQUESTS) {
+                // 限流必须显式上报，不能只打日志后返回——否则调用方会阻塞到超时，
+                // 再把"限流"误判成"session 失效"而去重连，形成 429 死锁
+                String retryAfter = response.headers().firstValue(RETRY_AFTER_HEADER).orElse(null);
+                recordRetryNotBefore(retryAfter);
+                long waitMs = Math.max(0L,
+                        retryNotBeforeEpochMs - System.currentTimeMillis());
+                throw new McpRateLimitedException(
+                        "MCP Server 限流（HTTP 429），请等待约 " + waitMs + "ms 后重试", waitMs);
+            }
             if (response.statusCode() >= 400) {
                 LOG.warn("POST message 返回 HTTP {}: {}", response.statusCode(), response.body());
             }
@@ -751,7 +1035,7 @@ public class McpClient {
             return;
         }
         stopKeepalive();
-        keepaliveTask = reconnectScheduler.scheduleAtFixedRate(
+        keepaliveTask = keepaliveScheduler.scheduleAtFixedRate(
                 this::performKeepaliveCheck,
                 keepaliveIntervalMs,
                 keepaliveIntervalMs,
@@ -831,14 +1115,10 @@ public class McpClient {
     }
 
     /**
-     * 由保活检查触发的重连：停止保活任务、标记断连、调度重连。
+     * 由保活检查触发的重连：统一交给 {@link #notifyDisconnected(String)} 处理。
      */
     private void triggerKeepaliveReconnect() {
-        stopKeepalive();
-        connected = false;
-        if (initialized && reconnectEnabled && !shuttingDown) {
-            scheduleReconnect(1);
-        }
+        notifyDisconnected("心跳保活失败");
     }
 
     /**

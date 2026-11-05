@@ -46,7 +46,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class RealSdkAutoConfiguration {
 
     /**
-     * SdkInvoker 默认实现，ISV 可通过自家 bean 覆盖。
+     * SdkInvoker 默认实现，集成商 可通过自家 bean 覆盖。
      */
     @Bean
     @ConditionalOnMissingBean(SdkInvoker.class)

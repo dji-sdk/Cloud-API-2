@@ -1,6 +1,6 @@
 # cloudapi2-sei-osd — SEI/OSD 实时遥测数据接入助手
 
-帮 ISV 开发者正确接入 DJI CloudAPI2 的 **SEI（帧级位置数据）** 和 **OSD（设备遥测数据）**，解决"怎么拿到每一帧画面对应的、准确的、足够高频的位置数据"这一最集中的 ISV 痛点。
+帮集成商开发者正确接入 DJI Cloud API 2 的 **SEI（帧级位置数据）** 和 **OSD（设备遥测数据）**，解决"怎么拿到每一帧画面对应的、准确的、足够高频的位置数据"这一最集中的集成商痛点。
 
 ## 能力
 
@@ -11,11 +11,11 @@
 | **服务端 OSD 接入** | MQTT OSD 监听 + DRC 高频 OSD 配置 |
 | **前端地图可视化** | Vue 3 + Cesium：飞机模型、相机视锥、FOV 落地、视频贴地投影 |
 | **机型适配** | M10E/M3T/M4D/M4T 不同 SEI 协议 + 角度系数 + 畸变参数 |
-| **ISV 排障** | SEI 拿不到、解析错误、OSD 频率不够等常见问题 |
+| **集成商排障** | SEI 拿不到、解析错误、OSD 频率不够等常见问题 |
 
 ## 安装
 
-推荐通过 `devkit@cloud-api2` Plugin 一键安装全套 Skill（见 [skills/README.md](../README.md#安装方式)）。
+推荐通过 `cloudapi2@dji` Plugin 一键安装全套 Skill（见 [skills/README.md](../README.md#安装方式)）。
 
 单独安装本 Skill：
 
@@ -96,10 +96,10 @@ AI：（加载排障路径）
 你：开了直播但 subscribeArSeiInfo 回调不触发
 
 AI：（排障）
-→ 检查 1：是否调用了 openDroneSeiMessageSend（ar_info_switch:1）
+→ 检查 1：LiveModule.start() 是否成功、订阅回调是否真的触发过
 → 检查 2：是否走 WebRTC（RTSP/声网拿不到）
 → 检查 3：设备/固件是否支持 SEI
-→ 检查 4：LiveModule.start() 是否成功
+→ 检查 4（低优先级，未经官方确认）：`openDroneSeiMessageSend`（ar_info_switch:1）是前端 PaaS 组件接口，不是 Java SDK 方法，纯 Java SDK 场景是否需要它尚无官方文档确认
 ```
 
 ## 核心约束
@@ -130,9 +130,9 @@ cloudapi2-sei-osd/
 │   ├── sei-osd-architecture.md       — SEI vs OSD 技术架构全梳理
 │   ├── server-side-guide.md          — FHSDK 服务端获取 OSD/DRC/SEI（Java）
 │   ├── frontend-visualization.md     — 前端 Cesium 地图可视化 Demo（Vue 3）
-│   ├── faq-and-capability.md         — ISV 问题解答与 FHSDK 能力对照
+│   ├── faq-and-capability.md         — 集成商问题解答与 FHSDK 能力对照
 │   ├── training-guide.md             — SEI/OSD 培训内容（概念+选型+接入）
-│   └── isv-pain-points.md            — ISV 需求与困惑汇总（背景）
+│   └── isv-pain-points.md            — 集成商需求与困惑汇总（背景）
 └── README.md                         ← 本文件
 ```
 
@@ -141,12 +141,12 @@ cloudapi2-sei-osd/
 | Skill | 关系 |
 |-------|------|
 | `cloudapi2-sdk-core` | 本 Skill 依赖其核心规则（initialize/errorCode/null guard），SEI 接入是 SDK Skill 的场景特化 |
-| `cloudapi2-frontend-component` | 前端组件 Skill。驾驶舱组件内部已处理 SEI/OSD，ISV 若用 PaaS 组件无需自行解析 |
+| `cloudapi2-frontend-component` | 前端组件 Skill。驾驶舱组件内部已处理 SEI/OSD，集成商若用 PaaS 组件无需自行解析 |
 | `cloudapi2-device-management` | OSD 数据用于设备状态展示时，与设备管理 Skill 有交集 |
 | `cloudapi2-troubleshooting` | SEI/OSD 排障可路由到本 Skill 的排障章节 |
 
 ## 适用版本
 
-- **FHSDK**: DJI CloudAPI2 SDK v2.0+（含 `LiveModule` + SEI 订阅 API）
+- **FHSDK**: DJI Cloud API 2 SDK v2.0+（含 `LiveModule` + SEI 订阅 API）
 - **设备**: 机场 3（M4D/M4TD/M4E）、M3T/M3E/M3TA、M10E/M10T
 - **前端**: Chrome/Edge（SEI 解析需 Chromium），Vue 3 + Cesium（可视化）

@@ -40,7 +40,7 @@ import com.dji.fh.kernel.spi.auth.SecurityContextHolder;
  *   <li>已认证但权限不足（@RequireRole / @RequirePermission 校验失败）→ HTTP 403 Forbidden</li>
  * </ul>
  *
- * <p>ISV 覆盖方式（任选其一）：
+ * <p>集成商 覆盖方式（任选其一）：
  * <ul>
  *   <li>声明 {@code @RestControllerAdvice @Order(Ordered.HIGHEST_PRECEDENCE)} 更高优先级的自定义 Advice</li>
  *   <li>排除本 AutoConfiguration：{@code @SpringBootApplication(exclude = AuthAutoConfiguration.class)}</li>

@@ -1,9 +1,9 @@
-# cloudapi2-troubleshooting — DJI CloudAPI2 排障助手
+# cloudapi2-troubleshooting — DJI Cloud API 2 排障助手
 
 > **版本**：v2.6.0 | **更新**：2026-09-22
-> **适用对象**：ISV 集成工程师、售后支持、开发者
+> **适用对象**：集成商工程师、售后支持、开发者
 
-本 Skill 提供 DJI CloudAPI2 SDK 的一站式排障能力：错误码查询、环境采集、日志分析、脱敏、问题分级、issue 生成。支持本地和远程（SSH + Loki）两种采集模式。
+本 Skill 提供 DJI Cloud API 2 SDK 的一站式排障能力：错误码查询、环境采集、日志分析、脱敏、问题分级、issue 生成。支持本地和远程（SSH + Loki）两种采集模式。
 
 ---
 
@@ -53,7 +53,7 @@
 
 ### 2.1 通过 devkit Plugin 一键安装（推荐）
 
-如果已安装 `devkit@cloud-api2` Plugin，所有 Skill 已自动就绪，无需额外操作。
+如果已安装 `cloudapi2@dji` Plugin，所有 Skill 已自动就绪，无需额外操作。
 
 ### 2.2 手动安装
 
@@ -304,7 +304,7 @@ $DIAG session issue --gh 20260922-143025
 
 - **session 限频**：10 分钟内不可重复创建 session
 - **内容指纹去重**：证据包 MD5 哈希比对，重复提交警告
-- **per-ISV 配额**：每企业最多 20 个已提交 issue，超限警告
+- **集成商配额**：每企业最多 20 个已提交 issue，超限警告
 - **相似单检测**：error_text 前缀比对已提交单
 - **包大小上限**：200MB 警告 / 500MB 自动裁剪
 - **TTL 清理**：`diag.sh cleanup [--days N]` + session start 自动清理

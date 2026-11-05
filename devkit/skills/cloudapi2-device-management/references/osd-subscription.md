@@ -15,7 +15,7 @@ public void onOsdUpdate(OsdUpdateEvent event) {
 }
 ```
 
-ISV 不需要自行调用 SDK 的 `listenOsd()` / `cancelListenOsd()`，kernel 层统一管理。
+集成商不需要自行调用 SDK 的 `listenOsd()` / `cancelListenOsd()`，kernel 层统一管理。
 
 ## OsdData 字段
 
@@ -63,4 +63,4 @@ public void onOsdUpdate(OsdUpdateEvent event) {
 ## 与 DeviceStatusService 的关系
 
 skeleton 内置的 `DeviceStatusService` 已实现 OSD 消费并维护内存快照。
-ISV 如果只需要"查询设备当前状态"，直接调用 `DeviceStatusService.findBySn(sn)` 即可，无需重复订阅。
+集成商如果只需要"查询设备当前状态"，直接调用 `DeviceStatusService.findBySn(sn)` 即可，无需重复订阅。

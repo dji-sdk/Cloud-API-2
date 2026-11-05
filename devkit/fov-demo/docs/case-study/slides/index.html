@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FHSDK 集成商自研 Demo — 实战案例</title>
+  <style>
+    :root {
+      --bg: #0c1222;
+      --slide-bg: #ffffff;
+      --accent: #0d9488;
+      --accent-dark: #0f766e;
+      --warn: #dc2626;
+      --skill: #7c3aed;
+      --text: #1e293b;
+      --muted: #64748b;
+      --font: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+      --mono: "SF Mono", Menlo, Consolas, monospace;
+      --slide-w: min(96vw, calc(96vh * 16 / 9));
+      --slide-h: calc(var(--slide-w) * 9 / 16);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; font-family: var(--font); background: var(--bg); color: var(--text); }
+    .deck { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; }
+    .slide-frame { width: var(--slide-w); height: var(--slide-h); position: relative; box-shadow: 0 24px 80px rgba(0,0,0,.5); border-radius: 6px; overflow: hidden; }
+    .slide { position: absolute; inset: 0; background: var(--slide-bg); padding: 4% 5%; display: none; flex-direction: column; opacity: 0; transform: translateX(20px); transition: opacity .3s, transform .3s; overflow: hidden; }
+    .slide.active { display: flex; opacity: 1; transform: none; }
+    .slide-bar { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--accent); }
+    .slide-title { background: linear-gradient(145deg, #042f2e 0%, #134e4a 40%, #0f172a 100%); color: #fff; justify-content: center; text-align: center; }
+    .slide-title .slide-bar { background: #2dd4bf; }
+    .slide-title h1 { font-size: clamp(1.5rem, 3vw, 2.4rem); line-height: 1.35; margin-bottom: .5em; }
+    .slide-title .sub { font-size: clamp(.95rem, 1.6vw, 1.25rem); color: rgba(255,255,255,.75); margin-bottom: 1.2em; }
+    .slide-title .meta { font-size: clamp(.72rem, 1.1vw, .9rem); color: rgba(255,255,255,.45); line-height: 1.9; }
+    .slide-section { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%); color: #fff; justify-content: center; padding-left: 8%; }
+    .slide-section .num { font-size: clamp(3.5rem, 9vw, 6rem); font-weight: 800; opacity: .25; line-height: 1; }
+    .slide-section h2 { font-size: clamp(1.4rem, 2.8vw, 2.2rem); font-weight: 700; margin-top: -.2em; }
+    .slide-section p { margin-top: .6em; font-size: clamp(.85rem, 1.4vw, 1.05rem); opacity: .9; max-width: 85%; }
+    .slide h2 { font-size: clamp(1.1rem, 2vw, 1.55rem); color: var(--accent-dark); margin-bottom: .45em; border-left: 4px solid var(--accent); padding-left: .5em; }
+    .slide h3 { font-size: clamp(.85rem, 1.3vw, 1rem); color: var(--muted); margin: .35em 0 .2em; font-weight: 600; }
+    .slide ul { margin: .2em 0 .4em 1.1em; font-size: clamp(.72rem, 1.15vw, .88rem); line-height: 1.55; }
+    .slide li { margin-bottom: .15em; }
+    .slide p, .slide td, .slide th { font-size: clamp(.72rem, 1.15vw, .88rem); line-height: 1.5; }
+    .slide-img { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; margin: .3em 0; }
+    .slide-img img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; }
+    .skill-tag { display: inline-block; background: #f3e8ff; color: var(--skill); border: 1px solid #ddd6fe; border-radius: 4px; padding: .1em .45em; font-size: clamp(.65rem, 1vw, .78rem); font-family: var(--mono); margin: .15em .2em .15em 0; }
+    .skill-box { background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 6px; padding: .45em .65em; margin-top: .35em; font-size: clamp(.68rem, 1.05vw, .82rem); }
+    .skill-box strong { color: var(--accent-dark); }
+    .warn-box { background: #fef2f2; border-left: 3px solid var(--warn); padding: .4em .6em; margin: .3em 0; font-size: clamp(.68rem, 1.05vw, .82rem); }
+    table { width: 100%; border-collapse: collapse; margin: .25em 0; font-size: clamp(.65rem, 1vw, .8rem); }
+    th, td { border: 1px solid #e2e8f0; padding: .3em .45em; text-align: left; }
+    th { background: #f1f5f9; font-weight: 600; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: .6em; flex: 1; min-height: 0; }
+    .col { overflow: hidden; }
+    .footer-note { font-size: clamp(.62rem, .95vw, .75rem); color: var(--muted); margin-top: auto; padding-top: .3em; }
+    .nav-hint { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.35); font-size: 12px; pointer-events: none; }
+    .progress { position: fixed; bottom: 0; left: 0; height: 3px; background: var(--accent); transition: width .25s; }
+    .page-num { position: fixed; top: 12px; right: 16px; color: rgba(255,255,255,.4); font-size: 13px; font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <div class="page-num" id="pageNum">1 / 1</div>
+  <div class="progress" id="progress"></div>
+  <div class="deck">
+    <div class="slide-frame" id="frame">
+
+      <!-- 0 title -->
+      <section class="slide slide-title active" data-title="封面">
+        <div class="slide-bar"></div>
+        <h1>FHSDK 集成商自研 Demo<br/>从需求到落地的实战案例</h1>
+        <p class="sub">MQTT · DRC · SEI 三层数据 · Java BFF · Cesium 地图</p>
+        <p class="meta">与「SEI/OSD 概念培训」独立 · 记录 Demo 从需求到落地的过程<br/>配套 Markdown：docs/case-study/集成商自研Demo实战案例.md</p>
+      </section>
+
+      <!-- 1 -->
+      <section class="slide slide-section" data-title="背景">
+        <div class="slide-bar"></div>
+        <div class="num">01</div>
+        <h2>背景：集成商自研集成</h2>
+        <p>不嵌入平台驾驶舱 · 基于 FHSDK Java + 自研 Vue 页面</p>
+      </section>
+
+      <!-- 2 -->
+      <section class="slide" data-title="行业痛点">
+        <div class="slide-bar"></div>
+        <h2>集成商共性痛点（2026 上半年调研）</h2>
+        <ul>
+          <li><strong>MQTT OSD ~0.5Hz</strong> — 2 秒一帧，无法与 30fps 画面对齐</li>
+          <li><strong>SEI 不知道怎么接</strong> — RTSP、转码流、错误订阅时机 → 「没有 SEI」</li>
+          <li><strong>要做像素反算 / 地块投射 / AI 叠加</strong> — 全卡在「帧级位置」</li>
+        </ul>
+        <div class="skill-box"><strong>文档</strong> <span class="skill-tag">docs/0_整体方案.md</span> §2 三层数据</div>
+        <p class="footer-note">Demo 目标：证明 FHSDK Java 能支撑完整集成商驾驶舱能力，并提供可复制的参考实现</p>
+      </section>
+
+      <!-- 3 -->
+      <section class="slide slide-section" data-title="需求">
+        <div class="slide-bar"></div>
+        <div class="num">02</div>
+        <h2>需求阶段</h2>
+        <p>做什么 · 不做什么 · 分阶段验收 · 培训对比表</p>
+      </section>
+
+      <!-- 4 -->
+      <section class="slide" data-title="需求要点">
+        <div class="slide-bar"></div>
+        <h2>需求拆解与边界</h2>
+        <div class="two-col">
+          <div class="col">
+            <h3>必须做</h3>
+            <ul>
+              <li>三层数据：MQTT 信息条/模型 · DRC 激光 · SEI 几何</li>
+              <li>地图双落点：绿（实测）vs 橙（光轴几何）</li>
+              <li>WHEP 直播，video 上无 AR 叠加</li>
+              <li>杆量 + 云台拖拽（DRC 前置）</li>
+            </ul>
+          </div>
+          <div class="col">
+            <h3>刻意不做</h3>
+            <ul>
+              <li>不嵌入 paas.js / PaaS 驾驶舱</li>
+              <li>不用 MQTT 慢通道激光验收</li>
+              <li>不在 video 上叠视锥/绿框</li>
+              <li>前端不直连 MQTT/DRC</li>
+            </ul>
+          </div>
+        </div>
+        <div class="skill-box"><strong>文档</strong> <span class="skill-tag">docs/requirement/需求说明.md</span> · <span class="skill-tag">docs/0_整体方案.md</span></div>
+      </section>
+
+      <!-- 5 -->
+      <section class="slide slide-section" data-title="架构">
+        <div class="slide-bar"></div>
+        <div class="num">03</div>
+        <h2>架构设计</h2>
+        <p>控制 REST · 遥测 WebSocket · 视频 WHEP — 三分离</p>
+      </section>
+
+      <!-- 6 architecture svg -->
+      <section class="slide" data-title="BFF 架构">
+        <div class="slide-bar"></div>
+        <h2>Java BFF 三分离架构</h2>
+        <div class="slide-img"><img src="svg/architecture.svg" alt="BFF 架构图" /></div>
+        <div class="skill-box"><strong>文档</strong> <span class="skill-tag">docs/1_后端方案.md</span> · <span class="skill-tag">docs/0_整体方案.md</span> §3</div>
+      </section>
+
+      <!-- 7 data channels svg -->
+      <section class="slide" data-title="三层数据">
+        <div class="slide-bar"></div>
+        <h2>三层数据通道选型</h2>
+        <div class="slide-img"><img src="svg/data-channels.svg" alt="三层数据" /></div>
+        <p class="footer-note">口诀：对齐画面几何 → SEI · 实测激光 → DRC · 慢状态 → MQTT（勿提 MQTT 频率）</p>
+      </section>
+
+      <!-- 8 lifecycle svg -->
+      <section class="slide" data-title="生命周期">
+        <div class="slide-bar"></div>
+        <h2>订阅生命周期（培训用分步按钮）</h2>
+        <div class="slide-img"><img src="svg/lifecycle.svg" alt="操作顺序" /></div>
+        <div class="skill-box"><strong>文档</strong> <span class="skill-tag">docs/0_整体方案.md</span> §7.4 操作顺序</div>
+      </section>
+
+      <!-- 9 -->
+      <section class="slide slide-section" data-title="开发">
+        <div class="slide-bar"></div>
+        <div class="num">04</div>
+        <h2>分阶段开发</h2>
+        <p>A 链路 → B 光轴 → C 视锥 → D 操控 → D′ 飞行任务</p>
+      </section>
+
+      <!-- 10 phases svg -->
+      <section class="slide" data-title="阶段">
+        <div class="slide-bar"></div>
+        <h2>阶段交付与文档对照</h2>
+        <div class="slide-img"><img src="svg/phases.svg" alt="阶段" /></div>
+      </section>
+
+      <!-- 11 phase table -->
+      <section class="slide" data-title="阶段明细">
+        <div class="slide-bar"></div>
+        <h2>各阶段实现要点</h2>
+        <table>
+          <tr><th>阶段</th><th>交付</th><th>参考文档</th></tr>
+          <tr><td>A</td><td>WS·WHEP·MQTT·DRC 绿点·SEI 三轴</td><td>1_后端方案 · 0_整体方案 §6</td></tr>
+          <tr><td>B</td><td>光轴射线求交·橙点与绿点对比</td><td>SEI相机坐标系说明</td></tr>
+          <tr><td>C</td><td>视锥地面交线·FOV μm 换算·可选贴地</td><td>Cesium地图动态几何渲染说明</td></tr>
+          <tr><td>D</td><td>R/F/Q/E 杆量·直播拖拽云台</td><td>2_前端方案</td></tr>
+          <tr><td>D′</td><td>起飞·急停·返航（规划中）</td><td>需求说明 §6</td></tr>
+        </table>
+      </section>
+
+      <!-- 12 -->
+      <section class="slide slide-section" data-title="历程">
+        <div class="slide-bar"></div>
+        <div class="num">05</div>
+        <h2>开发历程</h2>
+        <p>线性记录：需求 → 架构 → A～D 交付 → 常见问题 → 文档沉淀</p>
+      </section>
+
+      <!-- 13 timeline -->
+      <section class="slide" data-title="开发历程图">
+        <div class="slide-bar"></div>
+        <h2>开发历程与常见问题时间线</h2>
+        <div class="slide-img"><img src="svg/development-timeline.svg" alt="开发历程" /></div>
+        <p class="footer-note">绿 = 里程碑 · 红/橙 = 常见问题 · 紫 = 文档沉淀 · D′ 规划中</p>
+      </section>
+
+      <!-- 14 -->
+      <section class="slide slide-section" data-title="常见问题">
+        <div class="slide-bar"></div>
+        <div class="num">06</div>
+        <h2>常见问题</h2>
+        <p>每条记录：现象 → 根因 → 修复 → 参考文档</p>
+      </section>
+
+      <!-- 15 pitfalls svg -->
+      <section class="slide" data-title="常见问题 Top6">
+        <div class="slide-bar"></div>
+        <h2>常见问题 Top 6</h2>
+        <div class="slide-img"><img src="svg/pitfalls.svg" alt="常见问题" /></div>
+      </section>
+
+      <!-- 16 pitfall detail -->
+      <section class="slide" data-title="问题1 SEI">
+        <div class="slide-bar"></div>
+        <h2>问题 ① SEI 绑在 DRC 上（最严重）</h2>
+        <div class="warn-box"><strong>现象</strong>：先连 DRC 再开直播 → 地图永远没有 SEI；反过来就正常</div>
+        <ul>
+          <li><strong>根因</strong>：在 <code>connectDrc</code> 里 <code>subscribeArSeiInfo</code>，且 <code>live==null</code> 时跳过</li>
+          <li><strong>修复</strong>：抽出 <code>SeiSubscriptionService</code>，在 <code>LiveService.startLive</code> 成功后订阅</li>
+          <li><strong>前端</strong>：SEI 图层改绑 <code>liveStarted</code>，断 DRC 不影响 SEI</li>
+        </ul>
+        <div class="skill-box"><strong>参考</strong> docs/1_后端方案.md · SeiSubscriptionService</div>
+      </section>
+
+      <!-- 17 units -->
+      <section class="slide" data-title="问题 单位">
+        <div class="slide-bar"></div>
+        <h2>问题 ③④ 单位与角度「像错了」</h2>
+        <table>
+          <tr><th>字段</th><th>SDK 单位</th><th>常见误用</th></tr>
+          <tr><td>windSpeed</td><td>dm/s</td><td>当成 m/s 或 ÷10</td></tr>
+          <tr><td>SEI altitude</td><td>mm</td><td>当成米展示</td></tr>
+          <tr><td>fovHorizontal</td><td>μm</td><td>当成角度 °</td></tr>
+          <tr><td>cameraRoll</td><td>NED 欧拉角</td><td>与 gimbal_roll 直接对比</td></tr>
+        </table>
+        <div class="skill-box"><strong>参考</strong> <span class="skill-tag">docs/0_整体方案.md</span> §6 · <span class="skill-tag">SEI相机坐标系说明.md</span></div>
+      </section>
+
+      <!-- 18 -->
+      <section class="slide slide-section" data-title="文档导读">
+        <div class="slide-bar"></div>
+        <div class="num">07</div>
+        <h2>文档如何支撑集成商</h2>
+        <p>按需求 → 方案 → 代码 对照阅读本仓库</p>
+      </section>
+
+      <!-- 17 skill map -->
+      <section class="slide" data-title="文档地图">
+        <div class="slide-bar"></div>
+        <h2>文档体系</h2>
+        <div class="slide-img"><img src="svg/skill-map.svg" alt="文档地图" /></div>
+        <p class="footer-note">docs/ 目录：需求说明 · 整体/前后端方案 · 教程 · 实战案例</p>
+      </section>
+
+      <!-- 18 workflow -->
+      <section class="slide" data-title="阅读顺序">
+        <div class="slide-bar"></div>
+        <h2>集成商推荐阅读顺序</h2>
+        <ol style="margin-left:1.2em;font-size:clamp(.72rem,1.15vw,.88rem);line-height:1.65;">
+          <li><span class="skill-tag">需求说明</span> 确认能力与边界</li>
+          <li><span class="skill-tag">0_整体方案</span> 三层数据 · 架构 · API</li>
+          <li><span class="skill-tag">1_后端方案</span> BFF · 订阅 · WHIP</li>
+          <li><span class="skill-tag">2_前端方案</span> Vue · Cesium · WHEP</li>
+          <li><span class="skill-tag">turtorial/</span> SEI 坐标系 · Cesium 渲染</li>
+          <li><span class="skill-tag">fhsdk_demo</span> 对照源码改</li>
+        </ol>
+        <p class="footer-note">另一条路：嵌入 PaaS 驾驶舱（见平台官方 PaaS 文档，与本 Demo 互斥选型）</p>
+      </section>
+
+      <!-- 19验收 -->
+      <section class="slide" data-title="验收">
+        <div class="slide-bar"></div>
+        <h2>验收与交付物</h2>
+        <div class="two-col">
+          <div class="col">
+            <h3>已验收 ✅</h3>
+            <ul>
+              <li>选设备 · 慢通道 OSD · WHEP 直播</li>
+              <li>开直播即有 SEI（无需 DRC）</li>
+              <li>DRC 绿点 · SEI 橙点 · 视锥</li>
+              <li>WASD/R/F/Q/E + 云台拖拽</li>
+              <li>前端仅调 BFF</li>
+            </ul>
+          </div>
+          <div class="col">
+            <h3>交付物</h3>
+            <ul>
+              <li>fhsdk_demo 前后端工程</li>
+              <li>需求 / 方案 / 教程文档</li>
+              <li>本实战案例 MD + HTML 幻灯片</li>
+            </ul>
+          </div>
+        </div>
+        <p class="footer-note">快速启动：README → Oryx + mvn spring-boot:run + npm run dev</p>
+      </section>
+
+      <!-- 20 end -->
+      <section class="slide slide-title" data-title="结束">
+        <div class="slide-bar"></div>
+        <h1>概念培训 vs 实战案例</h1>
+        <p class="sub" style="margin-top:1em;text-align:left;max-width:78%;margin-left:auto;margin-right:auto;">
+          <strong style="color:#5eead4">概念培训</strong>：平台官方 SEI/OSD 材料 — 概念与术语<br/><br/>
+          <strong style="color:#fcd34d">实战案例</strong>：本文 + slides/index.html — 架构、阶段交付与常见问题<br/><br/>
+          <strong style="color:#93c5fd">参考实现</strong>：本仓库 fhsdk_demo 工程<br/><br/>
+          <strong style="color:#c4b5fd">快速启动</strong>：根 README §首次配置 · §快速启动
+        </p>
+        <p class="meta" style="margin-top:1.5em">← → 翻页 · Esc 全屏 · 2026</p>
+      </section>
+
+    </div>
+  </div>
+  <div class="nav-hint">← → 或点击左右半屏翻页 · F 全屏</div>
+
+  <script>
+    const slides = [...document.querySelectorAll('.slide')];
+    let idx = 0;
+    const pageNum = document.getElementById('pageNum');
+    const progress = document.getElementById('progress');
+
+    function show(i) {
+      idx = Math.max(0, Math.min(slides.length - 1, i));
+      slides.forEach((s, n) => s.classList.toggle('active', n === idx));
+      pageNum.textContent = `${idx + 1} / ${slides.length}`;
+      progress.style.width = `${((idx + 1) / slides.length) * 100}%`;
+      document.title = `${slides[idx].dataset.title || 'Slide'} — FHSDK 实战案例`;
+    }
+
+    function next() { show(idx + 1); }
+    function prev() { show(idx - 1); }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+      if (e.key === 'Home') { e.preventDefault(); show(0); }
+      if (e.key === 'End') { e.preventDefault(); show(slides.length - 1); }
+      if (e.key === 'f' || e.key === 'F') {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+        else document.exitFullscreen?.();
+      }
+    });
+
+    document.querySelector('.deck').addEventListener('click', e => {
+      const x = e.clientX / window.innerWidth;
+      if (x < 0.35) prev(); else if (x > 0.65) next();
+    });
+
+    show(0);
+  </script>
+</body>
+</html>

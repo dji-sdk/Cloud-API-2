@@ -34,7 +34,7 @@ import java.util.List;
  * <p>提供：
  * <ul>
  *   <li>{@link SdkEventBus} = {@link DefaultSdkEventBus}（薄 Spring 包装）</li>
- *   <li>{@link BridgeEventDispatcher}（异步 fan-out 到所有 ISV 注入的 EventBridge）</li>
+ *   <li>{@link BridgeEventDispatcher}（异步 fan-out 到所有集成商注入的 EventBridge）</li>
  * </ul>
  *
  * <p>装配在 {@link AsyncAutoConfiguration} 之后，保证 {@code applicationTaskExecutor} 已就绪。
@@ -59,7 +59,7 @@ public class EventBusAutoConfiguration {
     /**
      * 装配 BridgeEventDispatcher。已存在则让位。
      *
-     * <p>{@code ObjectProvider} 用于在 ISV 未注入任何 EventBridge / BridgeErrorHandler 时
+     * <p>{@code ObjectProvider} 用于在集成商未注入任何 EventBridge / BridgeErrorHandler 时
      * 优雅降级（前者拿到空列表，后者拿到 null）。
      *
      * @param bridges      可选的 EventBridge bean 列表

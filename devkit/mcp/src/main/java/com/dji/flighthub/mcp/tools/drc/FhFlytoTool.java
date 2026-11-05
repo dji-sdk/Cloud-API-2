@@ -28,15 +28,21 @@ import com.dji.flighthubsdk.bean.FlyToPointParams;
 import com.dji.flighthubsdk.bean.FlyToTargetPoint;
 import com.dji.flighthubsdk.bean.FlyToUpdateTargetPointsParams;
 import com.dji.flighthubsdk.core.Drone;
+import com.dji.flighthubsdk.core.DroneOsdModule;
 import com.dji.flighthubsdk.core.FlyToPointModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * fh_flyto — 命令无人机飞往目标 GPS 坐标，也可在飞行途中停止或更新目标坐标。
@@ -75,6 +81,12 @@ public class FhFlytoTool extends AbstractMcpTool {
     /** max_speed 参数名 */
     private static final String PARAM_MAX_SPEED = "max_speed";
 
+    /** dry_run 参数名 */
+    private static final String PARAM_DRY_RUN = "dry_run";
+
+    /** 读取当前飞机位置作为更新目标点起点的超时时间（秒） */
+    private static final int START_POINT_TIMEOUT_SECONDS = 2;
+
     /** 操作：开始指点飞行 */
     private static final String ACTION_START = "start";
 
@@ -93,6 +105,21 @@ public class FhFlytoTool extends AbstractMcpTool {
 
     /** 最大速度默认值（m/s） */
     private static final int DEFAULT_MAX_SPEED = 15;
+
+    /** 本地内部错误码：SDK 目标点 API 与当前 jar 架构不匹配时返回 */
+    private static final int ERR_INTERNAL = -1;
+
+    /** arm64 版 SDK 的批量目标点设置方法 */
+    private static final String METHOD_SET_POINTS = "setPoints";
+
+    /** amd64 版 SDK 的单点坐标设置方法 */
+    private static final String METHOD_SET_LATITUDE = "setLatitude";
+
+    /** amd64 版 SDK 的单点坐标设置方法 */
+    private static final String METHOD_SET_LONGITUDE = "setLongitude";
+
+    /** amd64 版 SDK 的单点坐标设置方法 */
+    private static final String METHOD_SET_HEIGHT = "setHeight";
 
     private final SdkService sdkService;
 
@@ -166,9 +193,9 @@ public class FhFlytoTool extends AbstractMcpTool {
         ));
         props.put(PARAM_MAX_SPEED, Map.of(
                 "type", "integer",
-                "description", "Maximum flight speed in m/s (default: 15)"
+                "description", "Maximum flight speed in m/s (default: 15). Also applied when action=update."
         ));
-        props.put("dry_run", Map.of(
+        props.put(PARAM_DRY_RUN, Map.of(
                 "type", "boolean",
                 "description", "If true, validate parameters and prerequisites without executing. Returns preview of what would happen."
         ));
@@ -231,7 +258,7 @@ public class FhFlytoTool extends AbstractMcpTool {
         double[] coords = (double[]) coordResult[0];
 
         // 5. 飞行操作前置人工确认：start/update 需先确认再抢控
-        //    dry_run 模式无需确认（见 step 7）
+        //    dry_run 模式无需确认（见 step 6）
         if (!isDryRun(args)) {
             Map<String, Object> preConfirmError = requireHumanConfirm(args, "flyto_" + action, droneSn,
                     buildConfirmMessage(droneSn, action, coords));
@@ -240,25 +267,16 @@ public class FhFlytoTool extends AbstractMcpTool {
             }
         }
 
-        // 6. 确保 DRC 链路就绪（自动获取控制权 + 连接 DRC）— 确认通过后才执行
+        // 6. dry_run 模式：仅做参数校验 + 返回预览，不抢控、不连 DRC，
+        //    保证干跑不产生任何真实副作用（预览中的前置条件只列已实际检查的项）
+        if (isDryRun(args)) {
+            return buildDryRunResponse(droneSn, action, coords);
+        }
+
+        // 7. 确保 DRC 链路就绪（自动获取控制权 + 连接 DRC）— 确认通过后才执行
         Map<String, Object> drcError = ensureDrcLink(session, droneSn, sdkService);
         if (drcError != null) {
             return drcError;
-        }
-
-        // 7. dry_run 模式：参数校验通过，返回预览（无需 confirm）
-        if (isDryRun(args)) {
-            Map<String, Object> params = coords != null
-                    ? Map.of("latitude", coords[0], "longitude", coords[1], "height", coords[2])
-                    : Map.of("action", action);
-            String desc = coords != null
-                    ? String.format("Would fly drone %s to (%.6f, %.6f) at height %.0fm",
-                            droneSn, coords[0], coords[1], coords[2])
-                    : "Would stop fly-to on drone " + droneSn;
-            return dryRunResult(desc,
-                    buildDryRunPreview(TOOL_NAME, action, droneSn, params,
-                            List.of("session_active", "security_level_allowed", "drc_linked", "params_valid"),
-                            getSecurityLevel(), requiresHumanConfirmation()));
         }
 
         // 8. 人工确认已在 step 5 完成
@@ -267,6 +285,30 @@ public class FhFlytoTool extends AbstractMcpTool {
         return sdkService.isMockMode()
                 ? executeInMockMode(session, droneSn, action, args, coords)
                 : executeWithRealSdk(session, droneSn, action, args, coords);
+    }
+
+    /**
+     * 构建 dry_run 预览响应。
+     * 注意：此方法在 {@code ensureDrcLink} 之前调用，因此前置条件列表中不能声明
+     * {@code drc_linked} —— 干跑不应触发抢控 / 建立 DRC 链路。
+     *
+     * @param droneSn 目标无人机 SN
+     * @param action  操作类型（start / update / stop）
+     * @param coords  已解析并校验的坐标（stop 时为 null）
+     * @return dry_run 预览结果
+     */
+    private Map<String, Object> buildDryRunResponse(String droneSn, String action, double[] coords) {
+        Map<String, Object> params = coords != null
+                ? Map.of(PARAM_LATITUDE, coords[0], PARAM_LONGITUDE, coords[1], PARAM_HEIGHT, coords[2])
+                : Map.of(PARAM_ACTION, action);
+        String desc = coords != null
+                ? String.format("Would fly drone %s to (%.6f, %.6f) at height %.0fm",
+                        droneSn, coords[0], coords[1], coords[2])
+                : "Would stop fly-to on drone " + droneSn;
+        return dryRunResult(desc,
+                buildDryRunPreview(TOOL_NAME, action, droneSn, params,
+                        List.of("session_active", "security_level_allowed", "params_valid"),
+                        getSecurityLevel(), requiresHumanConfirmation()));
     }
 
     /**
@@ -330,8 +372,10 @@ public class FhFlytoTool extends AbstractMcpTool {
         String flyToId = "flyto_" + System.currentTimeMillis();
         session.setActiveFlyToId(flyToId);
         session.setFlightPhase(FlightPhase.FLYING_TO);
+        // 日志只输出 3 位小数坐标，避免全精度经纬度敏感信息外泄（返回响应仍保留全精度）
         log.info("[MOCK] Fly-to {}: drone={}, lat={}, lng={}, height={}m, flyToId={}",
-                action, droneSn, lat, lng, height, flyToId);
+                action, droneSn, String.format("%.3f", lat), String.format("%.3f", lng),
+                height, flyToId);
 
         Map<String, Object> target = new LinkedHashMap<>();
         target.put("latitude", lat);
@@ -384,7 +428,7 @@ public class FhFlytoTool extends AbstractMcpTool {
                     return stopFlyToWithRealSdk(session, droneSn, flyToModule);
                 }
                 if (ACTION_UPDATE.equals(action)) {
-                    return updateFlyToWithRealSdk(session, droneSn, flyToModule, coords);
+                    return updateFlyToWithRealSdk(session, droneSn, drone, flyToModule, args, coords);
                 }
                 return startFlyToWithRealSdk(session, droneSn, flyToModule, args, coords);
             });
@@ -416,9 +460,7 @@ public class FhFlytoTool extends AbstractMcpTool {
         int maxSpeed = getIntArg(args, PARAM_MAX_SPEED, DEFAULT_MAX_SPEED);
 
         FlyToPointParams params = new FlyToPointParams();
-        params.setLatitude(lat);
-        params.setLongitude(lng);
-        params.setHeight(height);
+        applyFlyToTarget(params, lat, lng, height);
         params.setMaxSpeed(maxSpeed);
 
         CompletableFuture<String> future = new CompletableFuture<>();
@@ -453,6 +495,86 @@ public class FhFlytoTool extends AbstractMcpTool {
     }
 
     /**
+     * 把目标点写入 SDK 参数对象，兼容 amd64 与 arm64 两个 SDK 包。
+     *
+     * <p>两个包版本号与 Maven 坐标完全相同，但 {@code FlyToPointParams} 的 API 不同：
+     * arm64 包用 {@code setPoints(List<FlyToTargetPoint>)}，amd64 包用
+     * {@code setLatitude/setLongitude/setHeight}，两边的 setter 互相不存在。
+     * 因此这里反射探测：有 {@code setPoints} 用批量接口，否则退回单点接口。</p>
+     *
+     * <p>参数声明为 {@link Object} 且方法包级可见，是为了让单元测试能传入伪造的
+     * 参数对象，从而覆盖两条分支——真实 SDK 类只提供其中一套 API，无法同时构造两种形态。</p>
+     *
+     * @param params SDK 参数对象（生产路径为 {@link FlyToPointParams}）
+     * @param lat    目标纬度
+     * @param lng    目标经度
+     * @param height 目标相对高度（米）
+     * @throws SdkCallbackBridge.SdkException 当前 jar 的 API 与预期均不匹配时抛出
+     */
+    void applyFlyToTarget(Object params, double lat, double lng, double height) {
+        Method setPoints = findMethod(params, METHOD_SET_POINTS, List.class);
+        if (setPoints != null) {
+            FlyToTargetPoint targetPoint = new FlyToTargetPoint();
+            targetPoint.setLatitude(lat);
+            targetPoint.setLongitude(lng);
+            targetPoint.setHeight(height);
+            invokeQuietly(setPoints, params, List.of(targetPoint));
+            return;
+        }
+
+        Method setLatitude = findMethod(params, METHOD_SET_LATITUDE, double.class);
+        Method setLongitude = findMethod(params, METHOD_SET_LONGITUDE, double.class);
+        Method setHeight = findMethod(params, METHOD_SET_HEIGHT, double.class);
+        if (setLatitude == null || setLongitude == null || setHeight == null) {
+            throw new SdkCallbackBridge.SdkException(ERR_INTERNAL,
+                    "Unsupported fly-to SDK API: neither setPoints nor setLatitude/setLongitude/setHeight found");
+        }
+        invokeQuietly(setLatitude, params, lat);
+        invokeQuietly(setLongitude, params, lng);
+        invokeQuietly(setHeight, params, height);
+    }
+
+    /**
+     * 在当前 SDK jar 提供的方法中查找签名匹配的一个，不存在返回 {@code null}。
+     *
+     * @param target       查找目标对象
+     * @param name         方法名
+     * @param paramType    首个参数类型
+     * @return 匹配的方法，未找到时为 {@code null}
+     */
+    private Method findMethod(Object target, String name, Class<?> paramType) {
+        try {
+            return target.getClass().getMethod(name, paramType);
+        } catch (NoSuchMethodException e) {
+            return null;
+        }
+    }
+
+    /**
+     * 反射调用已知存在的方法，把受检异常统一转换为 SDK 异常。
+     *
+     * <p>反射调用会把被调方法抛出的异常包装成 {@link InvocationTargetException}，
+     * 这里拆包取出真实原因，避免错误信息里出现无意义的 {@code invocation failed}。</p>
+     *
+     * @param method 待调用方法
+     * @param target 调用目标
+     * @param arg    方法参数
+     * @throws SdkCallbackBridge.SdkException 反射调用失败时抛出
+     */
+    private void invokeQuietly(Method method, Object target, Object arg) {
+        try {
+            method.invoke(target, arg);
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getTargetException();
+            throw new SdkCallbackBridge.SdkException(ERR_INTERNAL,
+                    "Failed to set fly-to target via " + method.getName() + ": " + cause.getMessage(), cause);
+        } catch (ReflectiveOperationException e) {
+            throw new SdkCallbackBridge.SdkException(ERR_INTERNAL,
+                    "Failed to set fly-to target via " + method.getName() + ": " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * 真实 SDK 模式下停止指点飞行。
      */
     @Generated
@@ -483,10 +605,27 @@ public class FhFlytoTool extends AbstractMcpTool {
 
     /**
      * 真实 SDK 模式下更新指点飞行目标坐标。
+     *
+     * <p>注意 SDK 转换器 {@code FlightHubSdkConvert.toNativeFlyToUpdateTargetPointsParams}
+     * 的行为：{@code fly_to_id} 与 {@code max_speed} 是无条件下发的，
+     * 而 {@code start_point} 仅在非 null 时下发。因此：
+     * <ul>
+     *   <li>必须显式设置 maxSpeed，否则会给云端下发 0，服务端判定为非法参数（FTP-023/011）；</li>
+     *   <li>startPoint 取飞机当前 OSD 位置，读不到时留空（转换器会跳过该字段，不影响更新）。</li>
+     * </ul>
+     *
+     * @param session      当前 session
+     * @param droneSn      目标无人机 SN
+     * @param drone        无人机实例（用于读取当前定位）
+     * @param flyToModule  指点飞行模块
+     * @param args         原始参数 Map
+     * @param coords       已解析并校验的新目标坐标 {lat, lng, height}
+     * @return 执行结果
      */
     @Generated
     private Map<String, Object> updateFlyToWithRealSdk(
-            SessionContext session, String droneSn, FlyToPointModule flyToModule, double[] coords) {
+            SessionContext session, String droneSn, Drone drone, FlyToPointModule flyToModule,
+            Map<String, Object> args, double[] coords) {
         String activeFlyToId = session.getActiveFlyToId();
         if (activeFlyToId == null || activeFlyToId.isBlank()) {
             return errorResult("No active fly-to session",
@@ -497,14 +636,18 @@ public class FhFlytoTool extends AbstractMcpTool {
         double lat = coords[0];
         double lng = coords[1];
         double height = coords[2];
+        // 未显式指定时沿用 start 的默认速度：转换器无条件下发 max_speed，传 0 会被服务端拒绝
+        int maxSpeed = getIntArg(args, PARAM_MAX_SPEED, DEFAULT_MAX_SPEED);
 
         FlyToUpdateTargetPointsParams updateParams = new FlyToUpdateTargetPointsParams();
         updateParams.setFlyToId(activeFlyToId);
-        FlyToTargetPoint targetPoint = new FlyToTargetPoint();
-        targetPoint.setLatitude(lat);
-        targetPoint.setLongitude(lng);
-        targetPoint.setHeight(height);
-        updateParams.setPoints(List.of(targetPoint));
+        updateParams.setMaxSpeed(maxSpeed);
+        // 起点取飞机当前位置；读不到时留空，转换器会跳过 start_point 字段
+        double[] startPoint = fetchAircraftPosition(drone);
+        if (startPoint != null) {
+            updateParams.setStartPoint(buildTargetPoint(startPoint[0], startPoint[1], startPoint[2]));
+        }
+        updateParams.setPoints(List.of(buildTargetPoint(lat, lng, height)));
 
         CompletableFuture<Void> future = new CompletableFuture<>();
         flyToModule.updateTargetPoints(updateParams, error -> {
@@ -518,19 +661,91 @@ public class FhFlytoTool extends AbstractMcpTool {
         });
         SdkCallbackBridge.await(future);
 
-        Map<String, Object> target = new LinkedHashMap<>();
-        target.put("latitude", lat);
-        target.put("longitude", lng);
-        target.put("height", height);
-
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("drone_sn", droneSn);
-        data.put("flyto_id", session.getActiveFlyToId());
+        data.put("flyto_id", activeFlyToId);
         data.put("action", ACTION_UPDATE);
-        data.put("target", target);
+        data.put("target", toCoordinateMap(lat, lng, height));
+        data.put("max_speed", maxSpeed);
+        if (startPoint != null) {
+            data.put("start_point", toCoordinateMap(startPoint[0], startPoint[1], startPoint[2]));
+        }
 
         return successResult(data,
                 "Fly-to target updated to (" + lat + ", " + lng + ") at " + (int) height + "m.");
+    }
+
+    /**
+     * 构造 SDK 目标点对象。
+     *
+     * @param lat    纬度
+     * @param lng    经度
+     * @param height 高度（米）
+     * @return FlyToTargetPoint 实例
+     */
+    private FlyToTargetPoint buildTargetPoint(double lat, double lng, double height) {
+        FlyToTargetPoint point = new FlyToTargetPoint();
+        point.setLatitude(lat);
+        point.setLongitude(lng);
+        point.setHeight(height);
+        return point;
+    }
+
+    /**
+     * 把坐标转换为响应 Map（保持 lat/lng/height 字段名稳定）。
+     *
+     * @param lat    纬度
+     * @param lng    经度
+     * @param height 高度（米）
+     * @return 坐标 Map
+     */
+    private Map<String, Object> toCoordinateMap(double lat, double lng, double height) {
+        Map<String, Object> map = new LinkedHashMap<>(3);
+        map.put(PARAM_LATITUDE, lat);
+        map.put(PARAM_LONGITUDE, lng);
+        map.put(PARAM_HEIGHT, height);
+        return map;
+    }
+
+    /**
+     * 读取飞机当前位置（一次性订阅 + 超时），用于填充 update 的 start_point。
+     * SDK 的 OSD 只有订阅式接口，没有同步 getter，故沿用 CountDownLatch 模式。
+     *
+     * @param drone 无人机实例
+     * @return {lat, lng, height}；模块不可用或超时返回 null
+     */
+    private double[] fetchAircraftPosition(Drone drone) {
+        DroneOsdModule osdModule = drone.getDroneOsdModule();
+        if (osdModule == null) {
+            log.warn("fetchAircraftPosition: DroneOsdModule unavailable, start_point will be omitted");
+            return null;
+        }
+
+        AtomicReference<double[]> posRef = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+        int listenId = osdModule.listenAircraftLocation(location -> {
+            posRef.set(new double[]{
+                    location.getLatitude(), location.getLongitude(), location.getHeight()});
+            latch.countDown();
+        });
+        if (listenId < 0) {
+            log.warn("fetchAircraftPosition: listenAircraftLocation failed, listenId={}", listenId);
+            return null;
+        }
+
+        try {
+            boolean received = latch.await(START_POINT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            if (!received) {
+                log.warn("fetchAircraftPosition: timeout waiting for aircraft location");
+            }
+            return received ? posRef.get() : null;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("fetchAircraftPosition: interrupted");
+            return null;
+        } finally {
+            osdModule.cancelListenAircraftLocation(listenId);
+        }
     }
 
     /**

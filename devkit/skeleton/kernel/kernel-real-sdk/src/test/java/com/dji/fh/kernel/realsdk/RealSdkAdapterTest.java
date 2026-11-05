@@ -193,7 +193,7 @@ class RealSdkAdapterTest {
 
     @Test
     void onAircraftHMS_shouldEmitNullMessage_alwaysInV01() {
-        // v0.1：message 字段固定为 null（SDK HMS 翻译表查询留给 ISV / 后续 plan）
+        // v0.1：message 字段固定为 null（SDK HMS 翻译表查询留给 集成商 / 后续 plan）
         HmsData data = stubHms(List.of(stubBasics("FH-X", 2)));
 
         adapter.onAircraftHMS("SN-A", data);

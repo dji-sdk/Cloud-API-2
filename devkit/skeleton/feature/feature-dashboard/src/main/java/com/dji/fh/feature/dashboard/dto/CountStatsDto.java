@@ -22,7 +22,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * 计数指标 DTO。
  *
  * @param waylines  航线总数
- * @param personnel 人员总数（mock 模式下返回 0，ISV 可通过 PersonnelCountService 覆盖）
+ * @param personnel 人员总数（mock 模式下返回 0，集成商 可通过 PersonnelCountService 覆盖）
  * @author DJI DevKit Team
  */
 public record CountStatsDto(int waylines, MockableInt personnel) {

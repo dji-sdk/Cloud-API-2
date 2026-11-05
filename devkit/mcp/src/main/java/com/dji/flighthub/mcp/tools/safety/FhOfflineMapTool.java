@@ -23,8 +23,15 @@ import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
 import com.dji.flighthub.mcp.annotation.Generated;
+import com.dji.flighthubsdk.bean.DeviceSignalItem;
+import com.dji.flighthubsdk.bean.DeviceSyncResults;
+import com.dji.flighthubsdk.bean.DeviceSyncStatusResults;
 import com.dji.flighthubsdk.bean.GetOfflineMapsModelInfoResults;
 import com.dji.flighthubsdk.bean.GetOfflineMapsSyncStatusResults;
+import com.dji.flighthubsdk.bean.GridSignalItem;
+import com.dji.flighthubsdk.bean.ModelItemInfoData;
+import com.dji.flighthubsdk.bean.OfflineMapsModelData;
+import com.dji.flighthubsdk.bean.OfflineMapsModelInfoData;
 import com.dji.flighthubsdk.bean.OfflineMapsSyncResults;
 import com.dji.flighthubsdk.bean.SetOfflineMapsParams;
 import com.dji.flighthubsdk.bean.SignalMapsResults;
@@ -69,6 +76,17 @@ public class FhOfflineMapTool extends AbstractMcpTool {
     private static final String PARAM_REQUEST_PARAMS = "request_params";
     private static final String PARAM_CONFIRM = "confirm";
 
+    /** update_model_info 的 request_params 子字段 */
+    private static final String PARAM_MODEL_3D_ITEMS = "model_3d_items";
+    private static final String PARAM_MODEL_2D_ITEMS = "model_2d_items";
+
+    /** 模型条目字段（同时兼容 snake_case 与 camelCase） */
+    private static final String ITEM_UUID = "uuid";
+    private static final String ITEM_OBJECT_KEY = "object_key";
+    private static final String ITEM_OBJECT_KEY_CAMEL = "objectKey";
+    private static final String ITEM_FILE_TYPE = "file_type";
+    private static final String ITEM_FILE_TYPE_CAMEL = "fileType";
+
     /** 有效操作列表 */
     private static final List<String> VALID_ACTIONS = List.of(
             "get_model_info", "update_model_info", "cancel", "set_enabled",
@@ -102,6 +120,16 @@ public class FhOfflineMapTool extends AbstractMcpTool {
      *
      * @return MCP 工具定义 Map
      */
+    /**
+     * 声明工具级静态安全等级：REVERSIBLE。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.REVERSIBLE;
+    }
+
     @Override
     public Map<String, Object> getToolDefinition() {
         Map<String, Object> def = new LinkedHashMap<>();
@@ -133,9 +161,37 @@ public class FhOfflineMapTool extends AbstractMcpTool {
                 "items", Map.of("type", "string"),
                 "description", "Signal map data types to search (e.g. 4g_lte, 5g_nr)"
         ));
+        Map<String, Object> modelItemSchema = new LinkedHashMap<>();
+        modelItemSchema.put("type", "object");
+        modelItemSchema.put("properties", Map.of(
+                ITEM_UUID, Map.of("type", "string", "description", "Model item UUID"),
+                ITEM_OBJECT_KEY, Map.of("type", "string", "description", "Object storage key of the model file"),
+                ITEM_FILE_TYPE, Map.of("type", "string", "description", "Model file type: tif | b3dm | pnts")
+        ));
+        modelItemSchema.put("required", List.of(ITEM_OBJECT_KEY, ITEM_FILE_TYPE));
+
         props.put(PARAM_REQUEST_PARAMS, Map.of(
                 "type", "object",
-                "description", "Additional request parameters (for update_model_info)"
+                "description",
+                "Parameters for update_model_info. Required for update_model_info; must contain a "
+                        + "non-empty 'model_3d_items' and/or 'model_2d_items' array, otherwise the "
+                        + "request is rejected before reaching the server (225101).",
+                "properties", Map.of(
+                        PARAM_MODEL_3D_ITEMS, Map.of(
+                                "type", "array",
+                                "items", modelItemSchema,
+                                "description", "3D model items to generate. An omitted or empty array "
+                                        + "means 'no 3D items' - the SDK always transmits both arrays, "
+                                        + "so omitting one is identical to sending []."
+                        ),
+                        PARAM_MODEL_2D_ITEMS, Map.of(
+                                "type", "array",
+                                "items", modelItemSchema,
+                                "description", "2D model items to generate. An omitted or empty array "
+                                        + "means 'no 2D items' - the SDK always transmits both arrays, "
+                                        + "so omitting one is identical to sending []."
+                        )
+                )
         ));
         props.put(PARAM_CONFIRM, Map.of(
                 "type", "boolean",
@@ -234,8 +290,7 @@ public class FhOfflineMapTool extends AbstractMcpTool {
 
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("disabled", result.isDisable());
-            data.put("offline_map", result.getOfflineMap() != null
-                    ? result.getOfflineMap().toString() : null);
+            data.put("offline_map", buildOfflineMapModel(result.getOfflineMap()));
             return successResult(data, "Offline map model info retrieved.");
 
         } catch (SdkCallbackBridge.SdkTimeoutException e) {
@@ -255,20 +310,140 @@ public class FhOfflineMapTool extends AbstractMcpTool {
     private Map<String, Object> handleUpdateModelInfo(Map<String, Object> args) {
         log.info("[{}] update_model_info", TOOL_NAME);
 
+        // SDK 侧空请求会返回 225101 bad request，必须在进入 SDK 前拦截
+        UpdateModelInfoRequest request = parseUpdateModelInfoParams(args);
+        if (request.error() != null) {
+            return errorResult(request.error(), request.suggestion());
+        }
+
+        List<ModelItemInfoData> model3dItems = request.model3dItems();
+        List<ModelItemInfoData> model2dItems = request.model2dItems();
+
         return sdkService.isMockMode()
-                ? updateModelInfoInMockMode()
-                : updateModelInfoWithRealSdk();
+                ? updateModelInfoInMockMode(model3dItems, model2dItems)
+                : updateModelInfoWithRealSdk(model3dItems, model2dItems);
     }
 
-    private Map<String, Object> updateModelInfoInMockMode() {
+    /**
+     * 校验通过的 update_model_info 请求。
+     *
+     * @param model3dItems 3D 模型条目
+     * @param model2dItems 2D 模型条目
+     * @param error        错误信息，校验通过时为 null
+     * @param suggestion   修复建议，校验通过时为 null
+     */
+    private record UpdateModelInfoRequest(
+            List<ModelItemInfoData> model3dItems,
+            List<ModelItemInfoData> model2dItems,
+            String error,
+            String suggestion) {
+    }
+
+    /**
+     * 解析并校验 request_params。
+     *
+     * @param args 工具入参
+     * @return 解析结果；校验失败时 {@code error()} 非 null
+     */
+    private UpdateModelInfoRequest parseUpdateModelInfoParams(Map<String, Object> args) {
+        Object rawParams = args == null ? null : args.get(PARAM_REQUEST_PARAMS);
+        if (!(rawParams instanceof Map<?, ?> requestParams)) {
+            return invalidParams("Missing required parameter: request_params",
+                    "Provide request_params with a non-empty 'model_3d_items' or 'model_2d_items' array.");
+        }
+
+        List<ModelItemInfoData> model3dItems = parseModelItems(
+                requestParams.get(PARAM_MODEL_3D_ITEMS), PARAM_MODEL_3D_ITEMS);
+        if (model3dItems == null) {
+            return invalidParams("Invalid request_params.model_3d_items",
+                    "'model_3d_items' must be an array of {uuid, object_key, file_type} objects.");
+        }
+        List<ModelItemInfoData> model2dItems = parseModelItems(
+                requestParams.get(PARAM_MODEL_2D_ITEMS), PARAM_MODEL_2D_ITEMS);
+        if (model2dItems == null) {
+            return invalidParams("Invalid request_params.model_2d_items",
+                    "'model_2d_items' must be an array of {uuid, object_key, file_type} objects.");
+        }
+        if (model3dItems.isEmpty() && model2dItems.isEmpty()) {
+            return invalidParams("Empty request_params",
+                    "At least one of 'model_3d_items' / 'model_2d_items' must be non-empty. "
+                            + "The SDK transmits both arrays unconditionally (an omitted array is sent "
+                            + "as []), so an empty request would be rejected by the server (225101).");
+        }
+        return new UpdateModelInfoRequest(model3dItems, model2dItems, null, null);
+    }
+
+    /**
+     * 构造校验失败结果。
+     */
+    private static UpdateModelInfoRequest invalidParams(String error, String suggestion) {
+        return new UpdateModelInfoRequest(List.of(), List.of(), error, suggestion);
+    }
+
+    /**
+     * 把 MCP 层数组解析为 SDK 的 {@link ModelItemInfoData} 列表。
+     *
+     * @param raw     原始值，允许为 null（表示未提供该字段）
+     * @param fieldName 字段名，仅用于日志
+     * @return 解析结果；字段存在但结构非法时返回 null
+     */
+    private List<ModelItemInfoData> parseModelItems(Object raw, String fieldName) {
+        if (raw == null) {
+            return List.of();
+        }
+        if (!(raw instanceof List<?> list)) {
+            log.warn("[{}] {} 不是数组: {}", TOOL_NAME, fieldName, raw.getClass().getSimpleName());
+            return null;
+        }
+        List<ModelItemInfoData> items = new ArrayList<>(list.size());
+        for (Object element : list) {
+            if (!(element instanceof Map<?, ?> map)) {
+                log.warn("[{}] {} 的元素不是对象: {}", TOOL_NAME, fieldName, element);
+                return null;
+            }
+            String objectKey = firstNonBlank(map.get(ITEM_OBJECT_KEY), map.get(ITEM_OBJECT_KEY_CAMEL));
+            String fileType = firstNonBlank(map.get(ITEM_FILE_TYPE), map.get(ITEM_FILE_TYPE_CAMEL));
+            if (objectKey == null || fileType == null) {
+                log.warn("[{}] {} 的元素缺少 object_key / file_type: {}", TOOL_NAME, fieldName, map);
+                return null;
+            }
+            ModelItemInfoData item = new ModelItemInfoData();
+            item.setUuid(firstNonBlank(map.get(ITEM_UUID), null));
+            item.setObjectKey(objectKey);
+            item.setFileType(fileType);
+            items.add(item);
+        }
+        return items;
+    }
+
+    /**
+     * 取第一个非空白字符串值。
+     *
+     * @param candidates 候选值
+     * @return 首个非空白字符串；没有则返回 null
+     */
+    private static String firstNonBlank(Object... candidates) {
+        for (Object candidate : candidates) {
+            if (candidate instanceof String text && !text.isBlank()) {
+                return text;
+            }
+        }
+        return null;
+    }
+
+    private Map<String, Object> updateModelInfoInMockMode(
+            List<ModelItemInfoData> model3dItems, List<ModelItemInfoData> model2dItems) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("status", "update_started");
+        data.put("model_3d_count", model3dItems.size());
+        data.put("model_2d_count", model2dItems.size());
         data.put("_mock", true);
         return successResult(data, "Offline map model update started.");
     }
 
     @Generated
-    private Map<String, Object> updateModelInfoWithRealSdk() {
+    private Map<String, Object> updateModelInfoWithRealSdk(
+            List<ModelItemInfoData> model3dItems, List<ModelItemInfoData> model2dItems) {
         try {
             SafetyServiceModule ssm = getSafetyModule();
             if (ssm == null) {
@@ -277,6 +452,8 @@ public class FhOfflineMapTool extends AbstractMcpTool {
             }
 
             UpdateOfflineMapsParams params = new UpdateOfflineMapsParams();
+            params.setModel3dItems(model3dItems);
+            params.setModel2dItems(model2dItems);
 
             // ResultCallbackWithError: 只有 onResult(FlightHubError)
             CompletableFuture<Void> future = new CompletableFuture<>();
@@ -294,7 +471,10 @@ public class FhOfflineMapTool extends AbstractMcpTool {
 
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("status", "update_started");
-            return successResult(data, "Offline map model update started.");
+            data.put("model_3d_count", model3dItems.size());
+            data.put("model_2d_count", model2dItems.size());
+            return successResult(data, "Offline map model update started. "
+                    + "Poll get_model_info until status is 'finish' before syncing to devices.");
 
         } catch (SdkCallbackBridge.SdkTimeoutException e) {
             log.error("[{}] update_model_info timeout: {}", TOOL_NAME, e.getMessage());
@@ -440,6 +620,12 @@ public class FhOfflineMapTool extends AbstractMcpTool {
     // ==================== sync ====================
 
     private Map<String, Object> handleSync(Map<String, Object> args) {
+        // sync 会将离线地图模型推送到多台设备，触发批量数据传输，按 L1（REVERSIBLE）门控
+        Map<String, Object> denied = enforceSecurityLevel(SecurityLevel.REVERSIBLE);
+        if (denied != null) {
+            return denied;
+        }
+
         List<String> deviceSns = parseStringList(args, PARAM_DEVICE_SNS);
         if (deviceSns == null) {
             return errorResult("Missing or empty device_sns",
@@ -487,8 +673,7 @@ public class FhOfflineMapTool extends AbstractMcpTool {
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("status", "sync_triggered");
             data.put("device_count", deviceSns.size());
-            data.put("results", result.getResults() != null
-                    ? result.getResults().toString() : List.of());
+            data.put("results", buildDeviceSyncResults(result.getResults()));
             return successResult(data, "Offline map sync triggered for " + deviceSns.size() + " device(s).");
 
         } catch (SdkCallbackBridge.SdkTimeoutException e) {
@@ -563,8 +748,7 @@ public class FhOfflineMapTool extends AbstractMcpTool {
             GetOfflineMapsSyncStatusResults result = SdkCallbackBridge.await(future);
 
             Map<String, Object> data = new LinkedHashMap<>();
-            data.put("devices", result.getList() != null
-                    ? result.getList().toString() : List.of());
+            data.put("devices", buildDeviceSyncStatuses(result.getList()));
             return successResult(data, "Sync status retrieved for " + deviceSns.size() + " device(s).");
 
         } catch (SdkCallbackBridge.SdkTimeoutException e) {
@@ -641,8 +825,7 @@ public class FhOfflineMapTool extends AbstractMcpTool {
 
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("device_sns", deviceSns);
-            data.put("signal_maps", result.getLists() != null
-                    ? result.getLists().toString() : List.of());
+            data.put("signal_maps", buildDeviceSignalItems(result.getLists()));
             return successResult(data, "Signal maps found for " + deviceSns.size() + " device(s).");
 
         } catch (SdkCallbackBridge.SdkTimeoutException e) {
@@ -701,6 +884,160 @@ public class FhOfflineMapTool extends AbstractMcpTool {
         return errorResult(
                 "invoke_flysafe_upgrade 不可用：invokeFlysafeDatabaseUpgrade 已在 SDK 2.0 中移除",
                 "请通过固件升级流程（fh_firmware）管理飞安数据库升级。");
+    }
+
+    // ==================== SDK bean → 结构化 Map（避免 toString 透传） ====================
+
+    /**
+     * 将离线地图模型信息映射为结构化 Map，避免 {@code toString()} 透传导致输出不可解析。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param model SDK 返回的模型信息对象，可为 null
+     * @return 结构化模型信息；入参为 null 时返回 null
+     */
+    Map<String, Object> buildOfflineMapModel(OfflineMapsModelData model) {
+        if (model == null) {
+            return null;
+        }
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("id", model.getId());
+        row.put("updated_time", model.getUpdatedTime());
+        row.put("percent", model.getPercent());
+        row.put("status", model.getStatus());
+        row.put("result", model.getResult());
+        row.put("models", buildModelInfos(model.getModels()));
+        return row;
+    }
+
+    /**
+     * 映射模型 UUID 列表。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param models SDK 模型条目列表，可为 null
+     * @return 结构化模型条目列表，入参为 null 时返回空列表
+     */
+    List<Map<String, Object>> buildModelInfos(List<OfflineMapsModelInfoData> models) {
+        if (models == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> mapped = new ArrayList<>(models.size());
+        for (OfflineMapsModelInfoData model : models) {
+            if (model == null) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("uuid", model.getUuid());
+            mapped.add(row);
+        }
+        return mapped;
+    }
+
+    /**
+     * 映射设备同步结果列表。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param results SDK 同步结果列表，可为 null
+     * @return 结构化同步结果列表，入参为 null 时返回空列表
+     */
+    List<Map<String, Object>> buildDeviceSyncResults(List<DeviceSyncResults> results) {
+        if (results == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> mapped = new ArrayList<>(results.size());
+        for (DeviceSyncResults result : results) {
+            if (result == null) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("device_sn", result.getDeviceSn());
+            row.put("code", result.getCode());
+            mapped.add(row);
+        }
+        return mapped;
+    }
+
+    /**
+     * 映射设备同步状态列表。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param statuses SDK 同步状态列表，可为 null
+     * @return 结构化同步状态列表，入参为 null 时返回空列表
+     */
+    List<Map<String, Object>> buildDeviceSyncStatuses(List<DeviceSyncStatusResults> statuses) {
+        if (statuses == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> mapped = new ArrayList<>(statuses.size());
+        for (DeviceSyncStatusResults status : statuses) {
+            if (status == null) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("device_sn", status.getSn());
+            row.put("status", status.getStatus());
+            row.put("reason", status.getReason());
+            mapped.add(row);
+        }
+        return mapped;
+    }
+
+    /**
+     * 映射设备信号地图列表。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param items SDK 设备信号条目列表，可为 null
+     * @return 结构化信号地图列表，入参为 null 时返回空列表
+     */
+    List<Map<String, Object>> buildDeviceSignalItems(List<DeviceSignalItem> items) {
+        if (items == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> mapped = new ArrayList<>(items.size());
+        for (DeviceSignalItem item : items) {
+            if (item == null) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("device_sn", item.getDeviceSn());
+            row.put("grids", buildGridSignals(item.getGrids()));
+            mapped.add(row);
+        }
+        return mapped;
+    }
+
+    /**
+     * 映射 H3 网格信号强度列表。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param grids SDK 网格信号列表，可为 null
+     * @return 结构化网格信号列表，入参为 null 时返回空列表
+     */
+    List<Map<String, Object>> buildGridSignals(List<GridSignalItem> grids) {
+        if (grids == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> mapped = new ArrayList<>(grids.size());
+        for (GridSignalItem grid : grids) {
+            if (grid == null) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("h3_index", grid.getH3Index());
+            row.put("sdr_avg", grid.getSdrAvg());
+            row.put("sdr_max", grid.getSdrMax());
+            row.put("sdr_min", grid.getSdrMin());
+            row.put("signal_4g_avg", grid.getSignal4gAvg());
+            row.put("signal_4g_max", grid.getSignal4gMax());
+            row.put("signal_4g_min", grid.getSignal4gMin());
+            mapped.add(row);
+        }
+        return mapped;
     }
 
     // ==================== 工具方法 ====================
