@@ -40,3 +40,7 @@ add_subdirectory(src)
 if(ENABLE_JAVA)
     add_subdirectory(platform/java)
 endif()
+
+if(ENABLE_CSHARP)
+    add_subdirectory(platform/csharp)
+endif()

@@ -20,6 +20,9 @@ cd scripts
 
 Java 侧说明见 [`platform/java/README.md`](platform/java/README.md)。Demo 配置模板是占位符（`xx.xx.xx.xx`）；本地填真实环境后不要提交。
 
+.NET 8 / Linux x64 构建：`bash scripts/build_csharp.sh -r`，输出 `flight_hub_sdk` DLL
+和 NuGet 包。接口对应、依赖和验证范围见 [`platform/csharp/README.md`](platform/csharp/README.md)。
+
 ## 许可
 
 - 自研代码：Apache License 2.0，见 [`LICENSE`](LICENSE)。

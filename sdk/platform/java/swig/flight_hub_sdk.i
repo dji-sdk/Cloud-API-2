@@ -1,13 +1,19 @@
 /* flight_hub_sdk.i */
 
 %module(directors="1") flighthubsdkmodule
+#ifdef SWIGJAVA
 %javaconst(1);
+#endif
 
 // Handle enums
+#ifdef SWIGJAVA
 %include "enums.swg"
+#endif
 // %include "enumtypeunsafe.swg"
 
+#ifdef SWIGJAVA
 %javaconst(1);
+#endif
 
 // Enable C++11 features and directors for cross-language polymorphism
 %feature("c++11");
@@ -64,6 +70,7 @@ using namespace flight_hub_sdk;
 %include "std_unordered_map.i"
 
 
+#ifdef SWIGJAVA
 // 类型映射：将C++的long类型映射到Java的long类型
 %typemap(jstype) long "long"
 %typemap(jtype) long "long"
@@ -88,9 +95,12 @@ using namespace flight_hub_sdk;
 %typemap(directorout) long* %{ $result = (long*)$input; %}
 %typemap(directorin) long* %{ $input = (jlong*)$1; %}
 
+#endif
+
 // Forward declare the enums and structs before template instantiation
 // This ensures SWIG knows about these types when processing templates
 
+#ifdef SWIGJAVA
 // POITaskStatus：仅保留 C++（value.h）；Java 使用 com.dji.flighthubsdk.value.POITaskStatus，不生成 generated 枚举。
 %ignore flight_hub_sdk::POITaskStatus;
 // DroneLinkState：仅保留 C++（value.h）；Java 使用 com.dji.flighthubsdk.value.DroneLinkState，不生成 generated 枚举。
@@ -135,6 +145,8 @@ using namespace flight_hub_sdk;
 %ignore flight_hub_sdk::Stage;
 %ignore flight_hub_sdk::AIIdentifyMode;
 %ignore flight_hub_sdk::AIIdentifyScoreMode;
+
+#endif
 
 %include "value.h"
 %include "message.h"
