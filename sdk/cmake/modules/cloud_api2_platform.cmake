@@ -1,3 +1,6 @@
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 # OS + ARCH 平台键。三方预编译路径只走 ${CLOUD_API2_OS}/${CLOUD_API2_ARCH}，禁止写死本机字面量。
 
 if(NOT DEFINED CLOUD_API2_ROOT)
@@ -36,10 +39,10 @@ set(CLOUD_API2_PLAT "${CLOUD_API2_OS}/${CLOUD_API2_ARCH}")
 set(CLOUD_API2_JAVA_PLAT "${CLOUD_API2_OS}-${CLOUD_API2_ARCH}")
 
 if(NOT ((CLOUD_API2_OS STREQUAL "linux" AND CLOUD_API2_ARCH STREQUAL "x86_64")
+        OR (CLOUD_API2_OS STREQUAL "linux" AND CLOUD_API2_ARCH STREQUAL "aarch64")
         OR (CLOUD_API2_OS STREQUAL "macosx" AND CLOUD_API2_ARCH STREQUAL "arm64")))
     message(FATAL_ERROR
-        "Unsupported platform ${CLOUD_API2_PLAT}. Buildable keys: "
-        "linux/x86_64 (official delivery), macosx/arm64 (local dev only)")
+        "Unsupported platform ${CLOUD_API2_PLAT}. Official: linux/x86_64, linux/aarch64, macosx/arm64")
 endif()
 
 message(STATUS "cloud_api2 platform: ${CLOUD_API2_PLAT}")

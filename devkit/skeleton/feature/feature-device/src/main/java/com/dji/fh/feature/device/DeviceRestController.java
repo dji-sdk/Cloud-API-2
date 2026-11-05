@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>{@code GET /api/v1/devices/{sn}} — 单设备详情</li>
  * </ul>
  *
- * <p>ISV 可通过声明自家 {@code DeviceRestController} bean 覆盖
+ * <p>集成商 可通过声明自家 {@code DeviceRestController} bean 覆盖
  * （{@link DeviceAutoConfiguration} 用 {@code @ConditionalOnMissingBean}）。
  *
  * <p>安全发布专项修复：设备 SN 为敏感资源，全部接口强制登录。

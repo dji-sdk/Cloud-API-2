@@ -36,6 +36,26 @@ public final class GetSelfDiagnosisReportResults {
     private DiagnosisDeviceReportProgress deviceReportProgress;
     private String qrCodeContent;
     private String qrGuideText;
+    /** 云端提交状态；后端当前未实现时为空; */
+    private String cloudSubmitStatus;
+    /** 二维码 URL；设备回调存在异常且后端生成二维码后非空; */
+    private String qrCodeUrl;
+    /** 二维码签名；仅详情或二维码接口返回; */
+    private String qrCodeSign;
+    /** 二维码签名随机数；仅详情或二维码接口返回; */
+    private String qrCodeNonce;
+    /** 设备回调更新时间（RFC3339）；未回调时为空; */
+    private String deviceCallbackUpdatedAt;
+    /** 记录创建时间（RFC3339），区别于 createTime; */
+    private String createdAt;
+    /** 记录更新时间（RFC3339）; */
+    private String updatedAt;
+    /** 组织 UUID；PaaS 为空，SaaS 场景由上下文返回; */
+    private String organizationUuid;
+    /** 项目 UUID；PaaS 为空，SaaS 场景由上下文返回; */
+    private String projectUuid;
+    /** 设备型号; */
+    private String deviceType;
     public GetSelfDiagnosisReportResults() {
     }
 
@@ -59,6 +79,16 @@ public final class GetSelfDiagnosisReportResults {
      * @param deviceReportProgress 设备报告上传进度
      * @param qrCodeContent 二维码内容
      * @param qrGuideText 二维码引导文本
+     * @param cloudSubmitStatus 云端提交状态
+     * @param qrCodeUrl 二维码 URL
+     * @param qrCodeSign 二维码签名
+     * @param qrCodeNonce 二维码签名随机数
+     * @param deviceCallbackUpdatedAt 设备回调更新时间
+     * @param createdAt 记录创建时间
+     * @param updatedAt 记录更新时间
+     * @param organizationUuid 组织 UUID
+     * @param projectUuid 项目 UUID
+     * @param deviceType 设备型号
      */
     public GetSelfDiagnosisReportResults(
             String reportUuid, String reportUserId, String reportUserOrganizationCallsign,
@@ -66,7 +96,10 @@ public final class GetSelfDiagnosisReportResults {
             String deviceOrganizationCallsign, String status, int resultCode, String bid,
             int part, int origin, SelfDiagnosticResultData selfDiagnosticResult,
             DiagnosisDeviceReportProgress deviceReportProgress,
-            String qrCodeContent, String qrGuideText) {
+            String qrCodeContent, String qrGuideText, String cloudSubmitStatus,
+            String qrCodeUrl, String qrCodeSign, String qrCodeNonce,
+            String deviceCallbackUpdatedAt, String createdAt, String updatedAt,
+            String organizationUuid, String projectUuid, String deviceType) {
         this.reportUuid = reportUuid;
         this.reportUserId = reportUserId;
         this.reportUserOrganizationCallsign = reportUserOrganizationCallsign;
@@ -84,6 +117,16 @@ public final class GetSelfDiagnosisReportResults {
         this.deviceReportProgress = deviceReportProgress;
         this.qrCodeContent = qrCodeContent;
         this.qrGuideText = qrGuideText;
+        this.cloudSubmitStatus = cloudSubmitStatus;
+        this.qrCodeUrl = qrCodeUrl;
+        this.qrCodeSign = qrCodeSign;
+        this.qrCodeNonce = qrCodeNonce;
+        this.deviceCallbackUpdatedAt = deviceCallbackUpdatedAt;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.organizationUuid = organizationUuid;
+        this.projectUuid = projectUuid;
+        this.deviceType = deviceType;
     }
 
     /** 定损报告唯一标识（UUID）; */
@@ -120,6 +163,26 @@ public final class GetSelfDiagnosisReportResults {
     public String getQrCodeContent() { return qrCodeContent; }
     /** 二维码引导文本 */
     public String getQrGuideText() { return qrGuideText; }
+    /** 云端提交状态；后端当前未实现时为空; */
+    public String getCloudSubmitStatus() { return cloudSubmitStatus; }
+    /** 二维码 URL；设备回调存在异常且后端生成二维码后非空; */
+    public String getQrCodeUrl() { return qrCodeUrl; }
+    /** 二维码签名；仅详情或二维码接口返回; */
+    public String getQrCodeSign() { return qrCodeSign; }
+    /** 二维码签名随机数；仅详情或二维码接口返回; */
+    public String getQrCodeNonce() { return qrCodeNonce; }
+    /** 设备回调更新时间（RFC3339）；未回调时为空; */
+    public String getDeviceCallbackUpdatedAt() { return deviceCallbackUpdatedAt; }
+    /** 记录创建时间（RFC3339），区别于 createTime; */
+    public String getCreatedAt() { return createdAt; }
+    /** 记录更新时间（RFC3339）; */
+    public String getUpdatedAt() { return updatedAt; }
+    /** 组织 UUID；PaaS 为空，SaaS 场景由上下文返回; */
+    public String getOrganizationUuid() { return organizationUuid; }
+    /** 项目 UUID；PaaS 为空，SaaS 场景由上下文返回; */
+    public String getProjectUuid() { return projectUuid; }
+    /** 设备型号; */
+    public String getDeviceType() { return deviceType; }
 
     /** @param reportUuid 定损报告唯一标识（UUID）; */
     public void setReportUuid(String reportUuid) {
@@ -206,6 +269,56 @@ public final class GetSelfDiagnosisReportResults {
         this.qrGuideText = qrGuideText;
     }
 
+    /** @param cloudSubmitStatus 云端提交状态；后端当前未实现时为空; */
+    public void setCloudSubmitStatus(String cloudSubmitStatus) {
+        this.cloudSubmitStatus = cloudSubmitStatus;
+    }
+
+    /** @param qrCodeUrl 二维码 URL；设备回调存在异常且后端生成二维码后非空; */
+    public void setQrCodeUrl(String qrCodeUrl) {
+        this.qrCodeUrl = qrCodeUrl;
+    }
+
+    /** @param qrCodeSign 二维码签名；仅详情或二维码接口返回; */
+    public void setQrCodeSign(String qrCodeSign) {
+        this.qrCodeSign = qrCodeSign;
+    }
+
+    /** @param qrCodeNonce 二维码签名随机数；仅详情或二维码接口返回; */
+    public void setQrCodeNonce(String qrCodeNonce) {
+        this.qrCodeNonce = qrCodeNonce;
+    }
+
+    /** @param deviceCallbackUpdatedAt 设备回调更新时间（RFC3339）；未回调时为空; */
+    public void setDeviceCallbackUpdatedAt(String deviceCallbackUpdatedAt) {
+        this.deviceCallbackUpdatedAt = deviceCallbackUpdatedAt;
+    }
+
+    /** @param createdAt 记录创建时间（RFC3339），区别于 createTime; */
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    /** @param updatedAt 记录更新时间（RFC3339）; */
+    public void setUpdatedAt(String updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    /** @param organizationUuid 组织 UUID；PaaS 为空，SaaS 场景由上下文返回; */
+    public void setOrganizationUuid(String organizationUuid) {
+        this.organizationUuid = organizationUuid;
+    }
+
+    /** @param projectUuid 项目 UUID；PaaS 为空，SaaS 场景由上下文返回; */
+    public void setProjectUuid(String projectUuid) {
+        this.projectUuid = projectUuid;
+    }
+
+    /** @param deviceType 设备型号; */
+    public void setDeviceType(String deviceType) {
+        this.deviceType = deviceType;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -231,7 +344,17 @@ public final class GetSelfDiagnosisReportResults {
                 && Objects.equals(selfDiagnosticResult, that.selfDiagnosticResult)
                 && Objects.equals(deviceReportProgress, that.deviceReportProgress)
                 && Objects.equals(qrCodeContent, that.qrCodeContent)
-                && Objects.equals(qrGuideText, that.qrGuideText);
+                && Objects.equals(qrGuideText, that.qrGuideText)
+                && Objects.equals(cloudSubmitStatus, that.cloudSubmitStatus)
+                && Objects.equals(qrCodeUrl, that.qrCodeUrl)
+                && Objects.equals(qrCodeSign, that.qrCodeSign)
+                && Objects.equals(qrCodeNonce, that.qrCodeNonce)
+                && Objects.equals(deviceCallbackUpdatedAt, that.deviceCallbackUpdatedAt)
+                && Objects.equals(createdAt, that.createdAt)
+                && Objects.equals(updatedAt, that.updatedAt)
+                && Objects.equals(organizationUuid, that.organizationUuid)
+                && Objects.equals(projectUuid, that.projectUuid)
+                && Objects.equals(deviceType, that.deviceType);
     }
 
     @Override
@@ -253,7 +376,17 @@ public final class GetSelfDiagnosisReportResults {
                 selfDiagnosticResult,
                 deviceReportProgress,
                 qrCodeContent,
-                qrGuideText);
+                qrGuideText,
+                cloudSubmitStatus,
+                qrCodeUrl,
+                qrCodeSign,
+                qrCodeNonce,
+                deviceCallbackUpdatedAt,
+                createdAt,
+                updatedAt,
+                organizationUuid,
+                projectUuid,
+                deviceType);
     }
 
     @Override
@@ -276,6 +409,16 @@ public final class GetSelfDiagnosisReportResults {
                 + ", deviceReportProgress=" + deviceReportProgress
                 + ", qrCodeContent='" + qrCodeContent + '\''
                 + ", qrGuideText='" + qrGuideText + '\''
+                + ", cloudSubmitStatus='" + cloudSubmitStatus + '\''
+                + ", qrCodeUrl='" + qrCodeUrl + '\''
+                + ", qrCodeSign='" + qrCodeSign + '\''
+                + ", qrCodeNonce='" + qrCodeNonce + '\''
+                + ", deviceCallbackUpdatedAt='" + deviceCallbackUpdatedAt + '\''
+                + ", createdAt='" + createdAt + '\''
+                + ", updatedAt='" + updatedAt + '\''
+                + ", organizationUuid='" + organizationUuid + '\''
+                + ", projectUuid='" + projectUuid + '\''
+                + ", deviceType='" + deviceType + '\''
                 + '}';
     }
 }

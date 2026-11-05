@@ -10,12 +10,14 @@
 #include "notification_center/notification_center.h"
 #include <functional>
 #include <unordered_map>
+#include <memory>
+#include <mutex>
 
 namespace flight_hub_sdk {
 
 class PsdkControlModuleImpl : public IPsdkControlModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit PsdkControlModuleImpl(std::shared_ptr<PsdkCtrlMgr> psdk_ctrl_mgr);
+    explicit PsdkControlModuleImpl(std::shared_ptr<PsdkCtrlMgr> psdk_ctrl_mgr, int session_id);
     ~PsdkControlModuleImpl() override = default;
 
     int listenDrcPsdkDeviceList(const std::function<void(const PsdkDeviceList &psdk_device_list)> &callback) override;
@@ -56,7 +58,14 @@ public:
     int listenDronePsdkUiResource(const std::function<void(const DronePsdkUiResource& msg)>& callback) override;
     void cancelListenDronePsdkUiResource(int listen_id) override;
 
+    int listenPsdkCustomDataTransmissionFromPsdk(const std::function<void(const PsdkCustomDataTransmission& msg)>& callback) override;
+    void cancelListenPsdkCustomDataTransmissionFromPsdk(int listen_id) override;
+
+    void sendPsdkCustomDataTransmissionToPsdk(
+        const std::string& value, const std::function<void(FlightHubError err)>& callback) override;
+
 private:
+    int session_id_;
     std::shared_ptr<PsdkCtrlMgr> psdk_ctrl_mgr_;
 
     // NC push 订阅：user_listen_id ↔ nc_listen_id 映射
@@ -64,9 +73,12 @@ private:
     std::unordered_map<int, int64_t> psdk_audio_play_progress_nc_listen_ids_;
     std::unordered_map<int, int64_t> psdk_tts_play_progress_nc_listen_ids_;
     std::unordered_map<int, int64_t> psdk_ui_resource_nc_listen_ids_;
+    std::unordered_map<int, int64_t> psdk_custom_data_from_psdk_nc_listen_ids_;
     int psdk_audio_play_progress_next_id_ = 0;
     int psdk_tts_play_progress_next_id_ = 0;
     int psdk_ui_resource_next_id_ = 0;
+    int psdk_custom_data_from_psdk_next_id_ = 0;
+    std::mutex listen_mutex_;
 };
 
 } // namespace flight_hub_sdk

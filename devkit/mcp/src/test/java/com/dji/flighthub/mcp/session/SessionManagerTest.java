@@ -185,6 +185,76 @@ class SessionManagerTest {
         }
     }
 
+    @Test
+    void closeSession_shouldInvokeCancelActions_whenListensRegistered() {
+        SessionContext session = sessionManager.createSession("ws-uuid", "TestWS");
+        java.util.concurrent.atomic.AtomicBoolean cancelled1 = new java.util.concurrent.atomic.AtomicBoolean(false);
+        java.util.concurrent.atomic.AtomicBoolean cancelled2 = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+        session.registerListen("ai::D1::ai_data", "ai_data:DRONE-001", () -> cancelled1.set(true));
+        session.registerListen("ai::D1::alarm_state", "alarm:DRONE-001", () -> cancelled2.set(true));
+
+        sessionManager.closeSession(session.getSessionId());
+
+        assertTrue(cancelled1.get(), "cancel action for first listen should have been called");
+        assertTrue(cancelled2.get(), "cancel action for second listen should have been called");
+    }
+
+    @Test
+    void closeSession_shouldContinue_whenOneCancelActionThrows() {
+        SessionContext session = sessionManager.createSession("ws-uuid", "TestWS");
+        java.util.concurrent.atomic.AtomicBoolean cancelled = new java.util.concurrent.atomic.AtomicBoolean(false);
+        session.registerListen("bad", "bad", () -> {
+            throw new IllegalStateException("boom");
+        });
+        session.registerListen("good", "good", () -> cancelled.set(true));
+
+        sessionManager.closeSession(session.getSessionId());
+
+        assertTrue(cancelled.get(), "a failing cancel action must not block the others");
+    }
+
+    @Test
+    void registerListen_shouldBeVisibleInRegistryAndCount() {
+        SessionContext session = sessionManager.createSession("ws-uuid", "TestWS");
+        session.registerListen("k1", "ai_data:D1", () -> {});
+        session.addListenId(7);
+
+        assertEquals(1, session.getListenRegistry().size());
+        assertEquals(2, session.getActiveListenCount());
+    }
+
+    @Test
+    void registerListen_shouldKeepBothEntries_whenDifferentKeysShareSameSdkId() {
+        SessionContext session = sessionManager.createSession("ws-uuid", "TestWS");
+        java.util.concurrent.atomic.AtomicInteger cancelCount = new java.util.concurrent.atomic.AtomicInteger();
+        session.registerListen("ai::D1::ai_data", "a", cancelCount::incrementAndGet);
+        session.registerListen("sei::D1::ai_sei:81-0-0", "b", cancelCount::incrementAndGet);
+
+        assertEquals(2, session.getListenRegistry().size());
+        session.cancelListen("ai::D1::ai_data");
+        assertEquals(1, cancelCount.get());
+        assertEquals(1, session.getListenRegistry().size());
+    }
+
+    @Test
+    void cancelListen_shouldRunCancelActionAndRemoveRegistration() {
+        SessionContext session = sessionManager.createSession("ws-uuid", "TestWS");
+        java.util.concurrent.atomic.AtomicBoolean cancelled = new java.util.concurrent.atomic.AtomicBoolean(false);
+        session.registerListen("k", "test:D1", () -> cancelled.set(true));
+
+        assertTrue(session.cancelListen("k"));
+
+        assertTrue(cancelled.get(), "cancel action must run");
+        assertTrue(session.getListenRegistry().isEmpty());
+    }
+
+    @Test
+    void cancelListen_shouldReturnFalse_whenKeyNotRegistered() {
+        SessionContext session = sessionManager.createSession("ws-uuid", "TestWS");
+        assertFalse(session.cancelListen("missing"));
+    }
+
     @AfterEach
     void tearDown() {
         RequestContext.clear();

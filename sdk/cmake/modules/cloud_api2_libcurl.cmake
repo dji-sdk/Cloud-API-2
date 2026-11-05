@@ -1,3 +1,6 @@
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 set(_curl_root "${CLOUD_API2_THIRD_PARTY}/libcurl")
 set(_curl_inc "${_curl_root}/include")
 if(CLOUD_API2_OS STREQUAL "macosx")

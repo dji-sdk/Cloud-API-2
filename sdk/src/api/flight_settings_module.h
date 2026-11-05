@@ -35,7 +35,7 @@ public:
     /// @param height 任务高度
     virtual void setFlightTaskHeight(
         const std::string& device_sn,
-        int height,
+        double height,
         std::function<void(FlightHubError err, const FlightCommanderHeightResult& result)> callback) = 0;
 
     /// @brief 设置返航高度

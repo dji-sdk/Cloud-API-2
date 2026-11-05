@@ -21,6 +21,24 @@ public final class TerraSelectFilterParams {
     private List<Integer> exceptIds = new ArrayList<>();
     /** 关键字模糊搜索 */
     private String key = "";
+    /** 是否包含子文件 */
+    private boolean getSubFile;
+    /** 开始时间 */
+    private long startTime;
+    /** 结束时间 */
+    private long endTime;
+    /** 文件类型过滤 */
+    private List<String> fileAllTypes = new ArrayList<>();
+    /** 负载型号过滤 */
+    private List<String> payloadModelKey = new ArrayList<>();
+    /** 父目录 ID */
+    private int parentId;
+    /** 文件标签过滤 */
+    private List<String> fileTags = new ArrayList<>();
+    /** 分享状态（可选） */
+    private Integer shareState;
+    /** 是否已上图（可选） */
+    private Boolean showOnMap;
 
     public TerraSelectFilterParams() {
     }
@@ -39,19 +57,56 @@ public final class TerraSelectFilterParams {
     public String getKey() { return key; }
     public void setKey(String key) { this.key = key != null ? key : ""; }
 
+    public boolean isGetSubFile() { return getSubFile; }
+    public void setGetSubFile(boolean getSubFile) { this.getSubFile = getSubFile; }
+
+    public long getStartTime() { return startTime; }
+    public void setStartTime(long startTime) { this.startTime = startTime; }
+
+    public long getEndTime() { return endTime; }
+    public void setEndTime(long endTime) { this.endTime = endTime; }
+
+    public List<String> getFileAllTypes() { return fileAllTypes; }
+    public void setFileAllTypes(List<String> fileAllTypes) { this.fileAllTypes = fileAllTypes != null ? fileAllTypes : new ArrayList<>(); }
+
+    public List<String> getPayloadModelKey() { return payloadModelKey; }
+    public void setPayloadModelKey(List<String> payloadModelKey) { this.payloadModelKey = payloadModelKey != null ? payloadModelKey : new ArrayList<>(); }
+
+    public int getParentId() { return parentId; }
+    public void setParentId(int parentId) { this.parentId = parentId; }
+
+    public List<String> getFileTags() { return fileTags; }
+    public void setFileTags(List<String> fileTags) { this.fileTags = fileTags != null ? fileTags : new ArrayList<>(); }
+
+    public Integer getShareState() { return shareState; }
+    public void setShareState(Integer shareState) { this.shareState = shareState; }
+
+    public Boolean getShowOnMap() { return showOnMap; }
+    public void setShowOnMap(Boolean showOnMap) { this.showOnMap = showOnMap; }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         TerraSelectFilterParams that = (TerraSelectFilterParams) o;
         return selectedParentId == that.selectedParentId && selectedParentIdSet == that.selectedParentIdSet
+                && getSubFile == that.getSubFile
+                && startTime == that.startTime && endTime == that.endTime
+                && parentId == that.parentId
                 && Objects.equals(exceptIds, that.exceptIds)
-                && Objects.equals(key, that.key);
+                && Objects.equals(key, that.key)
+                && Objects.equals(fileAllTypes, that.fileAllTypes)
+                && Objects.equals(payloadModelKey, that.payloadModelKey)
+                && Objects.equals(fileTags, that.fileTags)
+                && Objects.equals(shareState, that.shareState)
+                && Objects.equals(showOnMap, that.showOnMap);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(selectedParentId, selectedParentIdSet, exceptIds, key);
+        return Objects.hash(selectedParentId, selectedParentIdSet, exceptIds, key,
+                getSubFile, startTime, endTime, fileAllTypes, payloadModelKey,
+                parentId, fileTags, shareState, showOnMap);
     }
 
     @Override
@@ -60,6 +115,15 @@ public final class TerraSelectFilterParams {
                 + "selectedParentId=" + (selectedParentIdSet ? selectedParentId : "unset")
                 + ", exceptIds=" + exceptIds
                 + ", key='" + key + '\''
+                + ", getSubFile=" + getSubFile
+                + ", startTime=" + startTime
+                + ", endTime=" + endTime
+                + ", fileAllTypes=" + fileAllTypes
+                + ", payloadModelKey=" + payloadModelKey
+                + ", parentId=" + parentId
+                + ", fileTags=" + fileTags
+                + ", shareState=" + shareState
+                + ", showOnMap=" + showOnMap
                 + '}';
     }
 }

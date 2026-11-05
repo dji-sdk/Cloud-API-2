@@ -26,6 +26,8 @@ import com.dji.flighthub.mcp.annotation.Generated;
 import com.dji.flighthubsdk.core.SafetyServiceModule;
 import com.dji.flighthubsdk.core.Workspace;
 import com.dji.flighthubsdk.bean.CheckUnlockLicenseParam;
+import com.dji.flighthubsdk.bean.CheckUnlockLicenseResult;
+import com.dji.flighthubsdk.bean.CheckUnlockLicenseResultItem;
 import com.dji.flighthubsdk.bean.ImportUnlockLicenseParam;
 import com.dji.flighthubsdk.bean.QueryDeviceUnlockLicenseListParam;
 import com.dji.flighthubsdk.bean.SwitchUnlockLicenseParam;
@@ -100,6 +102,16 @@ public class FhUnlockLicenseTool extends AbstractMcpTool {
     public FhUnlockLicenseTool(SessionManager sessionManager, SdkService sdkService) {
         super(sessionManager);
         this.sdkService = sdkService;
+    }
+
+    /**
+     * 声明工具级静态安全等级：REVERSIBLE。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.REVERSIBLE;
     }
 
     @Override
@@ -480,7 +492,7 @@ public class FhUnlockLicenseTool extends AbstractMcpTool {
                 }
                 Map<String, Object> data = new LinkedHashMap<>();
                 data.put("file_path", filePath);
-                data.put("result", result.toString());
+                data.put("file_store_dir", result != null ? result.getFileStoreDir() : null);
                 data.put("status", "uploaded");
                 future.complete(data);
             });
@@ -563,7 +575,7 @@ public class FhUnlockLicenseTool extends AbstractMcpTool {
                 Map<String, Object> data = new LinkedHashMap<>();
                 data.put("file_key", fileKey);
                 data.put("device_sn", deviceSn);
-                data.put("check_result", result.toString());
+                data.put("check_result", buildStructuredCheckResult(result));
                 future.complete(data);
             });
 
@@ -608,6 +620,58 @@ public class FhUnlockLicenseTool extends AbstractMcpTool {
             log.error("fh_unlock_license clear error: {}", e.getMessage(), e);
             return errorResult("SDK error", e.getMessage());
         }
+    }
+
+    // ==================== SDK bean → 结构化 Map（避免 toString 透传） ====================
+
+    /**
+     * 将解锁证书校验结果映射为结构化 Map，避免 {@code toString()} 透传导致输出不可解析。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param result SDK 返回的校验结果，可为 null
+     * @return 包含错误文件名、证书不匹配项与校验条目的结构化结果；入参为 null 时返回 null
+     */
+    Map<String, Object> buildStructuredCheckResult(CheckUnlockLicenseResult result) {
+        if (result == null) {
+            return null;
+        }
+        Map<String, Object> structured = new LinkedHashMap<>();
+        structured.put("err_file_names",
+                result.getErrFileNames() != null ? result.getErrFileNames() : List.of());
+        structured.put("err_cert_mismatch",
+                result.getErrCertMismatch() != null ? result.getErrCertMismatch() : List.of());
+        structured.put("items", buildCheckItems(result.getItems()));
+        return structured;
+    }
+
+    /**
+     * 映射单个文件校验条目列表。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param items SDK 校验条目列表，可为 null
+     * @return 结构化条目列表，入参为 null 时返回空列表
+     */
+    List<Map<String, Object>> buildCheckItems(List<CheckUnlockLicenseResultItem> items) {
+        if (items == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> mapped = new ArrayList<>(items.size());
+        for (CheckUnlockLicenseResultItem item : items) {
+            if (item == null) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("file_name", item.getFileName());
+            row.put("name", item.getName());
+            row.put("type", item.getType());
+            row.put("begin_time", item.getBeginTime());
+            row.put("end_time", item.getEndTime());
+            row.put("url", item.getUrl());
+            mapped.add(row);
+        }
+        return mapped;
     }
 
     // ==================== Mock 方法 ====================
@@ -663,18 +727,29 @@ public class FhUnlockLicenseTool extends AbstractMcpTool {
         return successResult(data, String.format("[MOCK] Unlock license submitted for device %s.", deviceSn));
     }
 
+    /**
+     * Mock 模式下上传解锁证书文件。
+     *
+     * <p>字段集与 {@link #uploadWithRealSdk} 保持一致：真实 SDK 的
+     * {@code UploadUnlockLicenseFileResult} 只暴露 {@code file_store_dir}，没有 {@code file_key}。
+     * 若 mock 返回 {@code file_key}，调用方按 mock 开发、切到真实环境后会读不到字段。
+     *
+     * @param filePath 本地证书文件路径
+     * @return 上传结果
+     */
     private Map<String, Object> mockUpload(String filePath) {
         log.info("[MOCK] uploadUnlockLicenseFile: filePath={}", filePath);
 
-        String mockFileKey = "fk_" + UUID.randomUUID().toString().substring(0, 8);
+        String mockFileStoreDir = "fsd_" + UUID.randomUUID().toString().substring(0, 8);
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("file_path", filePath);
-        data.put("file_key", mockFileKey);
+        data.put("file_store_dir", mockFileStoreDir);
         data.put("status", "uploaded");
         data.put("_mock", true);
 
-        return successResult(data, String.format("[MOCK] License file uploaded. file_key=%s", mockFileKey));
+        return successResult(data,
+                String.format("[MOCK] License file uploaded. file_store_dir=%s", mockFileStoreDir));
     }
 
     private Map<String, Object> mockSwitch(String deviceSn, String licenseId, boolean enable) {

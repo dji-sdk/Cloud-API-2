@@ -7,12 +7,13 @@
 #include "bll/manager/firmware_mgr/firmware_mgr.h"
 #include "common/util/async_capture_protect.h"
 #include <unordered_map>
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class FirmwareManageModuleImpl : public IFirmwareManageModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit FirmwareManageModuleImpl();
+    explicit FirmwareManageModuleImpl(int session_id);
 
     void getLatestFirmwareReleaseNote(const std::vector<std::string>& device_model_keys, const std::string& language, std::function<void(FlightHubError err, FirmwareReleaseNoteListResult release_note_list)> callback) override;
     void invokeFirmwareUpgrade(const FirmwareUpgradeParam& params, std::function<void(FlightHubError err, FirmwareUpgradeResult result)> callback) override;
@@ -30,6 +31,7 @@ public:
     void cancelListenDeviceOtaProgress(int listen_id) override;
 
 private:
+    int session_id_;
     FirmwareManager firmware_mgr_;
 
     // NC listen IDs for OTA progress topic

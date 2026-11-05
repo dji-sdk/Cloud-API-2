@@ -9,21 +9,29 @@
 
 namespace flight_hub_sdk {
 
-PsdkResourceModuleImpl::PsdkResourceModuleImpl()
-{
+PsdkResourceModuleImpl::PsdkResourceModuleImpl(int session_id) : session_id_(session_id) {
     LOG_INFO("[PsdkResourceModuleImpl] constructor");
 }
 
 void PsdkResourceModuleImpl::getPsdkSpeakerResourceList(std::function<void(FlightHubError err, const PsdkSpeakerResourceList& psdk_speaker_resource_list)> callback) {
+    getPsdkSpeakerResourceListWithFilter(PsdkSpeakerResourceListParams{}, callback);
+}
+
+void PsdkResourceModuleImpl::getPsdkSpeakerResourceListWithFilter(const PsdkSpeakerResourceListParams& params,
+    std::function<void(FlightHubError err, const PsdkSpeakerResourceList& psdk_speaker_resource_list)> callback) {
     LOG_INFO("[PsdkResourceModuleImpl] getPsdkSpeakerResourceList");
     WeakDummy(weak_ptr);
-    get_psdk_speaker_resource_list([this, weak_ptr, callback](const PsdkSpeakerResourceListResponse& response, const FlightHubError err) {
+
+    PsdkSpeakerResourceListRequest request;
+    request.file_type = params.file_type;
+    request.md5_sum = params.md5_sum;
+    get_psdk_speaker_resource_list(request, [this, weak_ptr, callback](const PsdkSpeakerResourceListResponse& response, const FlightHubError err) {
         WeakDummyReturn(weak_ptr);
         // 埋点: 获取 PSDK 喊话器资源列表; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_GET_PSDK_SPEAKER_RESOURCE_LIST, err, "[PsdkResourceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_GET_PSDK_SPEAKER_RESOURCE_LIST, err, session_id_, "[PsdkResourceModuleImpl]");
         if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
             callback(err, {});
             return;
@@ -46,6 +54,9 @@ void PsdkResourceModuleImpl::getPsdkSpeakerResourceList(std::function<void(Fligh
             resource.pcm_object_url = item.pcm_object_url;
             resource.pcm_size = item.pcm_size;
             resource.pcm_md5_sum = item.pcm_md5_sum;
+            resource.opus_object_key = item.opus_object_key;
+            resource.opus_size = item.opus_size;
+            resource.opus_md5_sum = item.opus_md5_sum;
             resource.content = item.content;
             resource.md5_sum = item.md5_sum;
             resource.created_at = item.created_at;
@@ -54,7 +65,7 @@ void PsdkResourceModuleImpl::getPsdkSpeakerResourceList(std::function<void(Fligh
             LOG_INFO("[PsdkResourceModuleImpl] getPsdkSpeakerResourceList id: %d, name: %s: file_type: %s, object_url: %s", resource.id, resource.name.c_str(), resource.file_type.c_str(), resource.object_url.c_str());
         }
         callback(FlightHubError::success(), psdk_speaker_resource_list);
-    });
+    }, session_id_);
 }
 
 void PsdkResourceModuleImpl::createPsdkSpeakerResource(const CreatePsdkSpeakerResourceParams& params, std::function<void(FlightHubError err, const PsdkSpeakerResource& psdk_speaker_resource)> callback) {
@@ -78,7 +89,7 @@ void PsdkResourceModuleImpl::createPsdkSpeakerResource(const CreatePsdkSpeakerRe
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_CREATE_PSDK_SPEAKER_RESOURCE, err, "[PsdkResourceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_CREATE_PSDK_SPEAKER_RESOURCE, err, session_id_, "[PsdkResourceModuleImpl]");
         if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
             callback(err, {});
             return;
@@ -105,7 +116,7 @@ void PsdkResourceModuleImpl::createPsdkSpeakerResource(const CreatePsdkSpeakerRe
         resource.created_at = response.created_at;
 
         callback(FlightHubError::success(), resource);
-    });
+    }, session_id_);
 }
 
 void PsdkResourceModuleImpl::editPsdkSpeakerResource(const EditPsdkSpeakerResourceParams& params, std::function<void(FlightHubError err, const PsdkSpeakerResource& psdk_speaker_resource)> callback) {
@@ -118,6 +129,9 @@ void PsdkResourceModuleImpl::editPsdkSpeakerResource(const EditPsdkSpeakerResour
     request.file_type = params.file_type;
     request.visible = params.visible;
     request.content = params.content;
+    request.opus_object_key = params.opus_object_key;
+    request.opus_size = params.opus_size;
+    request.opus_md5_sum = params.opus_md5_sum;
 
     edit_psdk_speaker_resource(params.id, request, [this, weak_ptr, callback](const EditSpeakerResourceResponse& response, const FlightHubError err) {
         WeakDummyReturn(weak_ptr);
@@ -125,7 +139,7 @@ void PsdkResourceModuleImpl::editPsdkSpeakerResource(const EditPsdkSpeakerResour
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_EDIT_PSDK_SPEAKER_RESOURCE, err, "[PsdkResourceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_EDIT_PSDK_SPEAKER_RESOURCE, err, session_id_, "[PsdkResourceModuleImpl]");
         if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
             callback(err, {});
             return;
@@ -134,6 +148,7 @@ void PsdkResourceModuleImpl::editPsdkSpeakerResource(const EditPsdkSpeakerResour
 
         PsdkSpeakerResource resource;
         resource.id = response.id;
+        resource.project_id = response.project_id;
         resource.name = response.name;
         resource.file_type = response.file_type;
         resource.object_key = response.object_key;
@@ -141,22 +156,27 @@ void PsdkResourceModuleImpl::editPsdkSpeakerResource(const EditPsdkSpeakerResour
         resource.format = response.format;
         resource.size = response.size;
         resource.duration = response.duration;
+        resource.visible = response.visible;
         resource.state = response.state;
         resource.state_message = response.state_message;
         resource.pcm_object_key = response.pcm_object_key;
         resource.pcm_object_url = response.pcm_object_url;
         resource.pcm_size = response.pcm_size;
         resource.pcm_md5_sum = response.pcm_md5_sum;
+        resource.opus_object_key = response.opus_object_key;
+        resource.opus_size = response.opus_size;
+        resource.opus_md5_sum = response.opus_md5_sum;
         resource.content = response.content;
         resource.md5_sum = response.md5_sum;
+        resource.create_scene = response.create_scene;
         resource.created_at = response.created_at;
 
         callback(FlightHubError::success(), resource);
-    });
+    }, session_id_);
 }
 
-void PsdkResourceModuleImpl::deletePsdkSpeakerResource(int resource_id, std::function<void(FlightHubError err)> callback) {
-    LOG_INFO("[PsdkResourceModuleImpl] deletePsdkSpeakerResource: resource_id %d", resource_id);
+void PsdkResourceModuleImpl::deletePsdkSpeakerResource(int64_t resource_id, std::function<void(FlightHubError err)> callback) {
+    LOG_INFO("[PsdkResourceModuleImpl] deletePsdkSpeakerResource: resource_id %lld", static_cast<long long>(resource_id));
     WeakDummy(weak_ptr);
 
     delete_psdk_speaker_resource(resource_id, [this, weak_ptr, callback, resource_id](const FlightHubError err) {
@@ -165,14 +185,14 @@ void PsdkResourceModuleImpl::deletePsdkSpeakerResource(int resource_id, std::fun
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_DELETE_PSDK_SPEAKER_RESOURCE, err, "[PsdkResourceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_DELETE_PSDK_SPEAKER_RESOURCE, err, session_id_, "[PsdkResourceModuleImpl]");
         if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
             callback(err);
             return;
         }
-        LOG_INFO("[PsdkResourceModuleImpl] deletePsdkSpeakerResource success: resource_id %d", resource_id);
+        LOG_INFO("[PsdkResourceModuleImpl] deletePsdkSpeakerResource success: resource_id %lld", static_cast<long long>(resource_id));
         callback(FlightHubError::success());
-    });
+    }, session_id_);
 }
 
 void PsdkResourceModuleImpl::getSTS(std::function<void(FlightHubError err, const STSInfo& sts_response)> callback) {
@@ -185,14 +205,14 @@ void PsdkResourceModuleImpl::getSTS(std::function<void(FlightHubError err, const
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_GET_STS, err, "[PsdkResourceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_GET_STS, err, session_id_, "[PsdkResourceModuleImpl]");
         if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
             callback(err, {});
             return;
         }
         LOG_INFO("[PsdkResourceModuleImpl] getSTS success: bucket %s, endpoint %s, provider %s", response.bucket.c_str(), response.endpoint.c_str(), response.provider.c_str());
         callback(FlightHubError::success(), response);
-    });
+    }, session_id_);
 }
 
 void PsdkResourceModuleImpl::getPsdkWidgetResources(const GetPsdkWidgetResourceParams& params, std::function<void(FlightHubError err, const PsdkWidgetResourceList& psdk_widget_resource_list)> callback) {
@@ -208,7 +228,7 @@ void PsdkResourceModuleImpl::getPsdkWidgetResources(const GetPsdkWidgetResourceP
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_GET_PSDK_WIDGET_RESOURCES, err, "[PsdkResourceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_GET_PSDK_WIDGET_RESOURCES, err, session_id_, "[PsdkResourceModuleImpl]");
         if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
             callback(err, {});
             return;
@@ -224,7 +244,7 @@ void PsdkResourceModuleImpl::getPsdkWidgetResources(const GetPsdkWidgetResourceP
         }
 
         callback(FlightHubError::success(), psdk_widget_resource_list);
-    });
+    }, session_id_);
 }
 
 void PsdkResourceModuleImpl::uploadSpeakerAudioFile(const std::string& file_path, const STSInfo& sts_info, std::function<void(FlightHubError err)> callback) {
@@ -240,7 +260,7 @@ void PsdkResourceModuleImpl::uploadSpeakerAudioFile(const std::string& file_path
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_UPLOAD_SPEAKER_AUDIO_FILE, not_found_err, "[PsdkResourceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_UPLOAD_SPEAKER_AUDIO_FILE, not_found_err, session_id_, "[PsdkResourceModuleImpl]");
         callback(not_found_err);
         return;
     }
@@ -254,7 +274,7 @@ void PsdkResourceModuleImpl::uploadSpeakerAudioFile(const std::string& file_path
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_UPLOAD_SPEAKER_AUDIO_FILE, too_large_err, "[PsdkResourceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_UPLOAD_SPEAKER_AUDIO_FILE, too_large_err, session_id_, "[PsdkResourceModuleImpl]");
         callback(too_large_err);
         return;
     }
@@ -269,7 +289,7 @@ void PsdkResourceModuleImpl::uploadSpeakerAudioFile(const std::string& file_path
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_UPLOAD_SPEAKER_AUDIO_FILE, provider_err, "[PsdkResourceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_UPLOAD_SPEAKER_AUDIO_FILE, provider_err, session_id_, "[PsdkResourceModuleImpl]");
         callback(provider_err);
         return;
     }
@@ -292,7 +312,7 @@ void PsdkResourceModuleImpl::uploadSpeakerAudioFile(const std::string& file_path
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_UPLOAD_SPEAKER_AUDIO_FILE, success_err, "[PsdkResourceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_UPLOAD_SPEAKER_AUDIO_FILE, success_err, session_id_, "[PsdkResourceModuleImpl]");
                 callback(success_err);
             } else {
                 LOG_ERROR("[PsdkResourceModuleImpl] uploadSpeakerAudioFile failed: %s", result.error_message.c_str());
@@ -301,7 +321,7 @@ void PsdkResourceModuleImpl::uploadSpeakerAudioFile(const std::string& file_path
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_UPLOAD_SPEAKER_AUDIO_FILE, upload_err, "[PsdkResourceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_PSDK_RES_UPLOAD_SPEAKER_AUDIO_FILE, upload_err, session_id_, "[PsdkResourceModuleImpl]");
                 callback(upload_err);
             }
         },

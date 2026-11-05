@@ -33,6 +33,7 @@ import com.dji.flighthubsdk.core.LogManagementModule;
 import com.dji.flighthubsdk.core.Workspace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -41,20 +42,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * fh_log — 设备日志管理（查询/创建报告/列表/操作/上传）。
  *
  * <p>支持 action：
  * <ul>
- *   <li>query — 查询设备可用日志模块（L0）</li>
- *   <li>create_report — 创建日志报告（L0）</li>
- *   <li>list_reports — 列出日志报告（L0）</li>
- *   <li>operate — 操作日志报告（下载/删除）（L1 delete 需 confirm）</li>
- *   <li>upload — 上传日志文件（L0）</li>
+ *   <li>query — 查询设备可用日志模块</li>
+ *   <li>create_report — 创建日志报告</li>
+ *   <li>list_reports — 列出日志报告</li>
+ *   <li>operate — 操作日志报告（下载/删除）（delete 需确认）</li>
+ *   <li>upload — 上传日志文件</li>
  * </ul>
  *
- * <p>工具级不需要 human confirmation（仅 delete 操作在 action 内部拦截）。
+ * <p>安全等级：混合等级工具，工具级声明最低等级 L0（READ_ONLY，门控基线）；
+ * {@code create_report} / {@code upload} 为 L1，由 {@link #ACTION_SECURITY_LEVELS} 在 action 内抬高要求；
+ * {@code operate} 的 delete 分支另在 executeOperate() 内执行
+ * {@code enforceSecurityLevel(REVERSIBLE)} 并附带人工确认。
+ * per-action 门控只能抬高、不能降低。
  *
  * @author DJI FlightHub SDK Team
  */
@@ -73,6 +81,17 @@ public class FhLogTool extends AbstractMcpTool {
     /** 有效 action 集合（用于快速校验） */
     private static final Set<String> VALID_ACTIONS_SET = Set.copyOf(VALID_ACTIONS);
 
+    /**
+     * 各 action 要求的安全等级（未列出的 action 为 L0，不需要拦截）。
+     *
+     * <p>{@code operate} 不在此表中：其 download 分支为只读、delete 分支才需要 L1，
+     * 由 {@code executeOperate} 内部按 operation 精确门控。
+     */
+    private static final Map<String, SecurityLevel> ACTION_SECURITY_LEVELS = Map.of(
+            "create_report", SecurityLevel.REVERSIBLE,
+            "upload", SecurityLevel.REVERSIBLE
+    );
+
     /** 参数名常量 */
     private static final String PARAM_ACTION = "action";
     private static final String PARAM_DEVICE_SN = "device_sn";
@@ -90,17 +109,65 @@ public class FhLogTool extends AbstractMcpTool {
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 100;
 
+    /** 日志文件列表单次返回上限。
+     * SDK 的 {@code queryDeviceLogList} 不支持分页参数，一次可能返回全量文件，
+     * 这里主动截断，避免超大响应击穿 LLM 上下文。
+     */
+    private static final int MAX_QUERY_FILES = 200;
+
+    /** 日志上传目录环境变量名（覆盖默认目录，便于本地/容器化部署与测试） */
+    private static final String ENV_LOG_UPLOAD_DIR = "FH_LOG_UPLOAD_DIR";
+
+    /** 日志上传目录默认值（容器内挂载路径） */
+    private static final String DEFAULT_LOG_UPLOAD_DIR = "/var/log/flighthub";
+
+    /** 允许上传的日志目录（构造时从环境变量读取，运行期间不变） */
+    private final String logUploadDir;
+
     private final SdkService sdkService;
 
     /**
      * 构造函数。
      *
+     * <p>显式标注 {@code @Autowired}：类中存在第二个（测试专用）构造函数后，
+     * Spring 不再自动推断唯一的装配入口，漏标会导致启动期
+     * "No default constructor found" 而整个上下文刷新失败。
+     *
      * @param sessionManager session 管理器
      * @param sdkService     SDK 服务
      */
+    @Autowired
     public FhLogTool(SessionManager sessionManager, SdkService sdkService) {
         super(sessionManager);
         this.sdkService = sdkService;
+        this.logUploadDir = System.getenv()
+                .getOrDefault(ENV_LOG_UPLOAD_DIR, DEFAULT_LOG_UPLOAD_DIR);
+    }
+
+    /**
+     * 测试专用构造函数：直接指定允许上传目录，避免依赖环境变量与真实文件系统布局。
+     *
+     * @param sessionManager session 管理器
+     * @param sdkService     SDK 服务
+     * @param logUploadDir   允许上传的日志目录
+     */
+    FhLogTool(SessionManager sessionManager, SdkService sdkService, String logUploadDir) {
+        super(sessionManager);
+        this.sdkService = sdkService;
+        this.logUploadDir = logUploadDir;
+    }
+
+    /**
+     * 声明工具级静态安全等级：READ_ONLY（混合等级工具的门控基线）。
+     *
+     * <p>只读的 {@code query} / {@code list_reports} 不应被 L1 门控误拦，
+     * 其余 action 由 action 内 {@code enforceSecurityLevel} 抬升至 L1。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.READ_ONLY;
     }
 
     @Override
@@ -179,6 +246,15 @@ public class FhLogTool extends AbstractMcpTool {
         if (action == null || !VALID_ACTIONS_SET.contains(action)) {
             return errorResult("Invalid or missing action",
                     "Valid actions: " + VALID_ACTIONS);
+        }
+
+        // 统一安全等级拦截：create_report/upload=L1（operate 在 action 内按 operation 精确门控）
+        SecurityLevel requiredLevel = ACTION_SECURITY_LEVELS.get(action);
+        if (requiredLevel != null) {
+            Map<String, Object> denied = enforceSecurityLevel(requiredLevel);
+            if (denied != null) {
+                return denied;
+            }
         }
 
         switch (action) {
@@ -268,23 +344,22 @@ public class FhLogTool extends AbstractMcpTool {
 
             DeviceLogListResult result = SdkCallbackBridge.await(future);
 
-            // 映射结果
-            List<Map<String, Object>> files = new ArrayList<>();
-            if (result.getFiles() != null) {
-                for (DeviceLogListResultFileItem item : result.getFiles()) {
-                    Map<String, Object> fileMap = new LinkedHashMap<>();
-                    fileMap.put("device_sn", item.getDeviceSn());
-                    fileMap.put("module", item.getModule());
-                    fileMap.put("log_type", item.getLogType());
-                    fileMap.put("object_key", item.getObjectKey());
-                    files.add(fileMap);
-                }
-            }
+            // 映射结果（SDK 不支持分页，此处主动截断）
+            List<DeviceLogListResultFileItem> sdkFiles = result.getFiles();
+            int totalCount = countNonNullFiles(sdkFiles);
+            List<Map<String, Object>> files = buildLogFiles(sdkFiles);
 
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("device_sn", deviceSn);
             data.put("files", files);
-            return successResult(data, "Device log list retrieved (" + files.size() + " items).");
+            data.put("total_count", totalCount);
+            if (totalCount > files.size()) {
+                data.put("truncated", true);
+                data.put("note", "Log file list truncated to " + files.size()
+                        + " of " + totalCount + " items. Narrow module_list to reduce the result size.");
+            }
+            return successResult(data, "Device log list retrieved ("
+                    + files.size() + " of " + totalCount + " items).");
 
         } catch (SdkCallbackBridge.SdkTimeoutException e) {
             log.error("[{}] query timeout: {}", TOOL_NAME, e.getMessage());
@@ -298,7 +373,58 @@ public class FhLogTool extends AbstractMcpTool {
         }
     }
 
-    // ==================== create_report（L0） ====================
+    /**
+     * 统计 SDK 返回的有效文件条数（忽略 null 元素）。
+     *
+     * <p>与 {@link #buildLogFiles} 的过滤口径保持一致：只有被计入本条数的元素才会出现在
+     * 结果列表中，避免「总数为 10、返回 8、却提示截断到 200」的误报。
+     *
+     * @param sdkFiles SDK 返回的文件列表，可为 null
+     * @return 非 null 元素个数
+     */
+    int countNonNullFiles(List<DeviceLogListResultFileItem> sdkFiles) {
+        if (sdkFiles == null) {
+            return 0;
+        }
+        int count = 0;
+        for (DeviceLogListResultFileItem item : sdkFiles) {
+            if (item != null) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * 将 SDK 日志文件列表映射为结构化 Map，并截断到 {@link #MAX_QUERY_FILES} 条。
+     *
+     * <p>包可见以便单元测试直接验证截断行为。
+     *
+     * @param sdkFiles SDK 返回的文件列表，可为 null
+     * @return 结构化文件列表；入参为 null 时返回空列表
+     */
+    List<Map<String, Object>> buildLogFiles(List<DeviceLogListResultFileItem> sdkFiles) {
+        if (sdkFiles == null || sdkFiles.isEmpty()) {
+            return new ArrayList<>();
+        }
+        int limit = Math.min(sdkFiles.size(), MAX_QUERY_FILES);
+        List<Map<String, Object>> files = new ArrayList<>(limit);
+        for (int i = 0; i < limit; i++) {
+            DeviceLogListResultFileItem item = sdkFiles.get(i);
+            if (item == null) {
+                continue;
+            }
+            Map<String, Object> fileMap = new LinkedHashMap<>();
+            fileMap.put("device_sn", item.getDeviceSn());
+            fileMap.put("module", item.getModule());
+            fileMap.put("log_type", item.getLogType());
+            fileMap.put("object_key", item.getObjectKey());
+            files.add(fileMap);
+        }
+        return files;
+    }
+
+    // ==================== create_report（L1） ====================
 
     private Map<String, Object> executeCreateReport(Map<String, Object> args) {
         String deviceSn = getStringArg(args, PARAM_DEVICE_SN, null);
@@ -569,7 +695,7 @@ public class FhLogTool extends AbstractMcpTool {
         }
     }
 
-    // ==================== upload（L0） ====================
+    // ==================== upload（L1） ====================
 
     private Map<String, Object> executeUpload(Map<String, Object> args) {
         String filePath = getStringArg(args, PARAM_FILE_PATH, null);
@@ -578,11 +704,44 @@ public class FhLogTool extends AbstractMcpTool {
                     "Provide local file path for log upload.");
         }
 
+        // 路径规范化校验：防止路径穿越攻击（如 ../../etc/passwd）与符号链接逃逸。
+        // toRealPath() 解析符号链接，比 normalize() 更严格——后者仅词法归一，
+        // 无法防御 /var/log/flighthub/evil -> /etc/passwd 这类符号链接逃逸。
+        Path allowedDir = Paths.get(logUploadDir).toAbsolutePath().normalize();
+        Path resolved = resolveWithinAllowedDir(filePath, allowedDir);
+        if (resolved == null) {
+            return errorResult(
+                    "file_path must be within " + logUploadDir + " directory.",
+                    "Provide an absolute path under " + logUploadDir
+                            + ", e.g. " + logUploadDir + "/flighthub.log");
+        }
+
         log.info("[{}] upload: filePath={}", TOOL_NAME, filePath);
 
         return sdkService.isMockMode()
                 ? uploadInMockMode(filePath)
                 : uploadWithRealSdk(filePath);
+    }
+
+    /**
+     * 将上传路径解析为允许目录内的绝对真实路径。
+     *
+     * <p>优先用 {@link Path#toRealPath()} 解析符号链接；若文件尚不存在（如 mock 模式下
+     * 仅校验路径合法性），回退到词法归一并校验边界。两者都不在允许目录内则返回 null。
+     *
+     * @param filePath   原始文件路径
+     * @param allowedDir 允许上传的目录（已归一化的绝对路径）
+     * @return 允许目录内的解析路径，越界则返回 null
+     */
+    private Path resolveWithinAllowedDir(String filePath, Path allowedDir) {
+        Path resolved;
+        try {
+            resolved = Paths.get(filePath).toRealPath();
+        } catch (IOException e) {
+            // 文件不存在或不可访问：回退到词法归一，真实读取错误交给后续 SDK 调用返回。
+            resolved = Paths.get(filePath).normalize().toAbsolutePath();
+        }
+        return resolved.startsWith(allowedDir) ? resolved : null;
     }
 
     private Map<String, Object> uploadInMockMode(String filePath) {

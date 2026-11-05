@@ -6,12 +6,13 @@
 #include "api/dock_osd_module.h"
 #include "common/util/async_capture_protect.h"
 #include "tool/callback_container.h"
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class DockOsdModuleImpl : public IDockOsdModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    DockOsdModuleImpl(const std::string& dock_sn);
+    DockOsdModuleImpl(const std::string& dock_sn, int session_id);
     ~DockOsdModuleImpl() override;
 
     int listenDockLocation(const std::function<void(const DockLocation& msg)>& callback) override;
@@ -84,6 +85,7 @@ public:
     void cancelListenDockAirConditionerMode(int listen_id) override;
 
 private:
+    int session_id_;
     void registerNotificationCenterListeners();
 
     std::string dock_sn_;

@@ -32,7 +32,7 @@ debug_symbols=OFF
 [[ "$configuration" != Debug ]] || debug_symbols=ON
 cmake -S "$ROOT_DIR" -B "$BUILD_DIR" -DENABLE_JAVA=OFF -DENABLE_CSHARP=ON \
     -DFH_SDK_DEBUG_SYMBOLS="$debug_symbols" -DCMAKE_BUILD_TYPE="$configuration"
-cmake --build "$BUILD_DIR" --target flight_hub_sdk_native --parallel "$jobs"
+cmake --build "$BUILD_DIR" --target flight_hub_sdk_native cloud_api2_csharp_shutdown_smoke --parallel "$jobs"
 # Same runtime libraries as Java; copy from source prebuilts.
 for spec in \
     openssl_1_1_1/lib/linux/x86_64/libcrypto.so.1.1 \
@@ -52,6 +52,8 @@ for lib in "$BUILD_DIR"/native/*.so*; do
         exit 1
     fi
 done
+LD_LIBRARY_PATH="$BUILD_DIR/native${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    "$BUILD_DIR/cloud_api2_csharp_shutdown_smoke"
 # Isolated reference generation never overwrites Java's generated sources.
 mkdir -p "$BUILD_DIR/java-reference" "$BUILD_DIR/dist"
 swig -c++ -java -package com.dji.flighthubsdk.generated \

@@ -26,17 +26,27 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * StdioTransport JSON-RPC 协议测试。
  * 通过反射调用 handleRequest 方法，验证请求路由和响应格式。
+ *
+ * @author DJI DevKit Team
  */
 class StdioTransportProtocolTest {
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
+
+    /** 通知用例的静默窗口：足以暴露「先执行后抑制响应」的实现 */
+    private static final Duration NOTIFICATION_QUIET_PERIOD = Duration.ofMillis(200);
+
+    /** 读取单帧响应的超时：工具调用在独立线程写回，需要留出调度余量 */
+    private static final Duration RESPONSE_TIMEOUT = Duration.ofSeconds(5);
 
     private StdioTransport transport;
     private ObjectMapper objectMapper;
@@ -121,6 +131,51 @@ class StdioTransportProtocolTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void anonymousMessage_shouldReturnMethodNotFound_whenNeitherIdNorMethodPresent() {
+        // 通知必须携带 method；两者都缺的消息是无效请求，必须写回错误帧而不是静默丢弃
+        try (StdioJsonRpcClient client = new StdioJsonRpcClient(new McpToolRegistry(),
+                new McpPromptRegistry(), new ObjectMapper(), new FlightHubProperties())) {
+            client.sendRaw("{\"jsonrpc\":\"2.0\"}");
+            Map<String, Object> response = client.read(RESPONSE_TIMEOUT);
+
+            assertEquals("2.0", response.get("jsonrpc"));
+            assertNull(response.get("id"), "无效请求的响应 id 必须为 null");
+            assertNull(response.get("result"), "无效请求不得返回 result");
+            Map<String, Object> error = (Map<String, Object>) response.get("error");
+            assertNotNull(error, "无效请求必须返回错误响应");
+            assertEquals(-32601, error.get("code"));
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void handleRequest_shouldReturnMethodNotFound_whenMethodIsNotString() throws Exception {
+        // method 非字符串且带 id：不是通知，必须回 -32601 而不是被静默丢弃
+        Map<String, Object> response = invokeHandleRequest("{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":42}");
+
+        assertEquals(11, response.get("id"));
+        Map<String, Object> error = (Map<String, Object>) response.get("error");
+        assertNotNull(error, "method 非字符串时必须返回错误响应");
+        assertEquals(-32601, error.get("code"));
+        assertEquals("Method must be a string", error.get("message"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void handleRequest_shouldReturnInvalidParams_whenParamsIsNotObject() throws Exception {
+        // params 是数组而非对象：必须回 -32602，不能因强转失败冒泡成 -32603
+        Map<String, Object> response = invokeHandleRequest(
+                "{\"jsonrpc\":\"2.0\",\"id\":12,\"method\":\"tools/call\",\"params\":[]}");
+
+        assertEquals(12, response.get("id"));
+        Map<String, Object> error = (Map<String, Object>) response.get("error");
+        assertNotNull(error, "params 非对象时必须返回错误响应");
+        assertEquals(-32602, error.get("code"));
+        assertEquals("params must be an object", error.get("message"));
+    }
+
+    @Test
     void ping_shouldReturnEmptyResult() throws Exception {
         String request = "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"ping\",\"params\":{}}";
         Map<String, Object> response = invokeHandleRequest(request);
@@ -179,5 +234,27 @@ class StdioTransportProtocolTest {
         Map<String, Object> result = (Map<String, Object>) response.get("result");
         assertEquals("2025-06-18", result.get("protocolVersion"),
                 "client 版本高于 server 时，应返回 server 支持的最高版本");
+    }
+
+    @Test
+    void toolsCallNotification_shouldNotExecuteAndNotRespond_whenIdIsMissing() {
+        // 计数探针：证明通知既没有回帧，也没有被真正执行（只断言无帧会漏掉「执行后抑制响应」）
+        AtomicInteger invocations = new AtomicInteger();
+        McpToolRegistry registry = new McpToolRegistry();
+        registry.register(
+                Map.of("name", "notification_probe", "description", "Notification probe"),
+                args -> {
+                    invocations.incrementAndGet();
+                    return Map.of("success", true);
+                });
+
+        try (StdioJsonRpcClient client = new StdioJsonRpcClient(registry, new McpPromptRegistry(),
+                new ObjectMapper(), new FlightHubProperties())) {
+            client.sendRaw("{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\","
+                    + "\"params\":{\"name\":\"notification_probe\",\"arguments\":{}}}");
+
+            client.assertNoResponse(NOTIFICATION_QUIET_PERIOD, "tools/call notification");
+            assertEquals(0, invocations.get(), "无 id 的 tools/call 不得执行");
+        }
     }
 }

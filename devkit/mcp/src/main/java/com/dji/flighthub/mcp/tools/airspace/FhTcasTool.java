@@ -18,6 +18,7 @@ package com.dji.flighthub.mcp.tools.airspace;
 
 import com.dji.flighthub.mcp.sdk.SdkCallbackBridge;
 import com.dji.flighthub.mcp.sdk.SdkService;
+import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
@@ -41,7 +42,8 @@ import java.util.concurrent.CompletableFuture;
  *   <li>FlightTaskModule.updateDeviceTcas(centerSn, callback) — 更新</li>
  * </ul>
  *
- * <p>安全等级：get=L0（只读）；update=L1（内部通过 requireHumanConfirm 门控）
+ * <p>安全等级：工具级声明 L1（REVERSIBLE，门控基线）。
+ * update action 另在 execute() 内通过 {@code requireHumanConfirm} 做人工确认。
  *
  * @author DJI FlightHub SDK Team
  */
@@ -71,6 +73,16 @@ public class FhTcasTool extends AbstractMcpTool {
     public FhTcasTool(SessionManager sessionManager, SdkService sdkService) {
         super(sessionManager);
         this.sdkService = sdkService;
+    }
+
+    /**
+     * 声明工具级静态安全等级：REVERSIBLE。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.REVERSIBLE;
     }
 
     @Override

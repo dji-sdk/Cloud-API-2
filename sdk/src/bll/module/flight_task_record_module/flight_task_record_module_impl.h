@@ -17,7 +17,7 @@ namespace flight_hub_sdk {
 
 class FlightTaskRecordModuleImpl : public IFlightTaskRecordModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit FlightTaskRecordModuleImpl();
+    explicit FlightTaskRecordModuleImpl(int session_id);
 
     // 析构函数;
     ~FlightTaskRecordModuleImpl();
@@ -38,6 +38,7 @@ public:
         const std::function<void(FlightHubError err, const GetExportFlightRecordsProgressResults& results)>& callback) override;
 
 private:
+    int session_id_;
 };
 
 } // namespace flight_hub_sdk

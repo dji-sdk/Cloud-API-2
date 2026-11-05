@@ -15,7 +15,7 @@ public:
     /// 构造时传入 gateway_sn（由 DroneImpl::getGatewaySn() 计算得出：
     /// 传统机场场景 gateway_sn = dock_sn；网联机型 gateway_sn = drone_sn）。
     /// 后端 /manage/api/v1/flight/configs/safe 接口的 ?sn=xxx 参数期望的是 gateway_sn。
-    explicit FlightSettingsModuleImpl(const std::string& gateway_sn);
+    explicit FlightSettingsModuleImpl(const std::string& gateway_sn, int session_id);
     ~FlightSettingsModuleImpl() override = default;
 
     void setFlightSmartPlanMode(
@@ -30,7 +30,7 @@ public:
 
     void setFlightTaskHeight(
         const std::string& device_sn,
-        int height,
+        double height,
         std::function<void(FlightHubError err, const FlightCommanderHeightResult& result)> callback) override;
 
     void setRthAltitude(
@@ -44,6 +44,7 @@ public:
         std::function<void(FlightHubError err)> callback) override;
 
 private:
+    int session_id_;
     std::string gateway_sn_;   // 后端接口需要的网关 SN（HTTP Query ?sn=xxx 传这个）
 };
 

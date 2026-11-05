@@ -12,22 +12,26 @@ namespace flight_hub_sdk {
 
 class ControlAuthModuleImpl : public IControlAuthModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    ControlAuthModuleImpl(
-        std::shared_ptr<FlightCtrlMgr> flight_ctrl_mgr,
-        std::shared_ptr<PayloadCtrlMgr> payload_ctrl_mgr);
+    ControlAuthModuleImpl(std::shared_ptr<FlightCtrlMgr> flight_ctrl_mgr,
+        std::shared_ptr<PayloadCtrlMgr> payload_ctrl_mgr, int session_id);
     ~ControlAuthModuleImpl() override = default;
 
     void acquireFlightControlAuthority(const std::function<void(FlightHubError)>& callback) override;
     void releaseFlightControlAuthority(const std::function<void(FlightHubError)>& callback) override;
+    void acquireFlightControlAuthorityWithResult(const ControlAuthResultHandler& callback) override;
+    void releaseFlightControlAuthorityWithResult(const ControlAuthResultHandler& callback) override;
     int listenFlightControlAuthority(const std::function<void(bool)>& callback) override;
     void cancelListenFlightControlAuthority(int listen_id) override;
 
     void acquirePayloadControlAuthority(const std::string& payload_index, const std::function<void(FlightHubError)>& callback) override;
     void releasePayloadControlAuthority(const std::string& payload_index, const std::function<void(FlightHubError)>& callback) override;
+    void acquirePayloadControlAuthorityWithResult(const std::string& payload_index, const ControlAuthResultHandler& callback) override;
+    void releasePayloadControlAuthorityWithResult(const std::string& payload_index, const ControlAuthResultHandler& callback) override;
     int listenPayloadControlAuthority(const std::string& payload_index, const std::function<void(bool)>& callback) override;
     void cancelListenPayloadControlAuthority(const std::string& payload_index, int listen_id) override;
 
 private:
+    int session_id_;
     std::shared_ptr<FlightCtrlMgr> flight_ctrl_mgr_;
     std::shared_ptr<PayloadCtrlMgr> payload_ctrl_mgr_;
 };

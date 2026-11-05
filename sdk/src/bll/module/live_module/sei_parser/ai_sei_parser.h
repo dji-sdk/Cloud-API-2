@@ -31,6 +31,9 @@ private:
         uint16_t target_w;
         uint16_t target_h;
         uint32_t target_distance;
+        int model_index = -1;
+        int frame_source = -1;
+        int model_info_type = 0;
     };
 
     struct TargetCount {

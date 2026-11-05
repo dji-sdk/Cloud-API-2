@@ -142,6 +142,7 @@ public class DeviceManageDemo extends ModuleDemo {
         both("   firmware_status      = " + detail.getDeviceFirmwareStatus());
         both("   working_status       = " + detail.getDeviceWorkingStatus());
         both("   model_info           = " + formatModelInfo(detail.getModelInfo()));
+        both("   device_state         = " + (detail.getDeviceState().isEmpty() ? "(空)" : detail.getDeviceState().substring(0, Math.min(detail.getDeviceState().length(), 120)) + "..."));
 
         List<SubDeviceInfo> subs = detail.getSubDevices();
         if (subs == null || subs.isEmpty()) {
@@ -165,6 +166,7 @@ public class DeviceManageDemo extends ModuleDemo {
             both("         flysafe_database_version=" + s.getFlysafeDatabaseVersion()
                 + "  parent_sns=" + s.getParentSns());
             both("         model_info=" + formatModelInfo(s.getModelInfo()));
+            both("         device_state=" + (s.getDeviceState().isEmpty() ? "(空)" : s.getDeviceState().substring(0, Math.min(s.getDeviceState().length(), 120)) + "..."));
         }
     }
 
@@ -411,7 +413,7 @@ public class DeviceManageDemo extends ModuleDemo {
     }
 
     /** 纯控制台输出(不落日志文件), 用于菜单文案与过程提示。 */
-    private void console(String line) {
+    protected void console(String line) {
         System.out.println(line);
     }
 
@@ -422,7 +424,7 @@ public class DeviceManageDemo extends ModuleDemo {
     }
 
     /** 提示信息双写：用于前置条件不满足、结果为空等需留痕的提示。 */
-    private void hint(String msg) {
+    protected void hint(String msg) {
         DemoLog.info(name(), msg);
         console("   " + msg);
     }

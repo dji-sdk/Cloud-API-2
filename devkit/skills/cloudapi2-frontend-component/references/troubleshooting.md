@@ -2,19 +2,27 @@
 
 ## 一、错误码总表
 
-`WaylineEditor` 和 `FlyDataReplay` 用同一套错误码（通过实例的 `on('error', cb)` 上抛）。
+`WaylineEditor` 的数字错误码是**全集**（通过实例的 `on('error', cb)` 上抛）；`FlyDataReplay`
+复用同一套码值，但集成商 API 文档只列出其中 **`5000 / 5001 / 6000 / 6002`** 四个，不要拿
+`4001 / 4002 / 6001 / 7000` 去排查回放器。
+
+`WaylineView` 用的是**同一数字空间、但语义不同的码**（例如 `6002` 在它是 WASM 运行时依赖加载失败，
+不是地图初始化失败；地图初始化失败是 `6003`，见 `wayline-view.md` 第八节）。`DJILivePlayer`
+用的是**字符串错误码**。三者不要混着排查。
+
+下表按 **`WaylineEditor`** 语义列出；`WaylineView` 的差异在「触发场景」列单独标注。
 
 | 错误码 | 名称 | 触发场景 | 处理建议 |
 |---|---|---|---|
-| **4001** | `WS_AUTH_ERROR` | WebSocket 鉴权失败（服务端返回 close code 4001） | 检查 `ws.auth.headers()` 返回的 token 是否有效；引导用户重新登录 |
-| **4002** | `WS_DISCONNECTED` | WebSocket 连接断开（网络抖动 / 服务端主动断） | 应用层做重连提示，必要时重建 SDK 实例 |
-| **5000** | `API_ERROR` | API 请求失败（网络错误、服务端 5xx、航线详情拉取失败等） | 看 `e.data` 里的具体错误；区分网络问题 vs 服务端 bug |
-| **5001** | `API_AUTH_ERROR` | API 鉴权失败（401 / 403） | token 过期/无效，刷新或重新登录 |
-| **6000** | `PARSE_ERROR` | 航线 KMZ 数据解析失败（格式异常） | 数据问题，联系平台侧排查 |
-| **6001** | `WASM_LOAD_ERROR` | WASM 模块加载失败 | 检查 frontHost 是否能访问到 WASM 静态资源；CORS / MIME 是否正确 |
-| **6002** | `MAP_INIT_ERROR` | 地图初始化失败（Cesium 加载异常） | 检查 WebGL / 浏览器兼容性 / hostUrl 资源可达性 |
-| **6003** | `MAP_INIT_ERROR` | 地图初始化失败（内部 Cesium 实例创建异常，自包含 SDK 专用） | 检查 Cesium.js 是否已同步加载、`map.env.cesiumBaseUrl` 路径是否可达、WebGL 是否可用 |
-| **7000** | `UPLOAD_ERROR` | OSS 上传失败（仅 WaylineEditor） | 检查 OSS 配置 / 网络 / 文件大小 |
+| **4001** | `WS_AUTH_ERROR` | **仅 `WaylineEditor`**：WebSocket 鉴权失败（服务端返回 close code 4001） | 检查 `ws.auth.headers()` 返回的 token 是否有效；引导用户重新登录 |
+| **4002** | `WS_DISCONNECTED` | **仅 `WaylineEditor`**：WebSocket 连接断开（网络抖动 / 服务端主动断） | 应用层做重连提示，必要时重建 SDK 实例 |
+| **5000** | `API_ERROR` | 三个数字码组件通用：API 请求失败（网络错误、服务端 5xx、航线详情拉取失败等） | 看 `e.data` 里的具体错误；区分网络问题 vs 服务端 bug |
+| **5001** | `API_AUTH_ERROR` | 三个数字码组件通用：API 鉴权失败（401 / 403） | token 过期/无效，刷新或重新登录 |
+| **6000** | `PARSE_ERROR` | `WaylineEditor` / `FlyDataReplay`：航线 KMZ 数据解析失败（格式异常）。**`WaylineView` 的 `6000` 是「航线 KMZ 下载失败」** | 解析失败是数据问题，联系平台侧排查；`WaylineView` 的下载失败先查网络面板的请求地址与状态码 |
+| **6001** | `WASM_LOAD_ERROR` | **仅 `WaylineEditor`**：WASM 模块加载失败。**`WaylineView` 的 `6001` 是「航线 KMZ 解析失败」** | 检查 frontHost 是否能访问到 WASM 静态资源；CORS / MIME 是否正确 |
+| **6002** | `MAP_INIT_ERROR` | `WaylineEditor` / `FlyDataReplay`：地图初始化失败：`Cesium.js` 未加载 / 未在 SDK 前同步加载 / 未调 `loadMap()` / `map.container` 找不到。**`WaylineView` 的 `6002` 是「WASM 运行时依赖加载失败」** | 检查 Cesium 是否**同步**加载且早于 SDK、`map.env.cesiumBaseUrl` 是否可达、WebGL 是否可用；渲染前必须 `await loadMap()`（`WaylineEditor` 漏调时只派发 6002 后静默返回，`FlyDataReplay` 的 `mount()` 会直接抛错） |
+| **6003** | `MAP_INIT_ERROR` | **仅 `WaylineView`**：地图初始化失败（内部 Cesium 实例创建异常）。`WaylineEditor` / `FlyDataReplay` 地图初始化失败统一报 `6002` | 检查 Cesium 是否同步加载、`map.env.cesiumBaseUrl` 是否可达、WebGL 是否可用 |
+| **7000** | `UPLOAD_ERROR` | **仅 `WaylineEditor`**：OSS 上传失败 | 检查 OSS 配置 / 网络 / 文件大小 |
 
 通用错误处理模板：
 
@@ -48,7 +56,7 @@ player.on('error', handleSdkError)
 
 ### Q：浏览器报 "Access-Control-Allow-Origin" 错误
 
-**根因**：后端 CORS 未配置允许 ISV 域名。
+**根因**：后端 CORS 未配置允许集成商域名。
 
 **修复**：
 - 联系平台侧配置后端 CORS
@@ -129,30 +137,33 @@ w2 ca
 
 ### Q：`paas.js` 一定要在 SDK 之前加载吗？
 
-**是。** SDK 在 `loadMap()` 内部调用 `window.FH2.initConfig` / `window.FH2.loadMap`，并依赖 `window.URANUS_LANGUAGE` / `window.LANGUAGE` 等 paas.js 注入的全局变量。
+**不需要，WaylineEditor 根本不加载 `paas.js`。** 它是**完全自包含**的 UMD bundle：内置 Cesium 地图（`internal` 模式），不依赖 `paas.js`，也不依赖 `FH2.initConfig` / `FH2.loadMap`。
 
-加载顺序颠倒 → 立刻抛 `MAP_INIT_ERROR (6002)` 并提示 `window.FH2 未就绪`。
+唯一必须满足的加载顺序是 **Cesium 同步加载且早于 SDK**（`<script src=".../Cesium.js">` 不带 `defer`/`async`，SDK 本体用 `defer`）：
 
 ```html
-<!-- ✅ 正确 -->
-<script src="https://[hostUrl]/paas.js" fh2></script>
-<script src="https://[sdkDeployUrl]/index.js"></script>
-
-<!-- ❌ 错误：SDK 先于 paas.js -->
-<script src="https://[sdkDeployUrl]/index.js"></script>
-<script src="https://[hostUrl]/paas.js" fh2></script>
+<!-- ✅ 正确：Cesium 同步 → SDK defer -->
+<link rel="stylesheet" href="https://[frontHost]/paasjs-demo/sdk-runtime/cesium/Widgets/widgets.css">
+<script src="https://[frontHost]/paasjs-demo/sdk-runtime/cesium/Cesium.js"></script>
+<link rel="stylesheet" href="https://[frontHost]/paasjs-demo/wayline-edit-sdk/index.css">
+<script defer src="https://[frontHost]/paasjs-demo/wayline-edit-sdk/index.js"></script>
 ```
 
-### Q：进入 `render('edit', ...)` 报 `MAP_INIT_ERROR (6002)`
+Cesium 没就绪 → `loadMap()` 内部 catch 后 `emit('error', { code: 6002 })` 并抛出（见下一条）。
 
-99% 是忘了 `loadMap()`。SDK 在 `render('edit')` 内部校验 `window.FH2.mapAppState`，未挂载就拒绝渲染。
+### Q：进入 `render('edit', ...)` 时触发 `MAP_INIT_ERROR (6002)`
+
+99% 是忘了 `loadMap()`。SDK 内部校验的是**自己的地图句柄**（`this.mapHandle`，或 `external` 模式下的 `options.map.mapAppState`）——**不是** `window.FH2.mapAppState`。
+
+注意失败方式：`render()` **不会抛异常**，只派发一条 `error` 事件（`code: 6002`）后静默返回。所以不监听 `error` 就会表现为"点了没反应"。
 
 ```javascript
-// ❌ 错误
+// ❌ 错误：没有 loadMap，render 静默返回 + 派发 error(6002)
 editor.mount(container)
-editor.render('edit', { waylineId })   // 报 6002
+editor.render('edit', { waylineId })
 
 // ✅ 正确
+editor.on('error', function (e) { console.error(e) })   // 必须监听
 editor.mount(container)
 await editor.loadMap()
 editor.render('edit', { waylineId })
@@ -184,7 +195,9 @@ editor.on('error', function (e) {
 
 ### Q：同一页面能挂多个 `WaylineEditor` 实例吗？
 
-**不能。** `window.FH2` / `window.URANUS_LANGUAGE` / `mapAppState` 都是全局单例，多实例互相覆盖。要"切换不同航线"用**单实例 + `destroy()` 后重建**模式（见 `wayline-editor.md` 1.11）。
+**推荐单实例。** 页面级挂载点是**固定选择器**：顶栏通过 Vue `<teleport>` 投递到 `#wayline-header`，编辑面板只认 `#project-middle-container` / `#project-middle-container + .right-micro-app > .maps-micro-app`。两个实例会往**同一批节点**里投递，UI 互相覆盖，地图也不会各画各的。
+
+要"切换不同航线"用**单实例 + `destroy()` 后重建**模式（见 `wayline-editor.md` 1.11）。
 
 ### Q：能在 React / Vue 项目里集成吗？
 
@@ -199,7 +212,7 @@ useEffect(() => {
 ```
 
 注意：
-- `paas.js` 和 SDK `index.js` 仍**走 `index.html` 同步 `<script>`**，不要走 `import` / bundler。
+- SDK `index.js`（和它依赖的 `Cesium.js`）仍**走 `index.html` 同步 `<script>`**，不要走 `import` / bundler。
 - DOM 骨架（`#wayline-header` / `#project-middle-container` / `.right-micro-app` 等）放外层 layout，**别放路由组件**里，避免热更新时 teleport 目标丢失。
 
 ### Q：`editor.setTheme()` 改完主色，AntD 按钮颜色没跟着变
@@ -221,25 +234,32 @@ editor.create().catch(function (err) {
 
 ### Q：`paas.js` 一定要在 SDK 之前加载吗？
 
-**是**（同 WaylineEditor）。SDK 在 `loadMap()` 内部用 `window.FH2` 加载地图。顺序颠倒 → 立刻抛 `MAP_INIT_ERROR (6002)`。
+**不需要，`FlyDataReplay` 根本不加载 `paas.js`。** 和 WaylineEditor 一样是**完全自包含**的 UMD bundle：内置 Cesium 地图（`internal` 模式），不依赖 `paas.js`，也不依赖 `FH2.initConfig` / `FH2.loadMap`、不读 `window.FH2.mapAppState`。
+
+唯一必须满足的加载顺序是 **Cesium 同步加载且早于 SDK**（`Cesium.js` 不带 `defer`/`async`，SDK 本体用 `defer`）：
 
 ```html
-<!-- ✅ 正确 -->
-<script src="https://[hostUrl]/paas.js" fh2></script>
-<script src="https://[sdkDeployUrl]/index.js"></script>
+<!-- ✅ 正确：Cesium 同步 → SDK defer -->
+<link rel="stylesheet" href="https://[frontHost]/paasjs-demo/sdk-runtime/cesium/Widgets/widgets.css">
+<script src="https://[frontHost]/paasjs-demo/sdk-runtime/cesium/Cesium.js"></script>
+<link rel="stylesheet" href="https://[frontHost]/paasjs-demo/fly-data-sdk/index.css">
+<script defer src="https://[frontHost]/paasjs-demo/fly-data-sdk/index.js"></script>
 ```
 
 ### Q：进入 `mount()` 报 `MAP_INIT_ERROR (6002)`
 
-99% 是忘了 `loadMap()`。**`FlyDataReplay` 的 `loadMap()` 始终必需**（不像 WaylineEditor 仅 edit 必需），且必须在 `mount()` **之前**调用：
+99% 是忘了 `loadMap()`。**`FlyDataReplay` 的 `loadMap()` 始终必需**（不像 WaylineEditor 仅 edit 需要），且必须在 `mount()` **之前**调用。
+
+注意失败方式**和 WaylineEditor 不同**：`mount()` 会 `emit('error', { code: 6002 })` **并且抛出异常**（`Error('[FlyDataReplay] mount() 失败：地图尚未就绪，请先调用 loadMap()')`），所以 try/catch 和 `on('error')` 都要有。
 
 ```javascript
 // ❌ 错误
 var player = new window.FlyDataReplay(opts)
-player.mount(container)               // 报 6002
+player.mount(container)               // 抛 6002
 
 // ✅ 正确
 var player = new window.FlyDataReplay(opts)
+player.on('error', function (e) { console.error(e) })
 await player.loadMap()
 player.mount(container)
 ```
@@ -260,7 +280,7 @@ async function switchTask (newTaskId) {
 
 ### Q：能在一页同时挂多个 `FlyDataReplay` 实例吗？
 
-**不能**（同 WaylineEditor）。`window.FH2` / `URANUS_LANGUAGE` / `mapAppState` 全局单例。要"切任务"用单实例 + `destroy()` 后重建。
+**推荐单实例。** 回放组件同样依赖页面级固定挂载点（`#wayline-header` 顶栏、`#project-middle-container + .right-micro-app` 内的节点），多实例会往同一节点重复投递、互相覆盖。要"切任务"用单实例 + `destroy()` 后重建。
 
 ### Q：`mount()` 要传什么容器？
 
@@ -283,7 +303,7 @@ useEffect(() => {
 }, [taskId])
 ```
 
-注意 `paas.js` + SDK 走 `index.html` `<script>`，DOM 骨架放外层 layout。
+注意 `Cesium.js` + SDK `index.js` 走 `index.html` `<script>`，DOM 骨架放外层 layout。
 
 ### Q：`features` 默认值？
 
@@ -299,7 +319,10 @@ playerTrack.device_warning: true
 
 ### Q：FlyDataReplay 的错误码是不是和 WaylineEditor 一样？
 
-**一样，共用同一份**（`4001 / 4002 / 5000 / 5001 / 6000 / 6001 / 6002 / 7000`）。常用的是 `5001`（鉴权失败）和 `6002`（地图初始化失败）。
+**码值空间相同，但不是全集。** `FlyDataReplay` 的集成商 API 文档只列出四个：
+`5000`（`API_ERROR`）、`5001`（`API_AUTH_ERROR`）、`6000`（`PARSE_ERROR`）、`6002`（`MAP_INIT_ERROR`）。
+`4001 / 4002 / 6001 / 7000` 是 `WaylineEditor` 专有的，不要拿去排查回放器。
+最常用的是 `5001`（鉴权失败）和 `6002`（地图初始化失败，见上面 `mount()` 那一条）。
 
 ### Q：`setLocale()` 支持哪些语言？
 
@@ -315,7 +338,7 @@ playerTrack.device_warning: true
 
 先看最强的那条信号：**媒体列表和缩略图是正常的，只有点开文件才失败**。因为列表走 FH2 网关 `:30812`（客户网段通），而取流直连 `:30802`（客户网段不通）。这个组合把故障锁定在取流这一跳。
 
-**为什么 ISV 侧改不掉**：媒体面板由 FH2 托管的 `FlyDataReplay` UMD 渲染（`/paasjs-demo/` 下，不在你的仓库里）。它只吃 `api.baseUrl` + `api.auth`，然后自己拼详情接口、把返回的 `url` **原样**赋给 `<video src>` / `<img src>`。没有地址改写钩子，也没有可注入的 HttpClient —— 详情接口返回什么，浏览器就直连什么。
+**为什么集成商侧改不掉**：媒体面板由 FH2 托管的 `FlyDataReplay` UMD 渲染（`/paasjs-demo/` 下，不在你的仓库里）。它只吃 `api.baseUrl` + `api.auth`，然后自己拼详情接口、把返回的 `url` **原样**赋给 `<video src>` / `<img src>`。没有地址改写钩子，也没有可注入的 HttpClient —— 详情接口返回什么，浏览器就直连什么。
 
 注意媒体面板默认是**关的**（`playerBarBtn.media` / `media_list` 默认 `false`，见上文 `features` 默认值），只有显式打开才会碰到这个问题。
 
@@ -356,7 +379,7 @@ playerTrack.device_warning: true
 
 ### Q：用户 token 怎么注入
 demo 都从 `localStorage.getItem('x-user-token')` 取。生产环境一般：
-- ISV 登录后把 token 写进 localStorage / cookie
+- 集成商登录后把 token 写进 localStorage / cookie
 - `auth.headers()` 每次请求读最新值
 - token 刷新后 **无需重建 SDK**，因为 `headers` 是函数
 

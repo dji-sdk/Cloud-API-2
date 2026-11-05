@@ -91,6 +91,14 @@ public class STSCredential {
     return flighthubsdkmoduleJNI.STSCredential_platform_get(swigCPtr, this);
   }
 
+  public void setExpiration(String value) {
+    flighthubsdkmoduleJNI.STSCredential_expiration_set(swigCPtr, this, value);
+  }
+
+  public String getExpiration() {
+    return flighthubsdkmoduleJNI.STSCredential_expiration_get(swigCPtr, this);
+  }
+
   public STSCredential() {
     this(flighthubsdkmoduleJNI.new_STSCredential(), true);
   }

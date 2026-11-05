@@ -2,7 +2,7 @@
 
 回放历史飞行任务：轨迹、参数面板、媒体照片、SDR 信号图、飞机视角、航线叠加、飞行状态/设备告警/AI 目标告警/视频录制/高程图时间轴、拓扑设备连线。
 
-**核心变化（相比旧版）**：新版 `FlyDataReplay` **完全自包含**——内置 Cesium 地图（`internal` 模式），**不依赖 `paas.js`**，也不依赖 `FH2.initConfig` / `FH2.loadMap`。只需引入 Cesium + SDK 自身两个文件即可。`hostUrl` 参数已废弃，传入无效。
+**核心变化（相比旧版）**：新版 `FlyDataReplay` **完全自包含**——内置 Cesium 地图（`internal` 模式），**不依赖 `paas.js`**，也不依赖 `FH2.initConfig` / `FH2.loadMap`。只需引入 Cesium + SDK 自身两个文件即可。`hostUrl` 参数**仍是必填项**（`FlyDataReplayOptions.hostUrl: string`），真实接入代码（skeleton/web 的 `FlightReplayView.vue`）始终显式传入；新增的 `map.env.cesiumBaseUrl` 是额外的 Cesium 资源路径配置，与 `hostUrl` 同时传入，不是替代关系。
 
 ## 一、资源加载
 
@@ -132,9 +132,10 @@ new FlyDataReplay(options: IFlyDataReplayOptions)
 | 字段 | 类型 | 必需 | 说明 |
 |---|---|---|---|
 | `taskId` | string | Y | 飞行任务 ID（UUID 格式） |
+| `hostUrl` | string | **Y** | 必填，前端服务地址（如 `cfg.address`）；与下方 `map.env.cesiumBaseUrl` 同时传入，不是互斥替代关系 |
 | `api.baseUrl` | string | Y | 后端服务地址，例如 `http://<INT_FLHUB_XX>:30812/gateway`（`<INT_FLHUB_XX>` 为内网测试环境占位，开源 fork 请替换为自建环境域名） |
 | `api.auth` | `IAuth` | Y | HTTP 鉴权配置 |
-| `map` | object | N | 地图配置（替代旧版 `hostUrl` + FH2 依赖），见下表 |
+| `map` | object | N | Cesium 资源路径等地图配置（与 `hostUrl` 配合使用，非替代），见下表 |
 | `runtimeDepsBasePath` | string | N | 运行时依赖库（WPMZ/PPE 等 WASM）资源目录，默认取 SDK 自身脚本所在目录 |
 | `locale.language` | string | N | 国际化语言，默认 `zh` |
 | `locale.messages` | object | N | 英文词条对象，格式 `{ en: enMessages }`，中文已内置无需传入 |
@@ -142,7 +143,6 @@ new FlyDataReplay(options: IFlyDataReplayOptions)
 | `sidebarItems` | array | N | 自定义侧边栏面板（见 六） |
 | `renderTaskInfo` | function | N | 自定义任务信息区域（见 七） |
 | `theme` | object | N | 主题配色（运行时 CSS 变量），可在 mount 后通过 `setTheme()` 热切换（见 十一） |
-| `hostUrl` | string | N | **已废弃**，传入无效；请用 `map.env.cesiumBaseUrl` + `runtimeDepsBasePath` 替代 |
 
 ### 3.1 `map`（地图配置）
 
@@ -433,7 +433,7 @@ player.setTheme({
 player.destroy()
 ```
 
-销毁后释放所有资源。**同一页面不能同时挂多个 `FlyDataReplay` 实例**——`window.URANUS_LANGUAGE` / `mapAppState` 都是全局单例，多实例互相覆盖。切换 `taskId`、退出回放后再进入等场景用**销毁后重建**模式：
+销毁后释放所有资源。**推荐单实例**——回放组件依赖页面级固定挂载点（`#wayline-header` 顶栏、`#project-middle-container + .right-micro-app` 内的节点），多个实例会向同一批节点重复投递、UI 互相覆盖（与全局 `mapAppState` 无关：自包含模式下每个实例持有自己的地图句柄）。切换 `taskId`、退出回放后再进入等场景用**销毁后重建**模式：
 
 ```javascript
 async function recreatePlayer(oldPlayer, options) {
@@ -595,4 +595,4 @@ export function FlyDataReplayView({ taskId, options }) {
 | **大疆机场 2** | 固件 `>= v14.01.04.07` 支持全部功能；否则同机场 1（仅轨迹 + 任务详情） |
 | **大疆机场 3** | 所有固件版本支持全部功能 |
 
-ISV 接入时若发现某些按钮 / 轨道不可用，先确认设备型号 + 固件版本，**不是 SDK bug**。
+集成商接入时若发现某些按钮 / 轨道不可用，先确认设备型号 + 固件版本，**不是 SDK bug**。

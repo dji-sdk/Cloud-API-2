@@ -72,7 +72,7 @@ class RealSdkAutoConfigurationTest {
 
     @Test
     void shouldAllowIsvOverrideSdkInvoker() {
-        // 单独建一个 runner（不带默认 SdkInvoker），避免与 ISV 自定义 bean 冲突
+        // 单独建一个 runner（不带默认 SdkInvoker），避免与集成商自定义 bean 冲突
         SdkInvoker custom = mock(SdkInvoker.class);
         new ApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(

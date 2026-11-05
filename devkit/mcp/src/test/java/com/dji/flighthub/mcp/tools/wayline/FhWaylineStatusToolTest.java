@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -106,6 +107,23 @@ class FhWaylineStatusToolTest {
         assertEquals(45, data.get("progress"));
         assertNotNull(data.get("drone_sn"));
         assertEquals(true, data.get("_mock"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldReturnTaskDetailWithRealMappingFields_whenMockMode() {
+        // 回归：mock 详情字段集必须与生产映射保持一致，
+        // 否则调用方按 mock 开发、到真实环境才发现字段对不上
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = statusTool.execute(Map.of("task_uuid", TASK_UUID));
+
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertThat(data).containsKeys(
+                "task_uuid", "task_name", "task_type", "status", "drone_sn", "wayline_uuid",
+                "time_zone", "begin_at", "end_at", "current_waypoint_index", "total_waypoints",
+                "rth_altitude", "rth_mode", "out_of_control_action", "tags",
+                "created_at", "updated_at", "completed_at", "deleted_at");
     }
 
     @Test

@@ -23,8 +23,13 @@ import com.dji.flighthub.mcp.session.FlightPhase;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
+import com.dji.flighthub.mcp.tools.subscription.ListenChannelSupport;
+import com.dji.flighthub.mcp.tools.subscription.SubscriptionBuffer;
 import com.dji.flighthub.mcp.annotation.Generated;
 import com.dji.flighthubsdk.bean.POIEnterParams;
+import com.dji.flighthubsdk.bean.PoiCenterPoint;
+import com.dji.flighthubsdk.bean.PoiTaskData;
+import com.dji.flighthubsdk.bean.PoiTaskEvent;
 import com.dji.flighthubsdk.bean.Waypoint;
 import com.dji.flighthubsdk.core.Drone;
 import com.dji.flighthubsdk.core.DroneOsdModule;
@@ -39,6 +44,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 /**
  * fh_poi — 命令无人机以指定半径和速度围绕兴趣点（POI）进行环绕飞行，也可停止正在进行的环绕。
@@ -92,8 +98,41 @@ public class FhPoiTool extends AbstractMcpTool {
     /** 操作：查询环绕状态 */
     private static final String ACTION_STATUS = "status";
 
+    /** 操作：订阅 POI 任务事件流 */
+    private static final String ACTION_LISTEN_EVENT = "listen_event";
+
+    /** 操作：按游标轮询缓冲事件 */
+    private static final String ACTION_EVENTS = "events";
+
+    /** 操作：停止订阅 */
+    private static final String ACTION_LISTEN_STOP = "listen_stop";
+
     /** 有效 action 列表 */
-    private static final List<String> VALID_ACTIONS = List.of(ACTION_START, ACTION_STOP, ACTION_STATUS);
+    private static final List<String> VALID_ACTIONS = List.of(
+            ACTION_START, ACTION_STOP, ACTION_STATUS,
+            ACTION_LISTEN_EVENT, ACTION_EVENTS, ACTION_LISTEN_STOP
+    );
+
+    /** channels 参数名（events/listen_stop 可选） */
+    private static final String PARAM_CHANNELS = "channels";
+
+    /** since_seq 参数名（events 游标） */
+    private static final String PARAM_SINCE_SEQ = "since_seq";
+
+    /** limit 参数名（events 单次最大返回条数） */
+    private static final String PARAM_LIMIT = "limit";
+
+    /** 订阅注册表命名空间（与 Tool 名对应） */
+    private static final String SUBSCRIBE_NAMESPACE = "poi";
+
+    /** POI 任务事件 channel 名（本工具只有一个订阅 channel） */
+    private static final String CHANNEL_POI_TASK_EVENT = "poi_task_event";
+
+    /** 有效订阅 channel 列表 */
+    private static final List<String> VALID_CHANNELS = List.of(CHANNEL_POI_TASK_EVENT);
+
+    /** events 动作默认读取条数 */
+    private static final int DEFAULT_EVENTS_LIMIT = 50;
 
     /** 顺时针方向 */
     private static final String DIRECTION_CLOCKWISE = "clockwise";
@@ -132,16 +171,19 @@ public class FhPoiTool extends AbstractMcpTool {
     private static final int POSITION_FETCH_TIMEOUT_SECONDS = 3;
 
     private final SdkService sdkService;
+    private final ListenChannelSupport listenSupport;
 
     /**
      * 构造函数。
      *
      * @param sessionManager session 管理器
      * @param sdkService     SDK 服务
+     * @param listenSupport  订阅 channel 通用支持组件
      */
-    public FhPoiTool(SessionManager sessionManager, SdkService sdkService) {
+    public FhPoiTool(SessionManager sessionManager, SdkService sdkService, ListenChannelSupport listenSupport) {
         super(sessionManager);
         this.sdkService = sdkService;
+        this.listenSupport = listenSupport;
     }
 
     /**
@@ -175,7 +217,11 @@ public class FhPoiTool extends AbstractMcpTool {
                         + "NOT the drone's current GPS coordinates. "
                         + "If error 325003 persists: (1) choose a center point far from drone, or "
                         + "(2) use fh_fly_to to reposition drone away from center first. "
-                        + "Prerequisites: fh_control_acquire + fh_drc_connect must succeed first.");
+                        + "Prerequisites: fh_control_acquire + fh_drc_connect must succeed first. "
+                        + "This tool also exposes a read-only POI task event subscription: "
+                        + "listen_event (subscribe to the per-drone '" + CHANNEL_POI_TASK_EVENT + "' channel) "
+                        + "-> events (poll buffered events with a since_seq/limit cursor) "
+                        + "-> listen_stop (unsubscribe). Subscription actions require no DRC link or confirm.");
 
         Map<String, Object> schema = new LinkedHashMap<>();
         schema.put("type", "object");
@@ -188,7 +234,10 @@ public class FhPoiTool extends AbstractMcpTool {
         props.put(PARAM_ACTION, Map.of(
                 "type", "string",
                 "enum", VALID_ACTIONS,
-                "description", "start: begin orbiting | stop: end orbit and hover | status: query orbit state"
+                "description", "start: begin orbiting | stop: end orbit and hover | status: query orbit state | "
+                        + "listen_event: subscribe to the POI task event stream for this drone | "
+                        + "events: poll buffered events since a cursor (since_seq/limit) | "
+                        + "listen_stop: unsubscribe one/all active channels"
         ));
         props.put(PARAM_CONFIRM, Map.of(
                 "type", "boolean",
@@ -222,7 +271,23 @@ public class FhPoiTool extends AbstractMcpTool {
         props.put(PARAM_DIRECTION, Map.of(
                 "type", "string",
                 "enum", VALID_DIRECTIONS,
-                "description", "Orbit direction: clockwise | counter_clockwise (default: clockwise)"
+                "description", "Orbit direction hint: clockwise | counter_clockwise (default: clockwise). "
+                        + "NOT SUPPORTED: the DJI CloudAPI2 POI API has no direction field, so this value "
+                        + "is validated and echoed back only; the aircraft decides the orbit direction."
+        ));
+        props.put(PARAM_CHANNELS, Map.of(
+                "type", "array",
+                "items", Map.of("type", "string", "enum", VALID_CHANNELS),
+                "description", "Channel names for events/listen_stop (optional; only channel is '"
+                        + CHANNEL_POI_TASK_EVENT + "'; defaults to all currently active channels when omitted)"
+        ));
+        props.put(PARAM_SINCE_SEQ, Map.of(
+                "type", "integer",
+                "description", "Cursor for events: only return events with _seq greater than this value (default 0)"
+        ));
+        props.put(PARAM_LIMIT, Map.of(
+                "type", "integer",
+                "description", "Max events to return for events action (default " + DEFAULT_EVENTS_LIMIT + ")"
         ));
         props.put("dry_run", Map.of(
                 "type", "boolean",
@@ -250,12 +315,6 @@ public class FhPoiTool extends AbstractMcpTool {
             return noSessionError();
         }
 
-        // 1.5 安全等级硬拦截（session.maxSecurityLevel < L2 时直接拒绝）
-        Map<String, Object> denied = enforceToolSecurityLevel();
-        if (denied != null) {
-            return denied;
-        }
-
         // 2. 校验 drone_sn 参数
         String droneSn = getStringArg(args, PARAM_DRONE_SN, null);
         if (droneSn == null) {
@@ -263,7 +322,7 @@ public class FhPoiTool extends AbstractMcpTool {
                     "Provide drone_sn. Use fh_device_list to get available drone SNs.");
         }
 
-        // 3. 校验 action 参数（先于 DRC / confirm）
+        // 3. 校验 action 参数（先于安全等级硬拦截 / DRC / confirm）
         String action = getStringArg(args, PARAM_ACTION, ACTION_START);
         if (!VALID_ACTIONS.contains(action)) {
             return errorResult(
@@ -271,7 +330,18 @@ public class FhPoiTool extends AbstractMcpTool {
                     "action must be one of: " + VALID_ACTIONS);
         }
 
-        // 3.5 status 是只读查询，不需要 DRC 链路和 confirm
+        // 3.3 订阅类 action（READ_ONLY）单独分发，优先于安全等级硬拦截 / 人工确认 / DRC 链路
+        if (isSubscriptionAction(action)) {
+            return dispatchSubscription(session, droneSn, action, args);
+        }
+
+        // 3.5 安全等级硬拦截（session.maxSecurityLevel < L2 时直接拒绝）
+        Map<String, Object> denied = enforceToolSecurityLevel();
+        if (denied != null) {
+            return denied;
+        }
+
+        // 3.7 status 是只读查询，不需要 DRC 链路和 confirm
         if (ACTION_STATUS.equals(action)) {
             return queryPoiStatus(session, droneSn);
         }
@@ -286,20 +356,22 @@ public class FhPoiTool extends AbstractMcpTool {
             }
         }
 
-        // 5. 确保 DRC 链路就绪（自动获取控制权 + 连接 DRC）— 确认通过后才执行
-        Map<String, Object> drcError = ensureDrcLink(session, droneSn, sdkService);
-        if (drcError != null) {
-            return drcError;
-        }
-
-        // 6. dry_run 模式：参数校验通过，返回预览（无需 confirm）
+        // 5. dry_run 模式：参数校验通过，返回预览（无需 confirm）
+        //    必须在 ensureDrcLink 之前返回，保证干跑不抢控、不建立 DRC 链路；
+        //    因此预览中的前置条件只列已实际检查的项，不能声明 drc_linked
         if (isDryRun(args)) {
             return dryRunResult(
                     "Would execute POI orbit '" + action + "' on drone " + droneSn,
                     buildDryRunPreview(TOOL_NAME, action, droneSn,
                             Map.of("action", action),
-                            List.of("session_active", "security_level_allowed", "drc_linked", "params_valid"),
+                            List.of("session_active", "security_level_allowed", "params_valid"),
                             getSecurityLevel(), requiresHumanConfirmation()));
+        }
+
+        // 6. 确保 DRC 链路就绪（自动获取控制权 + 连接 DRC）— 确认通过后才执行
+        Map<String, Object> drcError = ensureDrcLink(session, droneSn, sdkService);
+        if (drcError != null) {
+            return drcError;
         }
 
         // 7. 人工确认已在 step 4 完成
@@ -439,8 +511,10 @@ public class FhPoiTool extends AbstractMcpTool {
 
         String orbitId = "orbit_" + System.currentTimeMillis();
         session.setFlightPhase(FlightPhase.ORBITING);
+        // 日志只输出 3 位小数坐标，避免全精度经纬度敏感信息外泄（返回响应仍保留全精度）
         log.info("[MOCK] POI orbit started: drone={}, lat={}, lng={}, height={}m, radius={}m, orbitId={}",
-                droneSn, lat, lng, height, radius, orbitId);
+                droneSn, String.format("%.3f", lat), String.format("%.3f", lng),
+                height, radius, orbitId);
 
         Map<String, Object> poi = new LinkedHashMap<>();
         poi.put("latitude", lat);
@@ -455,11 +529,14 @@ public class FhPoiTool extends AbstractMcpTool {
         data.put("radius", radius);
         data.put("speed", speed);
         data.put("direction", direction);
+        // SDK 的 POIEnterParams 没有方向字段，direction 仅做校验与回显，不能声称已生效
+        data.put("direction_applied", false);
         data.put("_mock", true);
 
         return successResult(data,
                 "[MOCK] Drone " + droneSn + " orbiting POI at (" + lat + ", " + lng
-                        + ") radius=" + (int) radius + "m speed=" + speed + "m/s " + direction + ".");
+                        + ") radius=" + (int) radius + "m speed=" + speed + "m/s "
+                        + "(direction " + direction + " is informational only; SDK has no direction field).");
     }
 
     /**
@@ -609,10 +686,13 @@ public class FhPoiTool extends AbstractMcpTool {
         data.put("radius", actualRadius);
         data.put("speed", actualSpeed);
         data.put("direction", direction);
+        // SDK 的 POIEnterParams 没有方向字段，direction 仅做校验与回显，不能声称已生效
+        data.put("direction_applied", false);
 
         return successResult(data,
                 "Drone " + droneSn + " orbiting POI at (" + lat + ", " + lng
-                        + ") radius=" + actualRadius + "m speed=" + actualSpeed + "m/s " + direction + ".");
+                        + ") radius=" + actualRadius + "m speed=" + actualSpeed + "m/s "
+                        + "(direction " + direction + " is informational only; SDK has no direction field).");
     }
 
     /** 325003 错误码：指令响应失败（常见原因是无人机在 POI 中心点正上方） */
@@ -652,7 +732,8 @@ public class FhPoiTool extends AbstractMcpTool {
         if (distance < radius) {
             log.warn("无人机距 POI 中心过近: distance={}m < radius={}m, drone=({}, {}), poi=({}, {})",
                     String.format("%.1f", distance), String.format("%.0f", radius),
-                    droneLat, droneLon, poiLat, poiLon);
+                    String.format("%.3f", droneLat), String.format("%.3f", droneLon),
+                    String.format("%.3f", poiLat), String.format("%.3f", poiLon));
             return errorResult(
                     String.format("Drone is too close to POI center: %.1fm away, but radius is %.0fm. "
                             + "The drone must be outside the orbit circle to start.", distance, radius),
@@ -698,6 +779,283 @@ public class FhPoiTool extends AbstractMcpTool {
             return null;
         } finally {
             osdModule.cancelListenAircraftLocation(listenId);
+        }
+    }
+
+    // ── 订阅分发 ──
+
+    /**
+     * 订阅类 action 分发入口（listen_event / events / listen_stop）。
+     *
+     * @param session 当前 session
+     * @param droneSn 目标无人机 SN
+     * @param action  订阅类 action
+     * @param args    原始参数 Map
+     * @return 执行结果
+     */
+    private Map<String, Object> dispatchSubscription(
+            SessionContext session, String droneSn, String action, Map<String, Object> args) {
+        return switch (action) {
+            case ACTION_LISTEN_EVENT -> handleListenEvent(session, droneSn);
+            case ACTION_EVENTS -> handleEvents(session, droneSn, args);
+            case ACTION_LISTEN_STOP -> handleListenStop(session, droneSn, args);
+            default -> errorResult("Unknown action: " + action, "");
+        };
+    }
+
+    /**
+     * 订阅 POI 任务事件流。
+     *
+     * @param session 当前 session
+     * @param droneSn 目标无人机 SN
+     * @return 包含 listen_id 的成功响应
+     */
+    private Map<String, Object> handleListenEvent(SessionContext session, String droneSn) {
+        String registryKey = ListenChannelSupport.registryKey(SUBSCRIBE_NAMESPACE, droneSn, CHANNEL_POI_TASK_EVENT);
+        String scope = SubscriptionBuffer.scope(session, droneSn);
+        boolean mock = sdkService.isMockMode();
+
+        int listenId = listenSupport.startChannel(session, registryKey, CHANNEL_POI_TASK_EVENT, scope,
+                CHANNEL_POI_TASK_EVENT, mock,
+                this::mockPoiTaskEvent,
+                onEvent -> startRealListen(droneSn, onEvent),
+                listenId2 -> cancelRealListen(droneSn, listenId2));
+
+        if (listenId < 0) {
+            return errorResult("Failed to start listening on channel: " + CHANNEL_POI_TASK_EVENT,
+                    "Check SDK connectivity and try again.");
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_LISTEN_EVENT);
+        data.put("channel", CHANNEL_POI_TASK_EVENT);
+        data.put("listen_id", listenId);
+        return successResult(data,
+                "Subscribed to POI task event stream for " + droneSn + ". Poll with action=events.");
+    }
+
+    /**
+     * 按游标轮询缓冲的 POI 任务事件。
+     *
+     * @param session 当前 session
+     * @param droneSn 目标无人机 SN
+     * @param args    原始参数 Map（channels/since_seq/limit）
+     * @return 各 channel 的事件流结果
+     */
+    private Map<String, Object> handleEvents(SessionContext session, String droneSn, Map<String, Object> args) {
+        List<String> channels = resolveChannels(session, droneSn, args);
+        long sinceSeq = getLongArg(args, PARAM_SINCE_SEQ, 0L);
+        int limit = getIntArg(args, PARAM_LIMIT, DEFAULT_EVENTS_LIMIT);
+
+        Map<String, Object> streams = new LinkedHashMap<>();
+        for (String channel : channels) {
+            String registryKey = ListenChannelSupport.registryKey(SUBSCRIBE_NAMESPACE, droneSn, channel);
+            String scope = SubscriptionBuffer.scope(session, droneSn);
+            streams.put(channel, listenSupport.readChannel(session, registryKey, scope, channel, sinceSeq, limit));
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_EVENTS);
+        data.put("streams", streams);
+        return successResult(data, "Polled " + streams.size() + " channel(s).");
+    }
+
+    /**
+     * 停止一个或多个订阅 channel。
+     *
+     * @param session 当前 session
+     * @param droneSn 目标无人机 SN
+     * @param args    原始参数 Map（channels 可选，省略表示停止全部活跃 channel）
+     * @return 停止结果（stopped/not_active/failed）
+     */
+    private Map<String, Object> handleListenStop(SessionContext session, String droneSn, Map<String, Object> args) {
+        List<String> requested = getStringListArg(args, PARAM_CHANNELS);
+        List<String> channels = (requested != null && !requested.isEmpty())
+                ? requested
+                : listenSupport.activeChannels(session, subscribePrefix(droneSn));
+
+        ListenChannelSupport.StopResult result = listenSupport.stopChannels(session, channels,
+                channel -> ListenChannelSupport.registryKey(SUBSCRIBE_NAMESPACE, droneSn, channel), log);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_LISTEN_STOP);
+        data.put("stopped", result.stopped());
+        data.put("not_active", result.notActive());
+        data.put("failed", result.failed());
+        return successResult(data, "Stopped " + result.stopped().size() + " channel(s).");
+    }
+
+    /**
+     * 解析 events 动作要读取的 channel 列表：显式指定则使用指定值，否则读取全部活跃 channel。
+     *
+     * @param session 当前 session
+     * @param droneSn 目标无人机 SN
+     * @param args    原始参数 Map
+     * @return 待读取的 channel 名称列表
+     */
+    private List<String> resolveChannels(SessionContext session, String droneSn, Map<String, Object> args) {
+        List<String> requested = getStringListArg(args, PARAM_CHANNELS);
+        if (requested != null && !requested.isEmpty()) {
+            return requested;
+        }
+        return listenSupport.activeChannels(session, subscribePrefix(droneSn));
+    }
+
+    /**
+     * 构建本无人机在订阅注册表中的前缀，用于枚举该无人机下所有活跃 channel。
+     *
+     * @param droneSn 目标无人机 SN
+     * @return 注册表前缀
+     */
+    private String subscribePrefix(String droneSn) {
+        return SUBSCRIBE_NAMESPACE + "::" + droneSn + "::";
+    }
+
+    /**
+     * 判断 action 是否属于订阅三元组（listen_event / events / listen_stop）。
+     *
+     * @param action action 参数值
+     * @return 是否为订阅类 action
+     */
+    private boolean isSubscriptionAction(String action) {
+        return ACTION_LISTEN_EVENT.equals(action)
+                || ACTION_EVENTS.equals(action)
+                || ACTION_LISTEN_STOP.equals(action);
+    }
+
+    /**
+     * 通过真实 SDK 发起 POI 任务事件监听。
+     *
+     * @param droneSn 目标无人机 SN
+     * @param onEvent 事件回调（转换为 Map 后投递）
+     * @return SDK 返回的 listenId；无法获取 PoiModule 时返回 -1
+     */
+    private int startRealListen(String droneSn, Consumer<Map<String, Object>> onEvent) {
+        Drone drone = sdkService.getDrone(droneSn);
+        if (drone == null || drone.getPoiModule() == null) {
+            return -1;
+        }
+        return drone.getPoiModule().listenPoiTaskEvent(event -> onEvent.accept(toMap(event)));
+    }
+
+    /**
+     * 通过真实 SDK 取消 POI 任务事件监听。
+     *
+     * @param droneSn  目标无人机 SN
+     * @param listenId 待取消的监听 ID
+     */
+    private void cancelRealListen(String droneSn, int listenId) {
+        Drone drone = sdkService.getDrone(droneSn);
+        if (drone == null || drone.getPoiModule() == null) {
+            return;
+        }
+        drone.getPoiModule().cancelListenPoiTaskEvent(listenId);
+    }
+
+    /**
+     * 构造 mock 模式下的 POI 任务事件数据。
+     *
+     * @return mock 事件 Map
+     */
+    private Map<String, Object> mockPoiTaskEvent() {
+        Map<String, Object> taskData = new LinkedHashMap<>();
+        taskData.put("uuid", "poi_task_mock_uuid");
+        taskData.put("sn", "mock_dock_sn");
+        taskData.put("device_sn", "mock_device_sn");
+        taskData.put("poi_center_point", mockPoiCenterPointMap());
+        taskData.put("speed", DEFAULT_SPEED);
+        taskData.put("circle_radius", 30);
+        taskData.put("payload_index", "0");
+        taskData.put("status", 1);
+        taskData.put("err_code", 0);
+
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("event_id", 1L);
+        event.put("action", "progress");
+        event.put("uuid", "poi_task_mock_uuid");
+        event.put("timestamp", System.currentTimeMillis());
+        event.put("task_data", taskData);
+        event.put("_mock", true);
+        return event;
+    }
+
+    /**
+     * 构造 mock 模式下的 POI 中心点坐标数据。
+     *
+     * @return mock 坐标 Map
+     */
+    private Map<String, Object> mockPoiCenterPointMap() {
+        Map<String, Object> point = new LinkedHashMap<>();
+        point.put("latitude", MOCK_DRONE_LATITUDE);
+        point.put("longitude", MOCK_DRONE_LONGITUDE);
+        point.put("height", 50.0);
+        return point;
+    }
+
+    /**
+     * 将 SDK 返回的 PoiTaskEvent 转换为响应 Map。
+     *
+     * @param event SDK 事件对象
+     * @return 转换后的 Map
+     */
+    private Map<String, Object> toMap(PoiTaskEvent event) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("event_id", event.getEventId());
+        map.put("action", String.valueOf(event.getAction()));
+        putIfNotNull(map, "uuid", event.getUuid());
+        map.put("timestamp", event.getTimestamp());
+        if (event.getTaskData() != null) {
+            map.put("task_data", toTaskDataMap(event.getTaskData()));
+        }
+        return map;
+    }
+
+    /**
+     * 将 SDK 返回的 PoiTaskData 转换为响应 Map。
+     *
+     * @param data SDK 任务数据对象
+     * @return 转换后的 Map
+     */
+    private Map<String, Object> toTaskDataMap(PoiTaskData data) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        putIfNotNull(map, "uuid", data.getUuid());
+        putIfNotNull(map, "sn", data.getSn());
+        putIfNotNull(map, "device_sn", data.getDeviceSn());
+        if (data.getPoiCenterPoint() != null) {
+            map.put("poi_center_point", toPoiCenterPointMap(data.getPoiCenterPoint()));
+        }
+        map.put("speed", data.getSpeed());
+        map.put("circle_radius", data.getCircleRadius());
+        putIfNotNull(map, "payload_index", data.getPayloadIndex());
+        map.put("status", data.getStatus());
+        map.put("err_code", data.getErrCode());
+        return map;
+    }
+
+    /**
+     * 将 SDK 返回的 PoiCenterPoint 转换为响应 Map。
+     *
+     * @param point SDK 坐标对象
+     * @return 转换后的 Map
+     */
+    private Map<String, Object> toPoiCenterPointMap(PoiCenterPoint point) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("latitude", point.getLatitude());
+        map.put("longitude", point.getLongitude());
+        map.put("height", point.getHeight());
+        return map;
+    }
+
+    /**
+     * 仅在 value 非空时写入 Map，避免空值污染响应结构。
+     *
+     * @param map   目标 Map
+     * @param key   键
+     * @param value 值（可能为 null）
+     */
+    private static void putIfNotNull(Map<String, Object> map, String key, Object value) {
+        if (value != null) {
+            map.put(key, value);
         }
     }
 }

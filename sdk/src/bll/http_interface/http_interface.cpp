@@ -12,7 +12,9 @@
 #include <common/executors/executors.h>
 #include "api/value.h"
 #include "common.h"
+#include <charconv>
 #include <chrono>
+#include <ctime>
 #include <set>
 #include <sstream>
 #include <string>
@@ -29,10 +31,10 @@ using drc_sdk::common::log_safe;
 // 在 lambda 内部，lambda 参数 http_code 会遮蔽此值
 static constexpr int http_code = 0;
 
-// 首次发布固件时后端同步拆包并回传 minio，HTTP 超时 90s（HYAPP-180947）
+// 首次发布固件时后端同步拆包并回传 minio，HTTP 超时 90s
 static constexpr uint32_t kFirmwareReleaseHttpTimeoutMs = 90000;
 
-void get_device_list_by_filter(const std::string& gateway_model_key, int page_index, int page_size, uint32_t timeout_ms, const std::function<void(const DeviceTopoListResponse&, FlightHubError err)> callback) {
+void get_device_list_by_filter(const std::string& gateway_model_key, int page_index, int page_size, uint32_t timeout_ms, const std::function<void(const DeviceTopoListResponse&, FlightHubError err)> callback, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -52,13 +54,14 @@ void get_device_list_by_filter(const std::string& gateway_model_key, int page_in
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("[DeviceListManager] get_device_list_by_filter(), { url: %s, uuid: %s, page_index: %d, page_size: %d, timeout_ms: %u ms }",
         url.c_str(), uuid.str().c_str(), page_index, page_size, timeout_ms
     );
 
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             do {
                 auto common_response = convert_response_struct(response);
                 if (common_response.code != 0) {
@@ -91,7 +94,7 @@ void get_device_list_by_filter(const std::string& gateway_model_key, int page_in
 // 切线程
 // page=1&page_size=500&device_model_class=base_station
 // page=1&page_size=500&device_model_class=airport
-void get_device_topo(const std::string& device_sn, const std::function<void(const DeviceTopoResponse&, FlightHubError err)> callback) {
+void get_device_topo(const std::string& device_sn, const std::function<void(const DeviceTopoResponse&, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kDevicePropertiesAPI);
     url += "?device_sn=" + device_sn;
@@ -99,6 +102,7 @@ void get_device_topo(const std::string& device_sn, const std::function<void(cons
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_device_topo(properties): url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
@@ -133,7 +137,7 @@ void get_device_topo(const std::string& device_sn, const std::function<void(cons
     });
 }
 
-void start_live_stream(const LiveInfo& live_info, const std::function<void(const LiveStreamStartResponse&, FlightHubError err)> callback, const std::string& gateway_sn) {
+void start_live_stream(const LiveInfo& live_info, const std::function<void(const LiveStreamStartResponse&, FlightHubError err)> callback, int session_id, const std::string& gateway_sn) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kLiveStreamStartAPI);
     auto uuid = xg::newGuid();
@@ -141,6 +145,7 @@ void start_live_stream(const LiveInfo& live_info, const std::function<void(const
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LiveStreamStartRequest request;
     request.sn = live_info.device_sn;
@@ -202,7 +207,7 @@ void start_live_stream(const LiveInfo& live_info, const std::function<void(const
     });
 }
 
-void stop_live_stream(const LiveInfo& live_info, const std::function<void(FlightHubError err)> callback, const std::string& gateway_sn) {
+void stop_live_stream(const LiveInfo& live_info, const std::function<void(FlightHubError err)> callback, int session_id, const std::string& gateway_sn) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kLiveStreamStopAPI);
     auto uuid = xg::newGuid();
@@ -210,6 +215,7 @@ void stop_live_stream(const LiveInfo& live_info, const std::function<void(Flight
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LiveStreamStartRequest request;
     request.sn = live_info.device_sn;
@@ -259,7 +265,7 @@ void stop_live_stream(const LiveInfo& live_info, const std::function<void(Flight
     });
 }
 
-void update_live_stream_state(const LiveInfo& live_info, int state, const std::function<void(FlightHubError err)> callback) {
+void update_live_stream_state(const LiveInfo& live_info, int state, const std::function<void(FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kLiveStreamStateUpdateAPI);
     auto uuid = xg::newGuid();
@@ -267,6 +273,7 @@ void update_live_stream_state(const LiveInfo& live_info, int state, const std::f
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LiveStreamStateUpdateRequest request;
     request.sn = live_info.device_sn;
@@ -301,7 +308,7 @@ void update_live_stream_state(const LiveInfo& live_info, int state, const std::f
     });
 }
 
-void update_live_stream_token(const LiveInfo& live_info, const std::string& user_id, const std::string& provider, const std::function<void(FlightHubError err, const std::string& token)>& callback) {
+void update_live_stream_token(const LiveInfo& live_info, const std::string& user_id, const std::string& provider, const std::function<void(FlightHubError err, const std::string& token)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kLiveStreamStateUpdateTokenAPI);
     auto uuid = xg::newGuid();
@@ -309,6 +316,7 @@ void update_live_stream_token(const LiveInfo& live_info, const std::string& user
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LiveStreamStateUpdateTokenRequest request;
     LiveStreamStateUpdateTokenItem item;
@@ -421,7 +429,7 @@ void update_live_stream_token(const LiveInfo& live_info, const std::string& user
     });
 }
 
-void change_dock_camera_position(const LiveInfo& live_info, int camera_position, const std::string& gateway_sn, const std::function<void(FlightHubError err)>& callback) {
+void change_dock_camera_position(const LiveInfo& live_info, int camera_position, const std::string& gateway_sn, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kLiveStreamChangeCameraAPI);
     auto uuid = xg::newGuid();
@@ -429,6 +437,7 @@ void change_dock_camera_position(const LiveInfo& live_info, int camera_position,
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     ChangeDockCameraPositionRequest request;
     request.sn = live_info.device_sn;
@@ -466,13 +475,14 @@ void change_dock_camera_position(const LiveInfo& live_info, int camera_position,
         });
 }
 
-void start_live_record(const LiveInfo& live_info, const std::string& gateway_sn, const std::string& time_zone, const std::function<void(FlightHubError err)>& callback) {
+void start_live_record(const LiveInfo& live_info, const std::string& gateway_sn, const std::string& time_zone, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kLiveRecordStartAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     StartLiveRecordRequest request;
     request.sn = live_info.device_sn;
     request.camera = live_info.payload_index;
@@ -510,13 +520,14 @@ void start_live_record(const LiveInfo& live_info, const std::string& gateway_sn,
         });
 }
 
-void stop_live_record(const LiveInfo& live_info, const std::string& gateway_sn, const std::function<void(FlightHubError err)>& callback) {
+void stop_live_record(const LiveInfo& live_info, const std::string& gateway_sn, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kLiveRecordStopAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     StartLiveRecordRequest request;
     request.sn = live_info.device_sn;
     request.camera = live_info.payload_index;
@@ -551,13 +562,14 @@ void stop_live_record(const LiveInfo& live_info, const std::string& gateway_sn, 
         });
 }
 
-void get_device_live_records(const std::string& device_sn, const std::function<void(const std::vector<LiveRecordItem>& records, FlightHubError err)>& callback) {
+void get_device_live_records(const std::string& device_sn, const std::function<void(const std::vector<LiveRecordItem>& records, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kLiveRecordDeviceAPI).replace(kLiveRecordDeviceAPI.find("{sn}"), 5, device_sn);
     std::string url = generate_url(config.address, config.port, api);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LOG_INFO("GetDeviceLiveRecords: url %s, sn %s", url.c_str(), device_sn.c_str());
     HttpGetInnerWithStatus(url, headers,
         [callback, device_sn](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
@@ -595,7 +607,7 @@ void get_device_live_records(const std::string& device_sn, const std::function<v
         }, 10000);
 }
 
-void post_audience_count(const std::vector<DeviceAudienceCountRequestItem>& device_list, const AudienceCountGroup* group, const std::function<void(const std::vector<DeviceAudienceCountItem>& result, FlightHubError err)>& callback) {
+void post_audience_count(const std::vector<DeviceAudienceCountRequestItem>& device_list, const AudienceCountGroup* group, const std::function<void(const std::vector<DeviceAudienceCountItem>& result, FlightHubError err)>& callback, int session_id) {
     if (device_list.empty()) {
         LOG_ERROR("PostAudienceCount: device_list empty");
         callback({}, FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED));
@@ -607,6 +619,7 @@ void post_audience_count(const std::vector<DeviceAudienceCountRequestItem>& devi
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     AudienceCountRequest req;
     for (const auto& item : device_list) {
@@ -629,7 +642,7 @@ void post_audience_count(const std::vector<DeviceAudienceCountRequestItem>& devi
     }
     LOG_INFO("PostAudienceCount: url %s, device_list size: %zu", url.c_str(), device_list.size());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
                 LOG_ERROR("PostAudienceCount: network error: %d", static_cast<int>(err_code));
                 callback({}, make_http_error(http_code, response));
@@ -662,6 +675,40 @@ void post_audience_count(const std::vector<DeviceAudienceCountRequestItem>& devi
 }
 
 // ---------- 航线任务 HTTP 实现 -----------
+/// 后端时间字段为 Unix 秒（AIGC 读成数字字符串），转 ISO 8601 UTC；0 表示未设置。
+static std::string NormalizeUnixTime(const std::string& v) {
+    if (v.empty()) {
+        return v;
+    }
+
+    long long secs = 0;
+    auto ret = std::from_chars(v.data(), v.data() + v.size(), secs);
+    if (ret.ec != std::errc() || ret.ptr != v.data() + v.size()) {
+        return v;  // 已经是 ISO 字符串，保持原样
+    }
+    if (secs <= 0) {
+        return "";
+    }
+
+    std::time_t t = static_cast<std::time_t>(secs);
+    std::tm tm_utc{};
+#ifdef _WIN32
+    if (gmtime_s(&tm_utc, &t) != 0) {
+        return v;
+    }
+#else
+    if (gmtime_r(&t, &tm_utc) == nullptr) {
+        return v;
+    }
+#endif
+
+    char buf[32] = {0};
+    if (std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", &tm_utc) == 0) {
+        return v;
+    }
+    return buf;
+}
+
 static std::string flight_task_api_with_uuid(const std::string& api_template, const std::string& task_uuid) {
     std::string api = api_template;
     const std::string ph = "{task_uuid}";
@@ -697,14 +744,15 @@ static std::string build_flight_task_list_query(const FlightTaskListParams& para
     return q.str();
 }
 
-void get_flight_task_list(const FlightTaskListParams& params, const std::function<void(FlightHubError err, const FlightTaskListResult& result)>& callback) {
+void get_flight_task_list(const FlightTaskListParams& params, const std::function<void(FlightHubError err, const FlightTaskListResult& result)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string query = build_flight_task_list_query(params);
     std::string api = kFlightTaskListAPI + "?" + query;
     std::string url = generate_url(config.address, config.port, api);
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = xg::newGuid().str();
-    HttpGetInnerWithStatus(url, headers, [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+    ensure_mesh_dst_header_for_session(headers, session_id);
+    HttpGetInnerWithStatus(url, headers, [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("GetFlightTaskList: network error %d", static_cast<int>(err_code));
 
@@ -714,7 +762,7 @@ void get_flight_task_list(const FlightTaskListParams& params, const std::functio
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_LIST, network_err, "[get_flight_task_list]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_LIST, network_err, session_id, "[get_flight_task_list]");
 
             callback(network_err, {});
             return;
@@ -729,7 +777,7 @@ void get_flight_task_list(const FlightTaskListParams& params, const std::functio
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_LIST, server_err, "[get_flight_task_list]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_LIST, server_err, session_id, "[get_flight_task_list]");
 
             callback(server_err, {});
             return;
@@ -739,13 +787,13 @@ void get_flight_task_list(const FlightTaskListParams& params, const std::functio
         if (!parse_common_response_data(common_response, resp, &parse_err, true)) {
             LOG_ERROR("GetFlightTaskList: parse error %s", parse_err.c_str());
 
-            auto data_err = make_http_error(http_code, response);
+            auto data_err = FlightHubError::from_parse_error(http_code, parse_err);
 
             // 埋点: 查询飞行任务列表; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_LIST, data_err, "[get_flight_task_list]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_LIST, data_err, session_id, "[get_flight_task_list]");
 
             callback(data_err, {});
             return;
@@ -784,6 +832,8 @@ void get_flight_task_list(const FlightTaskListParams& params, const std::functio
                 d.obstacles.push_back(o);
             }
             d.run_at = r.run_at;
+            d.cloud_to_cloud_id = r.cloud_to_cloud_id;
+            d.fast_reconstruction = r.fast_reconstruction;
             d.tags = r.tags;
             d.updated_at = r.updated_at;
             d.wayline_duration = r.wayline_duration;
@@ -794,7 +844,7 @@ void get_flight_task_list(const FlightTaskListParams& params, const std::functio
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_LIST, FlightHubError::success(), "[get_flight_task_list]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_LIST, FlightHubError::success(), session_id, "[get_flight_task_list]");
 
         callback(FlightHubError::success(), result);
     }, 10000);
@@ -804,21 +854,28 @@ static std::string build_command_task_list_query(const GetCommandTaskListParams&
     std::ostringstream q;
     q << "page=" << params.page << "&page_size=" << params.page_size;
     if (!params.sn.empty()) q << "&sn=" << params.sn;
-    if (!params.drone_sn.empty()) q << "&drone_sn=" << params.drone_sn;
-    if (params.begin_at >= 0) q << "&begin_at=" << params.begin_at;
-    if (params.end_at >= 0) q << "&end_at=" << params.end_at;
-    for (int st : params.status) q << "&status=" << st;
+    // 后端 PaaS 目前只支持 sn/page/page_size；drone_sn/begin_at/end_at/status 会被忽略，故不再上送。
     return q.str();
 }
 
-void get_command_task_list(const GetCommandTaskListParams& params, const std::function<void(FlightHubError err, const GetCommandTaskListResults& results)>& callback) {
+void get_command_task_list(const GetCommandTaskListParams& params, const std::function<void(FlightHubError err, const GetCommandTaskListResults& results)>& callback, int session_id) {
+    if (params.sn.empty()) {
+        LOG_ERROR("GetCommandTaskList: sn is required");
+        auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM);
+        report_beacon_event_helper(kBeaconReportEvent_COMMAND_TASK_GET_LIST, param_err, session_id, "[get_command_task_list]");
+        if (callback) {
+            callback(param_err, {});
+        }
+        return;
+    }
     auto config = FlightHubSdk::getConfig();
     std::string query = build_command_task_list_query(params);
     std::string api = kCommandTaskListAPI + "?" + query;
     std::string url = generate_url(config.address, config.port, api);
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = xg::newGuid().str();
-    HttpGetInnerWithStatus(url, headers, [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+    ensure_mesh_dst_header_for_session(headers, session_id);
+    HttpGetInnerWithStatus(url, headers, [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("GetCommandTaskList: network error %d", static_cast<int>(err_code));
 
@@ -828,7 +885,7 @@ void get_command_task_list(const GetCommandTaskListParams& params, const std::fu
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_COMMAND_TASK_GET_LIST, network_err, "[get_command_task_list]");
+            report_beacon_event_helper(kBeaconReportEvent_COMMAND_TASK_GET_LIST, network_err, session_id, "[get_command_task_list]");
 
             callback(network_err, {});
             return;
@@ -843,7 +900,7 @@ void get_command_task_list(const GetCommandTaskListParams& params, const std::fu
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_COMMAND_TASK_GET_LIST, server_err, "[get_command_task_list]");
+            report_beacon_event_helper(kBeaconReportEvent_COMMAND_TASK_GET_LIST, server_err, session_id, "[get_command_task_list]");
 
             callback(server_err, {});
             return;
@@ -853,13 +910,13 @@ void get_command_task_list(const GetCommandTaskListParams& params, const std::fu
         if (!parse_common_response_data(common_response, resp, &parse_err, true)) {
             LOG_ERROR("GetCommandTaskList: parse error %s", parse_err.c_str());
 
-            auto data_err = make_http_error(http_code, response);
+            auto data_err = FlightHubError::from_parse_error(http_code, parse_err);
 
             // 埋点: 查询指令任务列表; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_COMMAND_TASK_GET_LIST, data_err, "[get_command_task_list]");
+            report_beacon_event_helper(kBeaconReportEvent_COMMAND_TASK_GET_LIST, data_err, session_id, "[get_command_task_list]");
 
             callback(data_err, {});
             return;
@@ -888,19 +945,20 @@ void get_command_task_list(const GetCommandTaskListParams& params, const std::fu
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_COMMAND_TASK_GET_LIST, FlightHubError::success(), "[get_command_task_list]");
+        report_beacon_event_helper(kBeaconReportEvent_COMMAND_TASK_GET_LIST, FlightHubError::success(), session_id, "[get_command_task_list]");
 
         callback(FlightHubError::success(), results);
     }, 10000);
 }
 
-void get_flight_task_track(const GetFlightTaskTrackParams& params, const std::function<void(FlightHubError err, const GetFlightTaskTrackResults& results)>& callback) {
+void get_flight_task_track(const GetFlightTaskTrackParams& params, const std::function<void(FlightHubError err, const GetFlightTaskTrackResults& results)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string api = kFlightTaskTrackAPI + "?task_uuid=" + params.task_uuid;
     std::string url = generate_url(config.address, config.port, api);
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = xg::newGuid().str();
-    HttpGetInnerWithStatus(url, headers, [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+    ensure_mesh_dst_header_for_session(headers, session_id);
+    HttpGetInnerWithStatus(url, headers, [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("GetFlightTaskTrack: network error %d", static_cast<int>(err_code));
 
@@ -910,7 +968,7 @@ void get_flight_task_track(const GetFlightTaskTrackParams& params, const std::fu
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_TRACK, network_err, "[get_flight_task_track]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_TRACK, network_err, session_id, "[get_flight_task_track]");
 
             callback(network_err, {});
             return;
@@ -925,7 +983,7 @@ void get_flight_task_track(const GetFlightTaskTrackParams& params, const std::fu
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_TRACK, server_err, "[get_flight_task_track]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_TRACK, server_err, session_id, "[get_flight_task_track]");
 
             callback(server_err, {});
             return;
@@ -935,21 +993,21 @@ void get_flight_task_track(const GetFlightTaskTrackParams& params, const std::fu
         if (!parse_common_response_data(common_response, resp, &parse_err, true)) {
             LOG_ERROR("GetFlightTaskTrack: parse error %s", parse_err.c_str());
 
-            auto data_err = make_http_error(http_code, response);
+            auto data_err = FlightHubError::from_parse_error(http_code, parse_err);
 
             // 埋点: 查询飞行任务轨迹; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_TRACK, data_err, "[get_flight_task_track]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_TRACK, data_err, session_id, "[get_flight_task_track]");
 
             callback(data_err, {});
             return;
         }
         GetFlightTaskTrackResults results;
         results.uuid = resp.uuid;
-        results.run_at = resp.run_at;
-        results.completed_at = resp.completed_at;
+        results.run_at = NormalizeUnixTime(resp.run_at);
+        results.completed_at = NormalizeUnixTime(resp.completed_at);
         results.name = resp.name;
         results.status = resp.status;
         results.wayline_uuid = resp.wayline_uuid;
@@ -970,18 +1028,83 @@ void get_flight_task_track(const GetFlightTaskTrackParams& params, const std::fu
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_TRACK, FlightHubError::success(), "[get_flight_task_track]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_TRACK, FlightHubError::success(), session_id, "[get_flight_task_track]");
 
         callback(FlightHubError::success(), results);
     }, 10000);
 }
 
-void create_flight_task(const CreateTaskReq& req, const std::function<void(FlightHubError err, const CreateTaskResp& result)>& callback) {
+void get_flight_risks(const GetFlightRisksParams& params, const std::function<void(FlightHubError err, const GetFlightRisksResults& results)>& callback, int session_id) {
+    auto config = FlightHubSdk::getConfig();
+    std::string api = flight_task_api_with_uuid(kFlightTaskFlightRisksAPI, params.task_uuid);
+    std::string url = generate_url(config.address, config.port, api);
+    drc_sdk::common::HttpHeaders headers;
+    headers["x-request-id"] = xg::newGuid().str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
+    HttpGetInnerWithStatus(url, headers, [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+        if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
+            LOG_ERROR("GetFlightRisks: network error %d", static_cast<int>(err_code));
+
+            auto network_err = make_http_error(http_code, response);
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_FLIGHT_RISKS, network_err, session_id, "[get_flight_risks]");
+
+            callback(network_err, {});
+            return;
+        }
+        // 网关未挂路由时常返回纯文本（如 "not find path,please add it."）
+        if (!response.empty() && response.front() != '{' && response.front() != '[') {
+            LOG_ERROR("GetFlightRisks: non-json response http=%d body=%s", http_code, log_safe(response).c_str());
+
+            auto data_err = make_http_error(http_code, response);
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_FLIGHT_RISKS, data_err, session_id, "[get_flight_risks]");
+
+            callback(data_err, {});
+            return;
+        }
+        // data 是数组，不能走 CommonResponse（optional<string> data）
+        GetFlightRisksRawResponse raw;
+        std::string parse_err;
+        if (!aigc::JsonHelper::JsonToObject(raw, response, {}, &parse_err)) {
+            LOG_ERROR("GetFlightRisks: JsonToObject error: %s, response: %s", parse_err.c_str(), log_safe(response).c_str());
+
+            auto data_err = make_http_error(http_code, response);
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_FLIGHT_RISKS, data_err, session_id, "[get_flight_risks]");
+
+            callback(data_err, {});
+            return;
+        }
+        if (raw.code != 0) {
+            LOG_ERROR("GetFlightRisks: code %d, message %s", raw.code, raw.message.c_str());
+
+            auto server_err = make_http_error(http_code, response);
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_FLIGHT_RISKS, server_err, session_id, "[get_flight_risks]");
+
+            callback(server_err, {});
+            return;
+        }
+        GetFlightRisksResults results;
+        for (const auto& r : raw.data) {
+            FlightRiskItem item;
+            item.risk_type = r.risk_type;
+            item.latitude = r.latitude;
+            item.longitude = r.longitude;
+            item.height = r.height;
+            results.list.push_back(item);
+        }
+
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_FLIGHT_RISKS, FlightHubError::success(), session_id, "[get_flight_risks]");
+
+        callback(FlightHubError::success(), results);
+    }, 10000);
+}
+
+void create_flight_task(const CreateTaskReq& req, const std::function<void(FlightHubError err, const CreateTaskResp& result)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kFlightTaskCreateAPI);
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = xg::newGuid().str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     CreateFlightTaskRequest body;
     body.name = req.name;
     body.sn = req.sn;
@@ -1019,12 +1142,12 @@ void create_flight_task(const CreateTaskReq& req, const std::function<void(Fligh
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_CREATE, serialize_err, "[create_flight_task]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_CREATE, serialize_err, session_id, "[create_flight_task]");
 
         callback(serialize_err, {});
         return;
     }
-    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body_str, [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body_str, [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("CreateFlightTask: network error %d, response: %s", static_cast<int>(err_code), log_safe(response).c_str());
 
@@ -1034,7 +1157,7 @@ void create_flight_task(const CreateTaskReq& req, const std::function<void(Fligh
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_CREATE, network_err, "[create_flight_task]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_CREATE, network_err, session_id, "[create_flight_task]");
 
             callback(network_err, {});
             return;
@@ -1050,7 +1173,7 @@ void create_flight_task(const CreateTaskReq& req, const std::function<void(Fligh
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_CREATE, server_err, "[create_flight_task]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_CREATE, server_err, session_id, "[create_flight_task]");
 
             callback(server_err, {});
             return;
@@ -1067,7 +1190,7 @@ void create_flight_task(const CreateTaskReq& req, const std::function<void(Fligh
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_CREATE, data_err, "[create_flight_task]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_CREATE, data_err, session_id, "[create_flight_task]");
 
             callback(data_err, {});
             return;
@@ -1080,13 +1203,13 @@ void create_flight_task(const CreateTaskReq& req, const std::function<void(Fligh
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_CREATE, FlightHubError::success(), "[create_flight_task]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_CREATE, FlightHubError::success(), session_id, "[create_flight_task]");
 
         callback(FlightHubError::success(), result);
     }, 10000);
 }
 
-void get_flight_task_detail(const std::string& task_uuid, const std::function<void(FlightHubError err, const TaskDetail& result)>& callback) {
+void get_flight_task_detail(const std::string& task_uuid, const std::function<void(FlightHubError err, const TaskDetail& result)>& callback, int session_id) {
     if (task_uuid.empty()) {
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED);
 
@@ -1094,7 +1217,7 @@ void get_flight_task_detail(const std::string& task_uuid, const std::function<vo
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DETAIL, param_err, "[get_flight_task_detail]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DETAIL, param_err, session_id, "[get_flight_task_detail]");
 
         callback(param_err, {});
         return;
@@ -1104,7 +1227,8 @@ void get_flight_task_detail(const std::string& task_uuid, const std::function<vo
     std::string url = generate_url(config.address, config.port, api);
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = xg::newGuid().str();
-    HttpGetInnerWithStatus(url, headers, [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+    ensure_mesh_dst_header_for_session(headers, session_id);
+    HttpGetInnerWithStatus(url, headers, [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("GetFlightTaskDetail: network error %d, response: %s", static_cast<int>(err_code), log_safe(response).c_str());
 
@@ -1114,7 +1238,7 @@ void get_flight_task_detail(const std::string& task_uuid, const std::function<vo
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DETAIL, network_err, "[get_flight_task_detail]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DETAIL, network_err, session_id, "[get_flight_task_detail]");
 
             callback(network_err, {});
             return;
@@ -1130,7 +1254,7 @@ void get_flight_task_detail(const std::string& task_uuid, const std::function<vo
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DETAIL, server_err, "[get_flight_task_detail]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DETAIL, server_err, session_id, "[get_flight_task_detail]");
 
             callback(server_err, {});
             return;
@@ -1147,7 +1271,7 @@ void get_flight_task_detail(const std::string& task_uuid, const std::function<vo
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DETAIL, data_err, "[get_flight_task_detail]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DETAIL, data_err, session_id, "[get_flight_task_detail]");
 
             callback(data_err, {});
             return;
@@ -1183,6 +1307,8 @@ void get_flight_task_detail(const std::string& task_uuid, const std::function<vo
         }
         d.run_at = r.run_at;
         d.tags = r.tags;
+        d.cloud_to_cloud_id = r.cloud_to_cloud_id;
+        d.fast_reconstruction = r.fast_reconstruction;
         d.updated_at = r.updated_at;
         d.wayline_duration = r.wayline_duration;
 
@@ -1190,13 +1316,13 @@ void get_flight_task_detail(const std::string& task_uuid, const std::function<vo
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DETAIL, FlightHubError::success(), "[get_flight_task_detail]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DETAIL, FlightHubError::success(), session_id, "[get_flight_task_detail]");
 
         callback(FlightHubError::success(), d);
     }, 10000);
 }
 
-void edit_flight_task(const std::string& task_uuid, const EditTaskReq& req, const std::function<void(FlightHubError err, const CreateTaskResp& result)>& callback) {
+void edit_flight_task(const std::string& task_uuid, const EditTaskReq& req, const std::function<void(FlightHubError err, const CreateTaskResp& result)>& callback, int session_id) {
     if (task_uuid.empty()) {
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED);
 
@@ -1204,7 +1330,7 @@ void edit_flight_task(const std::string& task_uuid, const EditTaskReq& req, cons
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_EDIT, param_err, "[edit_flight_task]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_EDIT, param_err, session_id, "[edit_flight_task]");
 
         callback(param_err, {});
         return;
@@ -1215,6 +1341,7 @@ void edit_flight_task(const std::string& task_uuid, const EditTaskReq& req, cons
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = xg::newGuid().str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     CreateFlightTaskRequest body;
     body.name = req.name;
     body.sn = req.sn;
@@ -1248,12 +1375,12 @@ void edit_flight_task(const std::string& task_uuid, const EditTaskReq& req, cons
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_EDIT, serialize_err, "[edit_flight_task]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_EDIT, serialize_err, session_id, "[edit_flight_task]");
 
         callback(serialize_err, {});
         return;
     }
-    HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body_str, [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+    HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body_str, [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("EditFlightTask: network error %d, response: %s", static_cast<int>(err_code), log_safe(response).c_str());
 
@@ -1263,7 +1390,7 @@ void edit_flight_task(const std::string& task_uuid, const EditTaskReq& req, cons
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_EDIT, network_err, "[edit_flight_task]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_EDIT, network_err, session_id, "[edit_flight_task]");
 
             callback(network_err, {});
             return;
@@ -1279,7 +1406,7 @@ void edit_flight_task(const std::string& task_uuid, const EditTaskReq& req, cons
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_EDIT, server_err, "[edit_flight_task]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_EDIT, server_err, session_id, "[edit_flight_task]");
 
             callback(server_err, {});
             return;
@@ -1301,13 +1428,13 @@ void edit_flight_task(const std::string& task_uuid, const EditTaskReq& req, cons
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_EDIT, final_err, "[edit_flight_task]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_EDIT, final_err, session_id, "[edit_flight_task]");
 
         callback(final_err, result);
     }, 10000);
 }
 
-void delete_flight_task(const std::string& task_uuid, const std::function<void(FlightHubError err)>& callback) {
+void delete_flight_task(const std::string& task_uuid, const std::function<void(FlightHubError err)>& callback, int session_id) {
     if (task_uuid.empty()) {
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED);
 
@@ -1315,7 +1442,7 @@ void delete_flight_task(const std::string& task_uuid, const std::function<void(F
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_DELETE, param_err, "[delete_flight_task]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_DELETE, param_err, session_id, "[delete_flight_task]");
 
         callback(param_err);
         return;
@@ -1325,7 +1452,8 @@ void delete_flight_task(const std::string& task_uuid, const std::function<void(F
     std::string url = generate_url(config.address, config.port, api);
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = xg::newGuid().str();
-    HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, "", [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+    ensure_mesh_dst_header_for_session(headers, session_id);
+    HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, "", [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("DeleteFlightTask: network error %d, response: %s", static_cast<int>(err_code), log_safe(response).c_str());
 
@@ -1335,7 +1463,7 @@ void delete_flight_task(const std::string& task_uuid, const std::function<void(F
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_DELETE, network_err, "[delete_flight_task]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_DELETE, network_err, session_id, "[delete_flight_task]");
 
             callback(network_err);
             return;
@@ -1352,13 +1480,13 @@ void delete_flight_task(const std::string& task_uuid, const std::function<void(F
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_DELETE, final_err, "[delete_flight_task]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_DELETE, final_err, session_id, "[delete_flight_task]");
 
         callback(final_err);
     }, 10000);
 }
 
-void update_flight_task_status(const std::string& task_uuid, int status, const std::function<void(FlightHubError err)>& callback) {
+void update_flight_task_status(const std::string& task_uuid, int status, const std::function<void(FlightHubError err)>& callback, int session_id) {
     if (task_uuid.empty()) {
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED);
 
@@ -1366,7 +1494,7 @@ void update_flight_task_status(const std::string& task_uuid, int status, const s
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_UPDATE_STATUS, param_err, "[update_flight_task_status]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_UPDATE_STATUS, param_err, session_id, "[update_flight_task_status]");
 
         callback(param_err);
         return;
@@ -1377,6 +1505,7 @@ void update_flight_task_status(const std::string& task_uuid, int status, const s
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = xg::newGuid().str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     UpdateFlightTaskStatusRequest body;
     body.task_uuid = task_uuid;
     body.status = status;
@@ -1392,12 +1521,12 @@ void update_flight_task_status(const std::string& task_uuid, int status, const s
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_UPDATE_STATUS, serialize_err, "[update_flight_task_status]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_UPDATE_STATUS, serialize_err, session_id, "[update_flight_task_status]");
 
         callback(serialize_err);
         return;
     }
-    HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body_str, [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+    HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body_str, [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("UpdateFlightTaskStatus: network error %d, response: %s", static_cast<int>(err_code), log_safe(response).c_str());
 
@@ -1407,7 +1536,7 @@ void update_flight_task_status(const std::string& task_uuid, int status, const s
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_UPDATE_STATUS, network_err, "[update_flight_task_status]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_UPDATE_STATUS, network_err, session_id, "[update_flight_task_status]");
 
             callback(network_err);
             return;
@@ -1424,13 +1553,13 @@ void update_flight_task_status(const std::string& task_uuid, int status, const s
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_UPDATE_STATUS, final_err, "[update_flight_task_status]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_UPDATE_STATUS, final_err, session_id, "[update_flight_task_status]");
 
         callback(final_err);
     }, 10000);
 }
 
-void batch_update_flight_task_status(const BatchUpdateStatusReq& req, const std::function<void(FlightHubError err)>& callback) {
+void batch_update_flight_task_status(const BatchUpdateStatusReq& req, const std::function<void(FlightHubError err)>& callback, int session_id) {
     if (req.task_uuids.empty()) {
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED);
 
@@ -1438,7 +1567,7 @@ void batch_update_flight_task_status(const BatchUpdateStatusReq& req, const std:
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_BATCH_UPDATE_STATUS, param_err, "[batch_update_flight_task_status]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_BATCH_UPDATE_STATUS, param_err, session_id, "[batch_update_flight_task_status]");
 
         callback(param_err);
         return;
@@ -1448,6 +1577,7 @@ void batch_update_flight_task_status(const BatchUpdateStatusReq& req, const std:
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = xg::newGuid().str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     BatchUpdateFlightTaskStatusRequest body;
     body.task_uuids = req.task_uuids;
     body.status = req.status;
@@ -1463,12 +1593,12 @@ void batch_update_flight_task_status(const BatchUpdateStatusReq& req, const std:
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_BATCH_UPDATE_STATUS, serialize_err, "[batch_update_flight_task_status]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_BATCH_UPDATE_STATUS, serialize_err, session_id, "[batch_update_flight_task_status]");
 
         callback(serialize_err);
         return;
     }
-    HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body_str, [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+    HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body_str, [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("BatchUpdateFlightTaskStatus: network error %d, response: %s", static_cast<int>(err_code), log_safe(response).c_str());
 
@@ -1478,7 +1608,7 @@ void batch_update_flight_task_status(const BatchUpdateStatusReq& req, const std:
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_BATCH_UPDATE_STATUS, network_err, "[batch_update_flight_task_status]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_BATCH_UPDATE_STATUS, network_err, session_id, "[batch_update_flight_task_status]");
 
             callback(network_err);
             return;
@@ -1495,13 +1625,13 @@ void batch_update_flight_task_status(const BatchUpdateStatusReq& req, const std:
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_BATCH_UPDATE_STATUS, final_err, "[batch_update_flight_task_status]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_BATCH_UPDATE_STATUS, final_err, session_id, "[batch_update_flight_task_status]");
 
         callback(final_err);
     }, 10000);
 }
 
-void get_device_recommendation(const DeviceRecommendationReq& req, const std::function<void(FlightHubError err, const DeviceRecommendationResp& result)>& callback) {
+void get_device_recommendation(const DeviceRecommendationReq& req, const std::function<void(FlightHubError err, const DeviceRecommendationResp& result)>& callback, int session_id) {
     if (req.sn.empty()) {
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED);
 
@@ -1509,7 +1639,7 @@ void get_device_recommendation(const DeviceRecommendationReq& req, const std::fu
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_RECOMMENDATION, param_err, "[get_device_recommendation]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_RECOMMENDATION, param_err, session_id, "[get_device_recommendation]");
 
         callback(param_err, {});
         return;
@@ -1519,6 +1649,7 @@ void get_device_recommendation(const DeviceRecommendationReq& req, const std::fu
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = xg::newGuid().str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     DeviceRecommendationRequest body;
     body.sn = req.sn;
     body.device_model_keys = req.device_model_keys;
@@ -1541,12 +1672,12 @@ void get_device_recommendation(const DeviceRecommendationReq& req, const std::fu
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_RECOMMENDATION, serialize_err, "[get_device_recommendation]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_RECOMMENDATION, serialize_err, session_id, "[get_device_recommendation]");
 
         callback(serialize_err, {});
         return;
     }
-    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body_str, [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body_str, [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("GetDeviceRecommendation: network error %d, response: %s", static_cast<int>(err_code), log_safe(response).c_str());
 
@@ -1556,7 +1687,7 @@ void get_device_recommendation(const DeviceRecommendationReq& req, const std::fu
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_RECOMMENDATION, network_err, "[get_device_recommendation]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_RECOMMENDATION, network_err, session_id, "[get_device_recommendation]");
 
             callback(network_err, {});
             return;
@@ -1572,7 +1703,7 @@ void get_device_recommendation(const DeviceRecommendationReq& req, const std::fu
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_RECOMMENDATION, server_err, "[get_device_recommendation]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_RECOMMENDATION, server_err, session_id, "[get_device_recommendation]");
 
             callback(server_err, {});
             return;
@@ -1588,7 +1719,7 @@ void get_device_recommendation(const DeviceRecommendationReq& req, const std::fu
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_RECOMMENDATION, data_err, "[get_device_recommendation]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_RECOMMENDATION, data_err, session_id, "[get_device_recommendation]");
 
             callback(data_err, {});
             return;
@@ -1607,13 +1738,18 @@ void get_device_recommendation(const DeviceRecommendationReq& req, const std::fu
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_RECOMMENDATION, FlightHubError::success(), "[get_device_recommendation]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_RECOMMENDATION, FlightHubError::success(), session_id, "[get_device_recommendation]");
 
         callback(FlightHubError::success(), result);
     }, 10000);
 }
 
-void get_device_tcas(const std::vector<std::string>& center_sn, const std::function<void(FlightHubError err, const GetTCAInfosResp& result)>& callback) {
+void get_device_tcas(const std::vector<std::string>& center_sn, const std::function<void(FlightHubError err, const GetTCAInfosResp& result)>& callback, int session_id) {
+    if (center_sn.empty()) {
+        LOG_ERROR("GetDeviceTcas: center_sn is empty");
+        if (callback) callback(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM), {});
+        return;
+    }
     auto config = FlightHubSdk::getConfig();
     std::string api = kFlightTaskTcasAPI;
     if (!center_sn.empty()) {
@@ -1624,7 +1760,8 @@ void get_device_tcas(const std::vector<std::string>& center_sn, const std::funct
     std::string url = generate_url(config.address, config.port, api);
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = xg::newGuid().str();
-    HttpGetInnerWithStatus(url, headers, [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+    ensure_mesh_dst_header_for_session(headers, session_id);
+    HttpGetInnerWithStatus(url, headers, [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("GetDeviceTcas: network error %d, response: %s", static_cast<int>(err_code), log_safe(response).c_str());
 
@@ -1634,7 +1771,7 @@ void get_device_tcas(const std::vector<std::string>& center_sn, const std::funct
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_TCAS, network_err, "[get_device_tcas]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_TCAS, network_err, session_id, "[get_device_tcas]");
 
             callback(network_err, {});
             return;
@@ -1650,7 +1787,7 @@ void get_device_tcas(const std::vector<std::string>& center_sn, const std::funct
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_TCAS, server_err, "[get_device_tcas]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_TCAS, server_err, session_id, "[get_device_tcas]");
 
             callback(server_err, {});
             return;
@@ -1667,6 +1804,15 @@ void get_device_tcas(const std::vector<std::string>& center_sn, const std::funct
             for (const auto& t : resp.tcas) {
                 TCAInfo info;
                 info.center_sn = t.center_sn;
+                info.tca_status = t.tca_status;
+                info.version = t.version;
+                for (const auto& z : t.tca) {
+                    TCAZoneStatus zone;
+                    zone.status = static_cast<int>(z.status);
+                    zone.sn = z.sn;
+                    zone.radius = static_cast<int>(z.radius);
+                    info.tca.push_back(zone);
+                }
                 info.data_json = t.data_json;
                 result.tcas.push_back(info);
             }
@@ -1678,18 +1824,19 @@ void get_device_tcas(const std::vector<std::string>& center_sn, const std::funct
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_TCAS, final_err, "[get_device_tcas]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_DEVICE_TCAS, final_err, session_id, "[get_device_tcas]");
 
         callback(final_err, result);
     }, 10000);
 }
 
-void update_device_tcas(const std::vector<std::string>& center_sn, const std::function<void(FlightHubError err)>& callback) {
+void update_device_tcas(const std::vector<std::string>& center_sn, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kFlightTaskTcasAPI);
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = xg::newGuid().str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     UpdateTcasRequest body;
     body.center_sn = center_sn;
     std::string body_str;
@@ -1704,12 +1851,12 @@ void update_device_tcas(const std::vector<std::string>& center_sn, const std::fu
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_UPDATE_DEVICE_TCAS, serialize_err, "[update_device_tcas]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_UPDATE_DEVICE_TCAS, serialize_err, session_id, "[update_device_tcas]");
 
         callback(serialize_err);
         return;
     }
-    HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body_str, [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+    HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body_str, [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("UpdateDeviceTcas: network error %d, response: %s", static_cast<int>(err_code), log_safe(response).c_str());
 
@@ -1719,7 +1866,7 @@ void update_device_tcas(const std::vector<std::string>& center_sn, const std::fu
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_UPDATE_DEVICE_TCAS, network_err, "[update_device_tcas]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_UPDATE_DEVICE_TCAS, network_err, session_id, "[update_device_tcas]");
 
             callback(network_err);
             return;
@@ -1736,13 +1883,13 @@ void update_device_tcas(const std::vector<std::string>& center_sn, const std::fu
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_UPDATE_DEVICE_TCAS, final_err, "[update_device_tcas]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_UPDATE_DEVICE_TCAS, final_err, session_id, "[update_device_tcas]");
 
         callback(final_err);
     }, 10000);
 }
 
-void start_roaming(const StartRoamingParams& params, const std::function<void(FlightHubError err)>& callback) {
+void start_roaming(const StartRoamingParams& params, const std::function<void(FlightHubError err)>& callback, int session_id) {
     if (params.drone_sn.empty() || params.flight_id.empty() ||
         params.source_task_type < 1 || params.source_task_type > 2) {
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED);
@@ -1751,7 +1898,7 @@ void start_roaming(const StartRoamingParams& params, const std::function<void(Fl
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_START_ROAMING, param_err, "[start_roaming]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_START_ROAMING, param_err, session_id, "[start_roaming]");
 
         callback(param_err);
         return;
@@ -1761,6 +1908,7 @@ void start_roaming(const StartRoamingParams& params, const std::function<void(Fl
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = xg::newGuid().str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     StartRoamingRequest body;
     body.drone_sn = params.drone_sn;
     body.flight_id = params.flight_id;
@@ -1777,13 +1925,13 @@ void start_roaming(const StartRoamingParams& params, const std::function<void(Fl
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_START_ROAMING, serialize_err, "[start_roaming]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_START_ROAMING, serialize_err, session_id, "[start_roaming]");
 
         callback(serialize_err);
         return;
     }
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body_str,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
                 LOG_ERROR("StartRoaming: network error %d, response: %s", static_cast<int>(err_code), log_safe(response).c_str());
 
@@ -1793,7 +1941,7 @@ void start_roaming(const StartRoamingParams& params, const std::function<void(Fl
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_START_ROAMING, network_err, "[start_roaming]");
+                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_START_ROAMING, network_err, session_id, "[start_roaming]");
 
                 callback(network_err);
                 return;
@@ -1809,7 +1957,7 @@ void start_roaming(const StartRoamingParams& params, const std::function<void(Fl
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_START_ROAMING, server_err, "[start_roaming]");
+                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_START_ROAMING, server_err, session_id, "[start_roaming]");
 
                 callback(server_err);
                 return;
@@ -1819,14 +1967,14 @@ void start_roaming(const StartRoamingParams& params, const std::function<void(Fl
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_START_ROAMING, FlightHubError::success(), "[start_roaming]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_START_ROAMING, FlightHubError::success(), session_id, "[start_roaming]");
 
             callback(FlightHubError::success());
         }, 10000);
 }
 
 void set_roaming_station_sn(const SetRoamingStationSnParams& params,
-                            const std::function<void(FlightHubError err, const SetRoamingStationSnResult& result)>& callback) {
+                            const std::function<void(FlightHubError err, const SetRoamingStationSnResult& result)>& callback, int session_id) {
     if (params.drone_sn.empty()) {
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED);
 
@@ -1834,7 +1982,7 @@ void set_roaming_station_sn(const SetRoamingStationSnParams& params,
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_ROAMING_BASE_STATIONS, param_err, "[set_roaming_station_sn]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_ROAMING_BASE_STATIONS, param_err, session_id, "[set_roaming_station_sn]");
 
         callback(param_err, {});
         return;
@@ -1844,6 +1992,7 @@ void set_roaming_station_sn(const SetRoamingStationSnParams& params,
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = xg::newGuid().str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     SetRoamingStationSnRequest body;
     body.drone_sn = params.drone_sn;
     body.station_sns = params.station_sns;
@@ -1859,13 +2008,13 @@ void set_roaming_station_sn(const SetRoamingStationSnParams& params,
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_ROAMING_BASE_STATIONS, serialize_err, "[set_roaming_station_sn]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_ROAMING_BASE_STATIONS, serialize_err, session_id, "[set_roaming_station_sn]");
 
         callback(serialize_err, {});
         return;
     }
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body_str,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
                 LOG_ERROR("SetRoamingStationSn: network error %d, response: %s", static_cast<int>(err_code), log_safe(response).c_str());
 
@@ -1875,7 +2024,7 @@ void set_roaming_station_sn(const SetRoamingStationSnParams& params,
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_ROAMING_BASE_STATIONS, network_err, "[set_roaming_station_sn]");
+                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_ROAMING_BASE_STATIONS, network_err, session_id, "[set_roaming_station_sn]");
 
                 callback(network_err, {});
                 return;
@@ -1891,7 +2040,7 @@ void set_roaming_station_sn(const SetRoamingStationSnParams& params,
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_ROAMING_BASE_STATIONS, server_err, "[set_roaming_station_sn]");
+                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_ROAMING_BASE_STATIONS, server_err, session_id, "[set_roaming_station_sn]");
 
                 callback(server_err, {});
                 return;
@@ -1908,7 +2057,7 @@ void set_roaming_station_sn(const SetRoamingStationSnParams& params,
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_ROAMING_BASE_STATIONS, data_err, "[set_roaming_station_sn]");
+                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_ROAMING_BASE_STATIONS, data_err, session_id, "[set_roaming_station_sn]");
 
                 callback(data_err, {});
                 return;
@@ -1926,14 +2075,14 @@ void set_roaming_station_sn(const SetRoamingStationSnParams& params,
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_ROAMING_BASE_STATIONS, FlightHubError::success(), "[set_roaming_station_sn]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_ROAMING_BASE_STATIONS, FlightHubError::success(), session_id, "[set_roaming_station_sn]");
 
             callback(FlightHubError::success(), result);
         }, 10000);
 }
 
 void get_in_flight_task_topos(const std::vector<std::string>& drone_sns,
-                              const std::function<void(FlightHubError err, const GetInFlightTaskToposResult& result)>& callback) {
+                              const std::function<void(FlightHubError err, const GetInFlightTaskToposResult& result)>& callback, int session_id) {
     if (drone_sns.empty() || drone_sns.size() > 10) {
         auto param_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED);
 
@@ -1941,7 +2090,7 @@ void get_in_flight_task_topos(const std::vector<std::string>& drone_sns,
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_IN_FLIGHT_TASK_TOPOS, param_err, "[get_in_flight_task_topos]");
+        report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_IN_FLIGHT_TASK_TOPOS, param_err, session_id, "[get_in_flight_task_topos]");
 
         callback(param_err, {});
         return;
@@ -1956,8 +2105,9 @@ void get_in_flight_task_topos(const std::vector<std::string>& drone_sns,
     std::string url = generate_url(config.address, config.port, api);
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = xg::newGuid().str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
                 LOG_ERROR("GetInFlightTaskTopos: network error %d, response: %s", static_cast<int>(err_code), log_safe(response).c_str());
 
@@ -1967,7 +2117,7 @@ void get_in_flight_task_topos(const std::vector<std::string>& drone_sns,
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_IN_FLIGHT_TASK_TOPOS, network_err, "[get_in_flight_task_topos]");
+                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_IN_FLIGHT_TASK_TOPOS, network_err, session_id, "[get_in_flight_task_topos]");
 
                 callback(network_err, {});
                 return;
@@ -1983,7 +2133,7 @@ void get_in_flight_task_topos(const std::vector<std::string>& drone_sns,
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_IN_FLIGHT_TASK_TOPOS, server_err, "[get_in_flight_task_topos]");
+                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_IN_FLIGHT_TASK_TOPOS, server_err, session_id, "[get_in_flight_task_topos]");
 
                 callback(server_err, {});
                 return;
@@ -2000,7 +2150,7 @@ void get_in_flight_task_topos(const std::vector<std::string>& drone_sns,
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_IN_FLIGHT_TASK_TOPOS, data_err, "[get_in_flight_task_topos]");
+                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_IN_FLIGHT_TASK_TOPOS, data_err, session_id, "[get_in_flight_task_topos]");
 
                 callback(data_err, {});
                 return;
@@ -2018,13 +2168,13 @@ void get_in_flight_task_topos(const std::vector<std::string>& drone_sns,
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_IN_FLIGHT_TASK_TOPOS, FlightHubError::success(), "[get_in_flight_task_topos]");
+            report_beacon_event_helper(kBeaconReportEvent_FLIGHT_TASK_GET_IN_FLIGHT_TASK_TOPOS, FlightHubError::success(), session_id, "[get_in_flight_task_topos]");
 
             callback(FlightHubError::success(), result);
         }, 10000);
 }
 
-void open_data_channel(OpenDataChannelRequest request, const std::string& sn_tag, const std::function<void(const OpenDataChannelResponse&, FlightHubError err)> callback) {
+void open_data_channel(OpenDataChannelRequest request, const std::string& sn_tag, const std::function<void(const OpenDataChannelResponse&, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     // 新接口路径 /paas/api/v1/rt-channels/{sn}，sn 走 URL 路径参数；使用 gateway_sn 替换
     // （传统机场场景 gateway_sn = dock_sn；网联机型 gateway_sn = drone_sn，由 DroneImpl::getGatewaySn() 决定）
@@ -2039,6 +2189,7 @@ void open_data_channel(OpenDataChannelRequest request, const std::string& sn_tag
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -2075,7 +2226,7 @@ void open_data_channel(OpenDataChannelRequest request, const std::string& sn_tag
         });
 }
 
-void fly_to_point(FlyToPointRequest request, const std::function<void(const FlyToPointResponse& response, FlightHubError err)> callback) {
+void fly_to_point(FlyToPointRequest request, const std::function<void(const FlyToPointResponse& response, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kFlyToPointAPI);
     auto uuid = xg::newGuid();
@@ -2083,6 +2234,7 @@ void fly_to_point(FlyToPointRequest request, const std::function<void(const FlyT
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -2094,7 +2246,7 @@ void fly_to_point(FlyToPointRequest request, const std::function<void(const FlyT
     }
     LOG_DEBUG("FlyToPoint:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
                 LOG_ERROR("FlyToPoint: code: %d, message: %s, \n http response: %s",
@@ -2116,7 +2268,7 @@ void fly_to_point(FlyToPointRequest request, const std::function<void(const FlyT
         });
 }
 
-void poi_enter(POIEnterRequest request, const std::function<void(const POITaskResponse& response, FlightHubError err)> callback) {
+void poi_enter(POIEnterRequest request, const std::function<void(const POITaskResponse& response, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kPOIEnterAPI);
     auto uuid = xg::newGuid();
@@ -2124,6 +2276,7 @@ void poi_enter(POIEnterRequest request, const std::function<void(const POITaskRe
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -2135,7 +2288,7 @@ void poi_enter(POIEnterRequest request, const std::function<void(const POITaskRe
     }
     LOG_DEBUG("POIEnter: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("POIEnter response: %s", log_safe(response).c_str());
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -2154,7 +2307,7 @@ void poi_enter(POIEnterRequest request, const std::function<void(const POITaskRe
         });
 }
 
-void acquire_ctrl_authority(AcquireCtrlAuthorityRequest request, const std::function<void(const AcquireCtrlAuthorityResponse& response, FlightHubError err)> callback) {
+void acquire_ctrl_authority(AcquireCtrlAuthorityRequest request, const std::function<void(const AcquireCtrlAuthorityResponse& response, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kControlAuthorityAPI);
     auto uuid = xg::newGuid();
@@ -2162,6 +2315,7 @@ void acquire_ctrl_authority(AcquireCtrlAuthorityRequest request, const std::func
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -2173,7 +2327,7 @@ void acquire_ctrl_authority(AcquireCtrlAuthorityRequest request, const std::func
     }
     LOG_DEBUG("AcquireCtrlAuthority:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
                 LOG_ERROR("AcquireCtrlAuthority: code: %d, message: %s, http response: %s",
@@ -2195,7 +2349,7 @@ void acquire_ctrl_authority(AcquireCtrlAuthorityRequest request, const std::func
         });
 }
 
-void release_ctrl_authority(ReleaseCtrlAuthorityRequest request, const std::function<void(const ReleaseCtrlAuthorityResponse& response, FlightHubError err)> callback) {
+void release_ctrl_authority(ReleaseCtrlAuthorityRequest request, const std::function<void(const ReleaseCtrlAuthorityResponse& response, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kControlAuthorityAPI);
     auto uuid = xg::newGuid();
@@ -2203,6 +2357,7 @@ void release_ctrl_authority(ReleaseCtrlAuthorityRequest request, const std::func
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -2214,7 +2369,7 @@ void release_ctrl_authority(ReleaseCtrlAuthorityRequest request, const std::func
     }
     LOG_DEBUG("ReleaseCtrlAuthority:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
                 LOG_ERROR("ReleaseCtrlAuthority: code: %d, message: %s", common_response.code, common_response.message.c_str());
@@ -2238,7 +2393,7 @@ void execute_non_realtime_cmd(
     RequestType request,
     const std::string& operation_name,
     const std::string& sn,
-    const std::function<void(const ResponseType& response, FlightHubError err)>& callback) {
+    const std::function<void(const ResponseType& response, FlightHubError err)>& callback, int session_id) {
 
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kNonRealtimeCmdAPI);
@@ -2247,6 +2402,7 @@ void execute_non_realtime_cmd(
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -2290,43 +2446,62 @@ void execute_non_realtime_cmd(
 }
 
 void flight_task_pause(const FlightTaskPauseRequest& request,
-    const std::function<void(const NonRealtimeCmdResponse& response, FlightHubError err)>& callback) {
-    execute_non_realtime_cmd<FlightTaskPauseRequest, NonRealtimeCmdResponse>(request, "flight_task_pause", request.sn, callback);
+    const std::function<void(const NonRealtimeCmdResponse& response, FlightHubError err)>& callback, int session_id) {
+    execute_non_realtime_cmd<FlightTaskPauseRequest, NonRealtimeCmdResponse>(request, "flight_task_pause", request.sn, callback, session_id);
 }
 
 void flight_task_resume(const FlightTaskResumeRequest& request,
-    const std::function<void(const NonRealtimeCmdResponse& response, FlightHubError err)>& callback) {
-    execute_non_realtime_cmd<FlightTaskResumeRequest, NonRealtimeCmdResponse>(request, "flight_task_resume", request.sn, callback);
+    const std::function<void(const NonRealtimeCmdResponse& response, FlightHubError err)>& callback, int session_id) {
+    execute_non_realtime_cmd<FlightTaskResumeRequest, NonRealtimeCmdResponse>(request, "flight_task_resume", request.sn, callback, session_id);
 }
 
 void return_home(const ReturnHomeRequest& request,
-    const std::function<void(const NonRealtimeCmdResponse& response, FlightHubError err)>& callback) {
-    execute_non_realtime_cmd<ReturnHomeRequest, NonRealtimeCmdResponse>(request, "return_home", request.sn, callback);
+    const std::function<void(const NonRealtimeCmdResponse& response, FlightHubError err)>& callback, int session_id) {
+    execute_non_realtime_cmd<ReturnHomeRequest, NonRealtimeCmdResponse>(request, "return_home", request.sn, callback, session_id);
+}
+
+void return_specific_home(const ReturnSpecificHomeRequest& request,
+    const std::function<void(const NonRealtimeCmdResponse& response, FlightHubError err)>& callback, int session_id) {
+    execute_non_realtime_cmd<ReturnSpecificHomeRequest, NonRealtimeCmdResponse>(request, "return_specific_home", request.sn, callback, session_id);
 }
 
 void return_home_cancel(const ReturnHomeCancelRequest& request,
-    const std::function<void(const NonRealtimeCmdResponse& response, FlightHubError err)>& callback) {
-    execute_non_realtime_cmd<ReturnHomeCancelRequest, NonRealtimeCmdResponse>(request, "return_home_cancel", request.sn, callback);
+    const std::function<void(const NonRealtimeCmdResponse& response, FlightHubError err)>& callback, int session_id) {
+    execute_non_realtime_cmd<ReturnHomeCancelRequest, NonRealtimeCmdResponse>(request, "return_home_cancel", request.sn, callback, session_id);
 }
 
 void look_at_target(const LookAtTargetRequest& request,
-    const std::function<void(const NonRealtimeCmdResponse& response, FlightHubError err)>& callback) {
-    execute_non_realtime_cmd<LookAtTargetRequest, NonRealtimeCmdResponse>(request, "look_at_target", request.sn, callback);
+    const std::function<void(const NonRealtimeCmdResponse& response, FlightHubError err)>& callback, int session_id) {
+    execute_non_realtime_cmd<LookAtTargetRequest, NonRealtimeCmdResponse>(request, "look_at_target", request.sn, callback, session_id);
 }
 
-void get_psdk_speaker_resource_list(const std::function<void(const PsdkSpeakerResourceListResponse& response, FlightHubError err)>& callback) {
+void get_psdk_speaker_resource_list(const std::function<void(const PsdkSpeakerResourceListResponse& response, FlightHubError err)>& callback, int session_id) {
+    get_psdk_speaker_resource_list(PsdkSpeakerResourceListRequest{}, callback, session_id);
+}
+
+void get_psdk_speaker_resource_list(const PsdkSpeakerResourceListRequest& request,
+    const std::function<void(const PsdkSpeakerResourceListResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     auto api = std::string(kPsdkSpeakerResourceListAPI);
+    std::string query;
+    if (!request.file_type.empty()) {
+        query += "?file_type=" + request.file_type;
+    }
+    if (!request.md5_sum.empty()) {
+        query += (query.empty() ? "?" : "&");
+        query += "md5_sum=" + request.md5_sum;
+    }
 
-    std::string url = generate_url(config.address, config.port, api);
+    std::string url = generate_url(config.address, config.port, api + query);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("GetPsdkSpeakerResourceList: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -2346,7 +2521,7 @@ void get_psdk_speaker_resource_list(const std::function<void(const PsdkSpeakerRe
     }, 15000);
 }
 
-void create_psdk_speaker_resource(CreateSpeakerResourceRequest request, const std::function<void(const CreateSpeakerResourceResponse& response, FlightHubError err)>& callback) {
+void create_psdk_speaker_resource(CreateSpeakerResourceRequest request, const std::function<void(const CreateSpeakerResourceResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     auto api = std::string(kCreatePsdkSpeakerResourceAPI);
 
@@ -2356,6 +2531,7 @@ void create_psdk_speaker_resource(CreateSpeakerResourceRequest request, const st
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -2368,7 +2544,7 @@ void create_psdk_speaker_resource(CreateSpeakerResourceRequest request, const st
 
     LOG_DEBUG("CreatePsdkSpeakerResource: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("CreatePsdkSpeakerResource: response %s", log_safe(response).c_str());
         do {
             auto common_response = convert_response_struct(response);
@@ -2390,7 +2566,7 @@ void create_psdk_speaker_resource(CreateSpeakerResourceRequest request, const st
     }, 15000);
 }
 
-void edit_psdk_speaker_resource(const std::string& resource_id, EditSpeakerResourceRequest request, const std::function<void(const EditSpeakerResourceResponse& response, FlightHubError err)>& callback) {
+void edit_psdk_speaker_resource(const std::string& resource_id, EditSpeakerResourceRequest request, const std::function<void(const EditSpeakerResourceResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     auto api = std::string(kEditPsdkSpeakerResourceAPI);
     api.replace(api.find("{id}"), 4, resource_id);
@@ -2401,6 +2577,7 @@ void edit_psdk_speaker_resource(const std::string& resource_id, EditSpeakerResou
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -2413,7 +2590,7 @@ void edit_psdk_speaker_resource(const std::string& resource_id, EditSpeakerResou
 
     LOG_DEBUG("EditPsdkSpeakerResource: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -2433,7 +2610,7 @@ void edit_psdk_speaker_resource(const std::string& resource_id, EditSpeakerResou
     }, 15000);
 }
 
-void delete_psdk_speaker_resource(int resource_id, const std::function<void(FlightHubError err)>& callback) {
+void delete_psdk_speaker_resource(int64_t resource_id, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     auto api = std::string(kDeletePsdkSpeakerResourceAPI);
     api.replace(api.find("{id}"), 4, std::to_string(resource_id));
@@ -2443,10 +2620,11 @@ void delete_psdk_speaker_resource(int resource_id, const std::function<void(Flig
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("DeletePsdkSpeakerResource: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, "", 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -2460,7 +2638,7 @@ void delete_psdk_speaker_resource(int resource_id, const std::function<void(Flig
     }, 15000);
 }
 
-void get_flash_led_config_list(const std::function<void(const FlashLedConfigListHttpResponse& response, FlightHubError err)>& callback) {
+void get_flash_led_config_list(const std::function<void(const FlashLedConfigListHttpResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     auto api = std::string(kFlashLedConfigListAPI);
     std::string url = generate_url(config.address, config.port, api);
@@ -2469,10 +2647,11 @@ void get_flash_led_config_list(const std::function<void(const FlashLedConfigList
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("GetFlashLedConfigList: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         FlashLedConfigListHttpResponse out;
         do {
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
@@ -2503,7 +2682,7 @@ void get_flash_led_config_list(const std::function<void(const FlashLedConfigList
     }, 15000);
 }
 
-void create_flash_led_config(CreateFlashLedConfigRequest request, const std::function<void(const CreateFlashLedConfigResponse& response, FlightHubError err)>& callback) {
+void create_flash_led_config(CreateFlashLedConfigRequest request, const std::function<void(const CreateFlashLedConfigResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     auto api = std::string(kCreateFlashLedConfigAPI);
     std::string url = generate_url(config.address, config.port, api);
@@ -2513,6 +2692,7 @@ void create_flash_led_config(CreateFlashLedConfigRequest request, const std::fun
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -2525,13 +2705,13 @@ void create_flash_led_config(CreateFlashLedConfigRequest request, const std::fun
 
     LOG_DEBUG("CreateFlashLedConfig: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         CreateFlashLedConfigResponse out;
         dispatch_common_json_response("CreateFlashLedConfig", err_code, http_code, response, out, true, callback);
     }, 15000);
 }
 
-void update_flash_led_config(const std::string& config_id, UpdateFlashLedConfigRequest request, const std::function<void(const UpdateFlashLedConfigResponse& response, FlightHubError err)>& callback) {
+void update_flash_led_config(const std::string& config_id, UpdateFlashLedConfigRequest request, const std::function<void(const UpdateFlashLedConfigResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     auto api = std::string(kUpdateFlashLedConfigAPI);
     api.replace(api.find("{id}"), 4, config_id);
@@ -2542,6 +2722,7 @@ void update_flash_led_config(const std::string& config_id, UpdateFlashLedConfigR
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -2554,13 +2735,13 @@ void update_flash_led_config(const std::string& config_id, UpdateFlashLedConfigR
 
     LOG_DEBUG("UpdateFlashLedConfig: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         UpdateFlashLedConfigResponse out;
         dispatch_common_json_response("UpdateFlashLedConfig", err_code, http_code, response, out, true, callback);
     }, 15000);
 }
 
-void delete_flash_led_config(const std::string& config_id, const std::function<void(FlightHubError err)>& callback) {
+void delete_flash_led_config(const std::string& config_id, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     auto api = std::string(kDeleteFlashLedConfigAPI);
     api.replace(api.find("{id}"), 4, config_id);
@@ -2570,10 +2751,11 @@ void delete_flash_led_config(const std::string& config_id, const std::function<v
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("DeleteFlashLedConfig: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, "",
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
                 LOG_ERROR("DeleteFlashLedConfig: network error: %d", static_cast<int>(err_code));
@@ -2591,7 +2773,68 @@ void delete_flash_led_config(const std::string& config_id, const std::function<v
     }, 15000);
 }
 
-void get_sts(const std::function<void(const STSInfo& response, FlightHubError err)>& callback) {
+void get_auto_record_config(const std::function<void(const GetAutoRecordConfigHttpResponse& response, FlightHubError err)>& callback, int session_id) {
+    auto config = FlightHubSdk::getConfig();
+    auto api = std::string(kAutoRecordConfigAPI);
+    std::string url = generate_url(config.address, config.port, api);
+    auto uuid = xg::newGuid();
+
+    drc_sdk::common::HttpHeaders headers;
+    headers["x-request-id"] = uuid.str();
+    ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
+
+    LOG_INFO("GetAutoRecordConfig: url %s, uuid %s", url.c_str(), uuid.str().c_str());
+    HttpGetInnerWithStatus(url, headers,
+        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        GetAutoRecordConfigHttpResponse out;
+        // data_required=false: 配置不存在时服务端返回空 data，out 保持零值，回调成功而非错误。
+        dispatch_common_json_response("GetAutoRecordConfig", err_code, http_code, response, out, false, callback);
+    }, 15000);
+}
+
+void save_auto_record_config(SaveAutoRecordConfigRequest request, const std::function<void(FlightHubError err)>& callback, int session_id) {
+    auto config = FlightHubSdk::getConfig();
+    auto api = std::string(kAutoRecordConfigAPI);
+    std::string url = generate_url(config.address, config.port, api);
+    auto uuid = xg::newGuid();
+
+    drc_sdk::common::HttpHeaders headers;
+    headers["content-type"] = "application/json";
+    headers["x-request-id"] = uuid.str();
+    ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
+
+    std::string body;
+    std::string err;
+    aigc::JsonHelper::ObjectToJson(request, body, &err);
+    if (!err.empty()) {
+        LOG_ERROR("SaveAutoRecordConfig: ObjectToJson error: %s", err.c_str());
+        callback(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED));
+        return;
+    }
+
+    LOG_DEBUG("SaveAutoRecordConfig: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
+    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
+        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        do {
+            if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
+                LOG_ERROR("SaveAutoRecordConfig: network error: %d", static_cast<int>(err_code));
+                break;
+            }
+            auto common_response = convert_response_struct(response);
+            if (common_response.code != 0) {
+                LOG_ERROR("SaveAutoRecordConfig: code: %d, message: %s", common_response.code, common_response.message.c_str());
+                break;
+            }
+            callback(FlightHubError::success());
+            return;
+        } while (false);
+        callback(make_http_error(http_code, response));
+    }, 15000);
+}
+
+void get_sts(const std::function<void(const STSInfo& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     auto api = std::string(kGetSTSAPI);
 
@@ -2600,10 +2843,11 @@ void get_sts(const std::function<void(const STSInfo& response, FlightHubError er
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("GetSTS: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -2628,6 +2872,7 @@ void get_sts(const std::function<void(const STSInfo& response, FlightHubError er
             sts_info.credentials.expire = get_sts_response.credentials.expire;
             sts_info.credentials.security_token = get_sts_response.credentials.security_token;
             sts_info.credentials.platform = get_sts_response.credentials.platform;
+            sts_info.credentials.expiration = get_sts_response.credentials.expiration;
 
             callback(sts_info, FlightHubError::success());
             return;
@@ -2636,13 +2881,14 @@ void get_sts(const std::function<void(const STSInfo& response, FlightHubError er
     }, 15000);
 }
 
-void get_psdk_widget_resources(PsdkWidgetResourceRequest request, const std::function<void(const PsdkWidgetResourceListResponse& response, FlightHubError err)>& callback) {
+void get_psdk_widget_resources(PsdkWidgetResourceRequest request, const std::function<void(const PsdkWidgetResourceListResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kGetPsdkWidgetResourceAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -2655,7 +2901,7 @@ void get_psdk_widget_resources(PsdkWidgetResourceRequest request, const std::fun
 
     LOG_DEBUG("GetPsdkWidgetResources: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -2676,7 +2922,7 @@ void get_psdk_widget_resources(PsdkWidgetResourceRequest request, const std::fun
     }, 15000);
 }
 
-void drone_takeoff(DroneTakeoffRequest request, const std::function<void(const DroneTakeoffResponse& response, FlightHubError err)>& callback) {
+void drone_takeoff(DroneTakeoffRequest request, const std::function<void(const DroneTakeoffResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kDroneTakeoffAPI);
     auto uuid = xg::newGuid();
@@ -2684,6 +2930,7 @@ void drone_takeoff(DroneTakeoffRequest request, const std::function<void(const D
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -2696,7 +2943,7 @@ void drone_takeoff(DroneTakeoffRequest request, const std::function<void(const D
 
     LOG_DEBUG("DroneTakeoff: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -2720,7 +2967,87 @@ void drone_takeoff(DroneTakeoffRequest request, const std::function<void(const D
     }, 15000);
 }
 
-void generate_try_flight_wayline(const std::string& project_id, GenerateTryFlightWaylineRequest request, const std::function<void(const GenerateTryFlightWaylineResponseData& response, FlightHubError err)>& callback) {
+void ground_takeoff(GroundTakeoffRequest request, const std::function<void(const GroundTakeoffResponse& response, FlightHubError err)>& callback, int session_id) {
+    auto config = FlightHubSdk::getConfig();
+    std::string url = generate_url(config.address, config.port, kGroundTakeoffAPI);
+    auto uuid = xg::newGuid();
+
+    drc_sdk::common::HttpHeaders headers;
+    headers["content-type"] = "application/json";
+    headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
+
+    std::string body;
+    std::string err;
+    aigc::JsonHelper::ObjectToJson(request, body, &err);
+    if (!err.empty()) {
+        LOG_ERROR("GroundTakeoff: ObjectToJson error: %s", err.c_str());
+        callback({}, FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED));
+        return;
+    }
+
+    LOG_DEBUG("GroundTakeoff: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
+    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
+        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        do {
+            auto common_response = convert_response_struct(response);
+            if (common_response.code != 0) {
+                LOG_ERROR("GroundTakeoff: code: %d, message: %s, response:\n%s",
+                    common_response.code, common_response.message.c_str(), log_safe(response).c_str()
+                );
+                break;
+            }
+            GroundTakeoffResponse ground_takeoff_response;
+            std::string err;
+            if (!parse_common_response_data(common_response, ground_takeoff_response, &err, true)) {
+                LOG_ERROR("GroundTakeoff: JsonToObject error: %s, %s, response:\n%s",
+                    err.c_str(), common_response.data.has_value() ? log_safe(*common_response.data).c_str() : "", log_safe(response).c_str()
+                );
+                break;
+            }
+            callback(ground_takeoff_response, FlightHubError::success());
+            return;
+        } while (false);
+        callback({}, make_http_error(http_code, response));
+    }, 15000);
+}
+
+void ground_landing(GroundLandingRequest request, const std::function<void(FlightHubError err)>& callback, int session_id) {
+    auto config = FlightHubSdk::getConfig();
+    std::string url = generate_url(config.address, config.port, kGroundLandingAPI);
+    auto uuid = xg::newGuid();
+
+    drc_sdk::common::HttpHeaders headers;
+    headers["content-type"] = "application/json";
+    headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
+
+    std::string body;
+    std::string err;
+    aigc::JsonHelper::ObjectToJson(request, body, &err);
+    if (!err.empty()) {
+        LOG_ERROR("GroundLanding: ObjectToJson error: %s", err.c_str());
+        callback(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED));
+        return;
+    }
+
+    LOG_DEBUG("GroundLanding: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
+    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
+        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        LOG_DEBUG("GroundLanding response: %s", log_safe(response).c_str());
+        auto common_response = convert_response_struct(response);
+        if (common_response.code != 0) {
+            LOG_ERROR("GroundLanding: code: %d, message: %s, response:\n%s",
+                common_response.code, common_response.message.c_str(), log_safe(response).c_str()
+            );
+            callback(make_http_error(http_code, response));
+            return;
+        }
+        callback(FlightHubError::success());
+    }, 15000);
+}
+
+void generate_try_flight_wayline(const std::string& project_id, GenerateTryFlightWaylineRequest request, const std::function<void(const GenerateTryFlightWaylineResponseData& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     auto api = std::string(kGenerateTryFlightWaylineAPI).replace(kGenerateTryFlightWaylineAPI.find("{project_id}"), 12, project_id);
 
@@ -2730,6 +3057,7 @@ void generate_try_flight_wayline(const std::string& project_id, GenerateTryFligh
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -2742,7 +3070,7 @@ void generate_try_flight_wayline(const std::string& project_id, GenerateTryFligh
 
     LOG_DEBUG("GenerateTryFlightWayline: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -2762,7 +3090,7 @@ void generate_try_flight_wayline(const std::string& project_id, GenerateTryFligh
     }, 10000);
 }
 
-void create_test_flight_task(const std::string& project_id, CreateTestFlightTaskRequest request, const std::function<void(const CreateTestFlightTaskResponseData& response, FlightHubError err)>& callback) {
+void create_test_flight_task(const std::string& project_id, CreateTestFlightTaskRequest request, const std::function<void(const CreateTestFlightTaskResponseData& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     auto api = std::string(kCreateTestFlightTaskAPI);
     size_t pos = api.find("{project_id}");
@@ -2778,6 +3106,7 @@ void create_test_flight_task(const std::string& project_id, CreateTestFlightTask
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -2794,7 +3123,7 @@ void create_test_flight_task(const std::string& project_id, CreateTestFlightTask
              headers.find("x-request-id") != headers.end() ? headers.at("x-request-id").c_str() : "NOT_SET",
              headers.find("content-type") != headers.end() ? headers.at("content-type").c_str() : "NOT_SET");
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_INFO("CreateTestFlightTask: response received, err_code: %d, response length: %zu", (int)err_code, response.length());
         LOG_DEBUG("CreateTestFlightTask: response body: %s", response.empty() ? "(empty)" : log_safe(response).c_str());
         if (!resp_headers.empty()) {
@@ -2805,6 +3134,16 @@ void create_test_flight_task(const std::string& project_id, CreateTestFlightTask
         }
         do {
             auto common_response = convert_response_struct(response);
+            if (common_response.code == 219019) {
+                CreateTestFlightTaskResponseData task_response;
+                std::string parse_err;
+                if (parse_common_response_data(common_response, task_response, &parse_err, true)) {
+                    callback(task_response, make_http_error(http_code, response));
+                    return;
+                }
+                LOG_ERROR("CreateTestFlightTask: parse 219019 data error: %s, %s", parse_err.c_str(), common_response.data.has_value() ? log_safe(*common_response.data).c_str() : "");
+                break;
+            }
             if (common_response.code != 0) {
                 LOG_ERROR("CreateTestFlightTask: code: %d, message: %s", common_response.code, common_response.message.c_str());
                 break;
@@ -2823,215 +3162,8 @@ void create_test_flight_task(const std::string& project_id, CreateTestFlightTask
 }
 
 
-/// 飞机星历下载;
-void drone_download_ephemeris(DroneDownloadEphemerisRequest request, const std::function<void(FlightHubError err)>& callback) {
-    // Get configs;
-    auto config = FlightHubSdk::getConfig();
-    auto api = std::string(kDownloadEphemerisAPI);
-
-    std::string url = generate_url(config.address, config.port, api);
-    LOG_INFO("drone_download_ephemeris(): request url: %s", url.c_str());
-    auto uuid = xg::newGuid();
-
-    drc_sdk::common::HttpHeaders headers;
-    headers["content-type"] = "application/json";
-    headers["x-request-id"] = uuid.str();
-
-    std::string body;
-    std::string err;
-    aigc::JsonHelper::ObjectToJson(request, body, &err);
-    if (!err.empty()) {
-        LOG_ERROR("drone_download_ephemeris(): ObjectToJson error: %s", err.c_str());
-        callback(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED));
-        return;
-    }
-
-
-    LOG_DEBUG("drone_download_ephemeris(): { url:%s, x-request-id(uuid):%s, body length: %zu, body: %s", url.c_str(), uuid.str().c_str(), body.length(), log_safe(body).c_str());
-
-    // Send HTTP request;
-    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
-        LOG_DEBUG("drone_download_ephemeris(): response received, { err_code: %d, response length: %zu, response: %s }",
-            (int)err_code, response.length(), response.empty() ? "(empty)" : log_safe(response).c_str()
-        );
-
-        do {
-            auto common_response = convert_response_struct(response);
-            if (common_response.code != 0) {
-                LOG_ERROR("drone_download_ephemeris(): { code: %d, message: %s }", common_response.code, common_response.message.c_str());
-                break;
-            }
-
-            LOG_INFO("drone_download_ephemeris(): { code: %d, message: %s }", common_response.code, common_response.message.c_str());
-            callback(FlightHubError::success());
-
-            // Must return here, otherwise the callback will be called twice.
-            return;
-        } while (0);
-
-        // Indicate failure;
-        callback(make_http_error(http_code, response));
-    }, 15000);
-}
-
-
-/// drone_in_out_wayline_detect  (开始/暂停)进离场任务
-void drone_in_out_wayline_detect(DroneInOutWaylineDetectRequest request, const std::function<void(FlightHubError err)>& callback) {
-    // Get configs;
-    auto config = FlightHubSdk::getConfig();
-    auto api = std::string(kDetectTaskAPI);
-
-    std::string url = generate_url(config.address, config.port, api);
-    LOG_INFO("drone_in_out_wayline_detect(): request url: %s", url.c_str());
-    auto uuid = xg::newGuid();
-
-    drc_sdk::common::HttpHeaders headers;
-    headers["content-type"] = "application/json";
-    headers["x-request-id"] = uuid.str();
-
-    std::string body;
-    std::string err;
-    aigc::JsonHelper::ObjectToJson(request, body, &err);
-    if (!err.empty()) {
-        LOG_ERROR("drone_in_out_wayline_detect(): ObjectToJson error: %s", err.c_str());
-        callback(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED));
-        return;
-    }
-
-
-    LOG_DEBUG("drone_in_out_wayline_detect(): { url:%s, x-request-id(uuid):%s, body length: %zu, body: %s", url.c_str(), uuid.str().c_str(), body.length(), log_safe(body).c_str());
-
-    // Send HTTP request;
-    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
-        LOG_DEBUG("drone_in_out_wayline_detect(): response received, { err_code: %d, response length: %zu, response: %s }",
-            (int)err_code, response.length(), response.empty() ? "(empty)" : log_safe(response).c_str()
-        );
-
-        do {
-            auto common_response = convert_response_struct(response);
-            if (common_response.code != 0) {
-                LOG_ERROR("drone_in_out_wayline_detect(): { code: %d, message: %s }", common_response.code, common_response.message.c_str());
-                break;
-            }
-
-            LOG_INFO("drone_in_out_wayline_detect(): { code: %d, message: %s }", common_response.code, common_response.message.c_str());
-            callback(FlightHubError::success());
-
-            // Must return here, otherwise the callback will be called twice.
-            return;
-        } while (0);
-
-        // Indicate failure;
-        callback(make_http_error(http_code, response));
-    }, 15000);
-}
-
-
-/// drone_in_out_wayline_flight_setting  进离场航线飞行设置;
-void drone_in_out_wayline_flight_setting(DroneInOutWaylineFlightSettingRequest request, const std::function<void(FlightHubError err)>& callback) {
-    // Get configs;
-    auto config = FlightHubSdk::getConfig();
-    auto api = std::string(kFlightSettingAPI);
-
-    std::string url = generate_url(config.address, config.port, api);
-    LOG_INFO("drone_in_out_wayline_flight_setting(): request url: %s", url.c_str());
-    auto uuid = xg::newGuid();
-
-    drc_sdk::common::HttpHeaders headers;
-    headers["content-type"] = "application/json";
-    headers["x-request-id"] = uuid.str();
-
-    std::string body;
-    std::string err;
-    aigc::JsonHelper::ObjectToJson(request, body, &err);
-    if (!err.empty()) {
-        LOG_ERROR("drone_in_out_wayline_flight_setting(): ObjectToJson error: %s", err.c_str());
-        callback(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED));
-        return;
-    }
-
-
-    LOG_DEBUG("drone_in_out_wayline_flight_setting(): { url:%s, x-request-id(uuid):%s, body length: %zu, body: %s", url.c_str(), uuid.str().c_str(), body.length(), log_safe(body).c_str());
-
-    // Send HTTP request;
-    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
-        LOG_DEBUG("drone_in_out_wayline_flight_setting(): response received, { err_code: %d, response length: %zu, response: %s }",
-            (int)err_code, response.length(), response.empty() ? "(empty)" : log_safe(response).c_str()
-        );
-
-        do {
-            auto common_response = convert_response_struct(response);
-            if (common_response.code != 0) {
-                LOG_ERROR("drone_in_out_wayline_flight_setting(): { code: %d, message: %s }", common_response.code, common_response.message.c_str());
-                break;
-            }
-
-            LOG_INFO("drone_in_out_wayline_flight_setting(): { code: %d, message: %s }", common_response.code, common_response.message.c_str());
-            callback(FlightHubError::success());
-
-            // Must return here, otherwise the callback will be called twice.
-            return;
-        } while (0);
-
-        // Indicate failure;
-        callback(make_http_error(http_code, response));
-    }, 15000);
-}
-
-/// get_scout_flight_setting  获取进离场航线飞行设置 (GET);
-void get_scout_flight_setting(const std::string& sn, const std::function<void(const InOutWaylineFlightSettingParams& params, FlightHubError err)>& callback) {
-    auto config = FlightHubSdk::getConfig();
-    std::string api = std::string(kFlightSettingAPI) + "?sn=" + sn;
-    std::string url = generate_url(config.address, config.port, api);
-    auto uuid = xg::newGuid();
-
-    drc_sdk::common::HttpHeaders headers;
-    headers["x-request-id"] = uuid.str();
-
-    HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
-            InOutWaylineFlightSettingParams params{};
-            auto error_code = FlightHubError::success();
-            do {
-                if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
-                    LOG_ERROR("get_scout_flight_setting(): Network error: %d", (int)err_code);
-                    error_code = make_http_error(http_code, response);
-                    break;
-                }
-                auto common_response = convert_response_struct(response);
-                if (common_response.code != 0) {
-                    LOG_ERROR("get_scout_flight_setting(): Response error code: %d, message: %s", common_response.code, common_response.message.c_str());
-                    error_code = make_http_error(http_code, response);
-                    break;
-                }
-                
-                // 当 code=0 时，即使 data 为 null 也是成功的
-                LOG_INFO("get_scout_flight_setting(): Success, code: %d, message: %s", common_response.code, common_response.message.c_str());
-                
-                DroneInOutWaylineFlightSettingRequest tmp;
-                std::string err;
-                if (!parse_common_response_data(common_response, tmp, &err, false)) {
-                    LOG_ERROR("get_scout_flight_setting(): JsonToObject error: %s, data: %s", err.c_str(), common_response.data.has_value() ? log_safe(*common_response.data).c_str() : "");
-                    error_code = make_http_error(http_code, response);
-                    break;
-                }
-                params.min_return_home_height = tmp.min_return_home_height;
-                params.lost_contact_action = tmp.lost_contact_action;
-                params.max_height_limit = tmp.max_height_limit;
-                params.max_distance_limit = tmp.max_distance_limit;
-            } while (0);
-            if (callback) {
-                callback(params, error_code);
-            }
-        }
-    );
-}
-
 /// set_live_quality 直播画质设置;
-void set_live_quality(LiveQualitySettingRequest request, const std::function<void(FlightHubError err)>& callback) {
+void set_live_quality(LiveQualitySettingRequest request, const std::function<void(FlightHubError err)>& callback, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
     auto api = std::string(kLiveSetQualityAPI);
@@ -3043,6 +3175,7 @@ void set_live_quality(LiveQualitySettingRequest request, const std::function<voi
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -3058,7 +3191,7 @@ void set_live_quality(LiveQualitySettingRequest request, const std::function<voi
 
     // Send HTTP request;
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("set_live_quality(): response received, { err_code: %d, response length: %zu, response: %s }",
             (int)err_code, response.length(), response.empty() ? "(empty)" : log_safe(response).c_str()
         );
@@ -3083,7 +3216,7 @@ void set_live_quality(LiveQualitySettingRequest request, const std::function<voi
 }
 
 
-void poi_exit(POIExitRequest request, const std::function<void(FlightHubError err)> callback) {
+void poi_exit(POIExitRequest request, const std::function<void(FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kPOIExitAPI);
     auto uuid = xg::newGuid();
@@ -3091,6 +3224,7 @@ void poi_exit(POIExitRequest request, const std::function<void(FlightHubError er
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -3102,7 +3236,7 @@ void poi_exit(POIExitRequest request, const std::function<void(FlightHubError er
     }
     LOG_DEBUG("POIExit: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("POIExit response: %s", log_safe(response).c_str());
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -3114,7 +3248,7 @@ void poi_exit(POIExitRequest request, const std::function<void(FlightHubError er
         });
 }
 
-void poi_speed_update(POISpeedUpdateRequest request, const std::function<void(FlightHubError err)> callback) {
+void poi_speed_update(POISpeedUpdateRequest request, const std::function<void(FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kPOISpeedUpdateAPI);
     auto uuid = xg::newGuid();
@@ -3122,6 +3256,7 @@ void poi_speed_update(POISpeedUpdateRequest request, const std::function<void(Fl
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -3133,7 +3268,7 @@ void poi_speed_update(POISpeedUpdateRequest request, const std::function<void(Fl
     }
     LOG_DEBUG("POISpeedUpdate: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("POISpeedUpdate response: %s", log_safe(response).c_str());
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -3145,7 +3280,7 @@ void poi_speed_update(POISpeedUpdateRequest request, const std::function<void(Fl
         });
 }
 
-void get_poi_task(GetPOITaskRequest request, const std::function<void(const POITaskResponse& response, FlightHubError err)> callback) {
+void get_poi_task(GetPOITaskRequest request, const std::function<void(const POITaskResponse& response, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kGetPOITaskAPI);
 
@@ -3155,10 +3290,11 @@ void get_poi_task(GetPOITaskRequest request, const std::function<void(const POIT
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("GetPOITask: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("GetPOITask response: %s", log_safe(response).c_str());
             auto common_response = convert_response_struct(response);
 
@@ -3184,7 +3320,7 @@ void get_poi_task(GetPOITaskRequest request, const std::function<void(const POIT
         });
 }
 
-void get_media_file_list(const std::string& project_id, GetMediaFileListRequest request, const std::function<void(const MediaFileListResponse& response, FlightHubError err)>& callback) {
+void get_media_file_list(const std::string& project_id, GetMediaFileListRequest request, const std::function<void(const MediaFileListResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kMediaFileListAPI).replace(kMediaFileListAPI.find("{project_id}"), 12, project_id);
     std::string query = "parent_id=" + std::to_string(request.parent_id) + 
@@ -3200,10 +3336,11 @@ void get_media_file_list(const std::string& project_id, GetMediaFileListRequest 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("GetMediaFileList: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -3223,7 +3360,7 @@ void get_media_file_list(const std::string& project_id, GetMediaFileListRequest 
     }, 15000);
 }
 
-void set_dock_supplement_light_state(const std::string& device_sn, bool state, const std::function<void(FlightHubError err)>& callback) {
+void set_dock_supplement_light_state(const std::string& device_sn, bool state, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string api = state ? kDockSupplementLightOpenAPI : kDockSupplementLightCloseAPI;
     std::string url = generate_url(config.address, config.port, api);
@@ -3232,6 +3369,7 @@ void set_dock_supplement_light_state(const std::string& device_sn, bool state, c
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     DockSupplementLightRequest request;
     request.device_sn = device_sn;
@@ -3261,7 +3399,7 @@ void set_dock_supplement_light_state(const std::string& device_sn, bool state, c
         });
 }
 
-void set_dock_charge_state(const std::string& device_sn, bool state, const std::function<void(FlightHubError err)>& callback) {
+void set_dock_charge_state(const std::string& device_sn, bool state, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string api = state ? kDockChargeOpenAPI : kDockChargeCloseAPI;
     std::string url = generate_url(config.address, config.port, api);
@@ -3270,6 +3408,7 @@ void set_dock_charge_state(const std::string& device_sn, bool state, const std::
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     DockSupplementLightRequest request;  // 复用这个请求结构
     request.device_sn = device_sn;
@@ -3299,16 +3438,21 @@ void set_dock_charge_state(const std::string& device_sn, bool state, const std::
         });
 }
 
-void set_dock_cover_state(const std::string& device_sn, int mode, const std::function<void(FlightHubError err)>& callback) {
+void set_dock_cover_state(const std::string& device_sn, int mode, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string api;
+    int backend_mode = 0;
     const int open = static_cast<int>(DockCoverMode::DockCoverMode_OPEN);
     const int close = static_cast<int>(DockCoverMode::DockCoverMode_CLOSE);
     const int force_close = static_cast<int>(DockCoverMode::DockCoverMode_FORCE_CLOSE);
     if (mode == open) {
         api = kDockCoverOpenAPI;
-    } else if (mode == close || mode == force_close) {
-        api = kDockCoverCloseAPI;  // 关闭和强制关闭都使用同一个接口
+    } else if (mode == close) {
+        api = kDockCoverCloseAPI;
+        backend_mode = 0;  // 后端 0/非 1 = 普通关盖
+    } else if (mode == force_close) {
+        api = kDockCoverCloseAPI;
+        backend_mode = 1;  // 后端 1 = 强制关盖
     } else {
         LOG_ERROR("SetDockCoverState: Invalid mode: %d", mode);
         callback(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM));
@@ -3321,6 +3465,7 @@ void set_dock_cover_state(const std::string& device_sn, int mode, const std::fun
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -3331,10 +3476,10 @@ void set_dock_cover_state(const std::string& device_sn, int mode, const std::fun
         request.device_sn = device_sn;
         aigc::JsonHelper::ObjectToJson(request, body, &err);
     } else {
-        // 关闭舱盖需要 device_sn 和 mode
+        // 关闭舱盖需要 device_sn 和 mode（SDK CLOSE/FORCE_CLOSE 映射到后端 0/1）
         DockCoverRequest request;
         request.device_sn = device_sn;
-        request.data.mode = mode;
+        request.data.mode = backend_mode;
         aigc::JsonHelper::ObjectToJson(request, body, &err);
     }
     if (!err.empty()) {
@@ -3343,8 +3488,9 @@ void set_dock_cover_state(const std::string& device_sn, int mode, const std::fun
         return;
     }
 
-    LOG_DEBUG("SetDockCoverState: url %s, uuid %s, body %s, mode %d", 
-             url.c_str(), uuid.str().c_str(), log_safe(body).c_str(), static_cast<int>(mode));
+    LOG_DEBUG("SetDockCoverState: url %s, uuid %s, body %s, sdk_mode %d, backend_mode %d",
+             url.c_str(), uuid.str().c_str(), log_safe(body).c_str(),
+             static_cast<int>(mode), backend_mode);
     
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
         [callback, mode](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
@@ -3359,7 +3505,7 @@ void set_dock_cover_state(const std::string& device_sn, int mode, const std::fun
         });
 }
 
-void set_dock_air_conditioner_mode(const std::string& device_sn, int mode, const std::function<void(FlightHubError err)>& callback) {
+void set_dock_air_conditioner_mode(const std::string& device_sn, int mode, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kDockAirConditionerAPI);
     auto uuid = xg::newGuid();
@@ -3367,6 +3513,7 @@ void set_dock_air_conditioner_mode(const std::string& device_sn, int mode, const
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     DockAirConditionerRequest request;
     request.device_sn = device_sn;
@@ -3397,13 +3544,14 @@ void set_dock_air_conditioner_mode(const std::string& device_sn, int mode, const
         });
 }
 
-void post_open_debug_mode(const std::string& device_sn, const std::function<void(const OpenDebugModeResponse& data, FlightHubError err)>& callback) {
+void post_open_debug_mode(const std::string& device_sn, const std::function<void(const OpenDebugModeResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kOpenDebugModeAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     CommonRequestWithDeviceSn request;
     request.device_sn = device_sn;
@@ -3418,7 +3566,7 @@ void post_open_debug_mode(const std::string& device_sn, const std::function<void
     }
     LOG_DEBUG("post_open_debug_mode:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_open_debug_mode] http response: %s", log_safe(response).c_str());
         OpenDebugModeResponse open_debug_mode_response;
         auto error_code = FlightHubError::success();
@@ -3445,13 +3593,14 @@ void post_open_debug_mode(const std::string& device_sn, const std::function<void
     });
 }
 
-void post_set_distance_limit(const std::string& device_sn, int distance_limit_state, int distance_limit_value, const std::function<void(const SetDistanceLimitResponse& data, FlightHubError err)>& callback) {
+void post_set_distance_limit(const std::string& device_sn, int distance_limit_state, int distance_limit_value, const std::function<void(const SetDistanceLimitResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kSetDistanceLimitAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     SetDistanceLimitRequest request;
     request.device_sn = device_sn;
@@ -3467,7 +3616,7 @@ void post_set_distance_limit(const std::string& device_sn, int distance_limit_st
     }
     LOG_DEBUG("post_set_distance_limit: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_set_distance_limit] http response: %s", log_safe(response).c_str());
         SetDistanceLimitResponse set_distance_limit_response;
         auto error_code = FlightHubError::success();
@@ -3485,12 +3634,13 @@ void post_set_distance_limit(const std::string& device_sn, int distance_limit_st
     });
 }
 
-void post_set_height_limit(const std::string& device_sn, int height_limit, const std::function<void(const SetHeightLimitResponse& data, FlightHubError err)>& callback) {
+void post_set_height_limit(const std::string& device_sn, int height_limit, const std::function<void(const SetHeightLimitResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kSetHeightLimitAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     SetHeightLimitRequest request;
     request.device_sn = device_sn;
     request.data.height_limit = height_limit;
@@ -3503,7 +3653,7 @@ void post_set_height_limit(const std::string& device_sn, int height_limit, const
     }
     LOG_DEBUG("post_set_height_limit: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_set_height_limit] http response: %s", log_safe(response).c_str());
         SetHeightLimitResponse set_height_limit_response;
         auto error_code = FlightHubError::success();
@@ -3521,12 +3671,13 @@ void post_set_height_limit(const std::string& device_sn, int height_limit, const
     });
 }
 
-void post_set_obstacle_avoidance(const std::string& device_sn, int obstacle_avoidance_state, const std::function<void(const SetObstacleAvoidanceResponse& data, FlightHubError err)>& callback) {
+void post_set_obstacle_avoidance(const std::string& device_sn, int obstacle_avoidance_state, const std::function<void(const SetObstacleAvoidanceResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kSetObstacleAvoidanceAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     SetObstacleAvoidanceRequest request;
     request.device_sn = device_sn;
     request.data.obstacle_avoidance_state = obstacle_avoidance_state;
@@ -3539,7 +3690,7 @@ void post_set_obstacle_avoidance(const std::string& device_sn, int obstacle_avoi
     }
     LOG_DEBUG("post_set_obstacle_avoidance: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_set_obstacle_avoidance] http response: %s", log_safe(response).c_str());
         SetObstacleAvoidanceResponse set_obstacle_avoidance_response;
         auto error_code = FlightHubError::success();
@@ -3557,12 +3708,13 @@ void post_set_obstacle_avoidance(const std::string& device_sn, int obstacle_avoi
     });
 }
 
-void post_set_remaining_power_for_rth(const std::string& device_sn, int remaining_power_for_rth, const std::function<void(const SetRemainingPowerForRthResponse& data, FlightHubError err)>& callback) {
+void post_set_remaining_power_for_rth(const std::string& device_sn, int remaining_power_for_rth, const std::function<void(const SetRemainingPowerForRthResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kSetRemainingPowerForRthAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     SetRemainingPowerForRthRequest request;
     request.device_sn = device_sn;
     request.data.remaining_power_for_rth = remaining_power_for_rth;
@@ -3575,7 +3727,7 @@ void post_set_remaining_power_for_rth(const std::string& device_sn, int remainin
     }
     LOG_DEBUG("post_set_remaining_power_for_rth: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_set_remaining_power_for_rth] http response: %s", log_safe(response).c_str());
         SetRemainingPowerForRthResponse set_remaining_power_for_rth_response;
         auto error_code = FlightHubError::success();
@@ -3593,12 +3745,13 @@ void post_set_remaining_power_for_rth(const std::string& device_sn, int remainin
     });
 }
 
-void post_set_night_lights_state(const std::string& device_sn, int night_lights_state, const std::function<void(const SetNightLightsStateResponse& data, FlightHubError err)>& callback) {
+void post_set_night_lights_state(const std::string& device_sn, int night_lights_state, const std::function<void(const SetNightLightsStateResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kSetNightLightsStateAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     SetNightLightsStateRequest request;
     request.device_sn = device_sn;
     request.data.night_lights_state = night_lights_state;
@@ -3611,7 +3764,7 @@ void post_set_night_lights_state(const std::string& device_sn, int night_lights_
     }
     LOG_DEBUG("post_set_night_lights_state: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_set_night_lights_state] http response: %s", log_safe(response).c_str());
         SetNightLightsStateResponse set_night_lights_state_response;
         auto error_code = FlightHubError::success();
@@ -3629,13 +3782,14 @@ void post_set_night_lights_state(const std::string& device_sn, int night_lights_
     });
 }
 
-void post_switch_alarm_state(const std::string& device_sn, int alarm_state, const std::function<void(const AlarmStateSwitchResponse& data, FlightHubError err)>& callback) {
+void post_switch_alarm_state(const std::string& device_sn, int alarm_state, const std::function<void(const AlarmStateSwitchResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kAlarmStateSwitchAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     SwitchAlarmLightStateRequest request;
     request.device_sn = device_sn;
@@ -3650,7 +3804,7 @@ void post_switch_alarm_state(const std::string& device_sn, int alarm_state, cons
     }
     LOG_DEBUG("post_switch_alarm_state: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_switch_alarm_state] http response: %s", log_safe(response).c_str());
         AlarmStateSwitchResponse alarm_state_switch_response;
         auto error_code = FlightHubError::success();
@@ -3676,13 +3830,14 @@ void post_switch_alarm_state(const std::string& device_sn, int alarm_state, cons
     });
 }
 
-void post_esim_operator_switch(const std::string& device_sn, const std::string& imei, int operator_type, const std::string& device_type, const std::function<void(const EsimOperatorSwitchResponse& data, FlightHubError err)>& callback) {
+void post_esim_operator_switch(const std::string& device_sn, const std::string& imei, int operator_type, const std::string& device_type, const std::function<void(const EsimOperatorSwitchResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kEsimOperatorSwitchAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     EsimOperatorSwitchRequest request;
     request.device_sn = device_sn;
@@ -3699,7 +3854,7 @@ void post_esim_operator_switch(const std::string& device_sn, const std::string& 
     }
     LOG_DEBUG("post_esim_operator_switch: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_esim_operator_switch] http response: %s", log_safe(response).c_str());
         EsimOperatorSwitchResponse esim_operator_switch_response;
         auto error_code = FlightHubError::success();
@@ -3725,13 +3880,14 @@ void post_esim_operator_switch(const std::string& device_sn, const std::string& 
     });
 }
 
-void post_sim_slot_switch(const std::string& device_sn, const std::string& imei, int sim_slot, const std::string& device_type, const std::function<void(const SimSlotSwitchResponse& data, FlightHubError err)>& callback) {
+void post_sim_slot_switch(const std::string& device_sn, const std::string& imei, int sim_slot, const std::string& device_type, const std::function<void(const SimSlotSwitchResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kSimSlotSwitchAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     SimSlotSwitchRequest request;
     request.device_sn = device_sn;
@@ -3748,7 +3904,7 @@ void post_sim_slot_switch(const std::string& device_sn, const std::string& imei,
     }
     LOG_DEBUG("post_sim_slot_switch: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_sim_slot_switch] http response: %s", log_safe(response).c_str());
         SimSlotSwitchResponse sim_slot_switch_response;
         auto error_code = FlightHubError::success();
@@ -3774,13 +3930,14 @@ void post_sim_slot_switch(const std::string& device_sn, const std::string& imei,
     });
 }
 
-void post_cloud_environment_switch(CloudEnvironmentSwitchRequest& request, const std::function<void(FlightHubError err)>& callback) {
+void post_cloud_environment_switch(CloudEnvironmentSwitchRequest& request, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kCloudEnvironmentSwitchAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body, err;
     aigc::JsonHelper::ObjectToJson(request, body, &err);
@@ -3791,7 +3948,7 @@ void post_cloud_environment_switch(CloudEnvironmentSwitchRequest& request, const
     }
     LOG_DEBUG("post_cloud_environment_switch: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_cloud_environment_switch: response %s", log_safe(response).c_str());
         auto error_code = FlightHubError::success();
         do {
@@ -3813,13 +3970,14 @@ void post_cloud_environment_switch(CloudEnvironmentSwitchRequest& request, const
     });
 }
 
-void post_cloud_environment_switch_callback(CloudEnvironmentSwitchCallbackRequest& request, const std::function<void(FlightHubError err)>& callback) {
+void post_cloud_environment_switch_callback(CloudEnvironmentSwitchCallbackRequest& request, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kCloudEnvironmentSwitchCallbackAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body, err;
     aigc::JsonHelper::ObjectToJson(request, body, &err);
@@ -3830,7 +3988,7 @@ void post_cloud_environment_switch_callback(CloudEnvironmentSwitchCallbackReques
     }
     LOG_DEBUG("post_cloud_environment_switch_callback: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_cloud_environment_switch_callback: response %s", log_safe(response).c_str());
         auto error_code = FlightHubError::success();
         do {
@@ -3852,13 +4010,14 @@ void post_cloud_environment_switch_callback(CloudEnvironmentSwitchCallbackReques
     });
 }
 
-void post_set_battery_store_mode(const std::string& device_sn, int battery_store_mode, const std::function<void(const SetBatteryStoreModeResponse& data, FlightHubError err)>& callback) {
+void post_set_battery_store_mode(const std::string& device_sn, int battery_store_mode, const std::function<void(const SetBatteryStoreModeResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kBatteryStoreModeSwitchAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     SetBatteryStoreModeRequest request;
     request.device_sn = device_sn;
@@ -3873,7 +4032,7 @@ void post_set_battery_store_mode(const std::string& device_sn, int battery_store
     }
     LOG_DEBUG("post_set_battery_store_mode: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_set_battery_store_mode] http response: %s", log_safe(response).c_str());
         SetBatteryStoreModeResponse set_battery_store_mode_response;
         auto error_code = FlightHubError::success();
@@ -3899,7 +4058,7 @@ void post_set_battery_store_mode(const std::string& device_sn, int battery_store
     });
 }
 
-void put_manual_battery_swap(const std::string& device_sn, int slot_id, const std::function<void(const ManualBatterySwapResponse& data, FlightHubError err)>& callback) {
+void put_manual_battery_swap(const std::string& device_sn, int slot_id, const std::function<void(const ManualBatterySwapResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kManualBatterySwapAPI);
     auto uuid = xg::newGuid();
@@ -3907,6 +4066,7 @@ void put_manual_battery_swap(const std::string& device_sn, int slot_id, const st
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     ManualBatterySwapRequest request;
     request.device_sn = device_sn;
@@ -3921,7 +4081,7 @@ void put_manual_battery_swap(const std::string& device_sn, int slot_id, const st
     }
     LOG_DEBUG("put_manual_battery_swap: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[put_manual_battery_swap] http response: %s", log_safe(response).c_str());
         ManualBatterySwapResponse manual_battery_swap_response;
         auto error_code = FlightHubError::success();
@@ -3947,7 +4107,7 @@ void put_manual_battery_swap(const std::string& device_sn, int slot_id, const st
     });
 }
 
-void get_manual_battery_swap(const std::string& device_sn, const std::function<void(const ManualBatterySwapProgressResponse& data, FlightHubError err)>& callback) {
+void get_manual_battery_swap(const std::string& device_sn, const std::function<void(const ManualBatterySwapProgressResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     // 注意：接口约定 query 键为 sn（非 device_sn）
     std::string api = std::string(kManualBatterySwapAPI) + "?sn=" + device_sn;
@@ -3956,10 +4116,11 @@ void get_manual_battery_swap(const std::string& device_sn, const std::function<v
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_manual_battery_swap: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         LOG_DEBUG("[get_manual_battery_swap] http response: %s", log_safe(response).c_str());
         ManualBatterySwapProgressResponse progress_response;
         auto error_code = FlightHubError::success();
@@ -3985,13 +4146,14 @@ void get_manual_battery_swap(const std::string& device_sn, const std::function<v
     });
 }
 
-void post_dongle_power_switch(const std::string& device_sn, int power_state, const std::function<void(const DonglePowerSwitchResponse& data, FlightHubError err)>& callback) {
+void post_dongle_power_switch(const std::string& device_sn, int power_state, const std::function<void(const DonglePowerSwitchResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kDonglePowerSwitchAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     DonglePowerSwitchRequest request;
     request.device_sn = device_sn;
@@ -4006,23 +4168,23 @@ void post_dongle_power_switch(const std::string& device_sn, int power_state, con
     }
     LOG_DEBUG("post_dongle_power_switch: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_dongle_power_switch] http response: %s", log_safe(response).c_str());
         DonglePowerSwitchResponse dongle_power_switch_response;
         auto error_code = FlightHubError::success();
         do {
             auto common_response = convert_response_struct(response);
+            // 后端 data 无 status, message 统一取 envelope.message(成功 "OK"/失败错误信息)
+            dongle_power_switch_response.message = common_response.message;
             if (common_response.code != 0) {
                 LOG_ERROR("post_dongle_power_switch: code: %d, message: %s", common_response.code, common_response.message.c_str());
                 error_code = make_http_error(http_code, response);
-                dongle_power_switch_response.status = common_response.message;
                 break;
             }
             std::string err;
             if (!parse_common_response_data(common_response, dongle_power_switch_response, &err, false)) {
                 LOG_ERROR("post_dongle_power_switch: JsonToObject error: %s, %s", err.c_str(), common_response.data.has_value() ? log_safe(*common_response.data).c_str() : "");
                 error_code = make_http_error(http_code, response);
-                dongle_power_switch_response.status = common_response.message;
                 break;
             }
         } while (false);
@@ -4032,13 +4194,14 @@ void post_dongle_power_switch(const std::string& device_sn, int power_state, con
     });
 }
 
-void post_low_power_switch(const std::string& device_sn, int low_power_mode, const std::function<void(const LowPowerSwitchResponse& data, FlightHubError err)>& callback) {
+void post_low_power_switch(const std::string& device_sn, int low_power_mode, const std::function<void(const LowPowerSwitchResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kLowPowerSwitchAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LowPowerSwitchRequest request;
     request.device_sn = device_sn;
@@ -4053,7 +4216,7 @@ void post_low_power_switch(const std::string& device_sn, int low_power_mode, con
     }
     LOG_DEBUG("post_low_power_switch: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_low_power_switch] http response: %s", log_safe(response).c_str());
         LowPowerSwitchResponse low_power_switch_response;
         auto error_code = FlightHubError::success();
@@ -4079,7 +4242,7 @@ void post_low_power_switch(const std::string& device_sn, int low_power_mode, con
     });
 }
 
-void get_esim_operator_switch(const std::string& device_sn, const std::function<void(const EsimOperatorSwitchProgressResponse& data, FlightHubError err)>& callback) {
+void get_esim_operator_switch(const std::string& device_sn, const std::function<void(const EsimOperatorSwitchProgressResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     // 注意：接口约定 query 键为 device_sn
     std::string api = std::string(kEsimOperatorSwitchAPI) + "?device_sn=" + device_sn;
@@ -4088,10 +4251,11 @@ void get_esim_operator_switch(const std::string& device_sn, const std::function<
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_esim_operator_switch: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         LOG_DEBUG("[get_esim_operator_switch] http response: %s", log_safe(response).c_str());
         EsimOperatorSwitchProgressResponse progress_response;
         auto error_code = FlightHubError::success();
@@ -4115,13 +4279,14 @@ void get_esim_operator_switch(const std::string& device_sn, const std::function<
     });
 }
 
-void post_close_debug_mode(const std::string& device_sn, const std::function<void(const CloseDebugModeResponse& data, FlightHubError err)>& callback) {
+void post_close_debug_mode(const std::string& device_sn, const std::function<void(const CloseDebugModeResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kCloseDebugModeAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     CommonRequestWithDeviceSn request;
     request.device_sn = device_sn;
@@ -4136,7 +4301,7 @@ void post_close_debug_mode(const std::string& device_sn, const std::function<voi
     }
     LOG_DEBUG("post_close_debug_mode:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_close_debug_mode] http response: %s", log_safe(response).c_str());
         CloseDebugModeResponse close_debug_mode_response;
         auto error_code = FlightHubError::success();
@@ -4163,13 +4328,14 @@ void post_close_debug_mode(const std::string& device_sn, const std::function<voi
     });
 }
 
-void post_open_dock_cover(const std::string& device_sn, const std::function<void(const OpenDockCoverResponse& data, FlightHubError err)>& callback) {
+void post_open_dock_cover(const std::string& device_sn, const std::function<void(const OpenDockCoverResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kOpenDockCoverAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     CommonRequestWithDeviceSn request;
     request.device_sn = device_sn;
@@ -4184,7 +4350,7 @@ void post_open_dock_cover(const std::string& device_sn, const std::function<void
     }
     LOG_DEBUG("post_open_dock_cover:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_open_dock_cover] http response: %s", log_safe(response).c_str());
         OpenDockCoverResponse open_dock_cover_response;
         auto error_code = FlightHubError::success();
@@ -4212,7 +4378,7 @@ void post_open_dock_cover(const std::string& device_sn, const std::function<void
     });
 }
 
-void get_open_dock_cover_progress(const std::string& device_sn, const std::function<void(const OpenDockCoverProgressResponse&, FlightHubError err)> callback) {
+void get_open_dock_cover_progress(const std::string& device_sn, const std::function<void(const OpenDockCoverProgressResponse&, FlightHubError err)> callback, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -4227,9 +4393,10 @@ void get_open_dock_cover_progress(const std::string& device_sn, const std::funct
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("[get_open_dock_cover_progress] http response: %s", log_safe(response).c_str());
             OpenDockCoverProgressResponse open_dock_cover_progress_response;
             auto error_code = FlightHubError::success();
@@ -4265,16 +4432,18 @@ void get_open_dock_cover_progress(const std::string& device_sn, const std::funct
     );
 }
 
-void post_close_dock_cover(const std::string& device_sn, const std::function<void(const CloseDockCoverResponse& data, FlightHubError err)>& callback) {
+void post_close_dock_cover(const std::string& device_sn, const std::function<void(const CloseDockCoverResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kCloseDockCoverAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
-    CommonRequestWithDeviceSn request;
+    DockCoverRequest request;
     request.device_sn = device_sn;
+    request.data.mode = 0;
 
     std::string body;
     std::string err;
@@ -4286,7 +4455,7 @@ void post_close_dock_cover(const std::string& device_sn, const std::function<voi
     }
     LOG_DEBUG("post_close_dock_cover:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_close_dock_cover] http response: %s", log_safe(response).c_str());
         CloseDockCoverResponse close_dock_cover_response;
         auto error_code = FlightHubError::success();
@@ -4313,7 +4482,7 @@ void post_close_dock_cover(const std::string& device_sn, const std::function<voi
     });
 }
 
-void get_close_dock_cover_progress(const std::string& device_sn, const std::function<void(const CloseDockCoverProgressResponse&, FlightHubError err)> callback) {
+void get_close_dock_cover_progress(const std::string& device_sn, const std::function<void(const CloseDockCoverProgressResponse&, FlightHubError err)> callback, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -4328,9 +4497,10 @@ void get_close_dock_cover_progress(const std::string& device_sn, const std::func
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("[get_close_dock_cover_progress] http response: %s", log_safe(response).c_str());
             CloseDockCoverProgressResponse close_dock_cover_progress_response;
             auto error_code = FlightHubError::success();
@@ -4367,13 +4537,14 @@ void get_close_dock_cover_progress(const std::string& device_sn, const std::func
     );
 }
 
-void post_device_reboot(const std::string& device_sn, const std::function<void(const DeviceRebootResponse& data, FlightHubError err)>& callback) {
+void post_device_reboot(const std::string& device_sn, const std::function<void(const DeviceRebootResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kDeviceRebootAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     CommonRequestWithDeviceSn request;
     request.device_sn = device_sn;
@@ -4388,7 +4559,7 @@ void post_device_reboot(const std::string& device_sn, const std::function<void(c
     }
     LOG_DEBUG("post_device_reboot:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_device_reboot] http response: %s", log_safe(response).c_str());
         DeviceRebootResponse device_reboot_response;
         auto error_code = FlightHubError::success();
@@ -4415,7 +4586,7 @@ void post_device_reboot(const std::string& device_sn, const std::function<void(c
     });
 }
 
-void get_device_reboot_progress(const std::string& device_sn, const std::function<void(const DeviceRebootProgressResponse&, FlightHubError err)> callback) {
+void get_device_reboot_progress(const std::string& device_sn, const std::function<void(const DeviceRebootProgressResponse&, FlightHubError err)> callback, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -4430,9 +4601,10 @@ void get_device_reboot_progress(const std::string& device_sn, const std::functio
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("[get_device_reboot_progress] http response: %s", log_safe(response).c_str());
             DeviceRebootProgressResponse device_reboot_progress_response;
             auto error_code = FlightHubError::success();
@@ -4467,13 +4639,14 @@ void get_device_reboot_progress(const std::string& device_sn, const std::functio
     );
 }
 
-void post_device_format(const std::string& device_sn, const std::function<void(const DeviceFormatResponse& data, FlightHubError err)>& callback) {
+void post_device_format(const std::string& device_sn, const std::function<void(const DeviceFormatResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kDeviceFormatAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     CommonRequestWithDeviceSn request;
     request.device_sn = device_sn;
@@ -4488,7 +4661,7 @@ void post_device_format(const std::string& device_sn, const std::function<void(c
     }
     LOG_DEBUG("post_device_format:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_device_format] http response: %s", log_safe(response).c_str());
         DeviceFormatResponse device_format_response;
         auto error_code = FlightHubError::success();
@@ -4515,7 +4688,7 @@ void post_device_format(const std::string& device_sn, const std::function<void(c
     });
 }
 
-void get_device_format_progress(const std::string& device_sn, const std::function<void(const DeviceFormatProgressResponse&, FlightHubError err)> callback) {
+void get_device_format_progress(const std::string& device_sn, const std::function<void(const DeviceFormatProgressResponse&, FlightHubError err)> callback, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -4530,9 +4703,10 @@ void get_device_format_progress(const std::string& device_sn, const std::functio
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("[get_device_format_progress] http response: %s", log_safe(response).c_str());
             DeviceFormatProgressResponse device_format_progress_response;
             auto error_code = FlightHubError::success();
@@ -4567,13 +4741,14 @@ void get_device_format_progress(const std::string& device_sn, const std::functio
     );
 }
 
-void post_drone_open(const std::string& device_sn, const std::function<void(const DroneOpenResponse& data, FlightHubError err)>& callback) {
+void post_drone_open(const std::string& device_sn, const std::function<void(const DroneOpenResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kDroneOpenAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     CommonRequestWithDeviceSn request;
     request.device_sn = device_sn;
@@ -4588,7 +4763,7 @@ void post_drone_open(const std::string& device_sn, const std::function<void(cons
     }
     LOG_DEBUG("post_drone_open:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_drone_open] http response: %s", log_safe(response).c_str());
         DroneOpenResponse drone_open_response;
         auto error_code = FlightHubError::success();
@@ -4615,13 +4790,14 @@ void post_drone_open(const std::string& device_sn, const std::function<void(cons
     });
 }
 
-void post_drone_close(const std::string& device_sn, const std::function<void(const DroneCloseResponse& data, FlightHubError err)>& callback) {
+void post_drone_close(const std::string& device_sn, const std::function<void(const DroneCloseResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kDroneCloseAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     CommonRequestWithDeviceSn request;
     request.device_sn = device_sn;
@@ -4636,7 +4812,7 @@ void post_drone_close(const std::string& device_sn, const std::function<void(con
     }
     LOG_DEBUG("post_drone_close:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_drone_close] http response: %s", log_safe(response).c_str());
         DroneCloseResponse drone_close_response;
         auto error_code = FlightHubError::success();
@@ -4663,13 +4839,14 @@ void post_drone_close(const std::string& device_sn, const std::function<void(con
     });
 }
 
-void post_open_charge(const std::string& device_sn, const std::function<void(const OpenChargeResponse& data, FlightHubError err)>& callback) {
+void post_open_charge(const std::string& device_sn, const std::function<void(const OpenChargeResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kOpenChargeAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     CommonRequestWithDeviceSn request;
     request.device_sn = device_sn;
@@ -4684,7 +4861,7 @@ void post_open_charge(const std::string& device_sn, const std::function<void(con
     }
     LOG_DEBUG("post_open_charge:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_open_charge] http response: %s", log_safe(response).c_str());
         OpenChargeResponse open_charge_response;
         auto error_code = FlightHubError::success();
@@ -4711,13 +4888,14 @@ void post_open_charge(const std::string& device_sn, const std::function<void(con
     });
 }
 
-void post_close_charge(const std::string& device_sn, const std::function<void(const CloseChargeResponse& data, FlightHubError err)>& callback) {
+void post_close_charge(const std::string& device_sn, const std::function<void(const CloseChargeResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kCloseChargeAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     CommonRequestWithDeviceSn request;
     request.device_sn = device_sn;
@@ -4732,7 +4910,7 @@ void post_close_charge(const std::string& device_sn, const std::function<void(co
     }
     LOG_DEBUG("post_open_close:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_open_close] http response: %s", log_safe(response).c_str());
         CloseChargeResponse close_charge_response;
         auto error_code = FlightHubError::success();
@@ -4759,7 +4937,7 @@ void post_close_charge(const std::string& device_sn, const std::function<void(co
     });
 }
 
-void get_dock_status(const std::vector<std::string>& device_sns, const std::function<void(const DockStatusResponse& data, FlightHubError err)>& callback) {
+void get_dock_status(const std::vector<std::string>& device_sns, const std::function<void(const DockStatusResponse& data, FlightHubError err)>& callback, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -4780,9 +4958,10 @@ void get_dock_status(const std::vector<std::string>& device_sns, const std::func
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("[get_dock_status] http response: %s", log_safe(response).c_str());
             DockStatusResponse dock_status_response;
             auto error_code = FlightHubError::success();
@@ -4815,7 +4994,7 @@ void get_dock_status(const std::vector<std::string>& device_sns, const std::func
     );
 }
 
-void get_drone_status(const std::vector<std::string>& device_sns, const std::function<void(const DroneStatusResponse& data, FlightHubError err)>& callback) {
+void get_drone_status(const std::vector<std::string>& device_sns, const std::function<void(const DroneStatusResponse& data, FlightHubError err)>& callback, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -4836,9 +5015,10 @@ void get_drone_status(const std::vector<std::string>& device_sns, const std::fun
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("[get_drone_status] http response: %s", log_safe(response).c_str());
             DroneStatusResponse drone_status_response;
             auto error_code = FlightHubError::success();
@@ -4871,13 +5051,14 @@ void get_drone_status(const std::vector<std::string>& device_sns, const std::fun
     );
 }
 
-void post_dock_silent_mode(const std::string& device_sn, const int silent_mode, const std::function<void(const DockSilentModeResponse& data, FlightHubError err)>& callback) {
+void post_dock_silent_mode(const std::string& device_sn, const int silent_mode, const std::function<void(const DockSilentModeResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kDockSilentModePI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     DockSilentModeRequest request;
     request.device_sn = device_sn;
@@ -4893,7 +5074,7 @@ void post_dock_silent_mode(const std::string& device_sn, const int silent_mode, 
     }
     LOG_DEBUG("post_dock_silent_mode:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_dock_silent_mode] http response: %s", log_safe(response).c_str());
         DockSilentModeResponse dock_silent_mode_response;
         auto error_code = FlightHubError::success();
@@ -4912,13 +5093,14 @@ void post_dock_silent_mode(const std::string& device_sn, const int silent_mode, 
     });
 }
 
-void post_dock_air_conditioner_mode(const std::string& device_sn, const int mode, const std::function<void(const DockAirConditionerResponse& data, FlightHubError err)>& callback) {
+void post_dock_air_conditioner_mode(const std::string& device_sn, const int mode, const std::function<void(const DockAirConditionerResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kDockAirConditionerAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     DockAirConditionerRequest request;
     request.device_sn = device_sn;
@@ -4934,7 +5116,7 @@ void post_dock_air_conditioner_mode(const std::string& device_sn, const int mode
     }
     LOG_DEBUG("post_dock_air_conditioner_mode:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[post_dock_air_conditioner_mode] http response: %s", log_safe(response).c_str());
         DockAirConditionerResponse dock_air_conditioner_mode_response;
         auto error_code = FlightHubError::success();
@@ -4953,13 +5135,14 @@ void post_dock_air_conditioner_mode(const std::string& device_sn, const int mode
     });
 }
 
-void post_rtk_calibration_by_network(NetworkRtkCalibrationRequest request, const std::function<void(const RtkCalibrationResponse& data, FlightHubError err)>& callback) {
+void post_rtk_calibration_by_network(NetworkRtkCalibrationRequest request, const std::function<void(const RtkCalibrationResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kRtkCalibrationAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -4971,7 +5154,7 @@ void post_rtk_calibration_by_network(NetworkRtkCalibrationRequest request, const
     }
     LOG_DEBUG("post_rtk_calibration_by_network:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_rtk_calibration_by_network: response %s", log_safe(response).c_str());
         RtkCalibrationResponse rtk_calibration_response;
         auto error_code = FlightHubError::success();
@@ -4998,13 +5181,14 @@ void post_rtk_calibration_by_network(NetworkRtkCalibrationRequest request, const
     });
 }
 
-void post_rtk_calibration_by_manual(ManualRtkCalibrationRequest request, const std::function<void(const RtkCalibrationResponse& data, FlightHubError err)>& callback) {
+void post_rtk_calibration_by_manual(ManualRtkCalibrationRequest request, const std::function<void(const RtkCalibrationResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kRtkCalibrationAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -5016,7 +5200,7 @@ void post_rtk_calibration_by_manual(ManualRtkCalibrationRequest request, const s
     }
     LOG_DEBUG("post_rtk_calibration_by_manual:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_rtk_calibration_by_manual: response %s", log_safe(response).c_str());
         RtkCalibrationResponse rtk_calibration_response;
         auto error_code = FlightHubError::success();
@@ -5043,13 +5227,14 @@ void post_rtk_calibration_by_manual(ManualRtkCalibrationRequest request, const s
     });
 }
 
-void post_drone_format(const std::string& device_sn, const std::function<void(const DroneFormatResponse& data, FlightHubError err)>& callback) {
+void post_drone_format(const std::string& device_sn, const std::function<void(const DroneFormatResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kDroneFormatAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     CommonRequestWithDeviceSn request;
     request.device_sn = device_sn;
@@ -5064,7 +5249,7 @@ void post_drone_format(const std::string& device_sn, const std::function<void(co
     }
     LOG_DEBUG("post_drone_format:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         DroneFormatResponse drone_format_response;
         auto error_code = FlightHubError::success();
         do {
@@ -5090,13 +5275,14 @@ void post_drone_format(const std::string& device_sn, const std::function<void(co
     });
 }
 
-void post_drone_sdr_work_mode(const std::string& device_sn, const int work_mode, const std::function<void(const DroneSdrWorkModeResponse& data, FlightHubError err)>& callback) {
+void post_drone_sdr_work_mode(const std::string& device_sn, const int work_mode, const std::function<void(const DroneSdrWorkModeResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kDroneSdrWorkModeAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     DroneSdrWorkModeRequest request;
     request.device_sn = device_sn;
@@ -5112,7 +5298,7 @@ void post_drone_sdr_work_mode(const std::string& device_sn, const int work_mode,
     }
     LOG_DEBUG("post_drone_sdr_work_mode:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         DroneSdrWorkModeResponse drone_sdr_work_mode_response;
         auto error_code = FlightHubError::success();
         do {
@@ -5138,13 +5324,14 @@ void post_drone_sdr_work_mode(const std::string& device_sn, const int work_mode,
     });
 }
 
-void post_start_network_speed_test(const std::string& device_sn, const std::function<void(const StartNetworkSpeedTestResponse& data, FlightHubError err)>& callback) {
+void post_start_network_speed_test(const std::string& device_sn, const std::function<void(const StartNetworkSpeedTestResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kStartNetworkSpeedTestAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     CommonRequestWithDeviceSn request;
     request.device_sn = device_sn;
@@ -5159,7 +5346,7 @@ void post_start_network_speed_test(const std::string& device_sn, const std::func
     }
     LOG_DEBUG("post_start_network_speed_test:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         StartNetworkSpeedTestResponse start_network_speed_test_response;
         auto error_code = FlightHubError::success();
         do {
@@ -5185,13 +5372,14 @@ void post_start_network_speed_test(const std::string& device_sn, const std::func
     });
 }
 
-void put_stop_network_speed_test(const std::string& device_sn, const std::function<void(const StopNetworkSpeedTestResponse& data, FlightHubError err)>& callback) {
+void put_stop_network_speed_test(const std::string& device_sn, const std::function<void(const StopNetworkSpeedTestResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kStopNetworkSpeedTestAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     CommonRequestWithDeviceSn request;
     request.device_sn = device_sn;
@@ -5206,7 +5394,7 @@ void put_stop_network_speed_test(const std::string& device_sn, const std::functi
     }
     LOG_DEBUG("put_stop_network_speed_test:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("put_stop_network_speed_test: response: %s", log_safe(response).c_str());
         StopNetworkSpeedTestResponse stop_network_speed_test_response;
         auto error_code = FlightHubError::success();
@@ -5233,7 +5421,7 @@ void put_stop_network_speed_test(const std::string& device_sn, const std::functi
     });
 }
 
-void get_network_speed_test_progress(const std::string& device_sn, const std::function<void(const NetworkSpeedTestProgressResponse& data, FlightHubError err)>& callback) {
+void get_network_speed_test_progress(const std::string& device_sn, const std::function<void(const NetworkSpeedTestProgressResponse& data, FlightHubError err)>& callback, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -5248,9 +5436,10 @@ void get_network_speed_test_progress(const std::string& device_sn, const std::fu
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("get_network_speed_test_progress: response: %s", log_safe(response).c_str());
             NetworkSpeedTestProgressResponse network_speed_test_progress_response;
             auto error_code = FlightHubError::success();
@@ -5285,7 +5474,7 @@ void get_network_speed_test_progress(const std::string& device_sn, const std::fu
     );
 }
 
-void get_device_log_list(const std::string& device_sn, std::vector<int> module_list, const std::function<void(const DeviceLogListResponse& data, FlightHubError err)>& callback) {
+void get_device_log_list(const std::string& device_sn, std::vector<int> module_list, const std::function<void(const DeviceLogListResponse& data, FlightHubError err)>& callback, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -5307,9 +5496,10 @@ void get_device_log_list(const std::string& device_sn, std::vector<int> module_l
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("get_device_log_list: response: %s", log_safe(response).c_str());
             DeviceLogListResponse device_log_list_response;
             auto error_code = FlightHubError::success();
@@ -5339,7 +5529,7 @@ void get_device_log_list(const std::string& device_sn, std::vector<int> module_l
     , 60000);
 }
 
-void post_create_device_log_report(CreateDeviceLogReportRequest& request, const std::function<void(const CreateDeviceLogReportResponse& data, FlightHubError err)>& callback) {
+void post_create_device_log_report(CreateDeviceLogReportRequest& request, const std::function<void(const CreateDeviceLogReportResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string api = kCreateDeviceLogReportAPI;
     std::string url = generate_url(config.address, config.port, api);
@@ -5347,6 +5537,7 @@ void post_create_device_log_report(CreateDeviceLogReportRequest& request, const 
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -5358,7 +5549,7 @@ void post_create_device_log_report(CreateDeviceLogReportRequest& request, const 
     }
     LOG_DEBUG("post_create_device_log_report:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_create_device_log_report: response: %s", log_safe(response).c_str());
         CreateDeviceLogReportResponse create_device_log_report_response;
         auto error_code = FlightHubError::success();
@@ -5383,14 +5574,14 @@ void post_create_device_log_report(CreateDeviceLogReportRequest& request, const 
     });
 }
 
-void get_log_report_list(const std::string& device_sn, int page_index, int page_size, const std::function<void(const LogReportListResponse& data, FlightHubError err)>& callback) {
+void get_log_report_list(const std::string& device_sn, int page_index, int page_size, const std::function<void(const LogReportListResponse& data, FlightHubError err)>& callback, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
     std::string api = kLogReportListAPI;
 
     std::string params = "device_sn=" + device_sn;
-    params += ("&page=" + std::to_string(page_index));
+    params += ("&page_num=" + std::to_string(page_index));
     params += ("&page_size=" + std::to_string(page_size));
 
     std::string complete_api = api + "?" + params;
@@ -5399,13 +5590,14 @@ void get_log_report_list(const std::string& device_sn, int page_index, int page_
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("[DeviceListManager] get_log_report_list, { url: %s, uuid: %s, page_index: %d, page_size: %d}",
         url.c_str(), uuid.str().c_str(), page_index, page_size
     );
 
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("get_log_report_list: response: %s", log_safe(response).c_str());
             LogReportListResponse log_report_list_response;
             auto error_code = FlightHubError::success();
@@ -5435,7 +5627,7 @@ void get_log_report_list(const std::string& device_sn, int page_index, int page_
     );
 }
 
-void post_log_report_operation(const std::string& operation, const std::string& report_id, const std::function<void(FlightHubError err)>& callback) {
+void post_log_report_operation(const std::string& operation, const std::string& report_id, const std::function<void(FlightHubError err)>& callback, int session_id) {
     if (operation != "cancel" && operation != "delete" && operation != "read") {
         LOG_ERROR("post_log_report_operation: invalid param : %s", operation.c_str());
         callback(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM));
@@ -5448,6 +5640,7 @@ void post_log_report_operation(const std::string& operation, const std::string& 
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LogReportOperationRequest request;
     request.report_cmd_method = operation;
     request.report_uuid = report_id;
@@ -5462,7 +5655,7 @@ void post_log_report_operation(const std::string& operation, const std::string& 
     }
     LOG_DEBUG("post_log_report_operation:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_log_report_operation: response: %s", log_safe(response).c_str());
         auto error_code = FlightHubError::success();
         do {
@@ -5479,7 +5672,7 @@ void post_log_report_operation(const std::string& operation, const std::string& 
     });
 }
 
-void post_log_report_append_sts(const std::function<void(const LogReportAppendStsResponse& data, FlightHubError err)>& callback) {
+void post_log_report_append_sts(const std::function<void(const LogReportAppendStsResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string api = kLogReportAppendStsAPI;
     std::string url = generate_url(config.address, config.port, api);
@@ -5487,6 +5680,7 @@ void post_log_report_append_sts(const std::function<void(const LogReportAppendSt
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LogReportAppendStsRequest request;
     request.method = "airport_bug_report";
 
@@ -5500,7 +5694,7 @@ void post_log_report_append_sts(const std::function<void(const LogReportAppendSt
     }
     LOG_DEBUG("post_log_report_append_sts:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_log_report_append_sts: response: %s", log_safe(response).c_str());
         LogReportAppendStsResponse log_report_append_sts_response;
         auto error_code = FlightHubError::success();
@@ -5525,13 +5719,14 @@ void post_log_report_append_sts(const std::function<void(const LogReportAppendSt
     });
 }
 
-void post_history_hms(HistoryHmsDataRequest& request, const std::function<void(const HistoryHmsDataResponse& data, FlightHubError err)>& callback) {
+void post_history_hms(HistoryHmsDataRequest& request, const std::function<void(const HistoryHmsDataResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kQueryHistoryHmsAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -5543,7 +5738,7 @@ void post_history_hms(HistoryHmsDataRequest& request, const std::function<void(c
     }
     LOG_DEBUG("get_history_hms:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("get_history_hms: response: %s", log_safe(response).c_str());
         HistoryHmsDataResponse history_hms_data_response;
         auto error_code = FlightHubError::success();
@@ -5568,13 +5763,14 @@ void post_history_hms(HistoryHmsDataRequest& request, const std::function<void(c
     });
 }
 
-void post_unbind_device(UnBindDeviceRequest& request, const std::function<void(FlightHubError err)>& callback) {
+void post_unbind_device(UnBindDeviceRequest& request, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kUnBindDeviceAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -5586,7 +5782,7 @@ void post_unbind_device(UnBindDeviceRequest& request, const std::function<void(F
     }
     LOG_DEBUG("post_unbind_device:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_unbind_device: response %s", log_safe(response).c_str());
         auto error_code = FlightHubError::success();
         do {
@@ -5603,7 +5799,7 @@ void post_unbind_device(UnBindDeviceRequest& request, const std::function<void(F
     });
 }
 
-void get_device_detail(const std::string& device_sn, const std::function<void(const DeviceDetailResponse& data, FlightHubError err)>& callback) {
+void get_device_detail(const std::string& device_sn, const std::function<void(const DeviceDetailResponse& data, FlightHubError err)>& callback, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -5617,11 +5813,12 @@ void get_device_detail(const std::string& device_sn, const std::function<void(co
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_device_detail, { url: %s, uuid: %s}", url.c_str(), uuid.str().c_str());
 
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             DeviceDetailResponse device_detail_response;
             auto error_code = FlightHubError::success();
             do {
@@ -5650,13 +5847,14 @@ void get_device_detail(const std::string& device_sn, const std::function<void(co
     );
 }
 
-void put_modify_device_name(ModifyDeviceNameRequest& request, const std::function<void(FlightHubError err)>& callback) {
+void put_modify_device_name(ModifyDeviceNameRequest& request, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kModifyDeviceNameAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -5668,7 +5866,7 @@ void put_modify_device_name(ModifyDeviceNameRequest& request, const std::functio
     }
     LOG_DEBUG("put_modify_device_name:  url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         auto error_code = FlightHubError::success();
         do {
             auto common_response = convert_response_struct(response);
@@ -5684,7 +5882,7 @@ void put_modify_device_name(ModifyDeviceNameRequest& request, const std::functio
     });
 }
 
-void get_latest_firmware_release_note(const std::vector<std::string>& device_model_keys, const std::string& language, std::function<void(const FirmwareReleaseNoteListResponse& data, FlightHubError err)> callback) {
+void get_latest_firmware_release_note(const std::vector<std::string>& device_model_keys, const std::string& language, std::function<void(const FirmwareReleaseNoteListResponse& data, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
     std::string params;
@@ -5707,11 +5905,12 @@ void get_latest_firmware_release_note(const std::vector<std::string>& device_mod
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_latest_firmware_release_note: url %s, uuid %s", url.c_str(), uuid.str().c_str());
 
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("get_latest_firmware_release_note: response %s", log_safe(response).c_str());
             FirmwareReleaseNoteListResponse result;
             auto error_code = FlightHubError::success();
@@ -5737,13 +5936,14 @@ void get_latest_firmware_release_note(const std::vector<std::string>& device_mod
     );
 }
 
-void post_invoke_firmware_upgrade(FirmwareUpgradeRequest& request, std::function<void(const FirmwareUpgradeResponse& data, FlightHubError err)> callback) {
+void post_invoke_firmware_upgrade(FirmwareUpgradeRequest& request, std::function<void(const FirmwareUpgradeResponse& data, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kInvokeFirmwareUpgradeAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -5757,7 +5957,7 @@ void post_invoke_firmware_upgrade(FirmwareUpgradeRequest& request, std::function
     }
     LOG_DEBUG("post_invoke_firmware_upgrade: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("post_invoke_firmware_upgrade: response %s", log_safe(response).c_str());
             FirmwareUpgradeResponse result;
             auto error_code = FlightHubError::success();
@@ -5775,10 +5975,6 @@ void post_invoke_firmware_upgrade(FirmwareUpgradeRequest& request, std::function
                     error_code = make_http_error(http_code, response);
                     break;
                 }
-                if (result.device_code != 0) {
-                    error_code = make_http_error(http_code, response);
-                    break;
-                }
             } while (false);
             if (callback) {
                 callback(result, error_code);
@@ -5787,20 +5983,21 @@ void post_invoke_firmware_upgrade(FirmwareUpgradeRequest& request, std::function
     );
 }
 
-void get_query_firmware_upgrade_progress(const std::string& device_sn, std::function<void(const FirmwareUpgradeProgressResponse& data, FlightHubError err)> callback) {
+void get_query_firmware_upgrade_progress(const std::string& device_sn, std::function<void(const FirmwareUpgradeProgressResponse& data, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
-    std::string complete_api = std::string(kQueryFirmwareUpgradeProgressAPI) + "?device_sn=" + device_sn;
+    std::string complete_api = std::string(kQueryFirmwareUpgradeProgressAPI) + "?sn=" + device_sn;
     std::string url = generate_url(config.address, config.port, complete_api);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_query_firmware_upgrade_progress: url %s, uuid %s", url.c_str(), uuid.str().c_str());
 
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             FirmwareUpgradeProgressResponse result;
             auto error_code = FlightHubError::success();
             do {
@@ -5825,7 +6022,7 @@ void get_query_firmware_upgrade_progress(const std::string& device_sn, std::func
     );
 }
 
-void post_firmware_upgrade_sts(std::function<void(const FirmwareUpgradeStsResponse& sts, FlightHubError err)> callback) {
+void post_firmware_upgrade_sts(std::function<void(const FirmwareUpgradeStsResponse& sts, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string api = kFirmwareUpgradeStsAPI;
     std::string url = generate_url(config.address, config.port, api);
@@ -5833,10 +6030,11 @@ void post_firmware_upgrade_sts(std::function<void(const FirmwareUpgradeStsRespon
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("post_firmware_upgrade_sts: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, "",
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             FirmwareUpgradeStsResponse result;
             auto error_code = FlightHubError::success();
             do {
@@ -5861,7 +6059,7 @@ void post_firmware_upgrade_sts(std::function<void(const FirmwareUpgradeStsRespon
     );
 }
 
-void put_release_firmware(const std::string& file_id, std::function<void(FlightHubError err)> callback) {
+void put_release_firmware(const std::string& file_id, std::function<void(FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
     std::string api = std::string(kUpdateFirmwareReleaseStatusAPI);
@@ -5871,12 +6069,13 @@ void put_release_firmware(const std::string& file_id, std::function<void(FlightH
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body = R"({"status":"released"})";
 
     LOG_DEBUG("put_release_firmware: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("put_release_firmware: response %s", log_safe(response).c_str());
             auto error_code = FlightHubError::success();
             do {
@@ -5895,7 +6094,7 @@ void put_release_firmware(const std::string& file_id, std::function<void(FlightH
     );
 }
 
-void put_unrelease_firmware(const std::string& file_id, std::function<void(FlightHubError err)> callback) {
+void put_unrelease_firmware(const std::string& file_id, std::function<void(FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
     std::string api = std::string(kUpdateFirmwareReleaseStatusAPI);
@@ -5905,12 +6104,13 @@ void put_unrelease_firmware(const std::string& file_id, std::function<void(Fligh
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body = R"({"status":"unreleased"})";
 
     LOG_DEBUG("put_unrelease_firmware: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("put_unrelease_firmware: response %s", log_safe(response).c_str());
             auto error_code = FlightHubError::success();
             do {
@@ -5928,7 +6128,7 @@ void put_unrelease_firmware(const std::string& file_id, std::function<void(Fligh
     );
 }
 
-void delete_delete_firmware(const std::string& file_id, std::function<void(FlightHubError err)> callback) {
+void delete_delete_firmware(const std::string& file_id, std::function<void(FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
     std::string api = std::string(kUpdateFirmwareReleaseStatusAPI);
@@ -5938,10 +6138,11 @@ void delete_delete_firmware(const std::string& file_id, std::function<void(Fligh
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("delete_delete_firmware: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, "",
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("delete_delete_firmware: response %s", log_safe(response).c_str());
             auto error_code = FlightHubError::success();
             do {
@@ -5959,11 +6160,11 @@ void delete_delete_firmware(const std::string& file_id, std::function<void(Fligh
     );
 }
 
-void get_query_firmware_list(int page, int page_size, std::function<void(const FirmwareListResponse& data, FlightHubError err)> callback) {
+void get_query_firmware_list(int page, int page_size, std::function<void(const FirmwareListResponse& data, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
     char param_buffer[64] = {'\0'};
-    snprintf(param_buffer, sizeof(param_buffer), "?page=%d&page_size=%d", page, page_size);
+    snprintf(param_buffer, sizeof(param_buffer), "?page_num=%d&page_size=%d", page, page_size);
     std::string api = std::string(kQueryFirmwareListAPI);
     std::string complete_api = api + param_buffer;
     std::string url = generate_url(config.address, config.port, complete_api);
@@ -5971,12 +6172,13 @@ void get_query_firmware_list(int page, int page_size, std::function<void(const F
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_query_firmware_list: url %s, uuid %s, page %d, page_size %d",
              url.c_str(), uuid.str().c_str(), page, page_size);
 
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("get_query_firmware_list: response %s", log_safe(response).c_str());
             FirmwareListResponse result;
             auto error_code = FlightHubError::success();
@@ -6002,7 +6204,7 @@ void get_query_firmware_list(int page, int page_size, std::function<void(const F
     );
 }
 
-void post_query_firmware_compatibility_config(std::function<void(const FirmwareCompatibilityConfigResponse& data, FlightHubError err)> callback) {
+void post_query_firmware_compatibility_config(std::function<void(const FirmwareCompatibilityConfigResponse& data, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
     std::string api = std::string(kGetFirmwareCompatibilityAPI);
@@ -6012,11 +6214,12 @@ void post_query_firmware_compatibility_config(std::function<void(const FirmwareC
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("post_query_firmware_compatibility_config: url %s, uuid %s", url.c_str(), uuid.str().c_str());
 
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("post_query_firmware_compatibility_config: response %s", log_safe(response).c_str());
             FirmwareCompatibilityConfigResponse result;
             auto error_code = FlightHubError::success();
@@ -6036,7 +6239,7 @@ void post_query_firmware_compatibility_config(std::function<void(const FirmwareC
     );
 }
 
-void get_check_firmware_status(const std::vector<std::string>& device_sns, const std::vector<std::string>& status, std::function<void(const FirmwareStatusListResponse& response, FlightHubError err)> callback) {
+void get_check_firmware_status(const std::vector<std::string>& device_sns, const std::vector<std::string>& status, std::function<void(const FirmwareStatusListResponse& response, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
     std::string url = generate_url(config.address, config.port, kCheckFirmwareStatusAPI);
@@ -6044,6 +6247,7 @@ void get_check_firmware_status(const std::vector<std::string>& device_sns, const
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     CheckFirmwareStatusRequest request;
     request.device_sns = device_sns;
@@ -6063,7 +6267,7 @@ void get_check_firmware_status(const std::vector<std::string>& device_sns, const
     LOG_DEBUG("get_check_firmware_status: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
 
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("get_check_firmware_status: response %s", log_safe(response).c_str());
             FirmwareStatusListResponse result;
             auto error_code = FlightHubError::success();
@@ -6089,7 +6293,7 @@ void get_check_firmware_status(const std::vector<std::string>& device_sns, const
     );
 }
 
-void post_submit_firmware_info(FirmwareInfoRequest& request, std::function<void(FlightHubError err)> callback) {
+void post_submit_firmware_info(FirmwareInfoRequest& request, std::function<void(FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kSubmitFirmwareInfoAPI);
     std::string url = generate_url(config.address, config.port, api);
@@ -6097,6 +6301,7 @@ void post_submit_firmware_info(FirmwareInfoRequest& request, std::function<void(
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -6112,7 +6317,7 @@ void post_submit_firmware_info(FirmwareInfoRequest& request, std::function<void(
     LOG_DEBUG("post_submit_firmware_info: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
 
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("post_submit_firmware_info: response %s", log_safe(response).c_str());
             auto error_code = FlightHubError::success();
             do {
@@ -6130,7 +6335,7 @@ void post_submit_firmware_info(FirmwareInfoRequest& request, std::function<void(
     );
 }
 
-void get_unlock_license_list(QueryDeviceUnlockLicenseListRequest& request, std::function<void(const QueryDeviceUnlockLicenseListResponse& data, FlightHubError err)> callback) {
+void get_unlock_license_list(QueryDeviceUnlockLicenseListRequest& request, std::function<void(const QueryDeviceUnlockLicenseListResponse& data, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
     std::string complete_api = std::string(kGetUnlockLicenseListAPI)
@@ -6141,12 +6346,13 @@ void get_unlock_license_list(QueryDeviceUnlockLicenseListRequest& request, std::
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_unlock_license_list: url %s, uuid %s, device_sn %s, device_model_domain %d",
              url.c_str(), uuid.str().c_str(), request.device_sn.c_str(), request.device_model_domain);
 
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("get_unlock_license_list: response %s", log_safe(response).c_str());
             QueryDeviceUnlockLicenseListResponse result;
             auto error_code = FlightHubError::success();
@@ -6172,7 +6378,7 @@ void get_unlock_license_list(QueryDeviceUnlockLicenseListRequest& request, std::
     );
 }
 
-void post_switch_unlock_license(SwitchDeviceUnlockLicenseRequest& request, std::function<void(FlightHubError err)> callback) {
+void post_switch_unlock_license(SwitchDeviceUnlockLicenseRequest& request, std::function<void(FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
     std::string url = generate_url(config.address, config.port, kSwitchUnlockLicenseAPI);
@@ -6180,6 +6386,7 @@ void post_switch_unlock_license(SwitchDeviceUnlockLicenseRequest& request, std::
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -6195,7 +6402,7 @@ void post_switch_unlock_license(SwitchDeviceUnlockLicenseRequest& request, std::
     LOG_DEBUG("post_switch_unlock_license: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
 
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("post_switch_unlock_license: response %s", log_safe(response).c_str());
             auto error_code = FlightHubError::success();
             auto common_response = convert_response_struct(response);
@@ -6210,7 +6417,7 @@ void post_switch_unlock_license(SwitchDeviceUnlockLicenseRequest& request, std::
     );
 }
 
-void post_check_unlock_license(CheckUnlockLicenseRequest& request, std::function<void(const CheckUnlockLicenseResponse& data, FlightHubError err)> callback) {
+void post_check_unlock_license(CheckUnlockLicenseRequest& request, std::function<void(const CheckUnlockLicenseResponse& data, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
     std::string api = std::string(kCheckUnlockLicenseAPI);
@@ -6219,6 +6426,7 @@ void post_check_unlock_license(CheckUnlockLicenseRequest& request, std::function
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -6234,7 +6442,7 @@ void post_check_unlock_license(CheckUnlockLicenseRequest& request, std::function
     LOG_DEBUG("post_check_unlock_license: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
 
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("post_check_unlock_license: response %s", log_safe(response).c_str());
             CheckUnlockLicenseResponse result;
             auto error_code = FlightHubError::success();
@@ -6243,6 +6451,9 @@ void post_check_unlock_license(CheckUnlockLicenseRequest& request, std::function
                 if (common_response.code != 0) {
                     LOG_ERROR("post_check_unlock_license: code: %d, message: %s", common_response.code, common_response.message.c_str());
                     error_code = make_http_error(http_code, response);
+                    // 证书不匹配时后端返回非 0 code，但 data 里仍带 err_cert_mismatch，需要解析出来。
+                    std::string parse_err;
+                    parse_common_response_data(common_response, result, &parse_err, true);
                     break;
                 }
 
@@ -6260,7 +6471,7 @@ void post_check_unlock_license(CheckUnlockLicenseRequest& request, std::function
     );
 }
 
-void post_import_unlock_license(ImportUnlockLicenseRequest& request, std::function<void(FlightHubError err)> callback) {
+void post_import_unlock_license(ImportUnlockLicenseRequest& request, std::function<void(FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
     std::string api = std::string(kImportUnlockLicenseAPI);
@@ -6269,6 +6480,7 @@ void post_import_unlock_license(ImportUnlockLicenseRequest& request, std::functi
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -6284,7 +6496,7 @@ void post_import_unlock_license(ImportUnlockLicenseRequest& request, std::functi
     LOG_DEBUG("post_import_unlock_license: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
 
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("post_import_unlock_license: response %s", log_safe(response).c_str());
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -6301,7 +6513,7 @@ void post_import_unlock_license(ImportUnlockLicenseRequest& request, std::functi
     );
 }
 
-void post_import_unlock_license_sts(std::function<void(const GetImportUnlockLicenseStsResponse& data, FlightHubError err)> callback) {
+void post_import_unlock_license_sts(std::function<void(const GetImportUnlockLicenseStsResponse& data, FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
     std::string url = generate_url(config.address, config.port, kGetImportUnlockLicenseStsAPI);
@@ -6309,11 +6521,12 @@ void post_import_unlock_license_sts(std::function<void(const GetImportUnlockLice
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_import_unlock_license_sts: url %s, uuid %s", url.c_str(), uuid.str().c_str());
 
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, "",
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("get_import_unlock_license_sts: response %s", log_safe(response).c_str());
             GetImportUnlockLicenseStsResponse result;
             auto error_code = FlightHubError::success();
@@ -6339,7 +6552,7 @@ void post_import_unlock_license_sts(std::function<void(const GetImportUnlockLice
     );
 }
 
-void post_clear_device_unlock_license(const std::string& device_sn, std::function<void(FlightHubError err)> callback) {
+void post_clear_device_unlock_license(const std::string& device_sn, std::function<void(FlightHubError err)> callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
     std::string url = generate_url(config.address, config.port, kClearDeviceUnlockLicenseAPI);
@@ -6347,6 +6560,7 @@ void post_clear_device_unlock_license(const std::string& device_sn, std::functio
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     CommonRequestWithDeviceSn request;
     request.device_sn = device_sn;
@@ -6365,7 +6579,7 @@ void post_clear_device_unlock_license(const std::string& device_sn, std::functio
     LOG_DEBUG("post_clear_device_unlock_license: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
 
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("post_clear_device_unlock_license: response %s", log_safe(response).c_str());
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -6382,7 +6596,7 @@ void post_clear_device_unlock_license(const std::string& device_sn, std::functio
     );
 }
 
-void get_wayline_list(const GetWaylineListParam& param, const std::function<void(const GetWaylineListResponse& data, FlightHubError err)>& callback) {
+void get_wayline_list(const GetWaylineListParam& param, const std::function<void(const GetWaylineListResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string params;
     params += "page=" + std::to_string(param.page);
@@ -6393,13 +6607,16 @@ void get_wayline_list(const GetWaylineListParam& param, const std::function<void
     for (const auto& v : param.wayline_uuids) { params += "&wayline_uuids=" + v; }
     for (const auto& v : param.payload_types) { params += "&payload_types=" + v; }
     for (const auto& v : param.wayline_types) { params += "&wayline_types=" + v; }
+    for (const auto& v : param.wayline_types_int) { params += "&wayline_types=" + std::to_string(v); }
+    if (!param.keyword.empty()) { params += "&keyword=" + param.keyword; }
     std::string url = generate_url(config.address, config.port, kGetWaylineListAPI + "?" + params);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LOG_INFO("get_wayline_list: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("get_wayline_list: response %s", log_safe(response).c_str());
         GetWaylineListResponse get_wayline_list_response;
         auto error_code = FlightHubError::success();
@@ -6426,16 +6643,17 @@ void get_wayline_list(const GetWaylineListParam& param, const std::function<void
     });
 }
 
-void get_wayline_detail(const std::string& wayline_uuid, const std::function<void(const GetWaylineDetailResponse& data, FlightHubError err)>& callback) {
+void get_wayline_detail(const std::string& wayline_uuid, const std::function<void(const GetWaylineDetailResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string params = "wayline_uuid=" + wayline_uuid;
     std::string url = generate_url(config.address, config.port, kGetWaylineDetailAPI + "?" + params);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LOG_INFO("get_wayline_detail: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("get_wayline_detail: response %s", log_safe(response).c_str());
         GetWaylineDetailResponse get_wayline_detail_response;
         auto error_code = FlightHubError::success();
@@ -6459,12 +6677,13 @@ void get_wayline_detail(const std::string& wayline_uuid, const std::function<voi
     });
 }
 
-void post_batch_delete_waylines(const std::vector<std::string>& wayline_uuids, const std::function<void(const BatchDeleteWaylinesResponse& data, FlightHubError err)>& callback) {
+void post_batch_delete_waylines(const std::vector<std::string>& wayline_uuids, const std::function<void(const BatchDeleteWaylinesResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kBatchDeleteWaylinesAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     BatchDeleteWaylinesRequest request;
     request.wayline_uuids = wayline_uuids;
     std::string body;
@@ -6480,7 +6699,7 @@ void post_batch_delete_waylines(const std::vector<std::string>& wayline_uuids, c
     }
     LOG_DEBUG("post_batch_delete_waylines: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_batch_delete_waylines: response %s", log_safe(response).c_str());
         BatchDeleteWaylinesResponse batch_delete_waylines_response;
         auto error_code = FlightHubError::success();
@@ -6500,12 +6719,13 @@ void post_batch_delete_waylines(const std::vector<std::string>& wayline_uuids, c
     });
 }
 
-void post_update_wayline(const std::string& wayline_uuid, const std::string& wayline_name, const std::function<void(const UpdateWaylineResponse& data, FlightHubError err)>& callback) {
+void post_update_wayline(const std::string& wayline_uuid, const std::string& wayline_name, const std::function<void(const UpdateWaylineResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kUpdateWaylineAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     UpdateWaylineRequest request;
     request.wayline_uuid = wayline_uuid;
     request.wayline_name = wayline_name;
@@ -6519,7 +6739,7 @@ void post_update_wayline(const std::string& wayline_uuid, const std::string& way
     }
     LOG_DEBUG("post_update_wayline: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_update_wayline: response %s", log_safe(response).c_str());
         UpdateWaylineResponse update_wayline_response;
         auto error_code = FlightHubError::success();
@@ -6537,18 +6757,20 @@ void post_update_wayline(const std::string& wayline_uuid, const std::string& way
     });
 }
 
-void post_import_wayline_callback(const SubmitWaylineInfoParam& param, const std::function<void(const SubmitWaylineInfoResponse& data, FlightHubError err)>& callback) {
+void post_import_wayline_callback(const SubmitWaylineInfoParam& param, const std::function<void(const SubmitWaylineInfoResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kSubmitWaylineInfoAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     SubmitWaylineInfoRequest request;
     request.kmz_object_key = param.kmz_object_key;
     request.wayline_name = param.wayline_name;
     request.async_request_id = param.async_request_id;
     request.timestamp = param.timestamp;
     request.return_paas_data = param.return_paas_data;
+    request.transparent = param.transparent;
     std::string body;
     std::string err;
     aigc::JsonHelper::ObjectToJson(request, body, &err);
@@ -6559,7 +6781,7 @@ void post_import_wayline_callback(const SubmitWaylineInfoParam& param, const std
     }
     LOG_DEBUG("post_import_wayline_callback: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_import_wayline_callback: response %s", log_safe(response).c_str());
         SubmitWaylineInfoResponse import_wayline_callback_response;
         auto error_code = FlightHubError::success();
@@ -6577,11 +6799,12 @@ void post_import_wayline_callback(const SubmitWaylineInfoParam& param, const std
     });
 }
 
-void post_batch_download_waylines(const BatchDownloadWaylinesParam& param, const std::function<void(const BatchDownloadWaylinesResponse& data, FlightHubError err)>& callback) {    auto config = FlightHubSdk::getConfig();
+void post_batch_download_waylines(const BatchDownloadWaylinesParam& param, const std::function<void(const BatchDownloadWaylinesResponse& data, FlightHubError err)>& callback, int session_id) {    auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kBatchDownloadWaylinesAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     BatchDownloadWaylinesRequest request;
     request.wayline_uuids = param.wayline_uuids;
     std::string body;
@@ -6594,7 +6817,7 @@ void post_batch_download_waylines(const BatchDownloadWaylinesParam& param, const
     }
     LOG_DEBUG("post_batch_download_waylines: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_batch_download_waylines: response %s", log_safe(response).c_str());
         BatchDownloadWaylinesResponse batch_download_waylines_response;
         auto error_code = FlightHubError::success();
@@ -6617,12 +6840,13 @@ void post_batch_download_waylines(const BatchDownloadWaylinesParam& param, const
     });
 }
 
-void post_duplicate_wayline(const DuplicateWaylineParam& param, const std::function<void(const DuplicateWaylineResponse& data, FlightHubError err)>& callback) {
+void post_duplicate_wayline(const DuplicateWaylineParam& param, const std::function<void(const DuplicateWaylineResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kDuplicateWaylineAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     DuplicateWaylineRequest request;
     request.original_wayline_uuid = param.original_wayline_uuid;
     request.target_wayline_name = param.target_wayline_name;
@@ -6637,7 +6861,7 @@ void post_duplicate_wayline(const DuplicateWaylineParam& param, const std::funct
     }
     LOG_DEBUG("post_duplicate_wayline: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_duplicate_wayline: response %s", log_safe(response).c_str());
         DuplicateWaylineResponse duplicate_wayline_response;
         auto error_code = FlightHubError::success();
@@ -6665,16 +6889,17 @@ void post_duplicate_wayline(const DuplicateWaylineParam& param, const std::funct
 // =========================================================================
 
 void get_ai_inside_models(
-    const std::function<void(const GetAIInsideModelsResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const GetAIInsideModelsResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kGetAIInsideModelsAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LOG_INFO("get_ai_inside_models: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code,
                    const std::string& response, const std::vector<std::string>& certs,
                    const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("get_ai_inside_models: response %s", log_safe(response).c_str());
@@ -6700,7 +6925,7 @@ void get_ai_inside_models(
 
 void get_ai_inside_model_devices(
     const GetAIInsideModelDevicesParam& param,
-    const std::function<void(const GetAIInsideModelDevicesResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const GetAIInsideModelDevicesResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     // 将 {signed_id} 占位符替换为实际 signed_id，与项目其他接口保持一致
     std::string path = std::string(kGetAIInsideModelDevicesAPI);
@@ -6717,9 +6942,10 @@ void get_ai_inside_model_devices(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LOG_INFO("get_ai_inside_model_devices: url %s", url.c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code,
                    const std::string& response, const std::vector<std::string>& certs,
                    const drc_sdk::common::HttpHeaders& resp_headers) {
             LOG_DEBUG("get_ai_inside_model_devices: response %s", log_safe(response).c_str());
@@ -6745,7 +6971,7 @@ void get_ai_inside_model_devices(
 
 void get_ai_inside_model_devices_summary(
     const GetAIInsideModelDevicesSummaryParam& param,
-    const std::function<void(const GetAIInsideModelDevicesSummaryResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const GetAIInsideModelDevicesSummaryResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string path = std::string(kGetAIInsideModelDevicesSummaryAPI);
     const std::string ph = "{signed_id}";
@@ -6757,9 +6983,10 @@ void get_ai_inside_model_devices_summary(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LOG_INFO("get_ai_inside_model_devices_summary: url %s", url.c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("get_ai_inside_model_devices_summary: response %s", log_safe(response).c_str());
@@ -6780,7 +7007,7 @@ void get_ai_inside_model_devices_summary(
 void post_operate_ai_inside_model(
     const std::string& signed_id,
     OperateAIInsideModelRequest& request,
-    const std::function<void(const OperateAIInsideModelResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const OperateAIInsideModelResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string path = std::string(kOperateAIInsideModelAPI);
     const std::string ph = "{signed_id}";
@@ -6791,6 +7018,7 @@ void post_operate_ai_inside_model(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     std::string body, err_msg;
     aigc::JsonHelper::ObjectToJson(request, body, &err_msg);
     if (!err_msg.empty()) {
@@ -6800,7 +7028,7 @@ void post_operate_ai_inside_model(
     }
     LOG_DEBUG("post_operate_ai_inside_model: url %s, body %s", url.c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("post_operate_ai_inside_model: response %s", log_safe(response).c_str());
@@ -6820,13 +7048,14 @@ void post_operate_ai_inside_model(
 
 void post_create_ai_inside_algorithm(
     CreateAIInsideAlgorithmRequest& request,
-    const std::function<void(const CreateAIInsideAlgorithmResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const CreateAIInsideAlgorithmResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kCreateAIInsideAlgorithmAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     std::string body, err_msg;
     aigc::JsonHelper::ObjectToJson(request, body, &err_msg);
     if (!err_msg.empty()) {
@@ -6835,7 +7064,7 @@ void post_create_ai_inside_algorithm(
     }
     LOG_INFO("post_create_ai_inside_algorithm: url %s", url.c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("post_create_ai_inside_algorithm: response %s", log_safe(response).c_str());
@@ -6855,13 +7084,14 @@ void post_create_ai_inside_algorithm(
 
 void post_file_upload_ai_inside_algorithm(
     FileUploadAIInsideAlgorithmRequest& request,
-    const std::function<void(const FileUploadAIInsideAlgorithmResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const FileUploadAIInsideAlgorithmResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kFileUploadAIInsideAlgorithmAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     std::string body, err_msg;
     aigc::JsonHelper::ObjectToJson(request, body, &err_msg);
     if (!err_msg.empty()) {
@@ -6870,7 +7100,7 @@ void post_file_upload_ai_inside_algorithm(
     }
     LOG_INFO("post_file_upload_ai_inside_algorithm: url %s", url.c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("post_file_upload_ai_inside_algorithm: response %s", log_safe(response).c_str());
@@ -6890,7 +7120,7 @@ void post_file_upload_ai_inside_algorithm(
 
 void delete_ai_inside_algorithm(
     DeleteAIInsideAlgorithmRequest& request,
-    const std::function<void(FlightHubError err)>& callback) {
+    const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kDeleteAIInsideAlgorithmAPI);
     auto uuid = xg::newGuid();
@@ -6899,6 +7129,7 @@ void delete_ai_inside_algorithm(
     // delete_request 底层未自动根据 post_type 设置 Content-Type，需手动指定
     headers["Content-Type"] = "application/json";
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     std::string body, err_msg;
     aigc::JsonHelper::ObjectToJson(request, body, &err_msg);
     if (!err_msg.empty()) {
@@ -6907,7 +7138,7 @@ void delete_ai_inside_algorithm(
     }
     LOG_DEBUG("delete_ai_inside_algorithm: url %s, body %s", url.c_str(), log_safe(body).c_str());
     HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("delete_ai_inside_algorithm: response %s", log_safe(response).c_str());
@@ -6922,12 +7153,13 @@ void delete_ai_inside_algorithm(
         });
 }
 
-void post_copy_wayline(const CopyWaylineParam& param, const std::function<void(const CopyWaylineResponse& data, FlightHubError err)>& callback) {
+void post_copy_wayline(const CopyWaylineParam& param, const std::function<void(const CopyWaylineResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kCopyWaylineAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     CopyWaylineRequest request;
     request.original_wayline_uuid = param.original_wayline_uuid;
     request.target_wayline_name = param.target_wayline_name;
@@ -6941,7 +7173,7 @@ void post_copy_wayline(const CopyWaylineParam& param, const std::function<void(c
     }
     LOG_DEBUG("post_copy_wayline: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_copy_wayline: response %s", log_safe(response).c_str());
         CopyWaylineResponse copy_response;
         auto error_code = FlightHubError::success();
@@ -6964,12 +7196,13 @@ void post_copy_wayline(const CopyWaylineParam& param, const std::function<void(c
     });
 }
 
-void post_concat_wayline(const ConcatWaylineParam& param, const std::function<void(const ConcatWaylineResponse& data, FlightHubError err)>& callback) {
+void post_concat_wayline(const ConcatWaylineParam& param, const std::function<void(const ConcatWaylineResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kConcatWaylineAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
     ConcatWaylineRequest request;
     request.target_wayline_name = param.target_wayline_name;
     request.kmz_object_key = param.kmz_object_key;
@@ -6985,7 +7218,7 @@ void post_concat_wayline(const ConcatWaylineParam& param, const std::function<vo
     }
     LOG_DEBUG("post_concat_wayline: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_concat_wayline: response %s", log_safe(response).c_str());
         ConcatWaylineResponse concat_response;
         auto error_code = FlightHubError::success();
@@ -7008,19 +7241,20 @@ void post_concat_wayline(const ConcatWaylineParam& param, const std::function<vo
     });
 }
 
-void post_import_kmz(const std::vector<std::string>& file_paths, const std::function<void(const ImportKmzResponse& data, FlightHubError err)>& callback) {
+void post_import_kmz(const std::vector<std::string>& file_paths, const std::function<void(const ImportKmzResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kImportKmzAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     // 注意：不设置 Content-Type，让 libcurl multipart 自动生成 boundary
 
     LOG_INFO("post_import_kmz: url %s, uuid %s, file_count %zu", url.c_str(), uuid.str().c_str(), file_paths.size());
 
     drc_sdk::common::Network::Instance().FormPost(url, headers, file_paths,
-        [callback](const drc_sdk::common::NetworkError err_code, const std::string& response,
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, const std::string& response,
                    const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("post_import_kmz: response %s", log_safe(response).c_str());
         ImportKmzResponse import_response;
@@ -7051,13 +7285,14 @@ void post_import_kmz(const std::vector<std::string>& file_paths, const std::func
 
 
 // 获取设备报修配置;
-void obtain_maintenance_orders_repair_config(ObtainRepairConfigRequest request, const std::function<void(const ObtainRepairConfigResponse& response, FlightHubError err)>& callback) {
+void obtain_maintenance_orders_repair_config(ObtainRepairConfigRequest request, const std::function<void(const ObtainRepairConfigResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kMaintenanceOrdersRepairConfigAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -7073,7 +7308,7 @@ void obtain_maintenance_orders_repair_config(ObtainRepairConfigRequest request, 
     );
 
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -7101,13 +7336,14 @@ void obtain_maintenance_orders_repair_config(ObtainRepairConfigRequest request, 
 
 
 // 创建报修订单;
-void create_maintenance_orders(CreateMaintenanceOrdersRequest request, const std::function<void(const CreateMaintenanceOrdersResponse& response, FlightHubError err)>& callback) {
+void create_maintenance_orders(CreateMaintenanceOrdersRequest request, const std::function<void(const CreateMaintenanceOrdersResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kMaintenanceOrdersAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -7123,7 +7359,7 @@ void create_maintenance_orders(CreateMaintenanceOrdersRequest request, const std
     );
 
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -7151,7 +7387,7 @@ void create_maintenance_orders(CreateMaintenanceOrdersRequest request, const std
 
 // 查询单个报修订单详情;
 void get_maintenance_order_detail(const std::string &order_number,
-    const std::function<void(const MaintenanceOrderDetailResponse& response, FlightHubError err)>& callback) {
+    const std::function<void(const MaintenanceOrderDetailResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
     std::string api = std::string(kMaintenanceOrderDetailAPI);
@@ -7165,13 +7401,14 @@ void get_maintenance_order_detail(const std::string &order_number,
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_maintenance_order_detail(): { url: %s, uuid: %s, order_number: %s }",
         url.c_str(), uuid.str().c_str(), order_number.c_str()
     );
 
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -7203,7 +7440,7 @@ void get_maintenance_order_detail(const std::string &order_number,
 // page=1&page_size=100&order_number=xxxx&status=2&initiated_from=0&device_sn=SNSN&creator_id=1,2,3,4&
 // q=KKK&created_at_start=1111111&created_at_end=2222222&sort_column=order_number&sort_type=asc
 void get_maintenance_orders_list(const GetMaintenanceOrdersListRequest &params,
-    const std::function<void(const MaintenanceOrdersListResponse& response, FlightHubError err)>& callback) {
+    const std::function<void(const MaintenanceOrdersListResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
 
     std::string param_str;
@@ -7272,13 +7509,14 @@ void get_maintenance_orders_list(const GetMaintenanceOrdersListRequest &params,
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_maintenance_orders_list(): { url: %s, uuid: %s }",
         url.c_str(), uuid.str().c_str()
     );
 
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -7307,7 +7545,7 @@ void get_maintenance_orders_list(const GetMaintenanceOrdersListRequest &params,
 
 /// Safety Services;
 // signal-maps/search, 信号地图查询;
-void search_signal_maps(SearchSignalMapsRequest request, const std::function<void(const SignalMapsResponse& response, FlightHubError err)>& callback) {
+void search_signal_maps(SearchSignalMapsRequest request, const std::function<void(const SignalMapsResponse& response, FlightHubError err)>& callback, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -7316,6 +7554,7 @@ void search_signal_maps(SearchSignalMapsRequest request, const std::function<voi
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_DEBUG("search_signal_maps(), { url: %s, uuid: %s, request param: {%s} }",
         url.c_str(),
@@ -7334,7 +7573,7 @@ void search_signal_maps(SearchSignalMapsRequest request, const std::function<voi
 
 
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             // 检查网络层错误(超时、连接失败等);
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
@@ -7378,7 +7617,7 @@ void search_signal_maps(SearchSignalMapsRequest request, const std::function<voi
 // 自定义飞行区: 创建多种自定义类型的飞行区;
 void create_customized_flight_areas(
     CreateCustomizedFlightAreasRequest request,
-    const std::function<void(const CreateFlightAreasResponse& response, FlightHubError err)>& callback) {
+    const std::function<void(const CreateFlightAreasResponse& response, FlightHubError err)>& callback, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -7387,6 +7626,7 @@ void create_customized_flight_areas(
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     // Log: 打印参数信息;
     LOG_DEBUG("create_customized_flight_areas(), { url: %s, uuid: %s, request param: {%s} }",
@@ -7406,7 +7646,7 @@ void create_customized_flight_areas(
 
     // POST 方法;
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             // 检查网络层错误(超时、连接失败等);
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
@@ -7456,7 +7696,7 @@ void get_customized_flight_areas(
     int page_index,                      // 页码, 页下标(从1开始), 可选参数，传负数(表示不使用分页条件, 比如-1)则查询所有飞行区;
     int page_size,                       // 页大小(比如 100), 可选参数，传负数(表示不使用分页条件, 比如-1)则查询所有飞行区(page_index 和 page_size 一起使用);
     const std::function<void(const GetFlightAreasResponse& response, FlightHubError err)>& callback
-) {
+, int session_id) {
     // url 示例;
     // GET /safety/api/v1/flight-areas?name=example&type=dfence&status=disable&ids=<uuid>&page=1&page_size=100
     // Get configs;
@@ -7509,7 +7749,7 @@ void get_customized_flight_areas(
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
- 
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     // Log: 打印参数信息;
     LOG_INFO("get_flight_areas(), { url: %s, uuid: %s }",
@@ -7520,7 +7760,7 @@ void get_customized_flight_areas(
 
     // GET 方法;
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             do {
                 // 检查网络层错误(超时、连接失败等);
                 if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
@@ -7566,7 +7806,7 @@ void update_customized_flight_areas(
     const std::string &flight_area_id,    // 请求的 path 参数;
     UpdateCustomizedFlightAreasRequest request,
     const std::function<void(const UpdateFlightAreasResponse& response, FlightHubError err)>& callback
-) {
+, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -7580,6 +7820,7 @@ void update_customized_flight_areas(
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -7603,7 +7844,7 @@ void update_customized_flight_areas(
 
     // PUT 方法;
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             // 检查网络层错误(超时、连接失败等);
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
@@ -7644,7 +7885,7 @@ void update_customized_flight_areas(
 void delete_customized_flight_areas(
     const std::string &flight_area_id,    // 请求的 path 参数;
     const std::function<void(FlightHubError err)>& callback
-) {
+, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -7658,6 +7899,7 @@ void delete_customized_flight_areas(
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
 
     // Log: 打印参数信息;
@@ -7669,7 +7911,7 @@ void delete_customized_flight_areas(
 
     // DELETE 方法;
     HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, "", 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             // 检查网络层错误(超时、连接失败等);
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
@@ -7701,7 +7943,7 @@ void delete_customized_flight_areas(
 void sync_customized_flight_areas(
     const std::vector<std::string> &device_sns,
     const std::function<void(const SyncFlightAreasResponse& response, FlightHubError err)>& callback
-) {
+, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -7711,6 +7953,7 @@ void sync_customized_flight_areas(
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     // 拼装 common request 参数;
     CommonRequestWithDeviceSNs request;
@@ -7735,7 +7978,7 @@ void sync_customized_flight_areas(
 
     // POST 方法;
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -7774,7 +8017,7 @@ void sync_customized_flight_areas(
 void get_flight_areas_sync_status(
     const std::vector<std::string> &device_sns,
     const std::function<void(const GetAreasSyncStatusResponse& response, FlightHubError err)>& callback
-) {
+, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -7784,6 +8027,7 @@ void get_flight_areas_sync_status(
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     // 拼装 common request 参数;
     CommonRequestWithDeviceSNs request;
@@ -7807,7 +8051,7 @@ void get_flight_areas_sync_status(
 
     // POST 方法;
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             // 检查网络层错误(超时、连接失败等);
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
@@ -7847,11 +8091,79 @@ void get_flight_areas_sync_status(
 }
 
 
+// [自定义飞行区];
+// 获取飞行区文件下载地址;
+void get_flight_areas_url(
+    const std::function<void(const GetFlightAreasUrlResponse& response, FlightHubError err)>& callback
+, int session_id) {
+    // url 示例;
+    // GET /safety/api/v1/flight-areas/url
+
+    // Get configs;
+    auto config = FlightHubSdk::getConfig();
+
+    // 拼装基础 api;
+    std::string url = generate_url(config.address, config.port, kGetFlightAreasUrl);
+    auto uuid = xg::newGuid();
+
+    drc_sdk::common::HttpHeaders headers;
+    headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
+
+    // 打印参数信息;
+    LOG_INFO("get_flight_areas_url(), { url: %s, uuid(x-request-id): %s }",
+        url.c_str(),
+        uuid.str().c_str()
+    );
+
+    // GET 方法;
+    HttpGetInnerWithStatus(url, headers,
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+            do {
+                // 检查网络层错误(超时、连接失败等);
+                if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
+                    LOG_ERROR("get_flight_areas_url(), network error: %d, http_code: %d",
+                        static_cast<int>(err_code), http_code);
+                    break;
+                }
+
+                // 解析通用响应结构, 检查业务错误码;
+                auto common_response = convert_response_struct(response);
+                if (common_response.code != 0) {
+                    LOG_ERROR("get_flight_areas_url(), { code: %d, message: %s, http_response: %s }",
+                        common_response.code, common_response.message.c_str(), log_safe(response).c_str()
+                    );
+                    break;
+                }
+
+                // 反序列化飞行区文件下载地址响应;
+                GetFlightAreasUrlResponse http_resp;
+
+                std::string err;
+                if (!parse_common_response_data(common_response, http_resp, &err, true)) {
+                    LOG_ERROR("get_flight_areas_url(), JsonToObject() { error: %s, data: %s, http_response: %s }",
+                        err.c_str(), common_response.data.has_value() ? log_safe(*common_response.data).c_str() : "", log_safe(response).c_str()
+                    );
+                    break;
+                }
+
+                callback(http_resp, FlightHubError::success());
+                return;
+            } while (0);
+
+            // 上述任一检查失败, 统一回调错误;
+            callback({}, make_http_error(http_code, response));
+            return;
+        }
+    );
+}
+
+
 // [地形障碍物];
 // 查询离线地图模型信息;
 void get_offline_maps_model_info(
     const std::function<void(const GetOfflineMapsModelInfoResponse& response, FlightHubError err)>& callback
-) {
+, int session_id) {
     // url 示例;
     // GET /safety/api/v1/offline-maps
 
@@ -7865,6 +8177,7 @@ void get_offline_maps_model_info(
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     // 打印参数信息;
     LOG_INFO("get_offline_maps_model_info(), { url: %s, uuid(x-request-id): %s }",
@@ -7874,7 +8187,7 @@ void get_offline_maps_model_info(
 
     // GET 方法;
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             do {
                 // 检查网络层错误(超时、连接失败等);
                 if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
@@ -7919,7 +8232,7 @@ void get_offline_maps_model_info(
 void update_offline_maps_model_info(
     UpdateOfflineMapsRequest request,
     const std::function<void(FlightHubError err)>& callback
-) {
+, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -7932,6 +8245,7 @@ void update_offline_maps_model_info(
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
 
     std::string body;
@@ -7956,7 +8270,7 @@ void update_offline_maps_model_info(
 
     // POST 方法;
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             // 检查网络层错误(超时、连接失败等);
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
@@ -7989,7 +8303,7 @@ void update_offline_maps_model_info(
 // 取消离线地图生成;
 void cancel_offline_maps_model_info(
     const std::function<void(FlightHubError err)>& callback
-) {
+, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -8000,6 +8314,7 @@ void cancel_offline_maps_model_info(
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
 
     // 打印参数信息;
@@ -8011,7 +8326,7 @@ void cancel_offline_maps_model_info(
 
     // DELETE 方法;
     HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, "", 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             // 检查网络层错误(超时、连接失败等);
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
@@ -8043,7 +8358,7 @@ void cancel_offline_maps_model_info(
 void set_offline_maps(
     SetOfflineMapsRequest request,
     const std::function<void(FlightHubError err)>& callback
-) {
+, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
     std::string api = kModifyOfflineMaps;
@@ -8053,6 +8368,7 @@ void set_offline_maps(
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
 
     std::string body;
@@ -8074,7 +8390,7 @@ void set_offline_maps(
 
     // PUT 方法;
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             // 检查网络层错误(超时、连接失败等);
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
@@ -8107,7 +8423,7 @@ void set_offline_maps(
 void sync_offline_maps(
     const std::vector<std::string> &device_sns,  // 待同步设备的SN;
     const std::function<void(const OfflineMapsSyncResponse& response, FlightHubError err)>& callback
-) {
+, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -8117,6 +8433,7 @@ void sync_offline_maps(
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     // 拼装 common request 参数;
     CommonRequestWithDeviceSNs request;
@@ -8140,7 +8457,7 @@ void sync_offline_maps(
 
     // POST 方法;
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             // 检查网络层错误(超时、连接失败等);
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
@@ -8185,7 +8502,7 @@ void sync_offline_maps(
 void get_offline_maps_sync_status(
     const std::vector<std::string> &device_sns,  // 待同步设备的SN;
     const std::function<void(const GetOfflineMapsSyncStatusResponse& response, FlightHubError err)>& callback
-) {
+, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -8195,6 +8512,7 @@ void get_offline_maps_sync_status(
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
 
     // 拼装 common request 参数;
@@ -8219,7 +8537,7 @@ void get_offline_maps_sync_status(
 
     // POST 方法;
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             // 检查网络层错误(超时、连接失败等);
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
@@ -8265,7 +8583,7 @@ void get_offline_maps_sync_status(
 void get_media_files_list(
     const GetMediaFilesListParams &request_params,
     const std::function<void(const GetMediaFilesListResponse& response, FlightHubError err)>& callback
-) {
+, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -8277,6 +8595,17 @@ void get_media_files_list(
     if (!request_params.flight_id.empty()) {
         query_params += ("flight_id=" + request_params.flight_id);
         query_params += ("&");
+    }
+
+    // wayline_uuid / wayline_action_uuid / payload_types, [可选参数];
+    if (!request_params.wayline_uuid.empty()) {
+        query_params += ("wayline_uuid=" + request_params.wayline_uuid + "&");
+    }
+    if (!request_params.wayline_action_uuid.empty()) {
+        query_params += ("wayline_action_uuid=" + request_params.wayline_action_uuid + "&");
+    }
+    for (const auto &payload_type : request_params.payload_types) {
+        query_params += ("payload_types=" + payload_type + "&");
     }
 
     // [必须参数] page-index & page-size;
@@ -8322,6 +8651,7 @@ void get_media_files_list(
     // 填充 HTTP headers;
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_media_files_list(), { url: %s, (x-request-id)uuid: %s }",
         url.c_str(),
@@ -8330,7 +8660,7 @@ void get_media_files_list(
 
     // GET 方法;
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             do {
                 auto common_response = convert_response_struct(response);
                 if (common_response.code != 0) {
@@ -8367,7 +8697,7 @@ void get_media_files_list(
 void get_media_files_download_url(
     long long file_id,    // 文件 id;
     const std::function<void(const GetMediaFilesDownloadUrlResponse& response, FlightHubError err)>& callback
-) {
+, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -8389,6 +8719,7 @@ void get_media_files_download_url(
     // 填充 HTTP headers;
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_media_files_download_url(), { url: %s, (x-request-id)uuid: %s }",
         url.c_str(),
@@ -8397,7 +8728,7 @@ void get_media_files_download_url(
 
     // GET 方法;
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             do {
                 auto common_response = convert_response_struct(response);
                 if (common_response.code != 0) {
@@ -8434,7 +8765,7 @@ void get_media_files_download_url(
 void get_media_files_download_url(
     const std::vector<std::string> & object_keys,
     const std::function<void(const GetMediaFilesDownloadUrlListResponse& response, FlightHubError err)>& callback
-) {
+, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -8450,6 +8781,7 @@ void get_media_files_download_url(
     // 填充 HTTP headers;
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_media_files_download_url(), { url: %s, (x-request-id)uuid: %s }",
         url.c_str(),
@@ -8467,7 +8799,7 @@ void get_media_files_download_url(
 
     // POST 方法;
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
                 LOG_ERROR("get_media_files_download_url(), network error: %d, http_code: %d",
@@ -8509,7 +8841,7 @@ void get_media_files_download_url(
 void delete_media_files(
     const std::vector<long long> &file_ids,    // 文件 id 列表;
     const std::function<void(FlightHubError err)>& callback
-) {
+, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -8519,6 +8851,7 @@ void delete_media_files(
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     // 拼装 common request 参数;
     CommonMediaServiceRequestWithFileIDs request;
@@ -8546,7 +8879,7 @@ void delete_media_files(
 
     // POST 方法;
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -8575,7 +8908,7 @@ void export_flight_records(
     const std::string &project_id,             // [可选参数] 比如 "f111d837-7740-470b-9a44-e52fba516085", 默认传空字符串;
     ExportFlightRecordsRequest request,        // [必选参数] 请求 body 参数;
     const std::function<void(const ExportFlightRecordsResponse& response, FlightHubError err)>& callback // [必选参数] 回调函数;
-) {
+, int session_id) {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
 
@@ -8589,6 +8922,7 @@ void export_flight_records(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["x-user-id"] = user_id;
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     // 可选参数;
     if (!project_id.empty()) {
@@ -8616,7 +8950,7 @@ void export_flight_records(
 
     // POST 方法;
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -8654,7 +8988,7 @@ void get_export_flight_records_progress(
     const std::string &project_id,                    // [可选参数] 比如 "f111d837-7740-470b-9a44-e52fba516085", 默认传空字符串;
     const GetExportFlightRecordsProgressParams &request_params,
     const std::function<void(const GetExportFlightRecordsProgressResponse& response, FlightHubError err)>& callback
-) {
+, int session_id) {
     // GET /atc/api/v1/flight-tasks/records/export?content_type=detail&status=0&sort=ASC&page=1&page_size=50&export_id=<id>
     // Get configs;
     auto config = FlightHubSdk::getConfig();
@@ -8710,6 +9044,7 @@ void get_export_flight_records_progress(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["x-project-id"] = project_id;
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_DEBUG("get_export_flight_records_progress(), { url: %s, (x-request-id)uuid: %s, query_params: { %s } }",
         url.c_str(),
@@ -8719,7 +9054,7 @@ void get_export_flight_records_progress(
 
     // GET 方法;
     HttpGetInnerWithStatus(url, headers, 
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
             do {
                 auto common_response = convert_response_struct(response);
                 if (common_response.code != 0) {
@@ -8751,10 +9086,60 @@ void get_export_flight_records_progress(
     );
 }
 
+static bool ResponseDataIsNull(const CommonResponse& response) {
+    return !response.data.has_value() || *response.data == "null";
+}
+
+void get_flight_safe_config(
+    const std::string& sn,
+    const std::function<void(const FlightSafeConfigFlatResponse& response, FlightHubError err)>& callback,
+    int session_id) {
+    auto config = FlightHubSdk::getConfig();
+    std::string url = generate_url(config.address, config.port,
+        std::string(kFlightSafeConfigAPI) + "?sn=" + sn);
+    LOG_INFO("get_flight_safe_config(): request url: %s", url.c_str());
+
+    drc_sdk::common::HttpHeaders headers;
+    headers["x-request-id"] = xg::newGuid().str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
+
+    HttpGetInnerWithStatus(url, headers,
+        [callback](const drc_sdk::common::NetworkError err_code, int http_code,
+                   const std::string& response, const std::vector<std::string>&,
+                   const drc_sdk::common::HttpHeaders&) {
+            do {
+                if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
+                    LOG_ERROR("get_flight_safe_config(): network error %d", static_cast<int>(err_code));
+                    break;
+                }
+                auto common_response = convert_response_struct(response);
+                if (common_response.code != 0) {
+                    LOG_ERROR("get_flight_safe_config(): code: %d, message: %s",
+                              common_response.code, common_response.message.c_str());
+                    break;
+                }
+                FlightSafeConfigFlatResponse data;
+                std::string parse_err;
+                if (!parse_common_response_data(common_response, data, &parse_err, true)) {
+                    LOG_ERROR("get_flight_safe_config(): JsonToObject error: %s", parse_err.c_str());
+                    break;
+                }
+                if (callback) {
+                    callback(data, FlightHubError::success());
+                }
+                return;
+            } while (0);
+
+            if (callback) {
+                callback({}, make_http_error(http_code, response));
+            }
+        }, 15000);
+}
+
 void set_flight_smart_plan_mode(
     FlightSmartPlanModeRequest request,
     const std::function<void(const FlightSmartPlanModeApiResponse& response, FlightHubError err)>& callback
-)
+, int session_id)
 {
     // Get configs;
     auto config = FlightHubSdk::getConfig();
@@ -8767,6 +9152,7 @@ void set_flight_smart_plan_mode(
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -8782,7 +9168,7 @@ void set_flight_smart_plan_mode(
 
     // Send HTTP PUT request;
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+        [callback, session_id, request](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
                    const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("set_flight_smart_plan_mode(): response received, { err_code: %d, response length: %zu, response: %s }",
             (int)err_code, response.length(), response.empty() ? "(empty)" : log_safe(response).c_str()
@@ -8797,8 +9183,24 @@ void set_flight_smart_plan_mode(
                 break;
             }
 
+            // 后端 PUT 成功可能返回 data=null：再 GET 回读当前配置。
+            if (ResponseDataIsNull(common_response)) {
+                get_flight_safe_config(request.sn, [callback, common_response, request, session_id](const FlightSafeConfigFlatResponse& cfg, FlightHubError getErr) {
+                    FlightSmartPlanModeApiResponse api_response;
+                    api_response.code = common_response.code;
+                    api_response.message = common_response.message;
+                    if (getErr.error_code == FlightHubSdkErrorCode::SUCCESS) {
+                        api_response.data.settings.smart_planning_mode =
+                            cfg.smart_planning_mode.value_or(request.settings.smart_planning_mode);
+                    } else {
+                        api_response.data.settings.smart_planning_mode = request.settings.smart_planning_mode;
+                    }
+                    if (callback) callback(api_response, FlightHubError::success());
+                }, session_id);
+                return;
+            }
+
             // 再将 data 字段反序列化为 FlightSafeConfigResponse;
-            // 新接口在 PUT 成功时可能返回 "data":null（无返回体），此时跳过解析，返回默认 result
             FlightSmartPlanModeResponse flight_safe_data;
             std::string parse_err;
             if (!parse_common_response_data(common_response, flight_safe_data, &parse_err, false)) {
@@ -8828,7 +9230,7 @@ void set_flight_smart_plan_mode(
 
 void set_flight_out_of_control_action(
     FlightOutOfControlActionRequest request,
-    const std::function<void(const FlightOutOfControlActionApiResponse& response, FlightHubError err)>& callback)
+    const std::function<void(const FlightOutOfControlActionApiResponse& response, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, std::string(kFlightSafeConfigAPI) + "?sn=" + request.sn);
@@ -8838,6 +9240,7 @@ void set_flight_out_of_control_action(
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -8852,7 +9255,7 @@ void set_flight_out_of_control_action(
              url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
 
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+        [callback, session_id, request](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
                    const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("set_flight_out_of_control_action(): response: %s", response.empty() ? "(empty)" : log_safe(response).c_str());
         do {
@@ -8861,6 +9264,21 @@ void set_flight_out_of_control_action(
                 LOG_ERROR("set_flight_out_of_control_action(): code:%d, msg:%s",
                          common_response.code, common_response.message.c_str());
                 break;
+            }
+            if (ResponseDataIsNull(common_response)) {
+                get_flight_safe_config(request.sn, [callback, common_response, request](const FlightSafeConfigFlatResponse& cfg, FlightHubError getErr) {
+                    FlightOutOfControlActionApiResponse api_response;
+                    api_response.code = common_response.code;
+                    api_response.message = common_response.message;
+                    if (getErr.error_code == FlightHubSdkErrorCode::SUCCESS) {
+                        api_response.data.settings.out_of_control_action =
+                            cfg.out_of_control_action.empty() ? request.settings.out_of_control_action : cfg.out_of_control_action;
+                    } else {
+                        api_response.data.settings.out_of_control_action = request.settings.out_of_control_action;
+                    }
+                    if (callback) callback(api_response, FlightHubError::success());
+                }, session_id);
+                return;
             }
             // 新接口 PUT 成功时可能返回 "data":null，此时跳过解析，返回默认 result
             FlightOutOfControlActionResponse data;
@@ -8882,7 +9300,7 @@ void set_flight_out_of_control_action(
 
 void set_flight_task_height(
     FlightCommanderHeightRequest request,
-    const std::function<void(const FlightTaskHeightApiResponse& response, FlightHubError err)>& callback)
+    const std::function<void(const FlightTaskHeightApiResponse& response, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, std::string(kFlightSafeConfigAPI) + "?sn=" + request.sn);
@@ -8892,6 +9310,7 @@ void set_flight_task_height(
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -8906,7 +9325,7 @@ void set_flight_task_height(
              url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
 
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+        [callback, session_id, request](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
                    const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("set_flight_task_height(): response: %s", response.empty() ? "(empty)" : log_safe(response).c_str());
         do {
@@ -8915,6 +9334,21 @@ void set_flight_task_height(
                 LOG_ERROR("set_flight_task_height(): code:%d, msg:%s",
                          common_response.code, common_response.message.c_str());
                 break;
+            }
+            if (ResponseDataIsNull(common_response)) {
+                get_flight_safe_config(request.sn, [callback, common_response, request](const FlightSafeConfigFlatResponse& cfg, FlightHubError getErr) {
+                    FlightTaskHeightApiResponse api_response;
+                    api_response.code = common_response.code;
+                    api_response.message = common_response.message;
+                    if (getErr.error_code == FlightHubSdkErrorCode::SUCCESS) {
+                        api_response.data.settings.commander_flight_height =
+                            cfg.commander_flight_height.value_or(request.settings.commander_flight_height);
+                    } else {
+                        api_response.data.settings.commander_flight_height = request.settings.commander_flight_height;
+                    }
+                    if (callback) callback(api_response, FlightHubError::success());
+                }, session_id);
+                return;
             }
             // 新接口 PUT 成功时可能返回 "data":null，此时跳过解析，返回默认 result
             FlightTaskHeightResponse data;
@@ -8936,7 +9370,7 @@ void set_flight_task_height(
 
 void set_rth_altitude(
     FlightRthAltitudeRequest request,
-    const std::function<void(const FlightRthAltitudeApiResponse& response, FlightHubError err)>& callback)
+    const std::function<void(const FlightRthAltitudeApiResponse& response, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, std::string(kFlightSafeConfigAPI) + "?sn=" + request.sn);
@@ -8946,6 +9380,7 @@ void set_rth_altitude(
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -8959,7 +9394,7 @@ void set_rth_altitude(
              url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
 
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+        [callback, session_id, request](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
                    const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("set_rth_altitude(): response: %s", response.empty() ? "(empty)" : log_safe(response).c_str());
         do {
@@ -8968,6 +9403,21 @@ void set_rth_altitude(
                 LOG_ERROR("set_rth_altitude(): code:%d, msg:%s",
                          common_response.code, common_response.message.c_str());
                 break;
+            }
+            if (ResponseDataIsNull(common_response)) {
+                get_flight_safe_config(request.sn, [callback, common_response, request](const FlightSafeConfigFlatResponse& cfg, FlightHubError getErr) {
+                    FlightRthAltitudeApiResponse api_response;
+                    api_response.code = common_response.code;
+                    api_response.message = common_response.message;
+                    if (getErr.error_code == FlightHubSdkErrorCode::SUCCESS) {
+                        api_response.data.settings.rth_altitude =
+                            static_cast<int>(cfg.rth_altitude.value_or(request.settings.rth_altitude));
+                    } else {
+                        api_response.data.settings.rth_altitude = request.settings.rth_altitude;
+                    }
+                    if (callback) callback(api_response, FlightHubError::success());
+                }, session_id);
+                return;
             }
             // 新接口 PUT 成功时可能返回 "data":null，此时跳过解析，返回默认 result
             FlightRthAltitudeResponse data;
@@ -8989,7 +9439,7 @@ void set_rth_altitude(
 
 void set_air_transfer_enable(
     AirTransferEnableRequest request,
-    const std::function<void(FlightHubError err)>& callback)
+    const std::function<void(FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, std::string(kAirTransferEnableAPI));
@@ -8999,6 +9449,7 @@ void set_air_transfer_enable(
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -9037,7 +9488,7 @@ void set_air_transfer_enable(
 
 void update_fly_to_points(
     UpdateFlyToPointsRequest request,
-    const std::function<void(FlightHubError err)>& callback)
+    const std::function<void(FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, std::string(kUpdateFlyToPointsAPI));
@@ -9047,6 +9498,7 @@ void update_fly_to_points(
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -9061,7 +9513,7 @@ void update_fly_to_points(
              url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
 
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
                    const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("update_fly_to_points(): response: %s", response.empty() ? "(empty)" : log_safe(response).c_str());
         auto common_response = convert_response_struct(response);
@@ -9082,7 +9534,7 @@ void update_fly_to_points(
 // 1. 获取重建设置
 void get_reconstruction_settings(
     const std::string& file_uuid,
-    const std::function<void(const ReconstructionSettingsResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const ReconstructionSettingsResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kTerraBuildReconstructionSettingsAPI);
@@ -9093,6 +9545,7 @@ void get_reconstruction_settings(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_reconstruction_settings(): url: %s, uuid: %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
@@ -9128,7 +9581,7 @@ void get_reconstruction_settings(
 void get_quality_report(
     const std::string& file_uuid,
     const GetQualityReportRequest& request,
-    const std::function<void(const QualityReportResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const QualityReportResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kTerraBuildQualityReportAPI);
@@ -9141,6 +9594,7 @@ void get_quality_report(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_quality_report(): url: %s, uuid: %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
@@ -9175,18 +9629,19 @@ void get_quality_report(
 // 3. 获取模型文件列表
 void get_model_file_list(
     const GetModelFileListRequest& request,
-    const std::function<void(const ModelFileListResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const ModelFileListResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kTerraBuildModelFileListAPI);
     std::string query = "page=" + std::to_string(request.page) +
-                        "&page_size=" + std::to_string(request.page_size);
+                        "&size=" + std::to_string(request.page_size);
     std::string url = generate_url(config.address, config.port, api + "?" + query);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_model_file_list(): url: %s, uuid: %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
@@ -9222,7 +9677,7 @@ void get_model_file_list(
 void get_model_file_url(
     int file_id,
     const GetModelFileUrlRequest& request,
-    const std::function<void(const ModelFileUrlResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const ModelFileUrlResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kTerraBuildModelFileUrlAPI);
@@ -9234,6 +9689,7 @@ void get_model_file_url(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_model_file_url(): url: %s, uuid: %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
@@ -9270,7 +9726,7 @@ void get_model_file_url(
 // 5. 创建重建任务
 void create_reconstruction(
     const std::string& body,
-    const std::function<void(const CreateReconstructionResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const CreateReconstructionResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kTerraBuildCreateReconstructionAPI);
@@ -9280,6 +9736,7 @@ void create_reconstruction(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_DEBUG("create_reconstruction(): url: %s, uuid: %s, body: %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
@@ -9313,7 +9770,7 @@ void create_reconstruction(
 // 6. 重试重建任务
 void retry_reconstruction(
     const RetryReconstructionRequest& request,
-    const std::function<void(FlightHubError err)>& callback)
+    const std::function<void(FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kTerraBuildRetryReconstructionAPI);
@@ -9323,6 +9780,7 @@ void retry_reconstruction(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -9360,7 +9818,7 @@ void retry_reconstruction(
 // 7. 停止重建任务
 void stop_reconstruction(
     const StopReconstructionRequest& request,
-    const std::function<void(FlightHubError err)>& callback)
+    const std::function<void(FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kTerraBuildStopReconstructionAPI);
@@ -9370,6 +9828,7 @@ void stop_reconstruction(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -9407,7 +9866,7 @@ void stop_reconstruction(
 // 8. 获取空三结果
 void get_sfm_result(
     const std::string& file_uuid,
-    const std::function<void(const SfmResultResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const SfmResultResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kTerraBuildSfmResultAPI);
@@ -9418,6 +9877,7 @@ void get_sfm_result(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_sfm_result(): url: %s, uuid: %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
@@ -9452,7 +9912,7 @@ void get_sfm_result(
 // 9. 删除单个模型文件
 void delete_model_file(
     int file_id,
-    const std::function<void(FlightHubError err)>& callback)
+    const std::function<void(const DeleteModelFileResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kTerraBuildDeleteModelFileAPI);
@@ -9462,6 +9922,7 @@ void delete_model_file(
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("delete_model_file(): url: %s, uuid: %s", url.c_str(), uuid.str().c_str());
     HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, "",
@@ -9479,17 +9940,20 @@ void delete_model_file(
                          common_response.code, common_response.message.c_str(), uuid_str.c_str());
                 break;
             }
-            callback(FlightHubError::success());
+            DeleteModelFileResponseData data;
+            std::string parse_err;
+            parse_common_response_data(common_response, data, &parse_err, false);
+            callback(data, FlightHubError::success());
             return;
         } while (0);
-        callback(make_http_error(http_code, response));
+        callback({}, make_http_error(http_code, response));
     }, 15000);
 }
 
 // 10. 批量删除模型文件
 void batch_delete_model_files(
     const DeleteModelFilesRequest& request,
-    const std::function<void(FlightHubError err)>& callback)
+    const std::function<void(const DeleteModelFileResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kTerraBuildBatchDeleteModelFilesAPI);
@@ -9505,6 +9969,8 @@ void batch_delete_model_files(
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("batch_delete_model_files(): url: %s, uuid: %s, ids: %s", url.c_str(), uuid.str().c_str(), ids_str.c_str());
     HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, "",
@@ -9522,17 +9988,21 @@ void batch_delete_model_files(
                          common_response.code, common_response.message.c_str(), uuid_str.c_str());
                 break;
             }
-            callback(FlightHubError::success());
+            DeleteModelFileResponseData data;
+            std::string parse_err;
+            parse_common_response_data(common_response, data, &parse_err, false);
+            callback(data, FlightHubError::success());
             return;
         } while (0);
-        callback(make_http_error(http_code, response));
+        callback({}, make_http_error(http_code, response));
     }, 15000);
 }
+
 
 // 11. 创建全景拼接任务
 void create_panorama(
     const CreatePanoramaRequest& request,
-    const std::function<void(const CreatePanoramaResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const CreatePanoramaResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kTerraBuildCreatePanoramaAPI);
@@ -9542,6 +10012,7 @@ void create_panorama(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -9585,7 +10056,7 @@ void create_panorama(
 // 12. 获取重建图像列表
 void get_reconstruction_images(
     const std::string& file_uuid,
-    const std::function<void(const ReconstructionImagesResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const ReconstructionImagesResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kTerraBuildReconstructionImagesAPI);
@@ -9596,6 +10067,7 @@ void get_reconstruction_images(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_reconstruction_images(): url: %s, uuid: %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
@@ -9630,7 +10102,7 @@ void get_reconstruction_images(
 // 获取媒体上传 STS 凭证（POST /pf-media/inner/v1/media-files/sts）
 void get_media_upload_sts(
     const GetMediaUploadStsRequest& request,
-    const std::function<void(const GetMediaUploadStsResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const GetMediaUploadStsResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kMediaUploadStsAPI);
@@ -9639,6 +10111,7 @@ void get_media_upload_sts(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -9683,7 +10156,7 @@ void get_media_upload_sts(
 // 媒体上传完成回调（POST /pf-media/api/v1/upload-callback）
 void media_upload_callback(
     const MediaUploadCallbackRequest& request,
-    const std::function<void(const MediaUploadCallbackResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const MediaUploadCallbackResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kMediaUploadCallbackAPI);
@@ -9692,6 +10165,7 @@ void media_upload_callback(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -9736,7 +10210,7 @@ void media_upload_callback(
 
 // 设备定损: 下发定损指令;
 void post_self_diagnosis(CreateSelfDiagnosisRequest request,
-    const std::function<void(FlightHubError err)>& callback) {
+    const std::function<void(FlightHubError err)>& callback, int session_id) {
     if (!callback) {
         LOG_ERROR("post_self_diagnosis: callback is null");
         return;
@@ -9748,6 +10222,7 @@ void post_self_diagnosis(CreateSelfDiagnosisRequest request,
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -9761,7 +10236,7 @@ void post_self_diagnosis(CreateSelfDiagnosisRequest request,
     // Send HTTP request;
     LOG_DEBUG("post_self_diagnosis: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("post_self_diagnosis: network error: %d, http_code: %d", static_cast<int>(err_code), http_code);
             callback(make_http_error(http_code, response));
@@ -9785,7 +10260,7 @@ void post_self_diagnosis(CreateSelfDiagnosisRequest request,
 
 // 定损操作(取消 / 删除);
 void post_self_diagnosis_operation(SelfDiagnosisOperationRequest request,
-    const std::function<void(FlightHubError err)>& callback) {
+    const std::function<void(FlightHubError err)>& callback, int session_id) {
     if (!callback) {
         LOG_ERROR("post_self_diagnosis_operation: callback is null");
         return;
@@ -9797,6 +10272,7 @@ void post_self_diagnosis_operation(SelfDiagnosisOperationRequest request,
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -9809,7 +10285,7 @@ void post_self_diagnosis_operation(SelfDiagnosisOperationRequest request,
 
     LOG_DEBUG("post_self_diagnosis_operation: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("post_self_diagnosis_operation: network error: %d, http_code: %d", static_cast<int>(err_code), http_code);
             callback(make_http_error(http_code, response));
@@ -9832,7 +10308,7 @@ void post_self_diagnosis_operation(SelfDiagnosisOperationRequest request,
 
 // 设备定损: 查询单条定损报告详情;
 void get_self_diagnosis_report(const std::string &report_uuid,
-    const std::function<void(const GetSelfDiagnosisReportResponse& response, FlightHubError err)>& callback) {
+    const std::function<void(const GetSelfDiagnosisReportResponse& response, FlightHubError err)>& callback, int session_id) {
     if (!callback) {
         LOG_ERROR("get_self_diagnosis_report: callback is null");
         return;
@@ -9853,11 +10329,12 @@ void get_self_diagnosis_report(const std::string &report_uuid,
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_self_diagnosis_report: url %s, uuid %s", url.c_str(), uuid.str().c_str());
 
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("get_self_diagnosis_report: network error: %d, http_code: %d", static_cast<int>(err_code), http_code);
             callback({}, make_http_error(http_code, response));
@@ -9890,10 +10367,10 @@ void get_self_diagnosis_report(const std::string &report_uuid,
 // page=1&page_size=20&
 // status=ok&status=in_progress&status=timeout&
 // device_sn=SNSN&
-// report_time_begin=1000000&report_time_end=8000000&part=1&origin=1&query=ZZZ&report_user=1111&report_user=2222&report_user=3333&
+// report_time_begin=1000000&report_time_end=8000000&part=1&query=ZZZ&report_user=1111&report_user=2222&report_user=3333&
 // sort_by=created_at&sort_type=desc
 void get_self_diagnosis_report_lists(const GetSelfDiagnosisReportListParams &params,
-    const std::function<void(const GetSelfDiagnosisReportListResponse& response, FlightHubError err)>& callback) {
+    const std::function<void(const GetSelfDiagnosisReportListResponse& response, FlightHubError err)>& callback, int session_id) {
     if (!callback) {
         LOG_ERROR("get_self_diagnosis_report_lists: callback is null");
         return;
@@ -9927,7 +10404,7 @@ void get_self_diagnosis_report_lists(const GetSelfDiagnosisReportListParams &par
     }
 
     param_str += ("part=" + std::to_string(params.part) + "&");
-    param_str += ("origin=" + std::to_string(params.origin) + "&");
+    // 后端 -private 定损列表不支持 origin，SDK 不再上送。
 
     if (!params.query.empty()) {
         param_str += ("query=" + params.query + "&");
@@ -9962,11 +10439,12 @@ void get_self_diagnosis_report_lists(const GetSelfDiagnosisReportListParams &par
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_self_diagnosis_report_lists(): { url: %s, uuid: %s }", url.c_str(), uuid.str().c_str());
 
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
             LOG_ERROR("get_self_diagnosis_report_lists: network error: %d, http_code: %d", static_cast<int>(err_code), http_code);
             callback({}, make_http_error(http_code, response));
@@ -10000,13 +10478,14 @@ void get_self_diagnosis_report_lists(const GetSelfDiagnosisReportListParams &par
 // Geo Caging 接口实现
 // ============================================================
 
-void post_set_geo_caging_enable(const std::string& device_sn, int geo_caging_switch, const std::vector<GeoCagingInfo>& geo_caging_infos, const std::function<void(FlightHubError err)>& callback) {
+void post_set_geo_caging_enable(const std::string& device_sn, int geo_caging_switch, const std::vector<GeoCagingInfo>& geo_caging_infos, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kGeoCagingEnableAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     // 组装 state 数组：每个围栏信息一个 {desired:{geo_caging_info:{...}}}，最后追加开关 {desired:{geo_caging_switch:{state:N}}}
     std::vector<GeoCagingStateInfoItem> info_items;
@@ -10074,13 +10553,14 @@ void post_set_geo_caging_enable(const std::string& device_sn, int geo_caging_swi
 // 中继站调试接口实现
 // ============================================================
 
-void post_relay_broadcast_hide(const std::string& device_sn, bool is_broadcast_hide, const std::function<void(FlightHubError err)>& callback) {
+void post_relay_broadcast_hide(const std::string& device_sn, bool is_broadcast_hide, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kRelayBroadcastHideAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     SetRelayBroadcastHideRequest request;
     request.device_sn = device_sn;
@@ -10115,13 +10595,14 @@ void post_relay_broadcast_hide(const std::string& device_sn, bool is_broadcast_h
     });
 }
 
-void post_relay_ssid(const std::string& device_sn, const std::string& device_name, const std::function<void(FlightHubError err)>& callback) {
+void post_relay_ssid(const std::string& device_sn, const std::string& device_name, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kRelaySSIDAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     SetRelaySSIDRequest request;
     request.device_sn = device_sn;
@@ -10156,13 +10637,14 @@ void post_relay_ssid(const std::string& device_sn, const std::string& device_nam
     });
 }
 
-void post_relay_password(const std::string& device_sn, const std::string& passwd, const std::function<void(FlightHubError err)>& callback) {
+void post_relay_password(const std::string& device_sn, const std::string& passwd, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kRelayPasswordAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     SetRelayPasswordRequest request;
     request.device_sn = device_sn;
@@ -10175,22 +10657,17 @@ void post_relay_password(const std::string& device_sn, const std::string& passwd
         callback(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED));
         return;
     }
-    // P1-02: 密码类接口, 请求体含明文密码, 日志不落 body, 仅记录 url/uuid
-    LOG_INFO("post_relay_password: url %s, uuid %s", url.c_str(), uuid.str().c_str());
+    LOG_INFO("post_relay_password: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
         [callback, uuid_str = uuid.str()](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
-        // P1-02: 密码类接口响应脱敏, 仅记录解析后的 code/message, 不落原始响应体
-        auto common_response = (err_code == drc_sdk::common::NetworkError::SUCCESS)
-                                   ? convert_response_struct(response)
-                                   : CommonResponse();
-        LOG_INFO("[post_relay_password] http response: http_code=%d, code=%d, message: %s",
-                 http_code, common_response.code, common_response.message.c_str());
+        LOG_DEBUG("[post_relay_password] http response: %s", log_safe(response).c_str());
         do {
             if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
-                LOG_ERROR("%s: network error: %d, uuid: %s",
-                          __func__, static_cast<int>(err_code), uuid_str.c_str());
+                LOG_ERROR("%s: network error: %d, uuid: %s, response: %s",
+                          __func__, static_cast<int>(err_code), uuid_str.c_str(), log_safe(response).c_str());
                 break;
             }
+            auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
                 LOG_ERROR("post_relay_password: code: %d, message: %s", common_response.code, common_response.message.c_str());
                 break;
@@ -10202,13 +10679,14 @@ void post_relay_password(const std::string& device_sn, const std::string& passwd
     });
 }
 
-void post_relay_search_mode(const std::string& device_sn, int relay_search_mode, const std::function<void(FlightHubError err)>& callback) {
+void post_relay_search_mode(const std::string& device_sn, int relay_search_mode, const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kRelaySearchModeAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     SetRelaySearchModeRequest request;
     request.device_sn = device_sn;
@@ -10244,17 +10722,18 @@ void post_relay_search_mode(const std::string& device_sn, int relay_search_mode,
 }
 
 // 有 data 响应的 3 个接口：callback 带 Response 结构体
-void post_relay_occupied_status(const std::string& device_sn, int occupied_status, const std::function<void(const SetRelayOccupiedStatusResponse& data, FlightHubError err)>& callback) {
+void post_relay_occupied_status(const std::string& device_sn, int occupied_status, const std::function<void(const SetRelayOccupiedStatusResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kRelayOccupiedStatusAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     SetRelayOccupiedStatusRequest request;
     request.device_sn = device_sn;
-    request.occupied_status = occupied_status;
+    request.allow_occupied = (occupied_status != 0);
 
     std::string body, err;
     aigc::JsonHelper::ObjectToJson(request, body, &err);
@@ -10296,13 +10775,14 @@ void post_relay_occupied_status(const std::string& device_sn, int occupied_statu
     });
 }
 
-void post_relay_reboot(const std::string& device_sn, const std::function<void(const RelayRebootResponse& data, FlightHubError err)>& callback) {
+void post_relay_reboot(const std::string& device_sn, const std::function<void(const RelayRebootResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kRelayRebootAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     RelayRebootRequest request;
     request.device_sn = device_sn;
@@ -10347,13 +10827,14 @@ void post_relay_reboot(const std::string& device_sn, const std::function<void(co
     });
 }
 
-void post_relay_disconnect(const std::string& device_sn, const std::function<void(const RelayDisconnectResponse& data, FlightHubError err)>& callback) {
+void post_relay_disconnect(const std::string& device_sn, const std::function<void(const RelayDisconnectResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kRelayDisconnectAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     RelayDisconnectRequest request;
     request.device_sn = device_sn;
@@ -10399,13 +10880,14 @@ void post_relay_disconnect(const std::string& device_sn, const std::function<voi
 }
 
 /// AI Box: 获取 AI Box 信息;
-void fetch_ai_box_info(const std::string& device_sn, const std::function<void(const AIBoxInfoListResponse& response, FlightHubError err)>& callback) {
+void fetch_ai_box_info(const std::string& device_sn, const std::function<void(const AIBoxInfoListResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kAIBoxInfoAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     CommonRequestWithDeviceSn request;
     request.device_sn = device_sn;
@@ -10421,7 +10903,7 @@ void fetch_ai_box_info(const std::string& device_sn, const std::function<void(co
 
     LOG_DEBUG("fetch_ai_box_info: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[fetch_ai_box_info] http response: %s", log_safe(response).c_str());
         AIBoxInfoListResponse ai_box_info_response;
         auto error_info = FlightHubError::success();
@@ -10448,13 +10930,14 @@ void fetch_ai_box_info(const std::string& device_sn, const std::function<void(co
 
 
 /// AI Box: 获取文件下载 URL;
-void fetch_file_download_url(FetchFileDownloadUrlRequest request, const std::function<void(const FileDownloadUrlListResponse& response, FlightHubError err)>& callback) {
+void fetch_file_download_url(FetchFileDownloadUrlRequest request, const std::function<void(const FileDownloadUrlListResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kAIBoxFileDownloadURLAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -10467,7 +10950,7 @@ void fetch_file_download_url(FetchFileDownloadUrlRequest request, const std::fun
 
     LOG_DEBUG("fetch_file_download_url: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[fetch_file_download_url] http response: %s", log_safe(response).c_str());
         FileDownloadUrlListResponse file_download_url_response;
         auto error_info = FlightHubError::success();
@@ -10494,13 +10977,14 @@ void fetch_file_download_url(FetchFileDownloadUrlRequest request, const std::fun
 
 
 ///  AI Box: 获取应用列表;
-void fetch_app_list(FetchAppListRequest request, const std::function<void(const FetchAppListResponse& response, FlightHubError err)>& callback) {
+void fetch_app_list(FetchAppListRequest request, const std::function<void(const FetchAppListResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kAIBoxAppListAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -10513,7 +10997,7 @@ void fetch_app_list(FetchAppListRequest request, const std::function<void(const 
 
     LOG_DEBUG("fetch_app_list: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[fetch_app_list] http response: %s", log_safe(response).c_str());
         FetchAppListResponse app_list_response;
         auto error_info = FlightHubError::success();
@@ -10538,13 +11022,14 @@ void fetch_app_list(FetchAppListRequest request, const std::function<void(const 
     });
 }
 
-void fetch_app_list_progress(FetchAppListProgressRequest request, const std::function<void(const FetchAppListProgressResponse& response, FlightHubError err)>& callback) {
+void fetch_app_list_progress(FetchAppListProgressRequest request, const std::function<void(const FetchAppListProgressResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kAIBoxAppListProgressAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -10556,7 +11041,7 @@ void fetch_app_list_progress(FetchAppListProgressRequest request, const std::fun
     }
     LOG_DEBUG("fetch_app_list_progress: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[fetch_app_list_progress] http response: %s", log_safe(response).c_str());
         FetchAppListProgressResponse app_list_progress_response;
         auto error_code = FlightHubError::success();
@@ -10581,13 +11066,14 @@ void fetch_app_list_progress(FetchAppListProgressRequest request, const std::fun
     });
 }
 
-void export_file(ExportFileRequest request, const std::function<void(const ExportFileResponse& response, FlightHubError err)>& callback) {
+void export_file(ExportFileRequest request, const std::function<void(const ExportFileResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kAIBoxExportFileAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -10599,7 +11085,7 @@ void export_file(ExportFileRequest request, const std::function<void(const Expor
     }
     LOG_DEBUG("export_file: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[export_file] http response: %s", log_safe(response).c_str());
         ExportFileResponse export_file_response;
         auto error_code = FlightHubError::success();
@@ -10624,13 +11110,14 @@ void export_file(ExportFileRequest request, const std::function<void(const Expor
     });
 }
 
-void export_file_progress(ExportFileProgressRequest request, const std::function<void(const ExportFileProgressResponse& response, FlightHubError err)>& callback) {
+void export_file_progress(ExportFileProgressRequest request, const std::function<void(const ExportFileProgressResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kAIBoxExportFileProgressAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -10642,7 +11129,7 @@ void export_file_progress(ExportFileProgressRequest request, const std::function
     }
     LOG_DEBUG("export_file_progress: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[export_file_progress] http response: %s", log_safe(response).c_str());
         ExportFileProgressResponse export_progress_response;
         auto error_code = FlightHubError::success();
@@ -10667,13 +11154,14 @@ void export_file_progress(ExportFileProgressRequest request, const std::function
     });
 }
 
-void install_app(InstallAppRequest request, const std::function<void(const InstallAppResponse& response, FlightHubError err)>& callback) {
+void install_app(InstallAppRequest request, const std::function<void(const InstallAppResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kAIBoxInstallAppAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -10685,7 +11173,7 @@ void install_app(InstallAppRequest request, const std::function<void(const Insta
     }
     LOG_DEBUG("install_app: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[install_app] http response: %s", log_safe(response).c_str());
         InstallAppResponse install_app_response;
         auto error_code = FlightHubError::success();
@@ -10710,13 +11198,14 @@ void install_app(InstallAppRequest request, const std::function<void(const Insta
     });
 }
 
-void install_app_progress(InstallAppProgressRequest request, const std::function<void(const InstallAppProgressResponse& response, FlightHubError err)>& callback) {
+void install_app_progress(InstallAppProgressRequest request, const std::function<void(const InstallAppProgressResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kAIBoxInstallAppProgressAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -10728,7 +11217,7 @@ void install_app_progress(InstallAppProgressRequest request, const std::function
     }
     LOG_DEBUG("install_app_progress: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[install_app_progress] http response: %s", log_safe(response).c_str());
         InstallAppProgressResponse install_progress_response;
         auto error_code = FlightHubError::success();
@@ -10753,13 +11242,14 @@ void install_app_progress(InstallAppProgressRequest request, const std::function
     });
 }
 
-void operate_app(OperateAppRequest request, const std::function<void(const OperateAppResponse& response, FlightHubError err)>& callback) {
+void operate_app(OperateAppRequest request, const std::function<void(const OperateAppResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kAIBoxOperateAppAPI);
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -10771,7 +11261,7 @@ void operate_app(OperateAppRequest request, const std::function<void(const Opera
     }
     LOG_DEBUG("operate_app: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>& certs, const drc_sdk::common::HttpHeaders& resp_headers) {
         LOG_DEBUG("[operate_app] http response: %s", log_safe(response).c_str());
         OperateAppResponse operate_app_response;
         auto error_code = FlightHubError::success();
@@ -10798,7 +11288,7 @@ void operate_app(OperateAppRequest request, const std::function<void(const Opera
 
 
 // GET /service/aibox/upload-app-sts?device_sn=<device_sn>&box_sn=<box_sn>
-void get_upload_app_sts(const std::string &device_sn, const std::string &box_sn, const std::function<void(const GetUploadStsResponse& response, FlightHubError err)>& callback) {
+void get_upload_app_sts(const std::string &device_sn, const std::string &box_sn, const std::function<void(const GetUploadStsResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string api = kAIBoxUploadAppStsAPI;
 
@@ -10822,10 +11312,11 @@ void get_upload_app_sts(const std::string &device_sn, const std::string &box_sn,
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_upload_app_sts: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response, const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
         do {
             auto common_response = convert_response_struct(response);
             if (common_response.code != 0) {
@@ -10850,7 +11341,7 @@ void get_upload_app_sts(const std::string &device_sn, const std::string &box_sn,
 
 void create_in_flight_wayline_task(
     CreateInFlightWaylineTaskRequest request,
-    const std::function<void(const CreateInFlightWaylineTaskResponse& response, FlightHubError err)>& callback) {
+    const std::function<void(const CreateInFlightWaylineTaskResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kCreateInFlightWaylineTaskAPI);
     auto uuid = xg::newGuid();
@@ -10858,6 +11349,7 @@ void create_in_flight_wayline_task(
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -10870,7 +11362,7 @@ void create_in_flight_wayline_task(
 
     LOG_DEBUG("CreateInFlightWaylineTask: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
                    const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("CreateInFlightWaylineTask response: %s", log_safe(response).c_str());
             auto common_response = convert_response_struct(response);
@@ -10895,7 +11387,7 @@ void create_in_flight_wayline_task(
 
 void control_in_flight_wayline_task(
     ControlInFlightWaylineTaskRequest request,
-    const std::function<void(FlightHubError err)>& callback) {
+    const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kControlInFlightWaylineTaskAPI);
     auto uuid = xg::newGuid();
@@ -10903,6 +11395,7 @@ void control_in_flight_wayline_task(
     drc_sdk::common::HttpHeaders headers;
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -10915,7 +11408,7 @@ void control_in_flight_wayline_task(
 
     LOG_DEBUG("ControlInFlightWaylineTask: url %s, uuid %s, body %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
                    const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("ControlInFlightWaylineTask response: %s", log_safe(response).c_str());
             auto common_response = convert_response_struct(response);
@@ -10930,20 +11423,21 @@ void control_in_flight_wayline_task(
 }
 
 void get_active_in_flight_wayline_task(
-    const std::string& drone_sn,
-    const std::function<void(const GetActiveInFlightWaylineTaskResponse& response, FlightHubError err)>& callback) {
+    const std::string& sn,
+    const std::function<void(const GetActiveInFlightWaylineTaskResponse& response, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kGetActiveInFlightWaylineTaskAPI);
     url += (url.find('?') == std::string::npos ? "?" : "&");
-    url += "drone_sn=" + drone_sn;
+    url += "sn=" + sn;
     auto uuid = xg::newGuid();
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("GetActiveInFlightWaylineTask: url %s, uuid %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+        [callback, session_id](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
                    const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("GetActiveInFlightWaylineTask response: %s", log_safe(response).c_str());
             auto common_response = convert_response_struct(response);
@@ -10969,7 +11463,7 @@ void get_active_in_flight_wayline_task(
 // 模型文件上传回调（POST /pf-terra/api/v1/models/files/upload-callback）
 void terra_upload_callback(
     const TerraUploadCallbackRequest& request,
-    const std::function<void(const TerraUploadCallbackResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const TerraUploadCallbackResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kTerraUploadCallbackAPI);
@@ -10978,6 +11472,7 @@ void terra_upload_callback(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -11024,7 +11519,7 @@ void terra_upload_callback(
 void terra_rename_model(
     int file_id,
     const TerraRenameModelRequest& request,
-    const std::function<void(FlightHubError err)>& callback)
+    const std::function<void(FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kTerraRenameModelAPI);
@@ -11035,6 +11530,7 @@ void terra_rename_model(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -11073,7 +11569,7 @@ void terra_rename_model(
 // 批量加载/取消加载模型到地图（PUT /model/api/v1/files）
 void terra_show_on_map(
     const TerraShowOnMapRequest& request,
-    const std::function<void(const TerraShowOnMapResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const TerraShowOnMapResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kTerraShowOnMapAPI);
@@ -11082,6 +11578,7 @@ void terra_show_on_map(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     std::string body;
     std::string err;
@@ -11126,7 +11623,7 @@ void terra_show_on_map(
 // 获取模型文件详情（GET /pf-terra/api/v1/models/files/{file_id}）
 void terra_get_model_detail(
     int file_id,
-    const std::function<void(const TerraModelDetailResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const TerraModelDetailResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kTerraGetModelDetailAPI);
@@ -11136,6 +11633,7 @@ void terra_get_model_detail(
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("terra_get_model_detail(): url: %s, uuid: %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
@@ -11172,7 +11670,7 @@ void terra_get_model_detail(
 void terra_set_las_wkt(
     const std::string& file_uuid,
     const std::string& wkt,
-    const std::function<void(FlightHubError err)>& callback)
+    const std::function<void(FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kTerraSetLasWktAPI);
@@ -11181,6 +11679,7 @@ void terra_set_las_wkt(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid_req.str();
     headers["content-type"]  = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     TerraSetLasWktRequest request;
     request.file_uuid = file_uuid;
@@ -11259,7 +11758,7 @@ static void unquoteJsonArrayField(std::string& json, const std::string& key) {
 // 创建要素（POST /pf-map/api/v1/elements/create）
 void element_create(
     const CreateElementRequest& request,
-    const std::function<void(const ElementCreateResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const ElementCreateResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kElementCreateAPI);
@@ -11268,6 +11767,7 @@ void element_create(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"]  = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     auto request_copy = request;
     std::string body, err_str;
@@ -11277,9 +11777,10 @@ void element_create(
         if (callback) callback({}, FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED));
         return;
     }
-    // coordinates/bread_crumbs 为 raw JSON 透传，AIGC 序列化后被引号包裹，需 unquote
+    // coordinates/breadCrumbs 为 raw JSON 透传，AIGC 序列化后被引号包裹，需 unquote
     unquoteJsonArrayField(body, "coordinates");
-    unquoteJsonArrayField(body, "bread_crumbs");
+    unquoteJsonArrayField(body, "breadCrumbs");
+    unquoteJsonArrayField(body, "bread_crumbs");  // 兼容旧键
 
     LOG_DEBUG("element_create(): url: %s, uuid: %s, body: %s", url.c_str(), uuid.str().c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
@@ -11313,7 +11814,7 @@ void element_create(
 void element_update(
     const std::string& element_id,
     const UpdateElementRequest& request,
-    const std::function<void(const ElementUpdateResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const ElementUpdateResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kElementUpdateAPI);
@@ -11324,6 +11825,7 @@ void element_update(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"]  = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     auto request_copy = request;
     std::string body, err_str;
@@ -11333,9 +11835,10 @@ void element_update(
         if (callback) callback({}, FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED));
         return;
     }
-    // coordinates/bread_crumbs 为 raw JSON 透传，AIGC 序列化后被引号包裹，需 unquote
+    // coordinates/breadCrumbs 为 raw JSON 透传，AIGC 序列化后被引号包裹，需 unquote
     unquoteJsonArrayField(body, "coordinates");
-    unquoteJsonArrayField(body, "bread_crumbs");
+    unquoteJsonArrayField(body, "breadCrumbs");
+    unquoteJsonArrayField(body, "bread_crumbs");  // 兼容旧键
 
     LOG_INFO("element_update(): url: %s, uuid: %s", url.c_str(), uuid.str().c_str());
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
@@ -11368,7 +11871,7 @@ void element_update(
 // 查询元素层级列表（GET /pf-map/api/v1/elements/lists）
 void element_list_hierarchy(
     const ListElementHierarchyRequest& request,
-    const std::function<void(const ElementListHierarchyResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const ElementListHierarchyResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     auto uuid = xg::newGuid();
@@ -11389,6 +11892,7 @@ void element_list_hierarchy(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"]  = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("element_list_hierarchy(): url: %s, uuid: %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
@@ -11422,7 +11926,7 @@ void element_list_hierarchy(
 void element_set_visibility(
     const std::string& element_id,
     const SetElementVisibilityRequest& request,
-    const std::function<void(const ElementSetVisibilityResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const ElementSetVisibilityResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kElementSetVisibilityAPI);
@@ -11433,6 +11937,7 @@ void element_set_visibility(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"]  = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     auto request_copy = request;
     std::string body, err_str;
@@ -11475,7 +11980,7 @@ void element_set_visibility(
 void element_delete(
     const std::string& element_id,
     bool from_batch_delete,
-    const std::function<void(const ElementDeleteResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const ElementDeleteResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kElementDeleteAPI);
@@ -11487,6 +11992,7 @@ void element_delete(
 
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("element_delete(): url: %s, uuid: %s", url.c_str(), uuid.str().c_str());
     HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, "",
@@ -11519,7 +12025,7 @@ void element_delete(
 // 上传地理标注媒体资源（POST /pf-media/api/v1/geo-media-file）
 void upload_geo_media_file(
     const UploadGeoMediaFileRequest& request,
-    const std::function<void(const UploadGeoMediaFileResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const UploadGeoMediaFileResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kUploadGeoMediaFileAPI);
@@ -11528,6 +12034,7 @@ void upload_geo_media_file(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     auto request_copy = request;
     std::string body, err;
@@ -11569,7 +12076,7 @@ void upload_geo_media_file(
 // 根据文件 ID 获取媒体文件详情（GET /pf-media/api/v1/media-files/{file_id}）
 void get_media_file_detail_by_id(
     int file_id,
-    const std::function<void(const GetMediaFileDetailByIdResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const GetMediaFileDetailByIdResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string api = std::string(kGetMediaFileDetailAPI);
@@ -11580,6 +12087,7 @@ void get_media_file_detail_by_id(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     LOG_INFO("get_media_file_detail_by_id(): url: %s, uuid: %s", url.c_str(), uuid.str().c_str());
     HttpGetInnerWithStatus(url, headers,
@@ -11612,7 +12120,7 @@ void get_media_file_detail_by_id(
 // 获取航线编辑器 STS 凭证（POST /gateway/pf-wayline/editor/v1/sts）
 void get_wayline_editor_sts(
     const GetWaylineEditorStsRequest& request,
-    const std::function<void(const GetWaylineEditorStsResponseData& data, FlightHubError err)>& callback)
+    const std::function<void(const GetWaylineEditorStsResponseData& data, FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kGetWaylineEditorStsAPI);
@@ -11621,6 +12129,7 @@ void get_wayline_editor_sts(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     auto request_copy = request;
     std::string body, err;
@@ -11669,13 +12178,14 @@ namespace flight_hub_sdk {
 
 void post_ai_alert_device_setting(
     PostAiAlertDeviceSettingRequest& request,
-    const std::function<void(const PostAiAlertDeviceSettingResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const PostAiAlertDeviceSettingResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kAiAlertDeviceSettingAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     std::string body, err_msg;
     aigc::JsonHelper::ObjectToJson(request, body, &err_msg);
     if (!err_msg.empty()) {
@@ -11685,7 +12195,7 @@ void post_ai_alert_device_setting(
     }
     LOG_DEBUG("post_ai_alert_device_setting: url %s, body %s", url.c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("post_ai_alert_device_setting: response %s", log_safe(response).c_str());
@@ -11703,7 +12213,7 @@ void post_ai_alert_device_setting(
 
 void get_ai_alert_device_setting(
     const GetAiAlertDeviceSettingParam& param,
-    const std::function<void(const GetAiAlertDeviceSettingResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const GetAiAlertDeviceSettingResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string path = kAiAlertDeviceSettingAPI + "?drone_sn=" + param.drone_sn;
     std::string url = generate_url(config.address, config.port, path);
@@ -11711,9 +12221,10 @@ void get_ai_alert_device_setting(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LOG_INFO("get_ai_alert_device_setting: url %s", url.c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("get_ai_alert_device_setting: response %s", log_safe(response).c_str());
@@ -11727,7 +12238,7 @@ void get_ai_alert_device_setting(
                 std::string json_err;
                 if (!parse_common_response_data(common_response, rsp, &json_err, true)) {
                     LOG_ERROR("get_ai_alert_device_setting: parse error: %s", json_err.c_str());
-                    error_code = make_http_error(http_code, response);
+                    error_code = FlightHubError::from_parse_error(http_code, json_err);
                 }
             } while (false);
             if (callback) { callback(rsp, error_code); }
@@ -11736,13 +12247,14 @@ void get_ai_alert_device_setting(
 
 void post_ai_alert_algorithm_setting(
     PostAiAlertAlgorithmSettingRequest& request,
-    const std::function<void(const PostAiAlertAlgorithmSettingResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const PostAiAlertAlgorithmSettingResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kAiAlertAlgorithmSettingAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     std::string body, err_msg;
     aigc::JsonHelper::ObjectToJson(request, body, &err_msg);
     if (!err_msg.empty()) {
@@ -11752,7 +12264,7 @@ void post_ai_alert_algorithm_setting(
     }
     LOG_DEBUG("post_ai_alert_algorithm_setting: url %s, body %s", url.c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("post_ai_alert_algorithm_setting: response %s", log_safe(response).c_str());
@@ -11770,7 +12282,7 @@ void post_ai_alert_algorithm_setting(
 
 void get_ai_alert_algorithm_setting(
     const GetAiAlertAlgorithmSettingParam& param,
-    const std::function<void(const GetAiAlertAlgorithmSettingResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const GetAiAlertAlgorithmSettingResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string path = kAiAlertAlgorithmSettingAPI
         + "?drone_sn=" + param.drone_sn
@@ -11780,9 +12292,10 @@ void get_ai_alert_algorithm_setting(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LOG_INFO("get_ai_alert_algorithm_setting: url %s", url.c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("get_ai_alert_algorithm_setting: response %s", log_safe(response).c_str());
@@ -11796,7 +12309,7 @@ void get_ai_alert_algorithm_setting(
                 std::string json_err;
                 if (!parse_common_response_data(common_response, rsp, &json_err, true)) {
                     LOG_ERROR("get_ai_alert_algorithm_setting: parse error: %s", json_err.c_str());
-                    error_code = make_http_error(http_code, response);
+                    error_code = FlightHubError::from_parse_error(http_code, json_err);
                 }
             } while (false);
             if (callback) { callback(rsp, error_code); }
@@ -11805,7 +12318,7 @@ void get_ai_alert_algorithm_setting(
 
 void get_ai_alert_flights(
     const GetAiAlertFlightsParam& param,
-    const std::function<void(const GetAiAlertFlightsResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const GetAiAlertFlightsResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string path = kAiAlertFlightsAPI + "?drone_sn=" + param.drone_sn;
     if (param.begin_at > 0) path += "&begin_at=" + std::to_string(param.begin_at);
@@ -11820,9 +12333,10 @@ void get_ai_alert_flights(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LOG_INFO("get_ai_alert_flights: url %s", url.c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("get_ai_alert_flights: response %s", log_safe(response).c_str());
@@ -11836,7 +12350,7 @@ void get_ai_alert_flights(
                 std::string json_err;
                 if (!parse_common_response_data(common_response, rsp, &json_err, true)) {
                     LOG_ERROR("get_ai_alert_flights: parse error: %s", json_err.c_str());
-                    error_code = make_http_error(http_code, response);
+                    error_code = FlightHubError::from_parse_error(http_code, json_err);
                 }
             } while (false);
             if (callback) { callback(rsp, error_code); }
@@ -11845,7 +12359,7 @@ void get_ai_alert_flights(
 
 void get_ai_alert_records(
     const GetAiAlertRecordsParam& param,
-    const std::function<void(const GetAiAlertRecordsResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const GetAiAlertRecordsResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string path = kAiAlertRecordsAPI + "?";
     bool first = true;
@@ -11867,9 +12381,10 @@ void get_ai_alert_records(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LOG_INFO("get_ai_alert_records: url %s", url.c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("get_ai_alert_records: response %s", log_safe(response).c_str());
@@ -11883,10 +12398,45 @@ void get_ai_alert_records(
                 std::string json_err;
                 if (!parse_common_response_data(common_response, rsp, &json_err, true)) {
                     LOG_ERROR("get_ai_alert_records: parse error: %s", json_err.c_str());
-                    error_code = make_http_error(http_code, response);
+                    error_code = FlightHubError::from_parse_error(http_code, json_err);
                 }
             } while (false);
             if (callback) { callback(rsp, error_code); }
+        });
+}
+
+void delete_ai_alert_record(
+    DeleteAiAlertRecordRequest& request,
+    const std::function<void(FlightHubError err)>& callback, int session_id) {
+    auto config = FlightHubSdk::getConfig();
+    std::string url = generate_url(config.address, config.port, kDeleteAiAlertRecordAPI);
+    auto uuid = xg::newGuid();
+    drc_sdk::common::HttpHeaders headers;
+    headers["x-request-id"] = uuid.str();
+    // delete_request 底层未自动根据 post_type 设置 Content-Type，需手动指定
+    headers["Content-Type"] = "application/json";
+    ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
+    std::string body, err_msg;
+    aigc::JsonHelper::ObjectToJson(request, body, &err_msg);
+    if (!err_msg.empty()) {
+        if (callback) { callback(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)); }
+        return;
+    }
+    LOG_DEBUG("delete_ai_alert_record: url %s, body %s", url.c_str(), log_safe(body).c_str());
+    HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
+        [callback](const drc_sdk::common::NetworkError, int http_code,
+                   const std::string& response, const std::vector<std::string>&,
+                   const drc_sdk::common::HttpHeaders&) {
+            LOG_DEBUG("delete_ai_alert_record: response %s", log_safe(response).c_str());
+            auto error_code = FlightHubError::success();
+            auto common_response = convert_response_struct(response);
+            if (common_response.code != 0) {
+                LOG_ERROR("delete_ai_alert_record: code: %d, message: %s",
+                          common_response.code, common_response.message.c_str());
+                error_code = make_http_error(http_code, response);
+            }
+            if (callback) { callback(error_code); }
         });
 }
 
@@ -11894,7 +12444,7 @@ void get_ai_alert_records(
 
 void post_live_sync_create(
     const LiveSyncCreateRequest& request,
-    const std::function<void(const LiveSyncCreateResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const LiveSyncCreateResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kLiveSyncBaseAPI);
     auto uuid = xg::newGuid();
@@ -11902,6 +12452,7 @@ void post_live_sync_create(
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     std::string body, err_msg;
     LiveSyncCreateRequest req_copy = request;
     aigc::JsonHelper::ObjectToJson(req_copy, body, &err_msg);
@@ -11912,7 +12463,7 @@ void post_live_sync_create(
     }
     LOG_DEBUG("post_live_sync_create: url %s, body %s", url.c_str(), log_safe(body).c_str());
     HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("post_live_sync_create: response %s", log_safe(response).c_str());
@@ -11926,16 +12477,16 @@ void post_live_sync_create(
                 std::string json_err;
                 if (!parse_common_response_data(common_response, rsp, &json_err, true)) {
                     LOG_ERROR("post_live_sync_create: parse error: %s", json_err.c_str());
-                    error_code = make_http_error(http_code, response);
+                    error_code = FlightHubError::from_parse_error(http_code, json_err);
                 }
             } while (false);
             if (callback) { callback(rsp, error_code); }
-        });
+        }, 30000);
 }
 
 void delete_live_sync(
     const std::string& id,
-    const std::function<void(FlightHubError err)>& callback) {
+    const std::function<void(FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string api = kLiveSyncByIdAPI;
     const std::string ph = "{id}";
@@ -11946,9 +12497,10 @@ void delete_live_sync(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LOG_INFO("delete_live_sync: url %s", url.c_str());
     HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, "",
-        [callback](const drc_sdk::common::NetworkError, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("delete_live_sync: response %s", log_safe(response).c_str());
@@ -11966,7 +12518,7 @@ void delete_live_sync(
 void put_live_sync_update(
     const std::string& id,
     const std::string& body,
-    const std::function<void(const LiveSyncUpdateResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const LiveSyncUpdateResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string api = kLiveSyncByIdAPI;
     const std::string ph = "{id}";
@@ -11978,9 +12530,10 @@ void put_live_sync_update(
     headers["content-type"] = "application/json";
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
-    LOG_DEBUG("put_live_sync_update: url %s, body %s", url.c_str(), log_safe(body).c_str());
+    ensure_mesh_dst_header_for_session(headers, session_id);
+    LOG_INFO("put_live_sync_update: url %s, body %s", url.c_str(), log_safe(body).c_str());
     HttpPutInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
-        [callback](const drc_sdk::common::NetworkError, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("put_live_sync_update: response %s", log_safe(response).c_str());
@@ -11994,7 +12547,7 @@ void put_live_sync_update(
                 std::string json_err;
                 if (!parse_common_response_data(common_response, rsp, &json_err, true)) {
                     LOG_ERROR("put_live_sync_update: parse error: %s", json_err.c_str());
-                    error_code = make_http_error(http_code, response);
+                    error_code = FlightHubError::from_parse_error(http_code, json_err);
                 }
             } while (false);
             if (callback) { callback(rsp, error_code); }
@@ -12003,7 +12556,7 @@ void put_live_sync_update(
 
 void get_live_sync_list(
     const LiveSyncListParams& params,
-    const std::function<void(const LiveSyncListResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const LiveSyncListResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string path = kLiveSyncListAPI;
     path += "?page=" + std::to_string(params.page);
@@ -12016,9 +12569,10 @@ void get_live_sync_list(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LOG_INFO("get_live_sync_list: url %s", url.c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("get_live_sync_list: response %s", log_safe(response).c_str());
@@ -12032,7 +12586,7 @@ void get_live_sync_list(
                 std::string json_err;
                 if (!parse_common_response_data(common_response, rsp, &json_err, true)) {
                     LOG_ERROR("get_live_sync_list: parse error: %s", json_err.c_str());
-                    error_code = make_http_error(http_code, response);
+                    error_code = FlightHubError::from_parse_error(http_code, json_err);
                 }
             } while (false);
             if (callback) { callback(rsp, error_code); }
@@ -12040,16 +12594,17 @@ void get_live_sync_list(
 }
 
 void get_live_sync_devices_v2(
-    const std::function<void(const LiveSyncDevicesV2Response& data, FlightHubError err)>& callback) {
+    const std::function<void(const LiveSyncDevicesV2Response& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kLiveSyncDevicesV2API);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LOG_INFO("get_live_sync_devices_v2: url %s", url.c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("get_live_sync_devices_v2: response %s", log_safe(response).c_str());
@@ -12063,7 +12618,7 @@ void get_live_sync_devices_v2(
                 std::string json_err;
                 if (!parse_common_response_data(common_response, rsp, &json_err, true)) {
                     LOG_ERROR("get_live_sync_devices_v2: parse error: %s", json_err.c_str());
-                    error_code = make_http_error(http_code, response);
+                    error_code = FlightHubError::from_parse_error(http_code, json_err);
                 }
             } while (false);
             if (callback) { callback(rsp, error_code); }
@@ -12071,16 +12626,17 @@ void get_live_sync_devices_v2(
 }
 
 void get_live_sync_summary(
-    const std::function<void(const LiveSyncSummaryResponse& data, FlightHubError err)>& callback) {
+    const std::function<void(const LiveSyncSummaryResponse& data, FlightHubError err)>& callback, int session_id) {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kLiveSyncSummaryAPI);
     auto uuid = xg::newGuid();
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
     LOG_INFO("get_live_sync_summary: url %s", url.c_str());
     HttpGetInnerWithStatus(url, headers,
-        [callback](const drc_sdk::common::NetworkError, int http_code,
+        [callback, session_id](const drc_sdk::common::NetworkError, int http_code,
                    const std::string& response, const std::vector<std::string>&,
                    const drc_sdk::common::HttpHeaders&) {
             LOG_DEBUG("get_live_sync_summary: response %s", log_safe(response).c_str());
@@ -12094,7 +12650,7 @@ void get_live_sync_summary(
                 std::string json_err;
                 if (!parse_common_response_data(common_response, rsp, &json_err, true)) {
                     LOG_ERROR("get_live_sync_summary: parse error: %s", json_err.c_str());
-                    error_code = make_http_error(http_code, response);
+                    error_code = FlightHubError::from_parse_error(http_code, json_err);
                 }
             } while (false);
             if (callback) { callback(rsp, error_code); }
@@ -12110,7 +12666,7 @@ void get_live_sync_summary(
 // 上报埋点事件(POST /pf-beacon/ingest/inner/v1/report, 平台内部接口)
 void report_beacon_event(
     const BeaconReportRequest& request,
-    const std::function<void(FlightHubError err)>& callback)
+    const std::function<void(FlightHubError err)>& callback, int session_id)
 {
     auto config = FlightHubSdk::getConfig();
     std::string url = generate_url(config.address, config.port, kBeaconReportAPI);
@@ -12119,6 +12675,7 @@ void report_beacon_event(
     drc_sdk::common::HttpHeaders headers;
     headers["x-request-id"] = uuid.str();
     headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
 
     auto request_copy = request;
     if (request_copy.timestamp <= 0) {
@@ -12176,7 +12733,7 @@ void report_beacon_event(
 
 // 埋点上报便捷封装(填好 type/timestamp/payload 后转调 report_beacon_event)
 void report_beacon_event_helper(
-    std::string_view event, const FlightHubError& err, std::string_view log_tag)
+    std::string_view event, const FlightHubError& err, int session_id, std::string_view log_tag)
 {
     BeaconReportRequest report;
     // type: "sdk_api";
@@ -12201,9 +12758,530 @@ void report_beacon_event_helper(
         LOG_DEBUG("%sreport_beacon_event() callback, event: %s, err: %s",
             log_prefix.c_str(), event.c_str(), report_err.to_string().c_str()
         );
+    }, session_id);
+}
+
+// ===== Cascade 自由函数实现（v1.0 文档，2026-09-02，8 个接口） =====
+// 契约：docs/superpowers/specs/级联接口文档-v1.0.md
+// 通用约定：路径统一挂 /gateway/cascade/api/*；请求/响应 JSON 走 aigc-json；int64 → JSON string。
+
+// §1 POST /cascade/api/provision
+void cascade_provision(const CascadeProvisionRequest& req,
+    const std::function<void(const CascadeProvisionResponse&, FlightHubError err)>& cb, int session_id) {
+    auto config = FlightHubSdk::getConfig();
+    std::string url = generate_url(config.address, config.port, std::string(kCascadeProvisionAPI));
+    auto uuid = xg::newGuid();
+
+    drc_sdk::common::HttpHeaders headers;
+    headers["content-type"] = "application/json";
+    headers["x-request-id"] = uuid.str();
+    ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
+
+    std::string body;
+    std::string err;
+    auto req_copy = req;  // ObjectToJson requires non-const
+    aigc::JsonHelper::ObjectToJson(req_copy, body, &err);
+    if (!err.empty()) {
+        LOG_ERROR("CascadeProvision: ObjectToJson error: %s", err.c_str());
+        cb({}, FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED));
+        return;
+    }
+
+    // 脱敏日志：只打 child_addr 的 host 段（截掉最后一个 ':' 及端口）
+    auto colon = req.child_addr.rfind(':');
+    auto addr_host = (colon == std::string::npos) ? req.child_addr : req.child_addr.substr(0, colon);
+    LOG_INFO("CascadeProvision: url %s, uuid %s, child_addr_host %s",
+             url.c_str(), uuid.str().c_str(), addr_host.c_str());
+    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
+        [cb](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+             const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+            CascadeProvisionResponse out;
+            dispatch_common_json_response("CascadeProvision", err_code, http_code, response, out, true, cb);
+        });
+}
+
+// §2 POST /cascade/api/nodes/enable
+void cascade_enable_nodes(const CascadeNodeIdsRequest& req,
+    const std::function<void(const CascadeBatchOpResponse&, FlightHubError err)>& cb, int session_id) {
+    auto config = FlightHubSdk::getConfig();
+    std::string url = generate_url(config.address, config.port, std::string(kCascadeNodesEnableAPI));
+    auto uuid = xg::newGuid();
+
+    drc_sdk::common::HttpHeaders headers;
+    headers["content-type"] = "application/json";
+    headers["x-request-id"] = uuid.str();
+    ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
+
+    std::string body;
+    std::string err;
+    auto req_copy = req;
+    aigc::JsonHelper::ObjectToJson(req_copy, body, &err);
+    if (!err.empty()) {
+        LOG_ERROR("CascadeEnableNodes: ObjectToJson error: %s", err.c_str());
+        cb({}, FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED));
+        return;
+    }
+    LOG_INFO("CascadeEnableNodes: url %s, uuid %s, node_count %zu",
+             url.c_str(), uuid.str().c_str(), req.node_id.size());
+    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
+        [cb](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+             const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+            CascadeBatchOpResponse out;
+            dispatch_common_json_response("CascadeEnableNodes", err_code, http_code, response, out, true, cb);
+        });
+}
+
+// §3 POST /cascade/api/nodes/disable
+void cascade_disable_nodes(const CascadeNodeIdsRequest& req,
+    const std::function<void(const CascadeBatchOpResponse&, FlightHubError err)>& cb, int session_id) {
+    auto config = FlightHubSdk::getConfig();
+    std::string url = generate_url(config.address, config.port, std::string(kCascadeNodesDisableAPI));
+    auto uuid = xg::newGuid();
+
+    drc_sdk::common::HttpHeaders headers;
+    headers["content-type"] = "application/json";
+    headers["x-request-id"] = uuid.str();
+    ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
+
+    std::string body;
+    std::string err;
+    auto req_copy = req;
+    aigc::JsonHelper::ObjectToJson(req_copy, body, &err);
+    if (!err.empty()) {
+        LOG_ERROR("CascadeDisableNodes: ObjectToJson error: %s", err.c_str());
+        cb({}, FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED));
+        return;
+    }
+    LOG_INFO("CascadeDisableNodes: url %s, uuid %s, node_count %zu",
+             url.c_str(), uuid.str().c_str(), req.node_id.size());
+    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
+        [cb](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+             const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+            CascadeBatchOpResponse out;
+            dispatch_common_json_response("CascadeDisableNodes", err_code, http_code, response, out, true, cb);
+        });
+}
+
+// §4 DELETE /cascade/api/node/{nodeID}
+void cascade_delete_node(const std::string& node_id,
+    const std::function<void(FlightHubError err)>& cb, int session_id) {
+    if (node_id.empty()) {
+        LOG_ERROR("CascadeDeleteNode: invalid argument: node_id is empty");
+        cb(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM));
+        return;
+    }
+    auto config = FlightHubSdk::getConfig();
+    std::string api = std::string(kCascadeNodeByIdAPI);
+    // 用常量的 size() 替换，避免硬编码长度和字面量脱节
+    static const std::string kNodeIdPh = "{nodeID}";
+    auto pos = api.find(kNodeIdPh);
+    if (pos != std::string::npos) {
+        api.replace(pos, kNodeIdPh.size(), node_id);
+    }
+    std::string url = generate_url(config.address, config.port, api);
+    auto uuid = xg::newGuid();
+
+    drc_sdk::common::HttpHeaders headers;
+    headers["content-type"] = "application/json";
+    headers["x-request-id"] = uuid.str();
+    ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
+
+    LOG_INFO("CascadeDeleteNode: url %s, uuid %s, node_id %s",
+             url.c_str(), uuid.str().c_str(), node_id.c_str());
+    HttpDeleteInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, "",
+        [cb](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+             const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+            if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
+                LOG_ERROR("CascadeDeleteNode: network error: %d", static_cast<int>(err_code));
+                cb(make_http_error(http_code, response));
+                return;
+            }
+            auto common_response = convert_response_struct(response);
+            if (common_response.code != 0) {
+                LOG_ERROR("CascadeDeleteNode: code: %d, message: %s",
+                          common_response.code, common_response.message.c_str());
+                cb(make_http_error(http_code, response));
+                return;
+            }
+            LOG_INFO("CascadeDeleteNode: success");
+            cb(FlightHubError::success());
+        });
+}
+
+// §5 GET /cascade/api/children
+// page 与 size 分别独立生效：某一项 <=0 表示该项不下发到后端（后端使用其自身默认值 / 不分页）。
+// name/status 空字符串表示不过滤。name 走 percent-encoding（v1.1 §5 用户输入的关键词可能
+// 含空格 / 中文 / `&`，直拼会破坏 URL 结构或被网关拒）。
+static std::string url_percent_encode(const std::string& s) {
+    static const char* kHex = "0123456789ABCDEF";
+    std::string out;
+    out.reserve(s.size() * 3);
+    for (unsigned char c : s) {
+        // RFC 3986 unreserved characters
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+            || (c >= '0' && c <= '9')
+            || c == '-' || c == '_' || c == '.' || c == '~') {
+            out.push_back(static_cast<char>(c));
+        } else {
+            out.push_back('%');
+            out.push_back(kHex[(c >> 4) & 0xF]);
+            out.push_back(kHex[c & 0xF]);
+        }
+    }
+    return out;
+}
+
+void cascade_get_children(const std::string& node_id,
+    int page, int size,
+    const std::string& name,
+    const std::string& status,
+    const std::function<void(const CascadeNodeListResponse&, FlightHubError err)>& cb, int session_id) {
+    auto config = FlightHubSdk::getConfig();
+    std::string api = std::string(kCascadeChildrenAPI);
+    std::vector<std::string> qs;
+    if (!node_id.empty()) qs.push_back("nodeID=" + url_percent_encode(node_id));
+    // v1.1 §5：page 与 size 必须同时传才分页；任一缺失（<=0）则不下发分页参数，
+    // 后端返回全部。partial 组合（如 page=5,size=0）按「不分页」处理。
+    if (page > 0 && size > 0) {
+        qs.push_back("page=" + std::to_string(page));
+        qs.push_back("size=" + std::to_string(size));
+    }
+    if (!name.empty())    qs.push_back("name=" + url_percent_encode(name));
+    if (!status.empty())  qs.push_back("status=" + url_percent_encode(status));
+    if (!qs.empty()) {
+        api += "?";
+        for (size_t i = 0; i < qs.size(); ++i) {
+            api += qs[i];
+            if (i + 1 < qs.size()) api += "&";
+        }
+    }
+    std::string url = generate_url(config.address, config.port, api);
+    auto uuid = xg::newGuid();
+    drc_sdk::common::HttpHeaders headers;
+    headers["x-request-id"] = uuid.str();
+    ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
+    LOG_INFO("CascadeGetChildren: url %s, uuid %s", url.c_str(), uuid.str().c_str());
+    HttpGetInnerWithStatus(url, headers,
+        [cb](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+             const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+            CascadeNodeListResponse out;
+            dispatch_common_json_response("CascadeGetChildren", err_code, http_code, response, out, true, cb);
+        });
+}
+
+// §6 GET /cascade/api/parent
+void cascade_get_parent(
+    const std::function<void(const CascadeParentResponse&, FlightHubError err)>& cb, int session_id) {
+    auto config = FlightHubSdk::getConfig();
+    std::string url = generate_url(config.address, config.port, std::string(kCascadeParentAPI));
+    auto uuid = xg::newGuid();
+    drc_sdk::common::HttpHeaders headers;
+    headers["x-request-id"] = uuid.str();
+    ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
+    LOG_INFO("CascadeGetParent: url %s, uuid %s", url.c_str(), uuid.str().c_str());
+    HttpGetInnerWithStatus(url, headers,
+        [cb](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+             const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+            CascadeParentResponse out;
+            dispatch_common_json_response("CascadeGetParent", err_code, http_code, response, out, true, cb);
+        });
+}
+
+// §7 GET /cascade/api/nodes/index
+// page/size <=0 时兜底 page=1 / size=50（v1.0 §7 分页强制）。
+void cascade_get_node_index(int page, int size,
+    const std::function<void(const CascadeNodeListResponse&, FlightHubError err)>& cb, int session_id) {
+    auto config = FlightHubSdk::getConfig();
+    int page_use = page > 0 ? page : 1;
+    int size_use = size > 0 ? size : 50;
+    char qs[64] = {'\0'};
+    snprintf(qs, sizeof(qs), "?page=%d&size=%d", page_use, size_use);
+    std::string url = generate_url(config.address, config.port,
+                                   std::string(kCascadeNodesIndexAPI) + qs);
+    auto uuid = xg::newGuid();
+    drc_sdk::common::HttpHeaders headers;
+    headers["x-request-id"] = uuid.str();
+    ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
+    LOG_INFO("CascadeGetNodeIndex: url %s, uuid %s", url.c_str(), uuid.str().c_str());
+    HttpGetInnerWithStatus(url, headers,
+        [cb](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+             const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+            CascadeNodeListResponse out;
+            dispatch_common_json_response("CascadeGetNodeIndex", err_code, http_code, response, out, true, cb);
+        });
+}
+
+// §8 GET /cascade/api/connectivity
+// v1.1 新增：无入参；后端遍历本节点的下级平台，逐个走 Mesh Route+Accessible 探活。
+// rtt 走 int64→JSON 字符串（不可达时 "0"）。
+void cascade_get_connectivity(
+    const std::function<void(const CascadeConnectivityResponse&, FlightHubError err)>& cb, int session_id) {
+    auto config = FlightHubSdk::getConfig();
+    std::string url = generate_url(config.address, config.port, std::string(kCascadeConnectivityAPI));
+    auto uuid = xg::newGuid();
+    drc_sdk::common::HttpHeaders headers;
+    headers["x-request-id"] = uuid.str();
+    ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
+    LOG_INFO("CascadeGetConnectivity: url %s, uuid %s", url.c_str(), uuid.str().c_str());
+    HttpGetInnerWithStatus(url, headers,
+        [cb](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+             const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+            CascadeConnectivityResponse out;
+            dispatch_common_json_response("CascadeGetConnectivity", err_code, http_code, response, out, true, cb);
+        });
+}
+
+// §7 POST /cascade/api/parent/respond
+// 响应上级平台组网请求（accept / reject）。逻辑由后端处理：查 mesh 组网边、
+// cascade_net_relation upsert、重复接受返 4091。SDK 只透传请求并解析信封。
+void cascade_parent_respond(const CascadeParentRespondWireRequest& req,
+    const std::function<void(FlightHubError err)>& cb, int session_id) {
+    if (req.node_id.empty() || req.parent_id.empty()) {
+        LOG_ERROR("CascadeParentRespond: invalid argument: node_id/parent_id is empty");
+        cb(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM));
+        return;
+    }
+    if (req.status != "accept" && req.status != "reject") {
+        LOG_ERROR("CascadeParentRespond: invalid argument: status=%s", req.status.c_str());
+        cb(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM));
+        return;
+    }
+    auto config = FlightHubSdk::getConfig();
+    std::string url = generate_url(config.address, config.port, std::string(kCascadeParentRespondAPI));
+    auto uuid = xg::newGuid();
+
+    drc_sdk::common::HttpHeaders headers;
+    headers["content-type"] = "application/json";
+    headers["x-request-id"] = uuid.str();
+    ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
+
+    std::string body;
+    std::string err;
+    auto req_copy = req;
+    aigc::JsonHelper::ObjectToJson(req_copy, body, &err);
+    if (!err.empty()) {
+        LOG_ERROR("CascadeParentRespond: ObjectToJson error: %s", err.c_str());
+        cb(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED));
+        return;
+    }
+    LOG_INFO("CascadeParentRespond: url %s, uuid %s, parent_id %s status %s",
+             url.c_str(), uuid.str().c_str(), req.parent_id.c_str(), req.status.c_str());
+    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body,
+        [cb](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+             const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+            if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
+                LOG_ERROR("CascadeParentRespond: network error: %d", static_cast<int>(err_code));
+                cb(make_http_error(http_code, response));
+                return;
+            }
+            auto common_response = convert_response_struct(response);
+            if (common_response.code != 0) {
+                LOG_ERROR("CascadeParentRespond: code: %d, message: %s",
+                          common_response.code, common_response.message.c_str());
+                cb(make_http_error(http_code, response));
+                return;
+            }
+            LOG_INFO("CascadeParentRespond: success");
+            cb(FlightHubError::success());
+        });
+}
+
+// §10 GET /cascade/api/parent/connectivity
+// v1.1 新增：上级平台联通性检测；无入参。后端查 Mesh LDCRegistry.Describe(self).ParentID
+// （回落 grant 表推导）再 Route+Accessible 探活。Mesh 未接入（NoOp）时返 5031。
+// rtt 走 int64→JSON 字符串（不可达时 "0"）。
+void cascade_get_parent_connectivity(
+    const std::function<void(const CascadeParentConnectivityResponse&, FlightHubError err)>& cb, int session_id) {
+    auto config = FlightHubSdk::getConfig();
+    std::string url = generate_url(config.address, config.port, std::string(kCascadeParentConnectivityAPI));
+    auto uuid = xg::newGuid();
+    drc_sdk::common::HttpHeaders headers;
+    headers["x-request-id"] = uuid.str();
+    ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
+    LOG_INFO("CascadeGetParentConnectivity: url %s, uuid %s", url.c_str(), uuid.str().c_str());
+    HttpGetInnerWithStatus(url, headers,
+        [cb](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+             const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+            CascadeParentConnectivityResponse out;
+            dispatch_common_json_response("CascadeGetParentConnectivity", err_code, http_code, response, out, true, cb);
+        });
+}
+
+// §9 POST /cascade/api/notify/{dstNode}
+// v1.1 变更：URL 只有一个路径参数（dstNode），topic 固定为 `topic_cascade_notify`
+// 由 cascade-svc 侧决定，不再由调用方传入；body 原样透传（任意字节，不做 JSON 编解码）；
+// >1MB 由后端拒绝（HTTP 413）。
+// Content-Type 用 application/octet-stream 声明这是原始字节，避免网关误当作 JSON 校验。
+void cascade_notify(const std::string& dst_node,
+    const std::string& body_bytes,
+    const std::function<void(FlightHubError err)>& cb, int session_id) {
+    if (dst_node.empty()) {
+        LOG_ERROR("CascadeNotify: invalid argument: dst_node is empty");
+        cb(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM));
+        return;
+    }
+    auto config = FlightHubSdk::getConfig();
+    std::string api = std::string(kCascadeNotifyAPI);
+    // 用常量的 size() 替换，避免硬编码长度与字面量脱节
+    static const std::string kDstPh = "{dstNode}";
+    auto pos_dst = api.find(kDstPh);
+    if (pos_dst != std::string::npos) {
+        api.replace(pos_dst, kDstPh.size(), dst_node);
+    }
+    std::string url = generate_url(config.address, config.port, api);
+    auto uuid = xg::newGuid();
+
+    drc_sdk::common::HttpHeaders headers;
+    // v1.1 §9：body 是任意字节 payload，声明为 application/octet-stream，
+    // cascade-svc 不解析 body，仅透传。
+    headers["content-type"] = "application/octet-stream";
+    headers["x-request-id"] = uuid.str();
+    ensure_gateway_auth_headers_if_needed(url, headers);
+    ensure_mesh_dst_header_for_session(headers, session_id);
+
+    // 脱敏日志：不打印 body 内容（可能含用户数据），仅打 body_len
+    LOG_INFO("CascadeNotify: url %s, uuid %s, body_len=%zu",
+             url.c_str(), uuid.str().c_str(), body_bytes.size());
+    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, body_bytes,
+        [cb](const drc_sdk::common::NetworkError err_code, int http_code, const std::string& response,
+             const std::vector<std::string>&, const drc_sdk::common::HttpHeaders&) {
+            if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
+                LOG_ERROR("CascadeNotify: network error: %d", static_cast<int>(err_code));
+                cb(make_http_error(http_code, response));
+                return;
+            }
+            auto common_response = convert_response_struct(response);
+            if (common_response.code != 0) {
+                LOG_ERROR("CascadeNotify: code: %d, message: %s",
+                          common_response.code, common_response.message.c_str());
+                cb(make_http_error(http_code, response));
+                return;
+            }
+            LOG_INFO("CascadeNotify: success");
+            cb(FlightHubError::success());
+        });
+}
+
+// ===================== 3X 超清全景拼接 HTTP Functions =====================
+
+/// 辅助：替换 URL 中的 {file_id} 占位符
+static std::string replace_file_id(const std::string& api_template, long long file_id) {
+    std::string api = api_template;
+    auto pos = api.find("{file_id}");
+    if (pos != std::string::npos) {
+        api.replace(pos, 9 /* strlen("{file_id}") */, std::to_string(file_id));
+    }
+    return api;
+}
+
+/// 辅助：POST 空 body（body = "{}"）的通用实现
+static void post_pano_empty_body(
+    const std::string& api_template,
+    long long file_id,
+    const char* func_name,
+    const std::function<void(FlightHubError err)>& callback,
+    int session_id)
+{
+    auto config = FlightHubSdk::getConfig();
+    std::string url = generate_url(config.address, config.port, replace_file_id(api_template, file_id));
+    auto uuid = xg::newGuid();
+
+    drc_sdk::common::HttpHeaders headers;
+    headers["x-request-id"] = uuid.str();
+    headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
+
+    LOG_INFO("%s(): url: %s, uuid: %s", func_name, url.c_str(), uuid.str().c_str());
+    HttpPostInnerWithStatus(url, headers, drc_sdk::common::HttpPostType::JSON_DATA, "{}",
+        [callback, uuid_str = uuid.str(), func_name](const drc_sdk::common::NetworkError err_code, int http_code,
+                   const std::string& response, const std::vector<std::string>& certs,
+                   const drc_sdk::common::HttpHeaders& resp_headers) {
+        do {
+            if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
+                LOG_ERROR("%s(): network error %d, uuid: %s", func_name, static_cast<int>(err_code), uuid_str.c_str());
+                break;
+            }
+            auto common_resp = convert_response_struct(response);
+            if (common_resp.code != 0) {
+                LOG_ERROR("%s(): code:%d, msg:%s, uuid:%s", func_name, common_resp.code, common_resp.message.c_str(), uuid_str.c_str());
+                break;
+            }
+            if (callback) callback(FlightHubError::success());
+            return;
+        } while (0);
+        if (callback) callback(make_http_error(http_code, response));
     });
 }
 
-}  // namespace flight_hub_sdk
+void post_invoke_pano_stitch(long long file_id, const std::function<void(FlightHubError err)>& callback, int session_id) {
+    post_pano_empty_body(kInvokePanoStitchAPI, file_id, "post_invoke_pano_stitch", callback, session_id);
+}
 
+void post_cancel_pano_stitch(long long file_id, const std::function<void(FlightHubError err)>& callback, int session_id) {
+    post_pano_empty_body(kCancelPanoStitchAPI, file_id, "post_cancel_pano_stitch", callback, session_id);
+}
+
+void post_retry_pano_stitch(long long file_id, const std::function<void(FlightHubError err)>& callback, int session_id) {
+    post_pano_empty_body(kRetryPanoStitchAPI, file_id, "post_retry_pano_stitch", callback, session_id);
+}
+
+void post_invoke_pano_tier(long long file_id, const std::function<void(FlightHubError err)>& callback, int session_id) {
+    post_pano_empty_body(kInvokePanoTierAPI, file_id, "post_invoke_pano_tier", callback, session_id);
+}
+
+void get_pano_tier_tile_url(
+    long long file_id,
+    const std::function<void(const GetPanoTierTileUrlResponseData& data, FlightHubError err)>& callback,
+    int session_id)
+{
+    auto config = FlightHubSdk::getConfig();
+    std::string url = generate_url(config.address, config.port, replace_file_id(kGetPanoTierTileUrlAPI, file_id));
+    auto uuid = xg::newGuid();
+
+    drc_sdk::common::HttpHeaders headers;
+    headers["x-request-id"] = uuid.str();
+    headers["content-type"] = "application/json";
+    ensure_mesh_dst_header_for_session(headers, session_id);
+
+    LOG_INFO("get_pano_tier_tile_url(): url: %s, uuid: %s", url.c_str(), uuid.str().c_str());
+    HttpGetInnerWithStatus(url, headers,
+        [callback, uuid_str = uuid.str()](const drc_sdk::common::NetworkError err_code, int http_code,
+                   const std::string& response, const std::vector<std::string>& certs,
+                   const drc_sdk::common::HttpHeaders& resp_headers) {
+        do {
+            if (err_code != drc_sdk::common::NetworkError::SUCCESS) {
+                LOG_ERROR("get_pano_tier_tile_url(): network error %d, uuid: %s", static_cast<int>(err_code), uuid_str.c_str());
+                break;
+            }
+            auto common_resp = convert_response_struct(response);
+            if (common_resp.code != 0) {
+                LOG_ERROR("get_pano_tier_tile_url(): code:%d, msg:%s, uuid:%s", common_resp.code, common_resp.message.c_str(), uuid_str.c_str());
+                break;
+            }
+            GetPanoTierTileUrlResponseData data;
+            std::string parse_err;
+            if (!parse_common_response_data(common_resp, data, &parse_err, true)) {
+                LOG_ERROR("get_pano_tier_tile_url(): JsonToObject error: %s, uuid:%s", parse_err.c_str(), uuid_str.c_str());
+                break;
+            }
+            if (callback) callback(data, FlightHubError::success());
+            return;
+        } while (0);
+        if (callback) callback({}, make_http_error(http_code, response));
+    }, 15000);
+}
+
+// ===================== 3X 超清全景拼接 HTTP Functions End =====================
+
+}  // namespace flight_hub_sdk
 

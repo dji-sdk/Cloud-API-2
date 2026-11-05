@@ -4,6 +4,8 @@
 package com.dji.flighthubsdk.bean;
 
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 /** 历史HMS数据结果条目。 */
 public final class HistoryHmsDataResultItem {
@@ -14,7 +16,7 @@ public final class HistoryHmsDataResultItem {
     private String tid;
     /** 告警级别。枚举：0=通知, 1=提醒, 2=警告 */
     private int level;
-    /** 模块标识 */
+    /** 模块标识（可选）。枚举：0=飞行任务, 1=设备管理, 2=媒体, 3=hms */
     private int module;
     /** 告警消息 */
     private String message;
@@ -46,11 +48,13 @@ public final class HistoryHmsDataResultItem {
     private String statusKey;
     /** 设备 SN */
     private String sn;
+    /** HMS 根因列表(递归, 可为空) */
+    private List<HistoryHmsDataResultItem> subHmsList = Collections.emptyList();
     public HistoryHmsDataResultItem() {
     }
 
 /**
-     * 构造 HistoryHmsDataResultItem。
+     * 构造 HistoryHmsDataResultItem(不含 HMS 根因列表, 兼容旧调用)。
      */
     public HistoryHmsDataResultItem(
             String mongoId,
@@ -73,6 +77,39 @@ public final class HistoryHmsDataResultItem {
             String jointKey,
             String statusKey,
             String sn) {
+        this(mongoId, bid, tid, level, module, message, status, code,
+                deviceDataCreateTime, deviceDataUpdateTime, createTime, updateTime,
+                args, deviceType, domainType, imminent, inTheSky, jointKey, statusKey, sn,
+                Collections.<HistoryHmsDataResultItem>emptyList());
+    }
+
+/**
+     * 构造 HistoryHmsDataResultItem。
+     *
+     * @param subHmsList HMS 根因列表(递归, 可为空)
+     */
+    public HistoryHmsDataResultItem(
+            String mongoId,
+            String bid,
+            String tid,
+            int level,
+            int module,
+            String message,
+            int status,
+            String code,
+            long deviceDataCreateTime,
+            long deviceDataUpdateTime,
+            long createTime,
+            long updateTime,
+            HistoryHmsDataResultArgs args,
+            String deviceType,
+            String domainType,
+            int imminent,
+            int inTheSky,
+            String jointKey,
+            String statusKey,
+            String sn,
+            List<HistoryHmsDataResultItem> subHmsList) {
         this.mongoId = mongoId != null ? mongoId : "";
         this.bid = bid != null ? bid : "";
         this.tid = tid != null ? tid : "";
@@ -93,6 +130,7 @@ public final class HistoryHmsDataResultItem {
         this.jointKey = jointKey != null ? jointKey : "";
         this.statusKey = statusKey != null ? statusKey : "";
         this.sn = sn != null ? sn : "";
+        this.subHmsList = subHmsList != null ? subHmsList : Collections.<HistoryHmsDataResultItem>emptyList();
     }
 
     /** MongoDB ID */
@@ -103,7 +141,7 @@ public final class HistoryHmsDataResultItem {
     public String getTid() { return tid; }
     /** 告警级别。枚举：0=通知, 1=提醒, 2=警告 */
     public int getLevel() { return level; }
-    /** 模块标识 */
+    /** 模块标识（可选）。枚举：0=飞行任务, 1=设备管理, 2=媒体, 3=hms */
     public int getModule() { return module; }
     /** 告警消息 */
     public String getMessage() { return message; }
@@ -135,6 +173,8 @@ public final class HistoryHmsDataResultItem {
     public String getStatusKey() { return statusKey; }
     /** 设备 SN */
     public String getSn() { return sn; }
+    /** HMS 根因列表(递归, 可为空) */
+    public List<HistoryHmsDataResultItem> getSubHmsList() { return subHmsList; }
 
     /** MongoDB ID */
     public void setMongoId(String mongoId) {
@@ -156,7 +196,7 @@ public final class HistoryHmsDataResultItem {
         this.level = level;
     }
 
-    /** @param module 模块标识 */
+    /** @param module 模块标识（可选）。枚举：0=飞行任务, 1=设备管理, 2=媒体, 3=hms */
     public void setModule(int module) {
         this.module = module;
     }
@@ -236,6 +276,11 @@ public final class HistoryHmsDataResultItem {
         this.sn = sn;
     }
 
+    /** @param subHmsList HMS 根因列表(递归, 可为空) */
+    public void setSubHmsList(List<HistoryHmsDataResultItem> subHmsList) {
+        this.subHmsList = subHmsList != null ? subHmsList : Collections.<HistoryHmsDataResultItem>emptyList();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -264,7 +309,8 @@ public final class HistoryHmsDataResultItem {
                 && inTheSky == that.inTheSky
                 && Objects.equals(jointKey, that.jointKey)
                 && Objects.equals(statusKey, that.statusKey)
-                && Objects.equals(sn, that.sn);
+                && Objects.equals(sn, that.sn)
+                && Objects.equals(subHmsList, that.subHmsList);
     }
 
     @Override
@@ -289,7 +335,8 @@ public final class HistoryHmsDataResultItem {
                 inTheSky,
                 jointKey,
                 statusKey,
-                sn);
+                sn,
+                subHmsList);
     }
 
     @Override
@@ -315,6 +362,7 @@ public final class HistoryHmsDataResultItem {
                 + ", jointKey='" + jointKey + '\''
                 + ", statusKey='" + statusKey + '\''
                 + ", sn='" + sn + '\''
+                + ", subHmsList=" + subHmsList
                 + '}';
     }
 }

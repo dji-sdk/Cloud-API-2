@@ -20,14 +20,19 @@ import com.dji.flighthub.mcp.config.FlightHubProperties;
 import com.dji.flighthub.mcp.elicit.ClientBridgeHolder;
 import com.dji.flighthub.mcp.elicit.ElicitResult;
 import com.dji.flighthub.mcp.elicit.ElicitTestSupport;
+import com.dji.flighthub.mcp.sdk.SdkCallbackBridge;
 import com.dji.flighthub.mcp.sdk.SdkService;
 import com.dji.flighthub.mcp.session.FlightPhase;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
+import com.dji.flighthub.mcp.tools.subscription.ListenChannelSupport;
+import com.dji.flighthub.mcp.tools.subscription.SubscriptionBuffer;
+import com.dji.flighthubsdk.bean.FlyToTargetPoint;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import java.util.List;
 import java.util.Map;
 
 import static com.dji.flighthub.mcp.elicit.ElicitTestSupport.fakeBridge;
@@ -74,7 +79,7 @@ class FhFlytoToolTest {
             }
         };
         flytoTool = new FhFlytoTool(sessionManager, sdkService);
-        poiTool = new FhPoiTool(sessionManager, sdkService);
+        poiTool = new FhPoiTool(sessionManager, sdkService, new ListenChannelSupport(new SubscriptionBuffer()));
     }
 
     // ==================== FhFlytoTool Tests ====================
@@ -254,6 +259,93 @@ class FhFlytoToolTest {
 
         assertEquals(true, result.get("success"));
         assertEquals(FlightPhase.FLYING_TO, session.getFlightPhase());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void flyto_update_shouldEchoMaxSpeed_whenProvided() {
+        // update 必须把 max_speed 透传给 SDK：转换器无条件下发该字段，
+        // 旧实现未赋值导致 max_speed=0，服务端返回 ERROR_INVALID_PARAM（FTP-023/FTP-011）
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        session.setActiveDrcDevice(DRONE_SN);
+        session.setFlightPhase(FlightPhase.FLYING_TO);
+
+        Map<String, Object> result = flytoTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "update",
+                "confirm", true,
+                "latitude", 23.0,
+                "longitude", 115.0,
+                "height", 80.0,
+                "max_speed", 8
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals(8, data.get("max_speed"));
+    }
+
+    @Test
+    void flyto_dryRun_shouldNotAcquireControlOrConnectDrc() {
+        // 干跑必须在 ensureDrcLink 之前返回：不得抢控、不得建立 DRC 链路
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = flytoTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "start",
+                "latitude", VALID_LAT,
+                "longitude", VALID_LNG,
+                "height", VALID_HEIGHT,
+                "dry_run", true
+        ));
+
+        assertEquals(true, result.get("success"));
+        assertEquals(true, result.get("_dry_run"));
+        assertTrue(result.get("description").toString().contains("Would fly drone"));
+        assertFalse(session.hasControlOf(DRONE_SN), "dry_run 不应获取控制权");
+        assertFalse(session.hasDrcLinkTo(DRONE_SN), "dry_run 不应建立 DRC 链路");
+        assertEquals(FlightPhase.IDLE, session.getFlightPhase());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void flyto_dryRun_shouldNotClaimDrcLinked_whenPreviewBuilt() {
+        // 预览中的 prerequisites_checked 只列实际检查过的项，不能虚报 drc_linked
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = flytoTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "update",
+                "latitude", VALID_LAT,
+                "longitude", VALID_LNG,
+                "height", VALID_HEIGHT,
+                "dry_run", true
+        ));
+
+        assertEquals(true, result.get("_dry_run"));
+        Map<String, Object> preview = (Map<String, Object>) result.get("would_execute");
+        List<?> checked = (List<?>) preview.get("prerequisites_checked");
+        assertFalse(checked.contains("drc_linked"));
+        assertTrue(checked.contains("params_valid"));
+    }
+
+    @Test
+    void flyto_dryRun_shouldStillValidateParams_whenHeightInvalid() {
+        // 即使 dry_run=true，参数校验仍须先执行
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = flytoTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "start",
+                "latitude", VALID_LAT,
+                "longitude", VALID_LNG,
+                "height", 20000.0,
+                "dry_run", true
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Invalid height"));
     }
 
     @Test
@@ -670,5 +762,94 @@ class FhFlytoToolTest {
         ));
 
         assertEquals(true, result.get("success"), "status action should not require confirm");
+    }
+
+    // ── applyFlyToTarget：amd64 / arm64 两套 SDK API 的兼容探测 ──
+
+    /** 模拟 arm64 包：只有 setPoints(List)。 */
+    static class SetPointsApi {
+        private List<FlyToTargetPoint> captured;
+
+        public void setPoints(List<FlyToTargetPoint> points) {
+            this.captured = points;
+        }
+    }
+
+    /** 模拟 amd64 包：只有 setLatitude / setLongitude / setHeight。 */
+    static class ScalarSettersApi {
+        private double latitude;
+        private double longitude;
+        private double height;
+
+        public void setLatitude(double value) {
+            this.latitude = value;
+        }
+
+        public void setLongitude(double value) {
+            this.longitude = value;
+        }
+
+        public void setHeight(double value) {
+            this.height = value;
+        }
+    }
+
+    /** 两套 API 都没有，模拟未知 SDK 版本。 */
+    static class UnknownApi {
+    }
+
+    /** setPoints 内部抛异常，用于验证根因透传。 */
+    static class ThrowingApi {
+        public void setPoints(List<FlyToTargetPoint> points) {
+            throw new IllegalStateException("native 调用失败");
+        }
+    }
+
+    @Test
+    void applyFlyToTarget_shouldUseSetPoints_whenSdkProvidesListApi() {
+        SetPointsApi params = new SetPointsApi();
+
+        flytoTool.applyFlyToTarget(params, VALID_LAT, VALID_LNG, VALID_HEIGHT);
+
+        assertNotNull(params.captured, "arm64 包应走 setPoints 批量接口");
+        assertEquals(1, params.captured.size());
+        assertEquals(VALID_LAT, params.captured.get(0).getLatitude(), 1e-9);
+        assertEquals(VALID_LNG, params.captured.get(0).getLongitude(), 1e-9);
+        assertEquals(VALID_HEIGHT, params.captured.get(0).getHeight(), 1e-9);
+    }
+
+    @Test
+    void applyFlyToTarget_shouldUseScalarSetters_whenSdkHasNoListApi() {
+        ScalarSettersApi params = new ScalarSettersApi();
+
+        flytoTool.applyFlyToTarget(params, VALID_LAT, VALID_LNG, VALID_HEIGHT);
+
+        assertEquals(VALID_LAT, params.latitude, 1e-9);
+        assertEquals(VALID_LNG, params.longitude, 1e-9);
+        assertEquals(VALID_HEIGHT, params.height, 1e-9);
+    }
+
+    @Test
+    void applyFlyToTarget_shouldThrowSdkException_whenNeitherApiFound() {
+        UnknownApi params = new UnknownApi();
+
+        SdkCallbackBridge.SdkException ex = assertThrows(SdkCallbackBridge.SdkException.class,
+                () -> flytoTool.applyFlyToTarget(params, VALID_LAT, VALID_LNG, VALID_HEIGHT));
+
+        assertEquals(-1, ex.getErrorCode());
+        assertTrue(ex.getMessage().contains("Unsupported fly-to SDK API"));
+    }
+
+    @Test
+    void applyFlyToTarget_shouldPreserveCause_whenSetterThrows() {
+        ThrowingApi params = new ThrowingApi();
+
+        SdkCallbackBridge.SdkException ex = assertThrows(SdkCallbackBridge.SdkException.class,
+                () -> flytoTool.applyFlyToTarget(params, VALID_LAT, VALID_LNG, VALID_HEIGHT));
+
+        assertTrue(ex.getCause() instanceof IllegalStateException,
+                "应拆开 InvocationTargetException 保留真实根因");
+        assertEquals("native 调用失败", ex.getCause().getMessage());
+        assertTrue(ex.getMessage().contains("native 调用失败"));
     }
 }

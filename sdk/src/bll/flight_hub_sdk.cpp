@@ -70,28 +70,60 @@ std::shared_ptr<IWorkspace> FlightHubSdk::getWorkspaceInstance() {
     return GetImplInstance().getWorkspaceInstance();
 }
 
+std::shared_ptr<IWorkspace> FlightHubSdk::getWorkspaceInstance(int session_id) {
+    return GetImplInstance().getWorkspaceInstance(session_id);
+}
+
 std::shared_ptr<IDrone> FlightHubSdk::getDroneInstance(const std::string& sn) {
     return GetImplInstance().getDroneInstance(sn);
+}
+
+std::shared_ptr<IDrone> FlightHubSdk::getDroneInstance(int session_id, const std::string& sn) {
+    return GetImplInstance().getDroneInstance(session_id, sn);
 }
 
 std::shared_ptr<IDock> FlightHubSdk::getDockInstance(const std::string& sn) {
     return GetImplInstance().getDockInstance(sn);
 }
 
+std::shared_ptr<IDock> FlightHubSdk::getDockInstance(int session_id, const std::string& sn) {
+    return GetImplInstance().getDockInstance(session_id, sn);
+}
+
 std::shared_ptr<IRemoteController> FlightHubSdk::getRemoteControllerInstance(const std::string& sn) {
     return GetImplInstance().getRemoteControllerInstance(sn);
+}
+
+std::shared_ptr<IRemoteController> FlightHubSdk::getRemoteControllerInstance(int session_id, const std::string& sn) {
+    return GetImplInstance().getRemoteControllerInstance(session_id, sn);
 }
 
 std::shared_ptr<IBaseStation> FlightHubSdk::getBaseStationInstance(const std::string& sn) {
     return GetImplInstance().getBaseStationInstance(sn);
 }
 
+std::shared_ptr<IBaseStation> FlightHubSdk::getBaseStationInstance(int session_id, const std::string& sn) {
+    return GetImplInstance().getBaseStationInstance(session_id, sn);
+}
+
 std::shared_ptr<IRelay> FlightHubSdk::getRelayInstance(const std::string& sn) {
     return GetImplInstance().getRelayInstance(sn);
 }
 
+std::shared_ptr<IRelay> FlightHubSdk::getRelayInstance(int session_id, const std::string& sn) {
+    return GetImplInstance().getRelayInstance(session_id, sn);
+}
+
 std::shared_ptr<IStream> FlightHubSdk::getStream() {
     return GetImplInstance().getStream();
+}
+
+std::shared_ptr<ICascadeModule> FlightHubSdk::getCascadeModule() {
+    return GetImplInstance().getCascadeModule();
+}
+
+std::shared_ptr<ISessionManager> FlightHubSdk::getSessionManager() {
+    return GetImplInstance().getSessionManager();
 }
 
 FlightHubSdkErrorCode FlightHubSdk::injectRtcChannelManager(std::shared_ptr<message_engine::IRtcChannelManagerBridge> rtc_channel_manager) {

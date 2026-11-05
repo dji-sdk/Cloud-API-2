@@ -211,11 +211,15 @@ collect_remote() {
 
   _cr_ssh() {
     if [ "$_cr_use_sshpass" -eq 1 ]; then
-      sshpass -p "$_cr_pass" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$host" "$@"
+      # 通过环境变量传递密码（sshpass -e），避免 -p 让密码出现在进程列表中被同机用户窥探
+      SSHPASS="$_cr_pass" sshpass -e ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$host" "$@"
     else
       ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$host" "$@"
     fi
   }
+
+  echo "警告: 本次远程采集禁用了 SSH 主机密钥校验（StrictHostKeyChecking=no）," >&2
+  echo "      无法防御中间人攻击。生产环境建议先在 ~/.ssh/known_hosts 预置主机密钥后改用严格模式。" >&2
 
   progress "连接远程主机 $host"
   if ! _cr_ssh 'echo ok' >/dev/null 2>&1; then

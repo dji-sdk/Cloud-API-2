@@ -212,5 +212,5 @@ The flight-hub-sdk-2.0.0.jar bundles the following native libraries:
   - OpenSSL (Apache 2.0) — https://www.openssl.org
 
 Corresponding license texts are available from the upstream projects.
-ISV redistributing this SDK must comply with LGPL 2.1 / EPL 1.0 attribution
+Any integrator redistributing this SDK must comply with LGPL 2.1 / EPL 1.0 attribution
 requirements (provide license text and source-code acquisition method).

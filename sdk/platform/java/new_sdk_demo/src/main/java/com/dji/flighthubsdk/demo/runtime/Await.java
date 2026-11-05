@@ -9,12 +9,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * 回调等待器：把「异步 onResult 回调」桥接为「同步等待一个结果」。
+ * 回调等待器: 把「异步 onResult 回调」桥接为「同步等待一个结果」。
  *
  * <p>用 {@link CountDownLatch} 实现无忙等、可超时的等待, 避免 {@code AtomicBoolean done +
  * while(!done) Thread.sleep(...)} 这类忙等反模式。
  *
- * <p><b>线程约定</b>：SDK 回调在 native/RTC 线程触发, 务必不要在回调里做阻塞操作;
+ * <p><b>线程约定</b>: SDK 回调在 native/RTC 线程触发, 务必不要在回调里做阻塞操作;
  * 这里只做「保存结果 + countDown」, 主线程通过 {@link #await(long)} 取回结果。
  *
  * <pre>{@code
@@ -41,9 +41,9 @@ public final class Await<T> {
     }
 
     /**
-     * 在回调里调用：保存结果并唤醒等待方(幂等, 只有第一个结果生效, 含 {@code null} 结果)。
+     * 在回调里调用: 保存结果并唤醒等待方 (幂等, 只有第一个结果生效, 含 {@code null} 结果)。
      *
-     * @return true = 本次调用是首个生效的结果;false = 已有结果(本次被忽略)。
+     * @return true = 本次调用是首个生效的结果; false = 已有结果 (本次被忽略)。
      *         调用方可据此决定「结果已被采纳」类日志是否打印, 避免迟到回调留下误导性记录。
      */
     public boolean set(T value) {
@@ -60,8 +60,8 @@ public final class Await<T> {
     /**
      * 同步等待结果。
      *
-     * @param timeoutMs 超时毫秒；<b>必须 &gt; 0</b>——传入 ≤0 立即抛出 {@link FlightHubException}
-     *                  并附带诊断信息，防止配置写 0 后产生「所有操作即刻超时」的难以定位现象。
+     * @param timeoutMs 超时毫秒; <b>必须 &gt; 0</b>——传入 ≤0 立即抛出 {@link FlightHubException}
+     *                  并附带诊断信息, 防止配置写 0 后产生「所有操作即刻超时」的难以定位现象。
      * @return 回调传入的结果
      * @throws FlightHubException 超时、被中断或 {@code timeoutMs ≤ 0}
      */
@@ -81,7 +81,7 @@ public final class Await<T> {
         }
     }
 
-    /** 是否已经收到结果(非阻塞)。 */
+    /** 是否已经收到结果 (非阻塞)。 */
     public boolean isDone() {
         return latch.getCount() == 0;
     }

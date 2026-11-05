@@ -59,12 +59,44 @@ public class AiAlertTargetAlertInfo {
     return flighthubsdkmoduleJNI.AiAlertTargetAlertInfo_target_type_get(swigCPtr, this);
   }
 
-  public void setTarget_value(int value) {
+  public void setTarget_value(double value) {
     flighthubsdkmoduleJNI.AiAlertTargetAlertInfo_target_value_set(swigCPtr, this, value);
   }
 
-  public int getTarget_value() {
+  public double getTarget_value() {
     return flighthubsdkmoduleJNI.AiAlertTargetAlertInfo_target_value_get(swigCPtr, this);
+  }
+
+  public void setUse_min_threshold(boolean value) {
+    flighthubsdkmoduleJNI.AiAlertTargetAlertInfo_use_min_threshold_set(swigCPtr, this, value);
+  }
+
+  public boolean getUse_min_threshold() {
+    return flighthubsdkmoduleJNI.AiAlertTargetAlertInfo_use_min_threshold_get(swigCPtr, this);
+  }
+
+  public void setUse_max_threshold(boolean value) {
+    flighthubsdkmoduleJNI.AiAlertTargetAlertInfo_use_max_threshold_set(swigCPtr, this, value);
+  }
+
+  public boolean getUse_max_threshold() {
+    return flighthubsdkmoduleJNI.AiAlertTargetAlertInfo_use_max_threshold_get(swigCPtr, this);
+  }
+
+  public void setTarget_max_threshold(double value) {
+    flighthubsdkmoduleJNI.AiAlertTargetAlertInfo_target_max_threshold_set(swigCPtr, this, value);
+  }
+
+  public double getTarget_max_threshold() {
+    return flighthubsdkmoduleJNI.AiAlertTargetAlertInfo_target_max_threshold_get(swigCPtr, this);
+  }
+
+  public void setTarget_min_threshold(double value) {
+    flighthubsdkmoduleJNI.AiAlertTargetAlertInfo_target_min_threshold_set(swigCPtr, this, value);
+  }
+
+  public double getTarget_min_threshold() {
+    return flighthubsdkmoduleJNI.AiAlertTargetAlertInfo_target_min_threshold_get(swigCPtr, this);
   }
 
   public void setLabel(String value) {

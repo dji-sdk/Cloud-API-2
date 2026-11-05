@@ -21,10 +21,13 @@ import com.dji.flighthub.mcp.sdk.SdkService;
 import com.dji.flighthub.mcp.session.FlightPhase;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
+import com.dji.flighthub.mcp.tools.subscription.ListenChannelSupport;
+import com.dji.flighthub.mcp.tools.subscription.SubscriptionBuffer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -58,7 +61,7 @@ class FhPoiToolTest {
                 return true;
             }
         };
-        poiTool = new FhPoiTool(sessionManager, sdkService);
+        poiTool = new FhPoiTool(sessionManager, sdkService, new ListenChannelSupport(new SubscriptionBuffer()));
     }
 
     @Test
@@ -238,5 +241,252 @@ class FhPoiToolTest {
 
         assertEquals(false, result.get("success"));
         assertTrue(result.get("error_message").toString().contains("Confirmation required"));
+    }
+
+    // ==================== 订阅三元组测试：listen_event / events / listen_stop ====================
+
+    @Test
+    void getToolDefinition_shouldIncludeSubscriptionActions() {
+        Map<String, Object> def = poiTool.getToolDefinition();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> schema = (Map<String, Object>) def.get("inputSchema");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> props = (Map<String, Object>) schema.get("properties");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> actionProp = (Map<String, Object>) props.get("action");
+        @SuppressWarnings("unchecked")
+        List<String> enumValues = (List<String>) actionProp.get("enum");
+
+        assertEquals(6, enumValues.size());
+        assertTrue(enumValues.contains("listen_event"));
+        assertTrue(enumValues.contains("events"));
+        assertTrue(enumValues.contains("listen_stop"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenListenEventNoSession() {
+        Map<String, Object> result = poiTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "listen_event"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("No active session"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldSucceed_whenListenEventInMockMode() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = poiTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "listen_event"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("listen_event", data.get("action"));
+        assertEquals("poi_task_event", data.get("channel"));
+        assertTrue(((Number) data.get("listen_id")).intValue() > 0);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldReturnEmptyStreams_whenEventsWithoutSubscription() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = poiTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "events"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        Map<String, Object> streams = (Map<String, Object>) data.get("streams");
+        assertTrue(streams.isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldReturnActiveStream_withEventAfterListen() {
+        sessionManager.createSession("uuid", "ws");
+
+        poiTool.execute(Map.of("drone_sn", DRONE_SN, "action", "listen_event"));
+
+        Map<String, Object> result = poiTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "events"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        Map<String, Object> streams = (Map<String, Object>) data.get("streams");
+        Map<String, Object> stream = (Map<String, Object>) streams.get("poi_task_event");
+
+        assertEquals(true, stream.get("active"));
+        assertEquals(1, stream.get("count"));
+
+        List<Map<String, Object>> events = (List<Map<String, Object>>) stream.get("events");
+        assertEquals(1, events.size());
+        assertNotNull(events.get(0).get("task_data"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldReturnOnlyNewerEvents_whenPollingWithSinceSeq() {
+        sessionManager.createSession("uuid", "ws");
+        poiTool.execute(Map.of("drone_sn", DRONE_SN, "action", "listen_event"));
+
+        Map<String, Object> first = poiTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "events",
+                "limit", 50
+        ));
+        Map<String, Object> firstData = (Map<String, Object>) first.get("data");
+        Map<String, Object> firstStreams = (Map<String, Object>) firstData.get("streams");
+        Map<String, Object> firstStream = (Map<String, Object>) firstStreams.get("poi_task_event");
+        List<Map<String, Object>> firstEvents = (List<Map<String, Object>>) firstStream.get("events");
+        long lastSeq = ((Number) firstEvents.get(firstEvents.size() - 1).get("_seq")).longValue();
+
+        Map<String, Object> second = poiTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "events",
+                "since_seq", lastSeq
+        ));
+        Map<String, Object> secondData = (Map<String, Object>) second.get("data");
+        Map<String, Object> secondStreams = (Map<String, Object>) secondData.get("streams");
+        Map<String, Object> secondStream = (Map<String, Object>) secondStreams.get("poi_task_event");
+
+        assertEquals(0, secondStream.get("count"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldStopExplicitChannels_whenListenStopWithChannels() {
+        sessionManager.createSession("uuid", "ws");
+        poiTool.execute(Map.of("drone_sn", DRONE_SN, "action", "listen_event"));
+
+        Map<String, Object> result = poiTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "listen_stop",
+                "channels", List.of("poi_task_event")
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        List<String> stopped = (List<String>) data.get("stopped");
+        assertEquals(List.of("poi_task_event"), stopped);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldStopAllChannels_whenListenStopWithoutChannels() {
+        sessionManager.createSession("uuid", "ws");
+        poiTool.execute(Map.of("drone_sn", DRONE_SN, "action", "listen_event"));
+
+        Map<String, Object> result = poiTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "listen_stop"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        List<String> stopped = (List<String>) data.get("stopped");
+        assertEquals(List.of("poi_task_event"), stopped);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldNotLeakRegistrations_whenListenEventCalledRepeatedly() {
+        sessionManager.createSession("uuid", "ws");
+
+        poiTool.execute(Map.of("drone_sn", DRONE_SN, "action", "listen_event"));
+        poiTool.execute(Map.of("drone_sn", DRONE_SN, "action", "listen_event"));
+        poiTool.execute(Map.of("drone_sn", DRONE_SN, "action", "listen_event"));
+
+        Map<String, Object> result = poiTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "listen_stop"
+        ));
+
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        List<String> stopped = (List<String>) data.get("stopped");
+        // 重复 listen_event 应复用同一个 registry key，不会产生多条可停止的 channel 记录
+        assertEquals(1, stopped.size());
+
+        Map<String, Object> afterStop = poiTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "listen_stop"
+        ));
+        Map<String, Object> afterStopData = (Map<String, Object>) afterStop.get("data");
+        List<String> notActive = (List<String>) afterStopData.get("not_active");
+        assertTrue(notActive.isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldReportDirectionNotApplied_whenDirectionGiven() {
+        // SDK 的 POIEnterParams 无方向字段：direction 只能校验 + 回显，
+        // 响应必须显式声明 direction_applied=false，避免 AI/测试按文档预期误判为已生效
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        session.setActiveDrcDevice(DRONE_SN);
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("drone_sn", DRONE_SN);
+        args.put("action", "start");
+        args.put("confirm", true);
+        args.put("latitude", MOCK_DRONE_LAT + 0.01);
+        args.put("longitude", MOCK_DRONE_LNG + 0.01);
+        args.put("height", 50.0);
+        args.put("radius", 30.0);
+        args.put("direction", "counter_clockwise");
+
+        Map<String, Object> result = poiTool.execute(args);
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("counter_clockwise", data.get("direction"));
+        assertEquals(false, data.get("direction_applied"));
+        assertTrue(result.get("message").toString().contains("SDK has no direction field"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getToolDefinition_shouldDeclareDirectionUnsupported() {
+        // schema 描述不能承诺方向能力，否则会引导 AI 生成错误的集成代码
+        Map<String, Object> def = poiTool.getToolDefinition();
+        Map<String, Object> schema = (Map<String, Object>) def.get("inputSchema");
+        Map<String, Object> props = (Map<String, Object>) schema.get("properties");
+        Map<String, Object> direction = (Map<String, Object>) props.get("direction");
+
+        String description = direction.get("description").toString();
+        assertTrue(description.contains("NOT SUPPORTED"));
+        assertTrue(description.contains("no direction field"));
+    }
+
+    @Test
+    void execute_dryRun_shouldNotAcquireControlOrConnectDrc() {
+        // 干跑必须在 ensureDrcLink 之前返回：不得抢控、不得建立 DRC 链路
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("drone_sn", DRONE_SN);
+        args.put("action", "start");
+        args.put("latitude", MOCK_DRONE_LAT + 0.01);
+        args.put("longitude", MOCK_DRONE_LNG + 0.01);
+        args.put("height", 50.0);
+        args.put("radius", 30.0);
+        args.put("dry_run", true);
+
+        Map<String, Object> result = poiTool.execute(args);
+
+        assertEquals(true, result.get("success"));
+        assertEquals(true, result.get("_dry_run"));
+        assertFalse(session.hasControlOf(DRONE_SN), "dry_run 不应获取控制权");
+        assertFalse(session.hasDrcLinkTo(DRONE_SN), "dry_run 不应建立 DRC 链路");
+        assertEquals(FlightPhase.IDLE, session.getFlightPhase());
     }
 }

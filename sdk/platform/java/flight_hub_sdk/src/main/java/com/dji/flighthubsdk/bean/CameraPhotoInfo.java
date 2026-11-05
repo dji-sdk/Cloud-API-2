@@ -12,7 +12,7 @@ import java.util.Objects;
 public final class CameraPhotoInfo {
     /** 见上：可能为空，非 ME 原字段 */
     private String payloadIndex;
-    /** 相机模式 */
+    /** 相机模式整型码，取值语义同 `flight_hub_sdk::CameraMode`（见 `value.h`） */
     private int cameraMode;
     /** 当前步骤（多步拍摄） */
     private int currentStep;
@@ -40,9 +40,9 @@ public final class CameraPhotoInfo {
     public String getPayloadIndex() { return payloadIndex; }
     /** @param payloadIndex 见上：可能为空，非 ME 原字段 */
     public void setPayloadIndex(String v) { this.payloadIndex = v; }
-    /** 相机模式 */
+    /** 相机模式整型码，取值语义同 `flight_hub_sdk::CameraMode`（见 `value.h`） */
     public int getCameraMode() { return cameraMode; }
-    /** @param cameraMode 相机模式 */
+    /** @param cameraMode 相机模式整型码，取值语义同 `flight_hub_sdk::CameraMode`（见 `value.h`） */
     public void setCameraMode(int v) { this.cameraMode = v; }
     /** 当前步骤（多步拍摄） */
     public int getCurrentStep() { return currentStep; }

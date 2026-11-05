@@ -20,10 +20,14 @@ import { useRoute } from 'vue-router'
 import AppTopNav from '@/components/AppTopNav.vue'
 import ChatDrawer from '@/components/ChatDrawer/ChatDrawer.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
+import { useChatAvailability } from '@/composables/useChatAvailability'
 
 const route = useRoute()
 
 const isPublicPage = computed(() => !!route.meta.public)
+
+// 顺手探测 AI 助手，与顶部导航共享同一次请求结果
+const { available: chatAvailable, probed: chatProbed } = useChatAvailability()
 </script>
 
 <template>
@@ -39,7 +43,11 @@ const isPublicPage = computed(() => !!route.meta.public)
         </Transition>
       </router-view>
     </main>
-    <ChatDrawer />
+    <!--
+      AI 助手不可用时整体不挂载：ChatDrawer 在自己的 onMounted 里注册了
+      Ctrl+/ 快捷键监听，仅隐藏按钮不足以让快捷键失效。
+    -->
+    <ChatDrawer v-if="chatProbed && chatAvailable" />
     <ToastContainer />
   </div>
 </template>

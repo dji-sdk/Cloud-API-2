@@ -1,21 +1,21 @@
 ---
 name: cloudapi2-troubleshooting
-description: DJI CloudAPI2 SDK 本地诊断 + 排障一体化。触发词：报错、错误码、error、errorCode、4001-7000、bug、修复、排查、debug、白屏、加载失败、timeout、连接失败、鉴权失败、本地诊断、现场采集、收集日志、diag.sh、report、收不到回调、listen 没反应、事件没推送、err_code、200612、实机验证、模拟器验证、偶现、时序问题、昨天还好好的、改了几次都没用、越修越乱、无法直播、直播失败、直播黑屏、打不开、设备离线、212015、EA340、EA610、DRTC、上云方式、上云 API2、底座 .env、私有化环境排查。
-version: 2.6.0
-author: DJI CloudAPI2 Team
+description: DJI Cloud API 2 SDK 本地诊断 + 排障一体化。触发词：报错、错误码、error、errorCode、4001-7000、bug、修复、排查、debug、白屏、加载失败、timeout、连接失败、鉴权失败、本地诊断、现场采集、收集日志、diag.sh、report、收不到回调、listen 没反应、事件没推送、err_code、200612、实机验证、模拟器验证、偶现、时序问题、昨天还好好的、改了几次都没用、越修越乱、无法直播、直播失败、直播黑屏、打不开、设备离线、212015、EA340、EA610、DRTC、上云方式、DJI Cloud API 2、底座 .env、私有化环境排查。
+version: 2.6.1
+author: DJI Cloud API 2 Team
 ---
 
-# DJI CloudAPI2 SDK 本地诊断 + 排障助手
+# DJI Cloud API 2 SDK 本地诊断 + 排障助手
 
 ## 这是什么
 
 单一入口。用户报错/问错误码 → 先进**本地采集 + 静态判级**（L1/L2/L3） → L1 就地给结论与建议；L2/L3 带证据包进入 **4 阶段 RCA**。一条流水线，不设 online/offline。错误码词典唯一真值源 = `error-codes.yaml`。
 
-`v2.0.0` 起替代原 `cloudapi2-diagnosis`：本地采集 / 脱敏 / 静态判级 / 报告 / 反馈由本 Skill 的 `scripts/diag.sh` 承载。
+`v2.0.0` 起替代原 `cloudapi2-diagnosis`（目录已删除）：本地采集 / 脱敏 / 静态判级 / 报告 / 反馈由本 Skill 的 `scripts/diag.sh` 承载。
 
 ## 何时触发
 
-> **先判域，再判词**：本 Skill 只处理 **DJI CloudAPI2 SDK / ISV 集成侧**的问题（SDK 方法、错误码、`fh_*` 相关能力、ISV 自己的接入代码）。"报错/bug/排查/debug"是通用动词，不能只看动词命中就触发——如果问题主体是**调用方/集成方自己业务系统内部**的代码（不涉及本 SDK 的接口、错误码或行为），不在本 Skill 处理范围内。
+> **先判域，再判词**：本 Skill 只处理 **DJI Cloud API 2 SDK / 集成商集成侧**的问题（SDK 方法、错误码、`fh_*` 相关能力、集成商自己的接入代码）。"报错/bug/排查/debug"是通用动词，不能只看动词命中就触发——如果问题主体是**调用方/集成方自己业务系统内部**的代码（不涉及本 SDK 的接口、错误码或行为），不在本 Skill 处理范围内。
 
 - 用户报错 / 说 bug
 - 用户提到错误码（4001 / 5000 / 6002 / 6 位设备码 / ERROR_* / NPE）
@@ -32,7 +32,7 @@ author: DJI CloudAPI2 Team
 
 > **纯反馈场景建议使用 `cloudapi2-feedback` Skill**——它专门面向”没有错误码但想反馈”的用户，提供更聚焦的引导。以下流程保留给 troubleshooting 排障末端（三振出局/L2/L3 升级）需要提交 issue 的场景。
 
-ISV 说”我要反馈一个问题”时往往**既没有错误码、也没复现步骤**，只有一句口语描述。不要因此把它当成需求开发打发走，也不要先追问到信息齐全再动 —— 直接走 `session` 闭环，`error_text` 字段本来就收自由文本：
+集成商说”我要反馈一个问题”时往往**既没有错误码、也没复现步骤**，只有一句口语描述。不要因此把它当成需求开发打发走，也不要先追问到信息齐全再动 —— 直接走 `session` 闭环，`error_text` 字段本来就收自由文本：
 
 ```
 diag.sh session start                        # 拿到 <id>
@@ -123,21 +123,7 @@ Loki 查询自动带上 session 的 `trace_id` 作为过滤条件（如果有）
 | `*thing-access*` / `*tas-*` | 设备接入 |
 | `*inventory-collector*` | 资产采集 |
 
-> `*beacon-reporter*`（埋点上报）已从采集范围排除，不会出现在证据包中——该服务属于内部遥测基础设施，对 ISV 问题诊断无价值且暴露内部容器信息。
-
-#### v2.6.0 增强
-
-1. **脱敏扩展**：新增 IPv6、MAC 地址、IMEI（15位数字）、JWT 三段式、PEM 私钥/证书块、GPS 经纬度降精度（保留小数点后 2 位）、设备 SN 码（key=value 和 JSON 两种格式）。命中统计从 6 类扩展到 11 类
-2. **session 限频**：同一机器 10 分钟内不可重复创建 session（`DIAG_SESSION_MIN_INTERVAL` 环境变量可调）
-3. **内容指纹去重**：`session collect` 后对 evidence.txt 做 MD5 哈希，与已有 session 比对提示重复
-4. **per-ISV 提单配额**：默认每企业上限 20 个 issued session（`DIAG_MAX_ISSUES_PER_ISV` 可调），超限警告不阻断
-5. **相似单检测**：`session issue` 前比对 error_text 前 30 字符，提示已有相似已提交单
-6. **包大小上限**：zip 打包后检查大小，200MB 警告 / 500MB 自动裁剪最大日志文件（`DIAG_MAX_PACKAGE_SIZE_MB` 可调）
-7. **TTL 清理**：`diag.sh cleanup [--days N]` 清理过期 session，`session start` 时自动静默清理 >30 天的（`DIAG_SESSION_TTL_DAYS` 可调）
-8. **容器上限**：远程采集 `MAX_CONTAINERS` 默认 10，超出按名称排序截取（skeleton-server 优先），`DIAG_MAX_CONTAINERS` 可调
-9. **容器排除**：`*beacon-reporter*`（埋点上报）已加入排除名单，不采集其日志、不出现在证据包中
-10. **issue 自动创建**：`session issue --gh <id>` 通过 `gh` CLI 直接创建 GitHub issue，AI 流程默认使用此模式
-11. **上传地址脱敏**：大日志提示中的网盘上传地址仅显示域名，路径部分自动掩码
+> `*beacon-reporter*`（埋点上报）已从采集范围排除，不会出现在证据包中——该服务属于内部遥测基础设施，对集成商问题诊断无价值且暴露内部容器信息。
 
 #### 2. 采集后：提供证据审查机会
 
@@ -375,12 +361,27 @@ session start → set(元数据) → collect(采集+判级)
 
 完整词典见**唯一真值源** `error-codes.yaml`（frontend + backend + 设备侧 6 位码）。快速索引：
 
+**前端数字码按组件解释**——同一码值在不同组件含义不同，不能跨组件套用（例：`6002` 在 WaylineEditor / FlyDataReplay 是地图初始化失败，在 WaylineView 是 WASM 运行时依赖加载失败）：
+
+| 码 | WaylineEditor | WaylineView | FlyDataReplay |
+|----|---------------|-------------|---------------|
+| 4001 | WebSocket 鉴权失败 | — | — |
+| 4002 | WebSocket 连接断开 | — | — |
+| 5000 | API 请求失败 | 航线 API 请求失败 | API 请求失败 |
+| 5001 | API 鉴权失败（401/403）| API 鉴权失败（401/403）| API 鉴权失败 |
+| 6000 | 解析失败 | 航线 KMZ 下载失败 | 解析失败 |
+| 6001 | WASM 加载失败 | 航线 KMZ 解析失败 | — |
+| 6002 | 地图初始化失败 | WASM 运行时依赖加载失败 | 地图初始化失败 |
+| 6003 | — | 地图初始化失败 | — |
+| 7000 | 文件上传失败（OSS）| — | — |
+
+- **直播大屏**用独立字符串码：`NOT_INITIALIZED` / `INVALID_SN` / `DEVICE_NOT_FOUND` / `AMBIGUOUS_DEVICE_MATCH` / `DEVICE_OFFLINE` / `NO_LIVE_CAPACITY` / `START_LIVE_FAILED` / `TOKEN_EXPIRED` / `AUTH_FAILED` / `DUPLICATE_INSTANCE` / `DRTC_SDK_LOAD_FAILED`
+- **设备小窗**没有错误码，也没有 `error` 事件——初始化失败只能通过 `loadDeviceWindow(...).catch(err => ...)` 捕获
+
+其余码段：
+
 | 码段 | 归属 | 典型问题 |
 |------|------|----------|
-| 4001-4002 | WebSocket/鉴权 | token 过期、auth 配置错误 |
-| 5000-5001 | 接口调用 | API 请求失败、参数错误 |
-| 6000-6002 | 地图/渲染 | Cesium 初始化失败、paas.js 未加载 |
-| 7000 | 通用 | 未分类错误 |
 | ERROR_* | SDK 后端 | 初始化/状态/设备未找到/回调超时/监听失败 |
 | NPE | Java | null guard 缺失 |
 | 312xxx-514xxx | 设备端 6 位码 | 升级/任务/链路/起飞前检查/直播/远程控制等 |
@@ -388,11 +389,22 @@ session start → set(元数据) → collect(采集+判级)
 | 210XXX-220XXX | 平台业务域 | 按 `2XXYYYY` 的 `XX` 判归属域，详见 `references/platform-error-response.md` |
 | 212015 / 2130xx | 设备接入 / 直播 | 设备离线、未推流 —— 私有化环境先按 `references/live-stream-device-troubleshooting.md` 查 |
 
-## 与 diagnosis 的关系（弃用）
+## 与 diagnosis 的关系（已删除）
 
-- 本 Skill 从 **v2.0.0** 起替代 `cloudapi2-diagnosis` → 本地诊断 + RCA 一条流水线。
-- `cloudapi2-diagnosis` 目录保留作历史/设计走查，其 SKILL.md 已含弃用声明。
+- 本 Skill 从 **v2.0.0** 起替代原 `cloudapi2-diagnosis` → 本地诊断 + RCA 一条流水线。
+- `cloudapi2-diagnosis` 目录已于后续版本删除（历史能力已全部并入本 Skill）。
 - 若用户提到 `cloudapi2-diagnosis` / `diag.sh`，一律转到本 Skill 的 `scripts/diag.sh`。
+
+## 版本变更（非 SOP）
+
+以下仅记录本 Skill 数据/脚本口径的变更，**不参与排障流程**：
+
+- **v2.6.1**：前端错误码按组件重新对齐（唯一真值源 `error-codes.yaml`）——`5001` = API 鉴权失败（401/403）、
+  `5000` = 通用 API 请求失败；`6000-6003` 按组件单列；补 `WaylineView` 独有的 `6003`；
+  `7000` = WaylineEditor OSS 上传失败；直播大屏 11 个字符串码、设备小窗无错误码。
+- **v2.6.0**：脱敏扩展（IPv6 / MAC / IMEI / JWT / PEM / GPS 降精度 / 设备 SN，6 类 → 11 类）；
+  session 限频、内容指纹去重、集成商提单配额、相似单提示、包大小上限、TTL 清理、
+  容器上限与排除（`*beacon-reporter*`）、`issue --gh` 自动创建、上传地址掩码。
 
 ## Memory 回写规则
 
@@ -410,7 +422,7 @@ session start → set(元数据) → collect(采集+判级)
 - `references/live-verification.md` — Stage 2.5 实机验证：前置链、验证配方、已知陷阱
 - `references/platform-error-response.md` — 平台 HTTP 响应解构：双错误码、域前缀表
 - `references/event-callback-checklist.md` — `listenXxx` 收不到回调排查清单
-- `references/live-stream-device-troubleshooting.md` — EA340/EA610 私有化环境无法直播：固件版本、上云方式（`WZR2JJ`）、DRTC/DJI CloudAPI2 底座 `.env`、端口表、两个历史案例
+- `references/live-stream-device-troubleshooting.md` — EA340/EA610 私有化环境无法直播：固件版本、上云方式（`WZR2JJ`）、DRTC/DJI Cloud API 2 底座 `.env`、端口表、两个历史案例
 - `references/replay-media-troubleshooting.md` — 回放页/媒体页照片全黑、视频停在 `0:00`：取流地址指向对象存储 `:30802`，客户网段不可达（存储健康），附两条判定命令与平台侧修复方向
 - `cloudapi2-feedback` — 独立问题反馈 Skill（纯反馈场景优先使用；共享 diag.sh 脚本）
 - `skills/_shared/constraints-common.yaml` — 跨 Skill 共享约束（8 条通用规则）

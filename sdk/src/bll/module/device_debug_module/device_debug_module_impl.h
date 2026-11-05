@@ -6,12 +6,13 @@
 #include "api/device_debug_module.h"
 #include "tool/callback_container.h"
 #include "common/util/async_capture_protect.h"
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class DeviceDebugModuleImpl : public IDeviceDebugModule, public drc_sdk::common::AsyncCaptureProtect{
 public:
-    explicit DeviceDebugModuleImpl();
+    explicit DeviceDebugModuleImpl(int session_id);
     ~DeviceDebugModuleImpl();
 
     void openDebugMode(const std::string& device_sn, const std::function<void(FlightHubError err, const OpenDebugModeResult& result)>& callback) override;
@@ -75,6 +76,7 @@ public:
     void cancelListenDeviceCloudEnvironmentSwitchProgress(int listen_id) override;
 
 private:
+    int session_id_;
 };
 
 } // namespace flight_hub_sdk

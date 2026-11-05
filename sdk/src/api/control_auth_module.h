@@ -12,12 +12,31 @@ namespace flight_hub_sdk {
 /// 控制权模块接口，提供飞行/负载控制权的抢夺、释放及状态订阅。
 class IControlAuthModule {
 public:
+    using ControlAuthResultHandler = std::function<void(FlightHubError, const ControlAuthResult&)>;
+
     virtual ~IControlAuthModule() = default;
 
     /// @brief 抢夺飞行控制权
     virtual void acquireFlightControlAuthority(const std::function<void(FlightHubError)>& callback) = 0;
     /// @brief 释放飞行控制权
     virtual void releaseFlightControlAuthority(const std::function<void(FlightHubError)>& callback) = 0;
+
+    /// @brief 抢夺飞行控制权并返回 controls/bid
+    virtual void acquireFlightControlAuthorityWithResult(const ControlAuthResultHandler& callback) {
+        acquireFlightControlAuthority([callback](FlightHubError err) {
+            if (callback) {
+                callback(err, ControlAuthResult{});
+            }
+        });
+    }
+    /// @brief 释放飞行控制权并返回 controls/bid
+    virtual void releaseFlightControlAuthorityWithResult(const ControlAuthResultHandler& callback) {
+        releaseFlightControlAuthority([callback](FlightHubError err) {
+            if (callback) {
+                callback(err, ControlAuthResult{});
+            }
+        });
+    }
     /// @brief 订阅飞行控制权状态
     /// @return 监听 ID，用于取消订阅
     virtual int listenFlightControlAuthority(const std::function<void(bool)>& callback) = 0;
@@ -31,6 +50,23 @@ public:
     /// @brief 释放负载控制权
     /// @param payload_index 负载索引
     virtual void releasePayloadControlAuthority(const std::string& payload_index, const std::function<void(FlightHubError)>& callback) = 0;
+
+    /// @brief 抢夺负载控制权并返回 controls/bid
+    virtual void acquirePayloadControlAuthorityWithResult(const std::string& payload_index, const ControlAuthResultHandler& callback) {
+        acquirePayloadControlAuthority(payload_index, [callback](FlightHubError err) {
+            if (callback) {
+                callback(err, ControlAuthResult{});
+            }
+        });
+    }
+    /// @brief 释放负载控制权并返回 controls/bid
+    virtual void releasePayloadControlAuthorityWithResult(const std::string& payload_index, const ControlAuthResultHandler& callback) {
+        releasePayloadControlAuthority(payload_index, [callback](FlightHubError err) {
+            if (callback) {
+                callback(err, ControlAuthResult{});
+            }
+        });
+    }
     /// @brief 订阅负载控制权状态
     /// @param payload_index 负载索引
     /// @return 监听 ID，用于取消订阅

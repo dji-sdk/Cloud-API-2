@@ -4,7 +4,6 @@
 #pragma once
 
 #include "api/dock.h"
-#include "api/deploy_module.h"
 #include "api/dock_control_module.h"
 #include "bll/module/dock_osd_module/dock_osd_module_impl.h"
 #include "bll/module/device_debug_module/device_debug_module_impl.h"
@@ -17,13 +16,13 @@
 #include <string>
 #include <memory>
 #include <unordered_map>
-
 namespace flight_hub_sdk {
 
 class DockImpl : public IDock, public drc_sdk::common::AsyncCaptureProtect {
 public:
     DockImpl(
         const std::string& sn,
+        int session_id,
         const std::shared_ptr<message_engine::IRtcChannelManagerBridge>& rtc_channel_manager_bridge = nullptr,
         const std::shared_ptr<message_engine::IMqttClientManagerBridge>& mqtt_client_manager_bridge = nullptr);
     ~DockImpl() override;
@@ -32,7 +31,6 @@ public:
     std::shared_ptr<ILiveRecordModule> getLiveRecord(const LiveInfo& params) override;
 
     std::shared_ptr<ILiveDeviceModule> getLiveDeviceModule() override;
-    std::shared_ptr<IDeployModule> getDeployModule() override;
     std::shared_ptr<IDockControlModule> getDockControlModule() override;
     std::shared_ptr<IDockOsdModule> getDockOsdModule() override;
 
@@ -44,9 +42,9 @@ public:
 
 private:
     std::string sn_;
+    int session_id_;
     std::unordered_map<std::string, std::shared_ptr<ILiveModule>> live_module_map_;
     std::unordered_map<std::string, std::shared_ptr<ILiveRecordModule>> live_record_module_map_;
-    std::shared_ptr<IDeployModule> deploy_module_;
     std::shared_ptr<IDockControlModule> dock_control_module_;
     std::shared_ptr<IDockOsdModule> dock_osd_module_;
 

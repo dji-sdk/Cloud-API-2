@@ -16,7 +16,7 @@ public class MaintenanceOrderDeviceItemParams {
     private String nameplateSn = "";
     /** 报修来源类型：0=定损 2=日志反馈 3=直接报修; */
     private int sourceType;
-    /** 来源关联 ID, 来源关联 ID，无则传空字符串; */
+    /** 来源关联 ID（请求体键为 source_reference_id），无则传空字符串; */
     private String sourceRefId = "";
 
     public MaintenanceOrderDeviceItemParams() {
@@ -73,12 +73,12 @@ public class MaintenanceOrderDeviceItemParams {
         this.sourceType = sourceType;
     }
 
-    /** 来源关联 ID, 来源关联 ID，无则传空字符串; */
+    /** 来源关联 ID（请求体键为 source_reference_id），无则传空字符串; */
     public String getSourceRefId() {
         return sourceRefId;
     }
 
-    /** @param sourceRefId 来源关联 ID, 来源关联 ID，无则传空字符串; */
+    /** @param sourceRefId 来源关联 ID（请求体键为 source_reference_id），无则传空字符串; */
     public void setSourceRefId(String sourceRefId) {
         this.sourceRefId = sourceRefId != null ? sourceRefId : "";
     }

@@ -3,6 +3,8 @@
 
 package com.dji.flighthubsdk.bean;
 
+import com.dji.flighthubsdk.value.SpeedMode;
+
 import java.util.List;
 
 import java.util.Objects;
@@ -16,6 +18,16 @@ public class FlyToUpdateTargetPointsParams {
     private List<FlyToTargetPoint> points;
     /** 最大飞行速度，单位：m/s */
     private int maxSpeed;
+    /**
+     * 速度模式（速度档位）。{@link SpeedMode#UNKNOWN} 表示未设置，此时不下发该字段、设备保持当前模式。
+     */
+    private SpeedMode speedMode = SpeedMode.UNKNOWN;
+    /** 高度上限开关。-1 未设置（设备保持当前设置）；0=false；1=true */
+    private int realHeightCapEnabled = -1;
+    /** 高度上限值（米），范围 20-1500。-1 表示未设置 */
+    private int realHeightCapLimit = -1;
+    /** 是否需要验证飞行控制权。-1 未设置；0=false；1=true */
+    private int needVerifyFlightControl = -1;
 
     public FlyToUpdateTargetPointsParams() {
     }
@@ -38,6 +50,32 @@ public class FlyToUpdateTargetPointsParams {
     /** @param maxSpeed 最大飞行速度，单位：m/s */
     public void setMaxSpeed(int maxSpeed) { this.maxSpeed = maxSpeed; }
 
+    /** 速度模式（速度档位）。UNKNOWN 表示未设置，不下发该字段 */
+    public SpeedMode getSpeedMode() { return speedMode; }
+    /** @param speedMode 速度模式；传 null 或 UNKNOWN 表示不设置 */
+    public void setSpeedMode(SpeedMode speedMode) {
+        this.speedMode = speedMode != null ? speedMode : SpeedMode.UNKNOWN;
+    }
+    /** 高度上限开关。-1 未设置；0=false；1=true */
+    public int getRealHeightCapEnabled() { return realHeightCapEnabled; }
+    /** @param realHeightCapEnabled -1 未设置；0=false；1=true */
+    public void setRealHeightCapEnabled(int realHeightCapEnabled) {
+        this.realHeightCapEnabled = realHeightCapEnabled;
+    }
+    /** 高度上限值（米），范围 20-1500。-1 表示未设置 */
+    public int getRealHeightCapLimit() { return realHeightCapLimit; }
+    /** @param realHeightCapLimit 高度上限值（米），20-1500；传 -1 表示不设置 */
+    public void setRealHeightCapLimit(int realHeightCapLimit) {
+        this.realHeightCapLimit = realHeightCapLimit;
+    }
+
+    /** 是否需要验证飞行控制权。-1 未设置；0=false；1=true */
+    public int getNeedVerifyFlightControl() { return needVerifyFlightControl; }
+    /** @param needVerifyFlightControl -1 未设置；0=false；1=true */
+    public void setNeedVerifyFlightControl(int needVerifyFlightControl) {
+        this.needVerifyFlightControl = needVerifyFlightControl;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -50,12 +88,17 @@ public class FlyToUpdateTargetPointsParams {
         return Objects.equals(flyToId, that.flyToId)
                 && Objects.equals(startPoint, that.startPoint)
                 && Objects.equals(points, that.points)
-                && maxSpeed == that.maxSpeed;
+                && maxSpeed == that.maxSpeed
+                && Objects.equals(speedMode, that.speedMode)
+                && realHeightCapEnabled == that.realHeightCapEnabled
+                && realHeightCapLimit == that.realHeightCapLimit
+                && needVerifyFlightControl == that.needVerifyFlightControl;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(flyToId, startPoint, points, maxSpeed);
+        return Objects.hash(flyToId, startPoint, points, maxSpeed,
+                speedMode, realHeightCapEnabled, realHeightCapLimit, needVerifyFlightControl);
     }
 
     @Override
@@ -65,6 +108,10 @@ public class FlyToUpdateTargetPointsParams {
                 + ", startPoint=" + startPoint
                 + ", points=" + points
                 + ", maxSpeed=" + maxSpeed
+                + ", speedMode=" + speedMode
+                + ", realHeightCapEnabled=" + realHeightCapEnabled
+                + ", realHeightCapLimit=" + realHeightCapLimit
+                + ", needVerifyFlightControl=" + needVerifyFlightControl
                 + '}';
     }
 }

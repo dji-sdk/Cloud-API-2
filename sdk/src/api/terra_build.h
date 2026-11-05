@@ -105,10 +105,11 @@ struct TerraBuildModelFileItem {
     int sub_file_type = 0;                  // 文件子类型
     int state = 0;                          // 建图文件状态, {0:未知, 1:模型文件解压中, 2:模型文件解压成功, 3:模型文件解压失败, 4:选择坐标系, 5:格式转换中, 6:格式转换成功, 7:格式转换失败, 8:建图失败, 9:模型导入成功, 10:格式校验中, 11:格式校验失败, 12:等待Terra Cloud资源中, 13:等待资源失败, 14:重建中, 15:重建成功, 16:重建取消, 17:等待图片上传, 119:空三运行失败, 120:空三运行中, 121:空三等待资源中, 122:空三等待资源失败, 123:空三被终止或取消, 124:空三完成DMV解析中, 125:DMV解析失败, 126:DMV解析成功等待刺点}
     std::vector<int> reconstruction_type;   // 重建类型（数组）
-    std::string thumbnail_url;
-    std::string zip_url;                    // 打包下载 URL
-    std::string created_at;
-    std::string updated_at;
+    std::string preview_url;                // 后端列表返回的预览图 URL
+    std::string thumbnail_url;              // 兼容字段，值等同 preview_url；后续版本建议改用 preview_url
+    std::string zip_url;                    // 兼容字段，列表接口不返回；ZIP URL 请走 getModelFileUrl
+    std::string created_at;                 // 创建时间（ISO 8601）
+    std::string updated_at;                 // 更新时间（ISO 8601）
 };
 
 /// 模型文件列表结果
@@ -382,6 +383,12 @@ struct TerraShowOnMapResult {
     std::vector<int> ids;  // 实际被操作的文件 ID 列表
 };
 
+/// 模型删除结果（含被权限锁定的文件）
+struct TerraDeleteModelFilesResult {
+    bool has_lock_files = false;              // 是否存在被锁定文件
+    std::vector<std::string> lock_files;      // 被锁定文件的原始 JSON（每个元素一个文件对象）
+};
+
 // ─────────────────────────────────────────────────────────
 // WebSocket 推送消息结构体 — 新增 terra 相关
 // ─────────────────────────────────────────────────────────
@@ -421,7 +428,7 @@ struct TerraFileShowOnMapMsg {
 };
 
 // ─────────────────────────────────────────────────────────────────────
-// topic_media_file_hide_on_map — 模型隐藏地图推送（来自 file-storage）
+// topic_media_file_hide_on_map — 模型隐藏地图推送（来自云端媒体服务）
 // ─────────────────────────────────────────────────────────────────────
 
 /// 模型隐藏地图消息（Delete/BatchDelete 触发）
@@ -430,7 +437,7 @@ struct TerraMediaFileHideOnMapMsg {
 };
 
 // ─────────────────────────────────────────────────────────────────────
-// topic_media_file_show_on_map — 模型显示地图推送（来自 file-storage）
+// topic_media_file_show_on_map — 模型显示地图推送（来自云端媒体服务）
 // ─────────────────────────────────────────────────────────────────────
 
 /// 单个上图模型文件摘要
@@ -483,6 +490,15 @@ struct TerraSelectFilterParams {
     std::optional<int> selected_parent_id;  // 选中范围的父目录 ID（uint32）
     std::vector<int> except_ids;            // 排除的文件 ID 列表
     std::string key;                        // 关键字模糊搜索
+    bool get_sub_file = false;              // 是否包含子文件
+    long long start_time = 0;               // 开始时间
+    long long end_time = 0;                 // 结束时间
+    std::vector<std::string> file_all_types;    // 文件类型过滤
+    std::vector<std::string> payload_model_key; // 负载型号过滤
+    int parent_id = 0;                      // 父目录 ID
+    std::vector<std::string> file_tags;     // 文件标签过滤
+    std::optional<int> share_state;         // 分享状态：0=未分享 1=分享中 2=取消分享
+    std::optional<bool> show_on_map;        // 是否已上图
 };
 
 /// TerraShowOnMapParams — 批量加载/取消加载模型到地图请求参数
@@ -490,6 +506,10 @@ struct TerraShowOnMapParams {
     std::vector<int> ids;                           // 指定文件 ID 列表（与 select_filter 二选一）
     std::optional<bool> show_on_map;                // true=加载，false=取消加载
     std::optional<bool> is_distributed;             // 是否已分发
+    bool restore = false;                           // 恢复
+    std::optional<bool> is_displayed;               // 是否显示
+    std::optional<bool> in_uniform_height;          // 等高模式
+    std::optional<int> model_display_mod;           // 显示模式
     std::optional<TerraSelectFilterParams> select_filter; // 全选过滤条件
 };
 
@@ -739,6 +759,26 @@ public:
         const std::vector<int>& file_ids,
         std::function<void(FlightHubError err)> callback) = 0;
 
+    /// @brief 删除单个模型文件（返回被锁定文件列表）
+    /// @param file_id 文件 ID
+    /// @param callback 结果回调
+    /// @internal
+    /// 链路: HTTP | DELETE /model/api/v1/files/{file_id}
+    /// @endinternal
+    virtual void deleteModelFileWithResult(
+        int file_id,
+        std::function<void(FlightHubError err, const TerraDeleteModelFilesResult& result)> callback) = 0;
+
+    /// @brief 批量删除模型文件（返回被锁定文件列表）
+    /// @param file_ids 文件 ID 列表
+    /// @param callback 结果回调
+    /// @internal
+    /// 链路: HTTP | DELETE /model/api/v1/files?ids=1,2,3
+    /// @endinternal
+    virtual void batchDeleteModelFilesWithResult(
+        const std::vector<int>& file_ids,
+        std::function<void(FlightHubError err, const TerraDeleteModelFilesResult& result)> callback) = 0;
+
     /// @brief 创建全景拼接任务
     /// @param params 全景参数
     /// @param callback 结果回调
@@ -860,7 +900,7 @@ public:
 
     virtual void cancelListenTerraMediaFileHideOnMap(int listen_id) = 0;
 
-    /// @brief 订阅模型显示地图推送（来自 file-storage BatchShowOnMap）
+    /// @brief 订阅模型显示地图推送（来自云端媒体服务 BatchShowOnMap）
     /// @return 监听 ID
     /// @internal 链路: WebSocket | topic: topic_media_file_show_on_map @endinternal
     virtual int listenTerraMediaFileShowOnMap(

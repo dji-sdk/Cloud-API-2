@@ -11,6 +11,12 @@ import java.util.Objects;
 public class GetMediaFilesListParams {
     /** [可选参数] 飞行航线 ID, 传空字符串("")表示不指定具体的航线 ID; */
     private String flightId = "";
+    /** [可选参数] 航线 UUID 过滤, 传空字符串表示不指定; */
+    private String waylineUuid = "";
+    /** [可选参数] 航点动作 UUID 过滤, 传空字符串表示不指定; */
+    private String waylineActionUuid = "";
+    /** [可选参数] 负载类型过滤, 比如: ["1-98-0"]; */
+    private List<String> payloadTypes = new ArrayList<>();
     /** [必须参数] 下一页请求的起始 index(第一次查询传入 0, 请求的响应结果返回会返回下一页起始索引); */
     private int startIndex = 0;
     /** [必须参数] 每页大小(比如可以传 100, 默认可传 100, 最大500); */
@@ -32,6 +38,18 @@ public class GetMediaFilesListParams {
     public String getFlightId() { return flightId; }
     /** @param flightId [可选参数] 飞行航线 ID, 传空字符串("")表示不指定具体的航线 ID; */
     public void setFlightId(String flightId) { this.flightId = flightId != null ? flightId : ""; }
+    /** [可选参数] 航线 UUID 过滤, 传空字符串表示不指定; */
+    public String getWaylineUuid() { return waylineUuid; }
+    /** @param waylineUuid [可选参数] 航线 UUID 过滤, 传空字符串表示不指定; */
+    public void setWaylineUuid(String waylineUuid) { this.waylineUuid = waylineUuid != null ? waylineUuid : ""; }
+    /** [可选参数] 航点动作 UUID 过滤, 传空字符串表示不指定; */
+    public String getWaylineActionUuid() { return waylineActionUuid; }
+    /** @param waylineActionUuid [可选参数] 航点动作 UUID 过滤, 传空字符串表示不指定; */
+    public void setWaylineActionUuid(String waylineActionUuid) { this.waylineActionUuid = waylineActionUuid != null ? waylineActionUuid : ""; }
+    /** [可选参数] 负载类型过滤, 比如: ["1-98-0"]; */
+    public List<String> getPayloadTypes() { return payloadTypes; }
+    /** @param payloadTypes [可选参数] 负载类型过滤, 比如: ["1-98-0"]; */
+    public void setPayloadTypes(List<String> payloadTypes) { this.payloadTypes = payloadTypes != null ? payloadTypes : new ArrayList<>(); }
     /** [必须参数] 下一页请求的起始 index(第一次查询传入 0, 请求的响应结果返回会返回下一页起始索引); */
     public int getStartIndex() { return startIndex; }
     /** @param startIndex [必须参数] 下一页请求的起始 index(第一次查询传入 0, 请求的响应结果返回会返回下一页起始索引); */
@@ -67,6 +85,9 @@ public class GetMediaFilesListParams {
         }
         GetMediaFilesListParams that = (GetMediaFilesListParams) o;
         return Objects.equals(flightId, that.flightId)
+                && Objects.equals(waylineUuid, that.waylineUuid)
+                && Objects.equals(waylineActionUuid, that.waylineActionUuid)
+                && Objects.equals(payloadTypes, that.payloadTypes)
                 && startIndex == that.startIndex
                 && pageSize == that.pageSize
                 && Objects.equals(fileTypes, that.fileTypes)
@@ -79,6 +100,9 @@ public class GetMediaFilesListParams {
     public int hashCode() {
         return Objects.hash(
                 flightId,
+                waylineUuid,
+                waylineActionUuid,
+                payloadTypes,
                 startIndex,
                 pageSize,
                 fileTypes,
@@ -91,6 +115,9 @@ public class GetMediaFilesListParams {
     public String toString() {
         return "GetMediaFilesListParams{"
                 + "flightId='" + flightId + '\''
+                + ", waylineUuid='" + waylineUuid + '\''
+                + ", waylineActionUuid='" + waylineActionUuid + '\''
+                + ", payloadTypes=" + payloadTypes
                 + ", startIndex=" + startIndex
                 + ", pageSize=" + pageSize
                 + ", fileTypes=" + fileTypes

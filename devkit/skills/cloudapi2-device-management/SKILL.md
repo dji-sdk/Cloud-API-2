@@ -1,15 +1,15 @@
 ---
 name: cloudapi2-device-management
-description: Cloud API 2.0 SDK 设备管理模块接入助手。当用户要在 skeleton 后端项目中扩展设备管理功能（设备列表、设备状态订阅、HMS 告警、设备上下线、固件升级、控制权获取等），或新建自定义 feature 模块时调用。触发词：设备管理、设备列表、设备状态订阅、HMS 告警、固件升级、设备上下线、DeviceOnlineEvent、DeviceOfflineEvent、OsdUpdateEvent、HmsAlertEvent、DeviceStatusService、feature 模块、KernelEvent、EventListener、listen/cancel、getDroneInstance、getDockInstance。
-version: 1.1.0
-author: DJI CloudAPI2 Team
+description: DJI Cloud API 2 SDK 设备管理模块接入助手。当用户要在 skeleton 后端项目中扩展设备管理功能（设备列表、设备状态订阅、HMS 告警、设备上下线、固件升级、控制权获取等），或新建自定义 feature 模块时调用；也覆盖设备运维类模块的 Java 调用代码（机场空调/补光灯/充电/舱盖控制、设备调试、日志管理、维修工单、设备自诊断、RTK 标定、网络测试）。触发词：设备管理、设备列表、设备状态订阅、HMS 告警、固件升级、设备上下线、DeviceOnlineEvent、DeviceOfflineEvent、OsdUpdateEvent、HmsAlertEvent、DeviceStatusService、feature 模块、KernelEvent、EventListener、listen/cancel、getDroneInstance、getDockInstance、DockControlModule、DeviceDebugModule、LogManagementModule、MaintenanceManagementModule、DiagnosisManagementModule、RtkCalibrationModule、NetworkTestModule。
+version: 1.2.0
+author: DJI Cloud API 2 Team
 ---
 
-# DJI CloudAPI2 SDK 设备管理接入助手
+# DJI Cloud API 2 SDK 设备管理接入助手
 
 ## 这个 Skill 是干什么的
 
-帮 ISV 开发者在 **skeleton 后端项目**（Spring Boot 3.2.5 + Java 17）中正确扩展设备管理功能：新建 feature 模块、接入 SDK 事件、暴露 REST API、处理 OSD/HMS 数据。
+帮集成商开发者在 **skeleton 后端项目**（Spring Boot 3.2.5 + Java 17）中正确扩展设备管理功能：新建 feature 模块、接入 SDK 事件、暴露 REST API、处理 OSD/HMS 数据。
 
 ## 何时触发
 
@@ -68,6 +68,14 @@ author: DJI CloudAPI2 Team
 │   └── @EventListener + HmsAlertEvent → bounded deque + 分级处理
 ├── 设备控制指令
 │   └── 需要 acquireFlightControlAuthority → 指令 → release
+├── 固件升级 / OTA 进度
+│   └── 加载 references/firmware-management.md（工作空间级 FirmwareManageModule，非设备级）
+├── 机场辅助设备控制（摄像头切换/空调/补光灯/充电/舱盖）
+│   └── 加载 references/device-lifecycle.md 的 DockControlModule 节（挂在 Dock 上）
+├── 设备调试类控制（调试模式/舱盖开关/重启格式化/限飞限高/eSIM切换/Geo Caging）
+│   └── 加载 references/device-debug.md（DeviceDebugModule，59 方法，设备级）
+├── 运维长尾能力（日志管理/维修工单/设备自诊断/RTK 标定/网络测试）
+│   └── 加载 references/ops-reporting.md
 ├── 新建 feature 模块
 │   └── 按 playbooks/add-device-feature.yaml 步骤执行
 └── 其他 SDK 调用
@@ -91,7 +99,7 @@ skeleton/
     └── fh-skeleton-app/     ← 启动入口，聚合所有模块
 ```
 
-ISV 扩展方式：在 `feature/` 下新建模块，通过 `@EventListener` 消费 kernel-spi 中定义的事件。
+集成商扩展方式：在 `feature/` 下新建模块，通过 `@EventListener` 消费 kernel-spi 中定义的事件。
 
 ## 权威参考
 
@@ -99,6 +107,9 @@ ISV 扩展方式：在 `feature/` 下新建模块，通过 `@EventListener` 消�
 - `references/device-lifecycle.md` — 设备上下线生命周期
 - `references/osd-subscription.md` — OSD 数据订阅模式
 - `references/hms-alert-handling.md` — HMS 告警分级处理
+- `references/firmware-management.md` — 固件升级（FirmwareManageModule，工作空间级）
+- `references/device-debug.md` — 设备调试与运维控制（DeviceDebugModule，59 方法）
+- `references/ops-reporting.md` — 长尾运维模块（LogManagementModule/MaintenanceManagementModule/DiagnosisManagementModule/RtkCalibrationModule/NetworkTestModule）
 - `playbooks/add-device-feature.yaml` — 新建 feature 模块步骤
 - `snippets/` — 代码模板
 

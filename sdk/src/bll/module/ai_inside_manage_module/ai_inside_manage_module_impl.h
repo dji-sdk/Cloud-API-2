@@ -13,7 +13,7 @@ namespace flight_hub_sdk {
 class AIInsideManageModuleImpl : public IAIInsideManageModule,
                                   public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit AIInsideManageModuleImpl();
+    explicit AIInsideManageModuleImpl(int session_id);
     ~AIInsideManageModuleImpl() override = default;
 
     void getAIInsideModels(
@@ -48,6 +48,7 @@ public:
         std::function<void(FlightHubError err, UploadAIInsideAlgorithmFileResult result)> callback) override;
 
 private:
+    int session_id_;
 
     /// 根据 provider 创建对应的云存储上传器（返回 shared_ptr 以便捕获到异步 lambda 中延长生命周期）
     std::shared_ptr<ICloudStorageUploader> getCloudStorageUploader(const std::string& provider);

@@ -10,18 +10,21 @@
 #include <string>
 #include <functional>
 #include "tool/callback_container.h"
+#include <memory>
 #include <BusinessManager.h>
 
 namespace flight_hub_sdk {
 
 class FlightCtrlMgr : public drc_sdk::common::AsyncCaptureProtect {
 public:
-    FlightCtrlMgr(const std::string& drone_sn, const std::string& gateway_sn, const std::shared_ptr<message_engine::IMessageEngine>& message_engine, int drone_instance_id);
+    FlightCtrlMgr(const std::string& drone_sn, const std::string& gateway_sn, const std::shared_ptr<message_engine::IMessageEngine>& message_engine, int drone_instance_id, int session_id);
     ~FlightCtrlMgr() override;
 
     // acquire/release 发 HTTP（手飞云控）；listen 订阅 NC topic_drone_cloud_control_status
     void acquireFlightControlAuthority(const std::function<void(FlightHubError)>& callback);
     void releaseFlightControlAuthority(const std::function<void(FlightHubError)>& callback);
+    void acquireFlightControlAuthorityWithResult(const std::function<void(FlightHubError, const ControlAuthResult&)>& callback);
+    void releaseFlightControlAuthorityWithResult(const std::function<void(FlightHubError, const ControlAuthResult&)>& callback);
     int listenFlightControlAuthority(const std::function<void(bool)>& callback);
     void cancelListenFlightControlAuthority(int listen_id);
 
@@ -32,6 +35,7 @@ public:
     // ── Flight Control Auxiliary ──
     void drcSetDroneHover(int duration, const std::function<void(FlightHubError err)>& callback);
     void drcSetFollowMouseParameter(int speed, const std::function<void(FlightHubError err)>& callback);
+    void drcSetFlyingMaxSpeed(double speed, const std::function<void(FlightHubError err)>& callback);
     void drcSetNightLightsState(int night_lights_state, const std::function<void(FlightHubError err)>& callback);
     void drcSetStealthState(int stealth_state, const std::function<void(FlightHubError err)>& callback);
     void drcOpenParachute(int force, const std::function<void(FlightHubError err)>& callback);
@@ -47,6 +51,8 @@ public:
     void cancelListenDrcParachuteInfo(int listen_id);
     int listenDrcFlashLed(const std::function<void(const FlashLedStateInfo& info)>& callback);
     void cancelListenDrcFlashLed(int listen_id);
+    int listenDrcLandingMissionState(const std::function<void(const DrcLandingMissionState& info)>& callback);
+    void cancelListenDrcLandingMissionState(int listen_id);
 
 private:
     int instance_id_ = 0;
@@ -75,11 +81,16 @@ private:
     void initFlashLedListening();
     void onReceiveFlashLedState(const std::shared_ptr<message_engine::DrcDrcDroneStatePushNorthbound>& msg);
 
+    // Landing Mission State
+    void initLandingMissionStateListening();
+    void onReceiveLandingMissionState(const std::shared_ptr<message_engine::DrcLandingMissionStateNorthbound>& msg);
+
     std::shared_ptr<message_engine::IMessageEngine> message_engine_;
 
     /// params
     std::string drone_sn_;
     std::string gateway_sn_;
+    int session_id_;
 
     notification_center::ControlRightsCloudControlStatus flight_control_authority_msg_;
 
@@ -90,6 +101,7 @@ private:
     CallbackContainer<DrcBatteriesInfo> batteries_info_callback_container_;
     CallbackContainer<DrcParachuteInfo> parachute_info_callback_container_;
     CallbackContainer<FlashLedStateInfo> flash_led_callback_container_;
+    CallbackContainer<DrcLandingMissionState> landing_mission_state_callback_container_;
 
     // listen id
     int flight_control_authority_listen_id_ = -1;
@@ -98,6 +110,7 @@ private:
     int batteries_info_listen_id_ = -1;
     int parachute_info_listen_id_ = -1;
     int flash_led_listen_id_ = -1;
+    int landing_mission_state_listen_id_ = -1;
 };
 
 }  // namespace flight_hub_sdk

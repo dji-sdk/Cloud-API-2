@@ -18,6 +18,7 @@ package com.dji.flighthub.mcp.tools.drc;
 
 import com.dji.flighthub.mcp.sdk.SdkCallbackBridge;
 import com.dji.flighthub.mcp.sdk.SdkService;
+import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
@@ -37,7 +38,8 @@ import java.util.concurrent.CompletableFuture;
  * 飞行控制权是全局独占资源，同一时刻只有一个操作者可以控制设备。
  * 操作完成后必须调用 fh_control_release 释放控制权。
  *
- * <p>安全等级：L0（获取控制权是可逆操作，可通过 release 释放；无需确认）
+ * <p>安全等级：工具级声明 L2（FLIGHT，门控基线）。
+ * 控制权可通过 fh_control_release 释放；本工具要求人工确认，无额外 per-action 门控。
  *
  * @author DJI FlightHub SDK Team
  */
@@ -51,6 +53,9 @@ public class FhControlAcquireTool extends AbstractMcpTool {
 
     /** drone_sn 参数名 */
     private static final String PARAM_DRONE_SN = "drone_sn";
+
+    /** 操作标识（用于 confirm 校验与日志） */
+    private static final String ACTION_ACQUIRE = "control_acquire";
 
     /** 控制权授予后的警告信息 */
     private static final String WARNING_RELEASE_REQUIRED =
@@ -77,7 +82,19 @@ public class FhControlAcquireTool extends AbstractMcpTool {
 
     @Override
     public boolean requiresHumanConfirmation() {
-        return false;
+        return true;
+    }
+
+    /**
+     * 声明工具级静态安全等级：FLIGHT。
+     * 获取飞行控制权后可执行 NED 速度与安全限高设置，会话将获得完整的控制能力，
+     * 故按接管级操作（L2）门控，并要求人工确认。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.FLIGHT;
     }
 
     @Override
@@ -125,6 +142,22 @@ public class FhControlAcquireTool extends AbstractMcpTool {
         if (droneSn == null) {
             return errorResult("Missing required parameter: drone_sn",
                     "Provide drone_sn. Use fh_device_list to get available drone SNs.");
+        }
+
+        // 2.5 安全等级硬拦截（session.maxSecurityLevel < L2 时直接拒绝）
+        Map<String, Object> denied = enforceToolSecurityLevel();
+        if (denied != null) {
+            return denied;
+        }
+
+        // 2.6 接管前人工确认（授权不可被 confirm 绕过，确认仅在授权范围内放行）
+        //    dry_run 模式无需确认，直接走预览分支
+        if (!isDryRun(args)) {
+            Map<String, Object> confirmError = requireHumanConfirm(args, ACTION_ACQUIRE, droneSn,
+                    "Acquire flight control authority for drone " + droneSn + "?");
+            if (confirmError != null) {
+                return confirmError;
+            }
         }
 
         // 3. 跨 session 冲突检测（多 session 模式下，另一个用户可能已持有控制权）

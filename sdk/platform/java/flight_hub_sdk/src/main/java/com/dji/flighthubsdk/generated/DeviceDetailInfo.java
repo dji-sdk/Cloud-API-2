@@ -76,11 +76,11 @@ public class DeviceDetailInfo {
     return (cPtr == 0) ? null : new ModelInfo(cPtr, false);
   }
 
-  public void setDevice_add_time(int value) {
+  public void setDevice_add_time(long value) {
     flighthubsdkmoduleJNI.DeviceDetailInfo_device_add_time_set(swigCPtr, this, value);
   }
 
-  public int getDevice_add_time() {
+  public long getDevice_add_time() {
     return flighthubsdkmoduleJNI.DeviceDetailInfo_device_add_time_get(swigCPtr, this);
   }
 
@@ -131,6 +131,14 @@ public class DeviceDetailInfo {
   public SubDeviceInfoVector getSub_devices() {
     long cPtr = flighthubsdkmoduleJNI.DeviceDetailInfo_sub_devices_get(swigCPtr, this);
     return (cPtr == 0) ? null : new SubDeviceInfoVector(cPtr, false);
+  }
+
+  public void setDevice_state(String value) {
+    flighthubsdkmoduleJNI.DeviceDetailInfo_device_state_set(swigCPtr, this, value);
+  }
+
+  public String getDevice_state() {
+    return flighthubsdkmoduleJNI.DeviceDetailInfo_device_state_get(swigCPtr, this);
   }
 
   public DeviceDetailInfo() {

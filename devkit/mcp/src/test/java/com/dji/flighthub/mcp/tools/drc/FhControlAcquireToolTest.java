@@ -85,25 +85,38 @@ class FhControlAcquireToolTest {
     }
 
     @Test
-    void acquire_shouldSucceedWithoutConfirm() {
+    void acquire_shouldReturnErrorWithoutConfirm() {
         SessionContext session = sessionManager.createSession("uuid", "ws");
 
         Map<String, Object> result = acquireTool.execute(Map.of(
                 "drone_sn", DRONE_SN
         ));
 
-        assertEquals(true, result.get("success"),
-                "无需 confirm，直接执行成功");
+        assertEquals(false, result.get("success"), "L2 接管操作无 confirm 时拒绝执行");
+        assertTrue(result.get("error_message").toString().contains("Confirmation required"));
+        assertFalse(session.hasControlOf(DRONE_SN));
+    }
+
+    @Test
+    void acquire_shouldSucceed_whenConfirmed() {
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = acquireTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "confirm", true
+        ));
+
+        assertEquals(true, result.get("success"), "confirm=true 放行接管");
         assertTrue(session.hasControlOf(DRONE_SN));
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void acquire_shouldSucceedInMockMode() {
         SessionContext session = sessionManager.createSession("uuid", "ws");
 
         Map<String, Object> result = acquireTool.execute(Map.of(
-                "drone_sn", DRONE_SN
+                "drone_sn", DRONE_SN,
+                "confirm", true
         ));
 
         assertEquals(true, result.get("success"));
@@ -128,7 +141,8 @@ class FhControlAcquireToolTest {
         session.setActiveControlDevice(ANOTHER_DRONE_SN);
 
         Map<String, Object> result = acquireTool.execute(Map.of(
-                "drone_sn", DRONE_SN
+                "drone_sn", DRONE_SN,
+                "confirm", true
         ));
 
         assertEquals(false, result.get("success"));
@@ -142,7 +156,8 @@ class FhControlAcquireToolTest {
         session.setActiveControlDevice(DRONE_SN);
 
         Map<String, Object> result = acquireTool.execute(Map.of(
-                "drone_sn", DRONE_SN
+                "drone_sn", DRONE_SN,
+                "confirm", true
         ));
 
         assertEquals(false, result.get("success"));
@@ -227,7 +242,7 @@ class FhControlAcquireToolTest {
 
     @Test
     void acquire_shouldSucceed_whenElicitationBridgePresent() {
-        // L0 操作无需确认，即使 ClientBridge 已设置也不触发 elicitation
+        // L2 接管操作：bridge 存在时触发人工弹窗，真人 ACCEPT 放行
         SessionContext session = sessionManager.createSession("uuid", "ws");
         ClientBridgeHolder.set(fakeBridge(ElicitResult.accept(null)));
 
@@ -235,13 +250,13 @@ class FhControlAcquireToolTest {
                 "drone_sn", DRONE_SN
         ));
 
-        assertEquals(true, result.get("success"), "L0 操作无需确认，直接执行");
+        assertEquals(true, result.get("success"), "真人确认通过后执行");
         assertTrue(session.hasControlOf(DRONE_SN));
     }
 
     @Test
-    void acquire_shouldSucceed_evenWithElicitationDeclined() {
-        // L0 操作无需确认，elicitation decline 不影响执行
+    void acquire_shouldFail_whenElicitationDeclined() {
+        // L2 接管操作：真人 DECLINE 拒绝 → 不执行
         SessionContext session = sessionManager.createSession("uuid", "ws");
         ClientBridgeHolder.set(fakeBridge(ElicitResult.decline()));
 
@@ -249,14 +264,15 @@ class FhControlAcquireToolTest {
                 "drone_sn", DRONE_SN
         ));
 
-        assertEquals(true, result.get("success"),
-                "L0 操作不触发 elicitation，decline 不影响执行");
-        assertTrue(session.hasControlOf(DRONE_SN));
+        assertEquals(false, result.get("success"),
+                "真人拒绝后操作不执行");
+        assertTrue(result.get("error_message").toString().contains("declined"));
+        assertFalse(session.hasControlOf(DRONE_SN));
     }
 
     @Test
-    void acquire_shouldSucceed_evenWithElicitationTimedOut() {
-        // L0 操作无需确认，timeout 不影响执行
+    void acquire_shouldFail_whenElicitationTimedOut() {
+        // L2 接管操作：真人超时未响应 → 不执行（防静默接管）
         SessionContext session = sessionManager.createSession("uuid", "ws");
         ClientBridgeHolder.set(fakeBridge(ElicitResult.timeout()));
 
@@ -264,8 +280,34 @@ class FhControlAcquireToolTest {
                 "drone_sn", DRONE_SN
         ));
 
-        assertEquals(true, result.get("success"));
-        assertTrue(session.hasControlOf(DRONE_SN));
+        assertEquals(false, result.get("success"),
+                "真人超时后操作不执行");
+        assertTrue(result.get("error_message").toString().contains("timed out"));
+        assertFalse(session.hasControlOf(DRONE_SN));
+    }
+
+    @Test
+    void acquire_shouldReturnError_whenSessionLevelIsL1() {
+        // L2 接管操作：session 上限 L1 拒绝
+        FlightHubProperties props = new FlightHubProperties();
+        props.getSecurity().setMaxLevel(1);
+        SessionManager l1Sessions = new SessionManager(props);
+        l1Sessions.createSession("uuid", "ws");
+        SdkService mock = new SdkService() {
+            @Override
+            public boolean isMockMode() {
+                return true;
+            }
+        };
+        FhControlAcquireTool l1Tool = new FhControlAcquireTool(l1Sessions, mock);
+
+        Map<String, Object> result = l1Tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "confirm", true
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("insufficient security level"));
     }
 
     // ==================== getToolDefinition Tests ====================

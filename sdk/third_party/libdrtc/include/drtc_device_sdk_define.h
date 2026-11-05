@@ -149,7 +149,8 @@ enum DrtcStreamType
     DRTC_STREAM_VIDEO   = 1,
     DRTC_STREAM_COMMAND = 2,
     DRTC_STREAM_CONTROL = 3,
-    DRTC_STREAM_AUDIO   = 10,
+    DRTC_STREAM_AUDIO      = 10,
+    DRTC_STREAM_POINTCLOUD = 11,
 };
 
 typedef uint8_t drtc_media_type_t;
@@ -164,6 +165,11 @@ enum DrtcVideoType
 enum DrtcAudioType
 {
     DRTC_AUDIO_OPUS    = 1,
+};
+
+enum DrtcPointCloudType
+{
+    DRTC_POINTCLOUD_GENERIC = 1,
 };
 
 typedef uint8_t drtc_message_type_t;
@@ -381,6 +387,12 @@ struct DrtcNetworkQualityNotify
     drtc_netowork_quality_t  uplink_quality;
     drtc_netowork_quality_t  downlink_quality;
     std::vector<DrtcPathNQI> per_path;
+};
+
+struct DrtcPeerBandwidthNotify
+{
+    DrtcClient peer_client;
+    uint32_t bw_kbps;
 };
 
 struct DeviceSdkData

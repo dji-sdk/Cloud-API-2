@@ -319,6 +319,30 @@ public:
     /// @param listen_id 监听 ID
     virtual void cancelListenDronePsdkUiResource(int listen_id) = 0;
 
+    /// @brief 订阅 PSDK 自定义数据透传（上行，PSDK→云端）
+    /// @param callback 自定义数据回调
+    /// @return 监听 ID，用于取消订阅
+    ///
+    /// @internal
+    /// 链路: WebSocket | topic: topic_custom_data_transmission_from_psdk
+    /// @endinternal
+    virtual int listenPsdkCustomDataTransmissionFromPsdk(
+        const std::function<void(const PsdkCustomDataTransmission& msg)>& callback) = 0;
+
+    /// @brief 取消订阅 PSDK 自定义数据透传
+    /// @param listen_id 监听 ID
+    virtual void cancelListenPsdkCustomDataTransmissionFromPsdk(int listen_id) = 0;
+
+    /// @brief 向 PSDK 下发自定义数据（云端→PSDK 下行）
+    /// @param value 自定义数据内容（长度需小于 256 字节）
+    /// @param callback 结果回调
+    ///
+    /// @internal
+    /// 链路: MQTT services | method: custom_data_transmission_to_psdk
+    /// @endinternal
+    virtual void sendPsdkCustomDataTransmissionToPsdk(
+        const std::string& value, const std::function<void(FlightHubError err)>& callback) = 0;
+
 };
 
 } // namespace flight_hub_sdk

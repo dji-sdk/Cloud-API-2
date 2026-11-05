@@ -19,9 +19,12 @@ package com.dji.flighthub.mcp.tools.psdk;
 import com.dji.flighthub.mcp.config.FlightHubProperties;
 import com.dji.flighthub.mcp.sdk.SdkService;
 import com.dji.flighthub.mcp.session.SessionManager;
+import com.dji.flighthub.mcp.tools.subscription.ListenChannelSupport;
+import com.dji.flighthub.mcp.tools.subscription.SubscriptionBuffer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +33,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * FhSpeakerTool 单元测试。
- * 覆盖：getToolDefinition、无 session 报错、各 action 参数校验、Mock 路径、confirm 门控。
+ * 覆盖：getToolDefinition、无 session 报错、各 action 参数校验、Mock 路径、confirm 门控，
+ * 以及 listen_progress/events/listen_stop 订阅三元组。
  *
  * @author DJI FlightHub SDK Team
  */
@@ -46,7 +50,8 @@ class FhSpeakerToolTest {
         sessionManager = new SessionManager(properties);
 
         SdkService sdkService = new SdkService() {  public boolean isMockMode() { return true; } };
-        tool = new FhSpeakerTool(sessionManager, sdkService);
+        tool = new FhSpeakerTool(sessionManager, sdkService,
+                new ListenChannelSupport(new SubscriptionBuffer()));
     }
 
     @Test
@@ -434,5 +439,195 @@ class FhSpeakerToolTest {
     @Test
     void requiresHumanConfirmation_shouldReturnFalse() {
         assertFalse(tool.requiresHumanConfirmation());
+    }
+
+    // ==================== 订阅三元组 ====================
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getToolDefinition_shouldIncludeSubscriptionActions_whenSchemaBuilt() {
+        Map<String, Object> def = tool.getToolDefinition();
+        Map<String, Object> schema = (Map<String, Object>) def.get("inputSchema");
+        Map<String, Object> props = (Map<String, Object>) schema.get("properties");
+        Map<String, Object> actionProp = (Map<String, Object>) props.get("action");
+        List<String> enumValues = (List<String>) actionProp.get("enum");
+
+        assertEquals(12, enumValues.size());
+        assertTrue(enumValues.contains("listen_progress"));
+        assertTrue(enumValues.contains("events"));
+        assertTrue(enumValues.contains("listen_stop"));
+        assertFalse(((List<String>) schema.get("required")).contains("confirm"));
+    }
+
+    @Test
+    void executeListenProgress_shouldReturnError_whenNoSession() {
+        Map<String, Object> result = tool.execute(Map.of(
+                "action", "listen_progress", "drone_sn", "DRONE-001"));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("No active session"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeListenProgress_shouldSucceedWithoutConfirm_whenMock() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "action", "listen_progress", "drone_sn", "DRONE-001"));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("listen_progress", data.get("action"));
+        assertEquals("speaker_play_progress", data.get("channel"));
+        assertTrue((int) data.get("listen_id") > 0);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeEvents_shouldReturnEmptyStreams_whenNoSubscription() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "action", "events", "drone_sn", "DRONE-001"));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> streams = (Map<String, Object>)
+                ((Map<String, Object>) result.get("data")).get("streams");
+        assertTrue(streams.isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeEvents_shouldReturnMockEvent_whenSubscribed() {
+        sessionManager.createSession("uuid", "ws");
+        tool.execute(Map.of("action", "listen_progress", "drone_sn", "DRONE-001"));
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "action", "events", "drone_sn", "DRONE-001"));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("events", data.get("action"));
+        Map<String, Object> streams = (Map<String, Object>) data.get("streams");
+        Map<String, Object> stream = (Map<String, Object>) streams.get("speaker_play_progress");
+        assertEquals(true, stream.get("active"));
+        assertEquals(1, stream.get("count"));
+        List<Map<String, Object>> events = (List<Map<String, Object>>) stream.get("events");
+        assertEquals("mock-step", events.get(0).get("step_key"));
+        assertEquals(50, events.get(0).get("percent"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeEvents_shouldFilterBySinceSeq_whenCursorAdvanced() {
+        sessionManager.createSession("uuid", "ws");
+        tool.execute(Map.of("action", "listen_progress", "drone_sn", "DRONE-001"));
+        tool.execute(Map.of("action", "listen_progress", "drone_sn", "DRONE-001"));
+
+        Map<String, Object> first = tool.execute(Map.of(
+                "action", "events", "drone_sn", "DRONE-001", "limit", 1));
+        Map<String, Object> firstStream = streamOf(first, "speaker_play_progress");
+        List<Map<String, Object>> firstEvents = (List<Map<String, Object>>) firstStream.get("events");
+        assertEquals(1, firstEvents.size());
+        long lastSeq = (long) firstEvents.get(0).get("_seq");
+
+        Map<String, Object> second = tool.execute(Map.of(
+                "action", "events", "drone_sn", "DRONE-001", "since_seq", lastSeq));
+        Map<String, Object> secondStream = streamOf(second, "speaker_play_progress");
+        List<Map<String, Object>> secondEvents = (List<Map<String, Object>>) secondStream.get("events");
+        assertEquals(1, secondEvents.size());
+        assertTrue((long) secondEvents.get(0).get("_seq") > lastSeq);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeListenStop_shouldStopOnlyRequestedChannel_whenChannelsGiven() {
+        sessionManager.createSession("uuid", "ws");
+        tool.execute(Map.of("action", "listen_progress", "drone_sn", "DRONE-001"));
+        tool.execute(Map.of("action", "listen_progress",
+                "drone_sn", "DRONE-001", "payload_index", 1));
+
+        Map<String, Object> result = tool.execute(Map.of("action", "listen_stop",
+                "drone_sn", "DRONE-001", "channels", List.of("speaker_play_progress")));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals(List.of("speaker_play_progress"), data.get("stopped"));
+        assertTrue(((List<?>) data.get("failed")).isEmpty());
+
+        Map<String, Object> after = tool.execute(Map.of("action", "events", "drone_sn", "DRONE-001"));
+        Map<String, Object> streams = (Map<String, Object>)
+                ((Map<String, Object>) after.get("data")).get("streams");
+        assertEquals(List.of("speaker_play_progress@1"), new ArrayList<>(streams.keySet()));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeListenStop_shouldStopAllChannels_whenChannelsOmitted() {
+        sessionManager.createSession("uuid", "ws");
+        tool.execute(Map.of("action", "listen_progress", "drone_sn", "DRONE-001"));
+        tool.execute(Map.of("action", "listen_progress",
+                "drone_sn", "DRONE-001", "payload_index", 1));
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "action", "listen_stop", "drone_sn", "DRONE-001"));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals(List.of("speaker_play_progress", "speaker_play_progress@1"), data.get("stopped"));
+
+        Map<String, Object> after = tool.execute(Map.of("action", "events", "drone_sn", "DRONE-001"));
+        assertTrue(((Map<?, ?>) ((Map<String, Object>) after.get("data")).get("streams")).isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeListenProgress_shouldNotLeakRegistration_whenRepeated() {
+        sessionManager.createSession("uuid", "ws");
+        tool.execute(Map.of("action", "listen_progress", "drone_sn", "DRONE-001"));
+        tool.execute(Map.of("action", "listen_progress", "drone_sn", "DRONE-001"));
+
+        Map<String, Object> stop = tool.execute(Map.of(
+                "action", "listen_stop", "drone_sn", "DRONE-001"));
+        Map<String, Object> data = (Map<String, Object>) stop.get("data");
+
+        assertEquals(List.of("speaker_play_progress"), data.get("stopped"));
+        assertTrue(((List<?>) data.get("not_active")).isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeListenProgress_shouldKeepIndependentChannels_whenPayloadIndexDiffers() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> zero = tool.execute(Map.of(
+                "action", "listen_progress", "drone_sn", "DRONE-001"));
+        Map<String, Object> one = tool.execute(Map.of("action", "listen_progress",
+                "drone_sn", "DRONE-001", "payload_index", 1));
+
+        assertEquals(true, zero.get("success"));
+        assertEquals(true, one.get("success"));
+        assertNotEquals((int) ((Map<String, Object>) zero.get("data")).get("listen_id"),
+                (int) ((Map<String, Object>) one.get("data")).get("listen_id"));
+
+        Map<String, Object> events = tool.execute(Map.of("action", "events", "drone_sn", "DRONE-001"));
+        Map<String, Object> streams = (Map<String, Object>)
+                ((Map<String, Object>) events.get("data")).get("streams");
+        assertEquals(2, streams.size());
+        assertTrue(streams.containsKey("speaker_play_progress"));
+        assertTrue(streams.containsKey("speaker_play_progress@1"));
+        Map<String, Object> indexOneStream = (Map<String, Object>) streams.get("speaker_play_progress@1");
+        assertEquals(true, indexOneStream.get("active"));
+        List<Map<String, Object>> indexOneEvents =
+                (List<Map<String, Object>>) indexOneStream.get("events");
+        assertEquals(1, indexOneEvents.get(0).get("psdk_index"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> streamOf(Map<String, Object> result, String channel) {
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        Map<String, Object> streams = (Map<String, Object>) data.get("streams");
+        return (Map<String, Object>) streams.get(channel);
     }
 }

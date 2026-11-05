@@ -34,7 +34,7 @@ import java.io.IOException;
  *
  * <p>NoOp 默认让 {@code @RequireAuthenticated} 立即拒绝（fail-safe）；
  * {@code @RequireRole} 和 {@code @RequirePermission} 也会因匿名用户被拒。
- * 需要真鉴权时 ISV 覆盖 {@link SecurityFilterAutoConfiguration} 中名为 {@code "securityFilter"} 的 bean。
+ * 需要真鉴权时集成商覆盖 {@link SecurityFilterAutoConfiguration} 中名为 {@code "securityFilter"} 的 bean。
  *
  * <p>安全发布专项修复：公开路径白名单统一收敛到
  * {@link PublicPaths}（kernel-spi），此处委托其精确匹配（先剥离 context-path 再 equals），

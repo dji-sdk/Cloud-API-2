@@ -11,7 +11,7 @@ namespace flight_hub_sdk {
 
 class AIBoxModuleImpl : public IAIBoxModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit AIBoxModuleImpl();
+    explicit AIBoxModuleImpl(int session_id);
     ~AIBoxModuleImpl() override;
 
     void fetchAIBoxInfo(const std::string& device_sn, std::function<void(FlightHubError err, const AIBoxInfoListResults& results)> callback) override;
@@ -26,6 +26,7 @@ public:
     void operateApp(const OperateAppParam& param, std::function<void(FlightHubError err, const OperateAppResults& results)> callback) override;
 
 private:
+    int session_id_;
     AIBoxManager ai_box_mgr_;
 };
 

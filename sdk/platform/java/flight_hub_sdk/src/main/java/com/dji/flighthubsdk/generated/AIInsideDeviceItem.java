@@ -84,11 +84,11 @@ public class AIInsideDeviceItem {
     return flighthubsdkmoduleJNI.AIInsideDeviceItem_device_online_status_get(swigCPtr, this);
   }
 
-  public void setDevice_working_status(int value) {
+  public void setDevice_working_status(double value) {
     flighthubsdkmoduleJNI.AIInsideDeviceItem_device_working_status_set(swigCPtr, this, value);
   }
 
-  public int getDevice_working_status() {
+  public double getDevice_working_status() {
     return flighthubsdkmoduleJNI.AIInsideDeviceItem_device_working_status_get(swigCPtr, this);
   }
 

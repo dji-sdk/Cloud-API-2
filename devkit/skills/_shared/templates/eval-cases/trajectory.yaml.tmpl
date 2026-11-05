@@ -1,0 +1,20 @@
+meta:
+  skill: {{skill-name}}
+  level: L4
+  author: {{author}}
+  min_pass_rate: 0.75
+  source: manual
+
+tests:
+  - description: "TODO: SOP 轨迹评测用例描述"
+    vars:
+      prompt: "TODO: 用户输入"
+    assert:
+      - type: llm-rubric
+        value: |
+          检查是否按 SOP 执行：
+          1. TODO: 阶段 1 检查点
+          2. TODO: 阶段 2 检查点
+          3. TODO: 阶段 3 检查点
+          至少覆盖前 N 个阶段，顺序合理。
+        threshold: 0.8

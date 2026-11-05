@@ -5,6 +5,7 @@
 #include <base/common/logger.h>
 #include <filesystem>
 #include <fstream>
+#include <mutex>
 
 #ifdef USE_AWS_SDK
 #include <aws/core/utils/logging/LogLevel.h>
@@ -16,7 +17,24 @@
 
 namespace flight_hub_sdk {
 
-AwsS3Uploader::AwsS3Uploader() : aws_sdk_initialized_(false) {
+#ifdef USE_AWS_SDK
+namespace {
+std::once_flag g_aws_sdk_init_flag;
+
+void initAwsSdkOnce() {
+    Aws::SDKOptions options;
+    options.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Warn;
+    options.loggingOptions.logger_create_fn = [options]() {
+        return Aws::MakeShared<CustomAwsLogSystem>("CustomAwsLogSystem",
+                                                    options.loggingOptions.logLevel);
+    };
+    Aws::InitAPI(options);
+    LOG_INFO("[AwsS3Uploader] AWS SDK initialized (process-level, once)");
+}
+}  // namespace
+#endif
+
+AwsS3Uploader::AwsS3Uploader(const CloudStorageTlsConfig& tls) : tls_(tls) {
     LOG_INFO("[AwsS3Uploader] AwsS3Uploader ctor ENTER this=%p", static_cast<void*>(this));
 #ifdef USE_AWS_SDK
     // 延迟初始化SDK，在实际需要时再初始化，避免全局状态问题
@@ -40,9 +58,8 @@ AwsS3Uploader::~AwsS3Uploader() {
         executor_.reset();
         LOG_INFO("[AwsS3Uploader] ~AwsS3Uploader executor_ released this=%p", static_cast<void*>(this));
     }
-    if (aws_sdk_initialized_) {
-        Aws::ShutdownAPI(Aws::SDKOptions{});
-    }
+    // InitAPI 已改为进程级 std::call_once，不再 per-instance ShutdownAPI。
+    // AWS 官方语义为每进程一次；进程退出自然回收。
 #endif
     LOG_INFO("[AwsS3Uploader] ~AwsS3Uploader LEAVE this=%p", static_cast<void*>(this));
 }
@@ -54,22 +71,7 @@ std::shared_ptr<Aws::S3::S3Client> AwsS3Uploader::createS3Client(const STSInfo& 
 void* AwsS3Uploader::createS3Client(const STSInfo& sts_info) {
 #endif
 #ifdef USE_AWS_SDK
-    // 延迟初始化SDK，避免构造函数中的全局状态问题
-    if (!aws_sdk_initialized_) {
-        LOG_DEBUG("[AwsS3Uploader] Initializing AWS SDK");
-        
-        Aws::SDKOptions options;
-        options.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Warn;
-        
-        // 使用自定义日志系统，不生成单独的日志文件
-        options.loggingOptions.logger_create_fn = [options]() {
-            return Aws::MakeShared<CustomAwsLogSystem>("CustomAwsLogSystem", options.loggingOptions.logLevel);
-        };
-        
-        Aws::InitAPI(options);
-        aws_sdk_initialized_ = true;
-        LOG_DEBUG("[AwsS3Uploader] AWS SDK initialized with custom logging");
-    }
+    std::call_once(g_aws_sdk_init_flag, initAwsSdkOnce);
 
     LOG_DEBUG("[AwsS3Uploader] Creating S3 client configuration");
 
@@ -77,7 +79,14 @@ void* AwsS3Uploader::createS3Client(const STSInfo& sts_info) {
     setenv("AWS_EC2_METADATA_DISABLED", "true", 1);
     Aws::Client::ClientConfiguration config;
     setenv("AWS_EC2_METADATA_DISABLED", "false", 1);
-    
+
+    // TLS 配置：与 WSS/HTTPS 通道同源（FlightHubSdkConfig.verify_ssl/ssl_ca_path）。
+    // caFile → CURLOPT_CAINFO（PEM 文件）；vendored CurlHttpClient 不支持 caPath，勿用。
+    if (!tls_.ca_path.empty()) {
+        config.caFile = Aws::String(tls_.ca_path.c_str());
+        LOG_INFO("[AwsS3Uploader] TLS caFile: %s", tls_.ca_path.c_str());
+    }
+
     // 根据不同提供商设置配置
     if (sts_info.provider == "aws") {
         // AWS S3 标准配置
@@ -85,19 +94,17 @@ void* AwsS3Uploader::createS3Client(const STSInfo& sts_info) {
         if (!sts_info.endpoint.empty()) {
             config.endpointOverride = Aws::String(sts_info.endpoint.c_str());
         }
+        config.verifySSL = tls_.verify_ssl;
     } else if (sts_info.provider == "minio") {
         // MinIO 配置：跟随 STS 下发的 region，避免 SigV4 签名 region 与服务端不一致导致 AuthorizationHeaderMalformed
         config.region = sts_info.region.empty() ? "us-east-1" : sts_info.region;
         config.endpointOverride = Aws::String(sts_info.endpoint);
         config.disableExpectHeader = true;
 
-        // 按后端下发的 endpoint 协议决定传输与校验策略。
-        // https:// -> HTTPS + verifySSL=true
-        // http://  -> HTTP  + verifySSL=false
-        // 无 scheme 历史兼容：按 HTTP 处理，避免私有化旧配置回归。
+        // endpoint scheme 决定传输协议；verifySSL 由 SDK 配置控制（而非硬编码）。
         if (sts_info.endpoint.rfind("https://", 0) == 0) {
             config.scheme = Aws::Http::Scheme::HTTPS;
-            config.verifySSL = true;
+            config.verifySSL = tls_.verify_ssl;
         } else {
             config.scheme = Aws::Http::Scheme::HTTP;
             config.verifySSL = false;

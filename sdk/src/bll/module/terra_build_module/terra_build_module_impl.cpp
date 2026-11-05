@@ -9,13 +9,44 @@
 #include "notification_center/notification_center.h"
 #include "BusinessManager.h"
 #include <atomic>
+#include <cstdio>
+#include <ctime>
+#include "session/session_bm.h"
 
 namespace flight_hub_sdk {
 
+namespace {
+
+/// 后端 create_at/update_at 为毫秒时间戳，转 ISO 8601（UTC，保留毫秒）。
+std::string FormatUnixMillis(long long ms) {
+    if (ms <= 0) {
+        return "";
+    }
+    std::time_t t = static_cast<std::time_t>(ms / 1000);
+    std::tm tm_utc{};
+#ifdef _WIN32
+    if (gmtime_s(&tm_utc, &t) != 0) {
+        return "";
+    }
+#else
+    if (gmtime_r(&t, &tm_utc) == nullptr) {
+        return "";
+    }
+#endif
+    char buf[40] = {0};
+    size_t n = std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &tm_utc);
+    if (n == 0) {
+        return "";
+    }
+    std::snprintf(buf + n, sizeof(buf) - n, ".%03dZ", static_cast<int>(ms % 1000));
+    return buf;
+}
+
+}  // namespace
+
 static std::atomic<int> s_terra_build_instance_id{1};
 
-TerraBuildModuleImpl::TerraBuildModuleImpl()
-    {
+TerraBuildModuleImpl::TerraBuildModuleImpl(int session_id) : session_id_(session_id) {
     instance_id_ = s_terra_build_instance_id.fetch_add(1);
     log_tag_ = "TerraBuild#" + std::to_string(instance_id_);
     LOG_INFO("[%s] constructor, instance_id: %d",
@@ -36,12 +67,13 @@ void TerraBuildModuleImpl::getReconstructionSettings(
         get_reconstruction_settings(file_uuid,
             [this, weak_ptr, callback](const ReconstructionSettingsResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 获取重建设置; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_GET_RECONSTRUCTION_SETTINGS, err, "[TerraBuildModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_GET_RECONSTRUCTION_SETTINGS, err, session_id_, "[TerraBuildModuleImpl]");
 
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, TerraBuildSettingsResult{});
@@ -74,7 +106,7 @@ void TerraBuildModuleImpl::getReconstructionSettings(
                     }
                     if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -94,12 +126,13 @@ void TerraBuildModuleImpl::getQualityReport(
         get_quality_report(file_uuid, request,
             [this, weak_ptr, callback](const QualityReportResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 获取质量报告; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_GET_QUALITY_REPORT, err, "[TerraBuildModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_GET_QUALITY_REPORT, err, session_id_, "[TerraBuildModuleImpl]");
 
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, TerraBuildQualityReportResult{});
@@ -109,7 +142,7 @@ void TerraBuildModuleImpl::getQualityReport(
                     result.quality_report_url = data.quality_report_url;
                     if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -128,12 +161,13 @@ void TerraBuildModuleImpl::getModelFileList(
         get_model_file_list(request,
             [this, weak_ptr, callback](const ModelFileListResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 获取模型文件列表; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_GET_MODEL_FILE_LIST, err, "[TerraBuildModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_GET_MODEL_FILE_LIST, err, session_id_, "[TerraBuildModuleImpl]");
 
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, TerraBuildModelFileListResult{});
@@ -152,15 +186,16 @@ void TerraBuildModuleImpl::getModelFileList(
                         fi.sub_file_type = item.sub_file_type;
                         fi.state = item.state;
                         fi.reconstruction_type = item.reconstruction_type;
-                        fi.thumbnail_url = item.thumbnail_url;
-                        fi.zip_url = item.zip_url;
-                        fi.created_at = item.created_at;
-                        fi.updated_at = item.updated_at;
+                        fi.preview_url   = item.preview_url;
+                        fi.thumbnail_url = item.preview_url;
+                        fi.zip_url       = "";
+                        fi.created_at    = FormatUnixMillis(item.create_at);
+                        fi.updated_at    = FormatUnixMillis(item.update_at);
                         result.list.push_back(fi);
                     }
                     if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -178,12 +213,13 @@ void TerraBuildModuleImpl::getModelFileUrl(
         get_model_file_url(file_id, request,
             [this, weak_ptr, callback](const ModelFileUrlResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 获取模型文件签名 URL; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_GET_MODEL_FILE_URL, err, "[TerraBuildModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_GET_MODEL_FILE_URL, err, session_id_, "[TerraBuildModuleImpl]");
 
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, TerraBuildModelFileUrlResult{});
@@ -193,7 +229,7 @@ void TerraBuildModuleImpl::getModelFileUrl(
                     result.url = data.url;
                     if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -375,7 +411,7 @@ void TerraBuildModuleImpl::createReconstruction(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_TERRA_CREATE_RECONSTRUCTION, param_err, "[TerraBuildModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_TERRA_CREATE_RECONSTRUCTION, param_err, session_id_, "[TerraBuildModuleImpl]");
 
         if (callback) callback(param_err, TerraBuildCreateReconstructionResult{});
         return;
@@ -386,12 +422,13 @@ void TerraBuildModuleImpl::createReconstruction(
         create_reconstruction(body,
             [this, weak_ptr, callback](const CreateReconstructionResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 创建重建任务; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_CREATE_RECONSTRUCTION, err, "[TerraBuildModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_CREATE_RECONSTRUCTION, err, session_id_, "[TerraBuildModuleImpl]");
 
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, TerraBuildCreateReconstructionResult{});
@@ -403,7 +440,7 @@ void TerraBuildModuleImpl::createReconstruction(
                     result.job_uuid = data.job_uuid;
                     if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -420,16 +457,17 @@ void TerraBuildModuleImpl::retryReconstruction(
         retry_reconstruction(request,
             [this, weak_ptr, callback](FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 重试重建任务; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_RETRY_RECONSTRUCTION, err, "[TerraBuildModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_RETRY_RECONSTRUCTION, err, session_id_, "[TerraBuildModuleImpl]");
 
                     if (callback) callback(err);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -446,16 +484,17 @@ void TerraBuildModuleImpl::stopReconstruction(
         stop_reconstruction(request,
             [this, weak_ptr, callback](FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 停止重建任务; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_STOP_RECONSTRUCTION, err, "[TerraBuildModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_STOP_RECONSTRUCTION, err, session_id_, "[TerraBuildModuleImpl]");
 
                     if (callback) callback(err);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -469,12 +508,13 @@ void TerraBuildModuleImpl::getSfmResult(
         get_sfm_result(file_uuid,
             [this, weak_ptr, callback](const SfmResultResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 获取空三结果; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_GET_SFM_RESULT, err, "[TerraBuildModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_GET_SFM_RESULT, err, session_id_, "[TerraBuildModuleImpl]");
 
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, TerraBuildSfmResult{});
@@ -487,37 +527,56 @@ void TerraBuildModuleImpl::getSfmResult(
                     result.re_projection_error_pic_url_list = data.re_projection_error_pic_url_list;
                     if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
-// 9. 删除单个模型文件
+// 9. 删除单个模型文件（旧接口，丢弃 lock_files 结果）
 void TerraBuildModuleImpl::deleteModelFile(
     int file_id,
     std::function<void(FlightHubError err)> callback) {
+    deleteModelFileWithResult(file_id, [callback](FlightHubError err, const TerraDeleteModelFilesResult&) {
+        if (callback) callback(err);
+    });
+}
+
+void TerraBuildModuleImpl::deleteModelFileWithResult(
+    int file_id,
+    std::function<void(FlightHubError err, const TerraDeleteModelFilesResult& result)> callback) {
     WeakDummy(weak_ptr);
     drc_sdk::common::Executors::IO()->Post([this, weak_ptr, file_id, callback]() {
         WeakDummyReturn(weak_ptr);
         delete_model_file(file_id,
-            [this, weak_ptr, callback](FlightHubError err) {
+            [this, weak_ptr, callback](const DeleteModelFileResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback]() {
-                    // 埋点: 删除单个模型文件; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
-                    // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
-                    // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
-                    // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_DELETE_MODEL_FILE, err, "[TerraBuildModuleImpl]");
-
-                    if (callback) callback(err);
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_DELETE_MODEL_FILE, err, session_id_, "[TerraBuildModuleImpl]");
+                    if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
+                        if (callback) callback(err, {});
+                        return;
+                    }
+                    TerraDeleteModelFilesResult result;
+                    result.lock_files = data.lock_files;
+                    result.has_lock_files = !data.lock_files.empty();
+                    if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
-// 10. 批量删除模型文件
+// 10. 批量删除模型文件（旧接口，丢弃 lock_files 结果）
 void TerraBuildModuleImpl::batchDeleteModelFiles(
     const std::vector<int>& file_ids,
     std::function<void(FlightHubError err)> callback) {
+    batchDeleteModelFilesWithResult(file_ids, [callback](FlightHubError err, const TerraDeleteModelFilesResult&) {
+        if (callback) callback(err);
+    });
+}
+
+void TerraBuildModuleImpl::batchDeleteModelFilesWithResult(
+    const std::vector<int>& file_ids,
+    std::function<void(FlightHubError err, const TerraDeleteModelFilesResult& result)> callback) {
     WeakDummy(weak_ptr);
     DeleteModelFilesRequest request;
     request.file_ids = file_ids;
@@ -525,18 +584,21 @@ void TerraBuildModuleImpl::batchDeleteModelFiles(
     drc_sdk::common::Executors::IO()->Post([this, weak_ptr, request, callback]() {
         WeakDummyReturn(weak_ptr);
         batch_delete_model_files(request,
-            [this, weak_ptr, callback](FlightHubError err) {
+            [this, weak_ptr, callback](const DeleteModelFileResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback]() {
-                    // 埋点: 批量删除模型文件; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
-                    // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
-                    // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
-                    // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_BATCH_DELETE_MODEL_FILES, err, "[TerraBuildModuleImpl]");
-
-                    if (callback) callback(err);
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_BATCH_DELETE_MODEL_FILES, err, session_id_, "[TerraBuildModuleImpl]");
+                    if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
+                        if (callback) callback(err, {});
+                        return;
+                    }
+                    TerraDeleteModelFilesResult result;
+                    result.lock_files = data.lock_files;
+                    result.has_lock_files = !data.lock_files.empty();
+                    if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -556,12 +618,13 @@ void TerraBuildModuleImpl::createPanorama(
         create_panorama(request,
             [this, weak_ptr, callback](const CreatePanoramaResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 创建全景拼接任务; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_CREATE_PANORAMA, err, "[TerraBuildModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_CREATE_PANORAMA, err, session_id_, "[TerraBuildModuleImpl]");
 
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, TerraBuildCreatePanoramaResult{});
@@ -573,7 +636,7 @@ void TerraBuildModuleImpl::createPanorama(
                     result.job_uuid = data.job_uuid;
                     if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -587,12 +650,13 @@ void TerraBuildModuleImpl::getReconstructionImages(
         get_reconstruction_images(file_uuid,
             [this, weak_ptr, callback](const ReconstructionImagesResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 获取重建图像列表; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_GET_RECONSTRUCTION_IMAGES, err, "[TerraBuildModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_GET_RECONSTRUCTION_IMAGES, err, session_id_, "[TerraBuildModuleImpl]");
 
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, TerraBuildReconstructionImagesResult{});
@@ -610,17 +674,18 @@ void TerraBuildModuleImpl::getReconstructionImages(
                     }
                     if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
 // 15. 监听重建任务状态变更推送
 int TerraBuildModuleImpl::listenReconstructionStatusChanged(
     const std::function<void(const TerraBuildReconstructionStatusChanged& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
-    return NotificationCenter::getInstance()->getBusinessManager()
-        ->ListenReconstructionStatusChangedMessage(
-            [weak_ptr, callback](const notification_center::ReconstructionStatusChanged& nc_msg) {
+    if (bm) {
+        return bm->ListenReconstructionStatusChangedMessage(
+            [weak_ptr, callback, session_id_ = session_id_](const notification_center::ReconstructionStatusChanged& nc_msg) {
                 WeakDummyReturn(weak_ptr);
                 TerraBuildReconstructionStatusChanged msg;
                 msg.workspace_id         = nc_msg.workspace_id;
@@ -654,12 +719,18 @@ int TerraBuildModuleImpl::listenReconstructionStatusChanged(
             [](const notification_center::NotificationCenterErrorCode&) {},
             "",   // device_sn 为空，推送按 workspace 广播
             notification_center::NotificationFrequency_OnChanged);
+    }
+    LOG_ERROR("[session_bm] null, cannot Listen (return -1)");
+    return -1;
 }
 
 // 16. 取消监听重建任务状态变更推送
 void TerraBuildModuleImpl::cancelListenReconstructionStatusChanged(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     if (listen_id >= 0) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(listen_id);
+        if (bm) {
+            bm->CancelObserve(listen_id);
+        }
     }
 }
 
@@ -680,12 +751,13 @@ void TerraBuildModuleImpl::uploadModelCallback(
         terra_upload_callback(request,
             [this, weak_ptr, callback](const TerraUploadCallbackResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 模型文件上传回调; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_UPLOAD_CALLBACK, err, "[TerraBuildModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_UPLOAD_CALLBACK, err, session_id_, "[TerraBuildModuleImpl]");
 
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, TerraUploadCallbackResult{});
@@ -697,7 +769,7 @@ void TerraBuildModuleImpl::uploadModelCallback(
                     result.name = data.name;
                     if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -718,16 +790,17 @@ void TerraBuildModuleImpl::renameModel(
         terra_rename_model(file_id, request,
             [this, weak_ptr, callback](FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 模型重命名; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_RENAME_MODEL, err, "[TerraBuildModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_RENAME_MODEL, err, session_id_, "[TerraBuildModuleImpl]");
 
                     if (callback) callback(err);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -740,11 +813,24 @@ void TerraBuildModuleImpl::showModelOnMap(
     request.ids            = params.ids;
     request.show_on_map    = params.show_on_map;
     request.is_distributed = params.is_distributed;
+    request.restore        = params.restore;
+    request.is_displayed   = params.is_displayed;
+    request.in_uniform_height = params.in_uniform_height;
+    request.model_display_mod = params.model_display_mod;
     if (params.select_filter.has_value()) {
         TerraSelectFilter sf;
         sf.selected_parent_id = params.select_filter->selected_parent_id;
         sf.except_ids         = params.select_filter->except_ids;
         sf.key                = params.select_filter->key;
+        sf.get_sub_file       = params.select_filter->get_sub_file;
+        sf.start_time         = params.select_filter->start_time;
+        sf.end_time           = params.select_filter->end_time;
+        sf.file_all_types     = params.select_filter->file_all_types;
+        sf.payload_model_key  = params.select_filter->payload_model_key;
+        sf.parent_id          = params.select_filter->parent_id;
+        sf.file_tags          = params.select_filter->file_tags;
+        sf.share_state        = params.select_filter->share_state;
+        sf.show_on_map        = params.select_filter->show_on_map;
         request.select_filter = sf;
     }
 
@@ -753,12 +839,13 @@ void TerraBuildModuleImpl::showModelOnMap(
         terra_show_on_map(request,
             [this, weak_ptr, callback](const TerraShowOnMapResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 批量加载/取消加载模型到地图; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_SHOW_ON_MAP, err, "[TerraBuildModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_SHOW_ON_MAP, err, session_id_, "[TerraBuildModuleImpl]");
 
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, TerraShowOnMapResult{});
@@ -768,17 +855,18 @@ void TerraBuildModuleImpl::showModelOnMap(
                     result.ids = data.ids;
                     if (callback) callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
 // 20. 监听模型解压进度推送
 int TerraBuildModuleImpl::listenTerraUnzipProgress(
     const std::function<void(const TerraUnzipProgressMsg& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
-    return NotificationCenter::getInstance()->getBusinessManager()
-        ->ListenTerraUnzipProgress(
-            [weak_ptr, callback](const notification_center::TerraUnzipProgress& nc_msg) {
+    if (bm) {
+        return bm->ListenTerraUnzipProgress(
+            [weak_ptr, callback, session_id_ = session_id_](const notification_center::TerraUnzipProgress& nc_msg) {
                 WeakDummyReturn(weak_ptr);
                 TerraUnzipProgressMsg msg;
                 msg.file_id = nc_msg.file_id;
@@ -790,22 +878,29 @@ int TerraBuildModuleImpl::listenTerraUnzipProgress(
             [](const notification_center::NotificationCenterErrorCode&) {},
             "",
             notification_center::NotificationFrequency_OnChanged);
+    }
+    LOG_ERROR("[session_bm] null, cannot Listen (return -1)");
+    return -1;
 }
 
 // 21. 取消监听模型解压进度推送
 void TerraBuildModuleImpl::cancelListenTerraUnzipProgress(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     if (listen_id >= 0) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(listen_id);
+        if (bm) {
+            bm->CancelObserve(listen_id);
+        }
     }
 }
 
 // 22. 监听模型状态变更推送
 int TerraBuildModuleImpl::listenTerraModelStatusChanged(
     const std::function<void(const TerraModelStatusChangedMsg& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
-    return NotificationCenter::getInstance()->getBusinessManager()
-        ->ListenTerraModelStatusChanged(
-            [weak_ptr, callback](const notification_center::TerraModelStatusChanged& nc_msg) {
+    if (bm) {
+        return bm->ListenTerraModelStatusChanged(
+            [weak_ptr, callback, session_id_ = session_id_](const notification_center::TerraModelStatusChanged& nc_msg) {
                 WeakDummyReturn(weak_ptr);
                 TerraModelStatusChangedMsg msg;
                 msg.file_id      = nc_msg.file_id;
@@ -820,22 +915,29 @@ int TerraBuildModuleImpl::listenTerraModelStatusChanged(
             [](const notification_center::NotificationCenterErrorCode&) {},
             "",
             notification_center::NotificationFrequency_OnChanged);
+    }
+    LOG_ERROR("[session_bm] null, cannot Listen (return -1)");
+    return -1;
 }
 
 // 23. 取消监听模型状态变更推送
 void TerraBuildModuleImpl::cancelListenTerraModelStatusChanged(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     if (listen_id >= 0) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(listen_id);
+        if (bm) {
+            bm->CancelObserve(listen_id);
+        }
     }
 }
 
 // 24. 监听文件展示地图状态推送
 int TerraBuildModuleImpl::listenTerraFileShowOnMap(
     const std::function<void(const TerraFileShowOnMapMsg& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
-    return NotificationCenter::getInstance()->getBusinessManager()
-        ->ListenTerraFileShowOnMap(
-            [weak_ptr, callback](const notification_center::TerraFileShowOnMap& nc_msg) {
+    if (bm) {
+        return bm->ListenTerraFileShowOnMap(
+            [weak_ptr, callback, session_id_ = session_id_](const notification_center::TerraFileShowOnMap& nc_msg) {
                 WeakDummyReturn(weak_ptr);
                 TerraFileShowOnMapMsg msg;
                 for (const auto& item : nc_msg.list) {
@@ -852,22 +954,29 @@ int TerraBuildModuleImpl::listenTerraFileShowOnMap(
             [](const notification_center::NotificationCenterErrorCode&) {},
             "",
             notification_center::NotificationFrequency_OnChanged);
+    }
+    LOG_ERROR("[session_bm] null, cannot Listen (return -1)");
+    return -1;
 }
 
 // 25. 取消监听文件展示地图状态推送
 void TerraBuildModuleImpl::cancelListenTerraFileShowOnMap(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     if (listen_id >= 0) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(listen_id);
+        if (bm) {
+            bm->CancelObserve(listen_id);
+        }
     }
 }
 
 // 28. 监听模型隐藏地图推送 (topic_media_file_hide_on_map)
 int TerraBuildModuleImpl::listenTerraMediaFileHideOnMap(
     const std::function<void(const TerraMediaFileHideOnMapMsg& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
-    return NotificationCenter::getInstance()->getBusinessManager()
-        ->ListenTerraMediaFileHideOnMap(
-            [weak_ptr, callback](const notification_center::TerraMediaFileHideOnMap& nc_msg) {
+    if (bm) {
+        return bm->ListenTerraMediaFileHideOnMap(
+            [weak_ptr, callback, session_id_ = session_id_](const notification_center::TerraMediaFileHideOnMap& nc_msg) {
                 WeakDummyReturn(weak_ptr);
                 TerraMediaFileHideOnMapMsg msg;
                 msg.ids = nc_msg.ids;
@@ -876,21 +985,28 @@ int TerraBuildModuleImpl::listenTerraMediaFileHideOnMap(
             [](const notification_center::NotificationCenterErrorCode&) {},
             "",
             notification_center::NotificationFrequency_OnChanged);
+    }
+    LOG_ERROR("[session_bm] null, cannot Listen (return -1)");
+    return -1;
 }
 
 void TerraBuildModuleImpl::cancelListenTerraMediaFileHideOnMap(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     if (listen_id >= 0) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(listen_id);
+        if (bm) {
+            bm->CancelObserve(listen_id);
+        }
     }
 }
 
 // 29. 监听模型显示地图推送 (topic_media_file_show_on_map)
 int TerraBuildModuleImpl::listenTerraMediaFileShowOnMap(
     const std::function<void(const TerraMediaFileShowOnMapMsg& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
-    return NotificationCenter::getInstance()->getBusinessManager()
-        ->ListenTerraMediaFileShowOnMap(
-            [weak_ptr, callback](const notification_center::TerraMediaFileShowOnMap& nc_msg) {
+    if (bm) {
+        return bm->ListenTerraMediaFileShowOnMap(
+            [weak_ptr, callback, session_id_ = session_id_](const notification_center::TerraMediaFileShowOnMap& nc_msg) {
                 WeakDummyReturn(weak_ptr);
                 TerraMediaFileShowOnMapMsg msg;
                 for (const auto& nc_item : nc_msg.list) {
@@ -915,11 +1031,17 @@ int TerraBuildModuleImpl::listenTerraMediaFileShowOnMap(
             [](const notification_center::NotificationCenterErrorCode&) {},
             "",
             notification_center::NotificationFrequency_OnChanged);
+    }
+    LOG_ERROR("[session_bm] null, cannot Listen (return -1)");
+    return -1;
 }
 
 void TerraBuildModuleImpl::cancelListenTerraMediaFileShowOnMap(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     if (listen_id >= 0) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(listen_id);
+        if (bm) {
+            bm->CancelObserve(listen_id);
+        }
     }
 }
 
@@ -933,12 +1055,13 @@ void TerraBuildModuleImpl::getModelDetail(
         terra_get_model_detail(file_id,
             [this, weak_ptr, callback](const TerraModelDetailResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 获取模型文件详情; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_GET_MODEL_DETAIL, err, "[TerraBuildModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_GET_MODEL_DETAIL, err, session_id_, "[TerraBuildModuleImpl]");
 
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         if (callback) callback(err, TerraModelDetailResult{});
@@ -1022,7 +1145,7 @@ void TerraBuildModuleImpl::getModelDetail(
                     r.user_name = data.user_name;
                     if (callback) callback(err, r);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -1036,16 +1159,17 @@ void TerraBuildModuleImpl::setLasWkt(
         terra_set_las_wkt(params.file_uuid, params.wkt,
             [this, weak_ptr, callback](FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 设置 LAS 模型坐标系并触发格式转换; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_TERRA_SET_LAS_WKT, err, "[TerraBuildModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_TERRA_SET_LAS_WKT, err, session_id_, "[TerraBuildModuleImpl]");
 
                     if (callback) callback(err);
                 });
-            });
+            }, session_id_);
     });
 }
 

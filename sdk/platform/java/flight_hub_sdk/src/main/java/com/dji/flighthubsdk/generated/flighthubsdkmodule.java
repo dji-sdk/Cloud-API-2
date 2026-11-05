@@ -36,4 +36,16 @@ public class flighthubsdkmodule {
     return flighthubsdkmoduleJNI.floatEqual__SWIG_3(a, b);
   }
 
+  public static String getKCascadeNodeStatusTopic() {
+    return flighthubsdkmoduleJNI.kCascadeNodeStatusTopic_get();
+  }
+
+  public static String getKCascadeNotifyTopic() {
+    return flighthubsdkmoduleJNI.kCascadeNotifyTopic_get();
+  }
+
+  public static int getKDefaultSessionId() {
+    return flighthubsdkmoduleJNI.kDefaultSessionId_get();
+  }
+
 }

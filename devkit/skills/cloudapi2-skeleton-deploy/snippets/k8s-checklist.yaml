@@ -17,7 +17,7 @@
     - name: FH_DB_PASSWORD 非空
       hint: 与 01 的 MYSQL_PASSWORD 一致或独立强随机
     - name: FH_SKELETON_SDK_TOKEN 非空
-      hint: FlightHub 控制台获取
+      hint: DJI Cloud API 2 控制台获取
 
 - file: 03-backend-configmap.yaml
   checks:
@@ -34,7 +34,7 @@
 - file: 05-backend-deploy.yaml
   checks:
     - name: image 已替换 <REGISTRY>/paas-sdk-devkit/skeleton:<TAG>
-    - name: "nodeSelector kubernetes.io/arch: amd64 保留"
+    - name: "nodeSelector kubernetes.io/arch 与镜像 SDK_ARCH 一致（amd64 保留、arm64 改 arm64）"
     - name: 探针路径 /pf-devkit/ai-plugin/skeleton/actuator/health
 
 - file: 07-frontend-deploy.yaml

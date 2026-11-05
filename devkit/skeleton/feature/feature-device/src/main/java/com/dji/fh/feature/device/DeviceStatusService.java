@@ -64,7 +64,7 @@ import org.springframework.context.event.EventListener;
  * <p>OSD / HMS 如果对应 sn 的 entry 不存在 → 静默丢弃（不为"幽灵设备"建 entry）。
  * 下线事件是例外：必须建 entry，否则「设备已下线但 SDK 快照仍为 online」无法被纠正。
  *
- * <p>ISV 可通过 {@code @ConditionalOnMissingBean} 替换本 service 的默认实现。
+ * <p>集成商 可通过 {@code @ConditionalOnMissingBean} 替换本 service 的默认实现。
  *
  * @author DJI DevKit Team
  */
@@ -313,6 +313,7 @@ public class DeviceStatusService {
             return new DeviceState(
                     sn,
                     type,
+                    snapshot.deviceClass(),
                     snapshot.modelKey(),
                     displayName,
                     online,
@@ -327,6 +328,7 @@ public class DeviceStatusService {
         return new DeviceState(
                 sn,
                 type,
+                snapshot.deviceClass(),
                 snapshot.modelKey(),
                 displayName,
                 online,
@@ -503,6 +505,8 @@ public class DeviceStatusService {
             return new DeviceState(
                     sn,
                     deviceType,
+                    // 事件缓存未保存 SDK 原始 deviceClass，兜底置 null，前端回退到 deviceType
+                    null,
                     model,
                     displayName,
                     onlineNow,

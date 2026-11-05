@@ -1,4 +1,4 @@
-# DJI FlightHub PaaS SDK Skeleton 部署约束规则
+# DJI Cloud API 2 SDK Skeleton 部署约束规则
 #
 # 部署 = 引导式半自动流程，本文件定义部署 Skill 特有的硬约束。
 # 共享约束见 _shared/constraints-common.yaml（SSOT）。
@@ -12,9 +12,9 @@
 # 部署特有约束
 # ============================================================
 
-- id: platform-amd64-only
-  rule: sdk 模式部署必须 Linux amd64（SDK JNI 原生库仅支持 linux-x86_64）；探测到非 amd64 必须提示降级（mock/Docker 或换机）
-  violation: sdk 模式下 .so 加载失败，应用无法初始化 SDK
+- id: platform-arch-match
+  rule: sdk 模式部署必须使用与目标机器架构匹配的 SDK 包（linux x86_64 用 libs/amd64，linux aarch64 用 libs/arm64）。两者 Maven 坐标相同，构建镜像时由 --build-arg SDK_ARCH=amd64|arm64 选包；探测到架构与包不匹配必须提示降级（mock/Docker 或换机）
+  violation: sdk 模式下 JNI 主库找不到（FileNotFoundException: /lib/linux-<arch>/libflighthubsdk_jni.so），应用无法初始化 SDK
   level: critical
 
 - id: jwt-secret-required
@@ -29,11 +29,11 @@
 
 - id: build-sdk-real
   rule: 生产构建必须 mvn clean package -Psdk-real -DskipTests，否则打包的是 mock 实现
-  violation: 部署的是 mock 实现，无法连接真实 FlightHub
+  violation: 部署的是 mock 实现，无法连接真实 DJI Cloud API 2
   level: critical
 
 - id: private-sdk-jar-install
-  rule: 首次构建前必须 mvn install:install-file 安装 libs/flight-hub-sdk-3.3.7.jar 到本地 Maven 仓库；检测 ~/.m2 是否已有
+  rule: 首次构建前必须 mvn install:install-file 安装 libs/amd64 或 libs/arm64 下的 flight-hub-sdk-3.3.7.jar 到本地 Maven 仓库（按本机架构选包）；检测 ~/.m2 是否已有
   violation: mvn package 找不到 SDK 依赖，构建失败
   level: critical
 
@@ -63,8 +63,8 @@
   level: critical
 
 - id: amd64-node-selector
-  rule: "K8s 部署后端 Pod 必须保留 nodeSelector kubernetes.io/arch: amd64（manifest 已含，勿删）"
-  violation: Pod 调度到非 amd64 节点，SDK 加载失败
+  rule: "K8s 部署后端的 nodeSelector kubernetes.io/arch 必须与镜像使用的 SDK 包一致：amd64 镜像保留 amd64，arm64 镜像须改为 arm64（manifest 已含 amd64，勿删）"
+  violation: Pod 调度到与 SDK 包架构不符的节点，JNI 加载失败
   level: critical
 
 - id: mcp-url-when-chat

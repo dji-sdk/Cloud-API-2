@@ -86,6 +86,22 @@ public class IControlAuthModule {
     flighthubsdkmoduleJNI.IControlAuthModule_releasePayloadControlAuthorityWrapper(swigCPtr, this, payload_index, ResultCallbackWithError.getCPtr(callback), callback);
   }
 
+  public void acquireFlightControlAuthorityWithResultWrapper(ControlAuthResultCallback callback) {
+    flighthubsdkmoduleJNI.IControlAuthModule_acquireFlightControlAuthorityWithResultWrapper(swigCPtr, this, ControlAuthResultCallback.getCPtr(callback), callback);
+  }
+
+  public void releaseFlightControlAuthorityWithResultWrapper(ControlAuthResultCallback callback) {
+    flighthubsdkmoduleJNI.IControlAuthModule_releaseFlightControlAuthorityWithResultWrapper(swigCPtr, this, ControlAuthResultCallback.getCPtr(callback), callback);
+  }
+
+  public void acquirePayloadControlAuthorityWithResultWrapper(String payload_index, ControlAuthResultCallback callback) {
+    flighthubsdkmoduleJNI.IControlAuthModule_acquirePayloadControlAuthorityWithResultWrapper(swigCPtr, this, payload_index, ControlAuthResultCallback.getCPtr(callback), callback);
+  }
+
+  public void releasePayloadControlAuthorityWithResultWrapper(String payload_index, ControlAuthResultCallback callback) {
+    flighthubsdkmoduleJNI.IControlAuthModule_releasePayloadControlAuthorityWithResultWrapper(swigCPtr, this, payload_index, ControlAuthResultCallback.getCPtr(callback), callback);
+  }
+
   public int listenPayloadControlAuthorityWrapper(String payload_index, PayloadControlAuthorityCallback callback) {
     return flighthubsdkmoduleJNI.IControlAuthModule_listenPayloadControlAuthorityWrapper(swigCPtr, this, payload_index, PayloadControlAuthorityCallback.getCPtr(callback), callback);
   }

@@ -10,8 +10,10 @@
 #include "bll/module/in_flight_wayline_module/in_flight_wayline_module_impl.h"
 #include "bll/module/device_state_module/device_state_module_impl.h"
 #include "bll/module/device_hms_module/device_hms_module_impl.h"
+#include "bll/module/airsense_warning_module/airsense_warning_module_impl.h"
 #include "bll/module/live_device_module/live_device_module_impl.h"
 #include "bll/module/takeoff_module/takeoff_module_impl.h"
+#include "bll/module/ground_flight_module/ground_flight_module_impl.h"
 #include "bll/module/flight_control_module/flight_control_module_impl.h"
 #include "bll/module/control_auth_module/control_auth_module_impl.h"
 #include "bll/module/drc_module/drc_module_impl.h"
@@ -29,6 +31,7 @@
 #include <BusinessManager.h>
 #include "bll/tool/flight_hub_utils.h"
 #include <atomic>
+#include "session/session_bm.h"
 
 using namespace flight_hub_sdk;
 using namespace notification_center;
@@ -37,11 +40,13 @@ static std::atomic<int> s_drone_impl_instance_id{1};
 
 DroneImpl::DroneImpl(
     DeviceTopo device_topo,
+    int session_id,
     const std::shared_ptr<message_engine::IRtcChannelManagerBridge>& rtc_channel_manager_bridge,
     const std::shared_ptr<message_engine::IMqttClientManagerBridge>& mqtt_client_manager_bridge)
     : device_topo_(std::move(device_topo)),
       rtc_channel_manager_bridge_(rtc_channel_manager_bridge),
-      mqtt_client_manager_bridge_(mqtt_client_manager_bridge) {
+      mqtt_client_manager_bridge_(mqtt_client_manager_bridge),
+      session_id_(session_id) {
     if (device_topo_.sub_devices.empty()) {
         LOG_ERROR("DroneImpl: sub_devices is empty");
         return;
@@ -73,17 +78,18 @@ DroneImpl::DroneImpl(
     }
     message_engine_->initialize();
 
-    device_state_module_ = std::make_shared<DeviceStateModuleImpl>(DeviceKind::Drone, drone_sn_);
-    device_hms_module_ = std::make_shared<DeviceHMSModuleImpl>(DeviceKind::Drone, drone_sn_);
-    takeoff_module_ = std::make_shared<TakeoffModuleImpl>(drone_sn_, dock_sn_);
-    fly_to_point_module_ = std::make_shared<FlyToPointModuleImpl>(message_engine_, drone_sn_, getGatewaySn());
-    poi_module_ = std::make_shared<PoiModuleImpl>(message_engine_, drone_sn_, getGatewaySn(), drone_model_key_);
-    in_flight_wayline_module_ = std::make_shared<InFlightWaylineModuleImpl>(getGatewaySn(), drone_sn_);
-    flight_task_control_module_ = std::make_shared<FlightTaskControlModuleImpl>(message_engine_, drone_sn_, getGatewaySn());
+    device_state_module_ = std::make_shared<DeviceStateModuleImpl>(DeviceKind::Drone, drone_sn_, session_id_);
+    device_hms_module_ = std::make_shared<DeviceHMSModuleImpl>(DeviceKind::Drone, drone_sn_, session_id_);
+    takeoff_module_ = std::make_shared<TakeoffModuleImpl>(drone_sn_, dock_sn_, session_id_);
+    ground_flight_module_ = std::make_shared<GroundFlightModuleImpl>(drone_sn_, getGatewaySn(), session_id_);
+    fly_to_point_module_ = std::make_shared<FlyToPointModuleImpl>(message_engine_, drone_sn_, getGatewaySn(), session_id_);
+    poi_module_ = std::make_shared<PoiModuleImpl>(message_engine_, drone_sn_, getGatewaySn(), drone_model_key_, session_id_);
+    in_flight_wayline_module_ = std::make_shared<InFlightWaylineModuleImpl>(getGatewaySn(), drone_sn_, session_id_);
+    flight_task_control_module_ = std::make_shared<FlightTaskControlModuleImpl>(message_engine_, drone_sn_, getGatewaySn(), session_id_);
 
     /// init manager
     initDrcLinkMgr();
-    drc_module_ = std::make_shared<DrcModuleImpl>(drc_link_mgr_, log_tag_);
+    drc_module_ = std::make_shared<DrcModuleImpl>(drc_link_mgr_, log_tag_, session_id_);
     initFlightCtrlMgr();
     initPayloadCtrlMgr();
     initPsdkCtrlMgr();
@@ -92,12 +98,13 @@ DroneImpl::DroneImpl(
     /// init listen
     initListen();
     drone_osd_module_ = std::make_shared<DroneOsdModuleImpl>(
-        drone_sn_, dock_sn_, log_tag_, flight_ctrl_mgr_, payload_ctrl_mgr_);
+        drone_sn_, dock_sn_, log_tag_, flight_ctrl_mgr_, payload_ctrl_mgr_, session_id_);
     initLiveRecordListener();
 }
 
 
 DroneImpl::~DroneImpl() {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("DroneImpl: ~DroneImpl");
     if (message_engine_) {
         message_engine_->destroy();
@@ -109,42 +116,49 @@ DroneImpl::~DroneImpl() {
     live_module_map_.clear();
     live_record_module_map_.clear();
     if (live_record_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(live_record_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(live_record_info_listen_id_);
+        }
         live_record_info_listen_id_ = -1;
     }
 }
 
 
 void DroneImpl::initDrcLinkMgr() {
-    drc_link_mgr_ = std::make_shared<DrcLinkMgr>(drone_sn_, getGatewaySn(), message_engine_, instance_id_);
+    drc_link_mgr_ = std::make_shared<DrcLinkMgr>(drone_sn_, getGatewaySn(), message_engine_, instance_id_, session_id_);
 }
 
 void DroneImpl::initFlightCtrlMgr() {
-    flight_ctrl_mgr_ = std::make_shared<FlightCtrlMgr>(drone_sn_, getGatewaySn(), message_engine_, instance_id_);
+    flight_ctrl_mgr_ = std::make_shared<FlightCtrlMgr>(drone_sn_, getGatewaySn(), message_engine_, instance_id_, session_id_);
 }
 
 void DroneImpl::initPayloadCtrlMgr() {
-    payload_ctrl_mgr_ = std::make_shared<PayloadCtrlMgr>(drone_sn_, getGatewaySn(), message_engine_, instance_id_);
+    payload_ctrl_mgr_ = std::make_shared<PayloadCtrlMgr>(drone_sn_, getGatewaySn(), message_engine_, instance_id_, session_id_);
     
     // 注册回调，让 PayloadCtrlMgr 在状态更新后通知用户
     // 这样确保 SDK 内部状态更新先于用户回调，避免时序问题
 }
 
 void DroneImpl::initPsdkCtrlMgr() {
-    psdk_ctrl_mgr_ = std::make_shared<PsdkCtrlMgr>(drone_sn_, getGatewaySn(), message_engine_);
+    // PSDK 自定义数据透传上行(topic_custom_data_transmission_from_psdk)由 host_gateway 推送:
+    // 网联机型 host_gateway=基站 SN(≠getGatewaySn 的 self), 须用 host_gateway 订阅。
+    // gateway_sn_ 在 PsdkCtrlMgr 内仅用于该监听(传给 PsdkAbs 的副本从未被读取), 不影响 DRC 监听。
+    psdk_ctrl_mgr_ = std::make_shared<PsdkCtrlMgr>(drone_sn_, getHostGatewaySn(), message_engine_, session_id_);
 }
 
 void DroneImpl::initAICtrlMgr() {
-    ai_ctrl_mgr_ = std::make_shared<AICtrlMgr>(drone_sn_, getGatewaySn(), message_engine_);
+    ai_ctrl_mgr_ = std::make_shared<AICtrlMgr>(drone_sn_, getGatewaySn(), drone_model_key_, message_engine_, session_id_);
 }
 
 void DroneImpl::initListen() {
 }
 
 void DroneImpl::initLiveRecordListener() {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(p);
     // 直播录制状态（topic_live_record_info）
-    live_record_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenLiveRecordInfo(
+    if (bm) {
+        live_record_info_listen_id_ = bm->ListenLiveRecordInfo(
         [this, p](const notification_center::LiveRecordInfo& msg) {
             WeakDummyReturn(p);
             LiveRecordStateInfo info;
@@ -179,6 +193,9 @@ void DroneImpl::initLiveRecordListener() {
                 LOG_ERROR("[DroneImpl-%s] ListenLiveRecordInfo, error: %d", log_tag_.c_str(), error_code);
             }
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     if (live_record_info_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DroneImpl-%s] ListenLiveRecordInfo failed, listen_id: %d", log_tag_.c_str(), live_record_info_listen_id_);
     }
@@ -191,7 +208,15 @@ std::shared_ptr<ILiveModule> DroneImpl::getLiveStream(const LiveInfo& params) {
     if (live_module_map_.count(key) > 0) {
         return live_module_map_[key];
     }
-    auto live_module = std::make_shared<LiveModuleImpl>(params, message_engine_->getRtcChannelManager(), getGatewaySn());
+    auto live_module = std::make_shared<LiveModuleImpl>(
+        params,
+        message_engine_->getRtcChannelManager(),
+        session_id_,
+        getGatewaySn(),
+        [weak_ai = std::weak_ptr<AICtrlMgr>(ai_ctrl_mgr_)](AiDataInfo* out) {
+            auto ai = weak_ai.lock();
+            return ai && ai->getCachedAiDataInfo(out);
+        });
     live_module_map_[key] = live_module;
     return live_module;
 }
@@ -202,7 +227,7 @@ std::shared_ptr<ILiveRecordModule> DroneImpl::getLiveRecord(const LiveInfo& para
     if (live_record_module_map_.count(key) > 0) {
         return live_record_module_map_[key];
     }
-    auto live_record_module = std::make_shared<LiveRecordModuleImpl>(params);
+    auto live_record_module = std::make_shared<LiveRecordModuleImpl>(params, session_id_);
     live_record_module_map_[key] = live_record_module;
     return live_record_module;
 }
@@ -210,7 +235,7 @@ std::shared_ptr<ILiveRecordModule> DroneImpl::getLiveRecord(const LiveInfo& para
 std::shared_ptr<ILiveDeviceModule> DroneImpl::getLiveDeviceModule() {
     std::lock_guard<std::mutex> lock(live_device_module_mutex_);
     if (!live_device_module_) {
-        live_device_module_ = std::make_shared<LiveDeviceModuleImpl>(DeviceKind::Drone, drone_sn_);
+        live_device_module_ = std::make_shared<LiveDeviceModuleImpl>(DeviceKind::Drone, drone_sn_, session_id_);
     }
     return live_device_module_;
 }
@@ -219,11 +244,15 @@ std::shared_ptr<ITakeoffModule> DroneImpl::getTakeoffModule() {
     return takeoff_module_;
 }
 
+std::shared_ptr<IGroundFlightModule> DroneImpl::getGroundFlightModule() {
+    return ground_flight_module_;
+}
+
 std::shared_ptr<IFlightControlModule> DroneImpl::getFlightControlModule() {
     std::lock_guard<std::mutex> lock(flight_control_module_mutex_);
     if (!flight_control_module_) {
         flight_control_module_ = std::make_shared<FlightControlModuleImpl>(
-            drone_sn_, getGatewaySn(), message_engine_, flight_ctrl_mgr_);
+            drone_sn_, getGatewaySn(), message_engine_, flight_ctrl_mgr_, session_id_);
     }
     return flight_control_module_;
 }
@@ -231,7 +260,7 @@ std::shared_ptr<IFlightControlModule> DroneImpl::getFlightControlModule() {
 std::shared_ptr<IControlAuthModule> DroneImpl::getControlAuthModule() {
     std::lock_guard<std::mutex> lock(control_auth_module_mutex_);
     if (!control_auth_module_) {
-        control_auth_module_ = std::make_shared<ControlAuthModuleImpl>(flight_ctrl_mgr_, payload_ctrl_mgr_);
+        control_auth_module_ = std::make_shared<ControlAuthModuleImpl>(flight_ctrl_mgr_, payload_ctrl_mgr_, session_id_);
     }
     return control_auth_module_;
 }
@@ -246,7 +275,7 @@ std::shared_ptr<IFlightSettingsModule> DroneImpl::getFlightSettingsModule() {
         // 传入 gateway_sn（网关 SN）：
         // 后端 /manage/api/v1/flight/configs/safe 接口的 ?sn=xxx 参数期望网关 SN，
         // 传统机场场景 gateway_sn = dock_sn；网联机型 gateway_sn = drone_sn。
-        flight_settings_module_ = std::make_shared<FlightSettingsModuleImpl>(getGatewaySn());
+        flight_settings_module_ = std::make_shared<FlightSettingsModuleImpl>(getGatewaySn(), session_id_);
     }
     return flight_settings_module_;
 }
@@ -254,7 +283,7 @@ std::shared_ptr<IFlightSettingsModule> DroneImpl::getFlightSettingsModule() {
 std::shared_ptr<ITestFlightModule> DroneImpl::getTestFlightModule() {
     std::lock_guard<std::mutex> lock(test_flight_module_mutex_);
     if (!test_flight_module_) {
-        test_flight_module_ = std::make_shared<TestFlightModuleImpl>();
+        test_flight_module_ = std::make_shared<TestFlightModuleImpl>(session_id_);
     }
     return test_flight_module_;
 }
@@ -262,7 +291,7 @@ std::shared_ptr<ITestFlightModule> DroneImpl::getTestFlightModule() {
 std::shared_ptr<IOnboardAiModule> DroneImpl::getOnboardAiModule() {
     std::lock_guard<std::mutex> lock(onboard_ai_module_mutex_);
     if (!onboard_ai_module_) {
-        onboard_ai_module_ = std::make_shared<OnboardAiModuleImpl>(ai_ctrl_mgr_);
+        onboard_ai_module_ = std::make_shared<OnboardAiModuleImpl>(ai_ctrl_mgr_, session_id_);
     }
     return onboard_ai_module_;
 }
@@ -271,15 +300,31 @@ std::shared_ptr<IOnboardAiModule> DroneImpl::getOnboardAiModule() {
 std::shared_ptr<IPsdkControlModule> DroneImpl::getPsdkControlModule() {
     std::lock_guard<std::mutex> lock(psdk_control_module_mutex_);
     if (!psdk_control_module_) {
-        psdk_control_module_ = std::make_shared<PsdkControlModuleImpl>(psdk_ctrl_mgr_);
+        psdk_control_module_ = std::make_shared<PsdkControlModuleImpl>(psdk_ctrl_mgr_, session_id_);
     }
     return psdk_control_module_;
+}
+
+std::shared_ptr<IEsdkControlModule> DroneImpl::getEsdkControlModule() {
+    std::lock_guard<std::mutex> lock(esdk_control_module_mutex_);
+    if (!esdk_control_module_) {
+        esdk_control_module_ = std::make_shared<EsdkControlModuleImpl>(drone_sn_, getHostGatewaySn(), message_engine_, session_id_);
+    }
+    return esdk_control_module_;
+}
+
+std::shared_ptr<IFlightTaskMediaUploadModule> DroneImpl::getFlightTaskMediaUploadModule() {
+    std::lock_guard<std::mutex> lock(flight_task_media_upload_module_mutex_);
+    if (!flight_task_media_upload_module_) {
+        flight_task_media_upload_module_ = std::make_shared<FlightTaskMediaUploadModuleImpl>(drone_sn_, getHostGatewaySn(), message_engine_, session_id_);
+    }
+    return flight_task_media_upload_module_;
 }
 
 std::shared_ptr<ICameraControlModule> DroneImpl::getCameraControlModule() {
     std::lock_guard<std::mutex> lock(camera_control_module_mutex_);
     if (!camera_control_module_) {
-        camera_control_module_ = std::make_shared<CameraControlModuleImpl>(payload_ctrl_mgr_);
+        camera_control_module_ = std::make_shared<CameraControlModuleImpl>(payload_ctrl_mgr_, session_id_);
     }
     return camera_control_module_;
 }
@@ -322,10 +367,18 @@ std::shared_ptr<IDeviceHMSModule> DroneImpl::getDeviceHMSModule() {
     return device_hms_module_;
 }
 
+std::shared_ptr<IAirsenseWarningModule> DroneImpl::getAirsenseWarningModule() {
+    std::lock_guard<std::mutex> lock(airsense_warning_module_mutex_);
+    if (!airsense_warning_module_) {
+        airsense_warning_module_ = std::make_shared<AirsenseWarningModuleImpl>(drone_sn_, getHostGatewaySn(), session_id_);
+    }
+    return airsense_warning_module_;
+}
+
 std::shared_ptr<IDeviceDebugModule> DroneImpl::getDeviceDebugModule() {
     std::lock_guard<std::mutex> lock(device_debug_module_mutex_);
     if (!device_debug_module_) {
-        device_debug_module_ = std::make_shared<DeviceDebugModuleImpl>();
+        device_debug_module_ = std::make_shared<DeviceDebugModuleImpl>(session_id_);
     }
     return device_debug_module_;
 }
@@ -333,7 +386,7 @@ std::shared_ptr<IDeviceDebugModule> DroneImpl::getDeviceDebugModule() {
 std::shared_ptr<IAIBoxModule> DroneImpl::getAIBoxModule() {
     std::lock_guard<std::mutex> lock(ai_box_module_mutex_);
     if (!ai_box_module_) {
-        ai_box_module_ = std::make_shared<AIBoxModuleImpl>();
+        ai_box_module_ = std::make_shared<AIBoxModuleImpl>(session_id_);
     }
     return ai_box_module_;
 }
@@ -357,6 +410,17 @@ std::string DroneImpl::getGatewaySn() {
         return drone_sn_;
     }
     return dock_sn_;
+}
+
+std::string DroneImpl::getHostGatewaySn() {
+    // 上行推送类 topic 的 device_sn 由 host_gateway 推送:
+    //   机场 → 机场 SN(与 getGatewaySn 一致)
+    //   网联机型 → 基站 SN(=host_gateway, 与 getGatewaySn 的 self 不同)
+    const auto resolved = TopoRegistry::getInstance().resolveHostGatewaySn(drone_sn_);
+    if (resolved.has_value() && !resolved->empty()) {
+        return *resolved;
+    }
+    return getGatewaySn();
 }
 
 // 红外增益模式

@@ -21,8 +21,8 @@ SDK 初始化是所有操作的前提。initialize() 未成功完成前，其他
 | 要求 | 说明 |
 |------|------|
 | Java | 17+ |
-| 平台 | Linux x86_64（生产环境）；macOS/Windows 可用 Mock 模式 |
-| 网络 | BFF 需可达 DJI CloudAPI2 Platform（HTTP + WebSocket） |
+| 平台 | Linux x86_64 或 Linux aarch64（生产环境，按架构选 SDK 包）；macOS/Windows 可用 Mock 模式 |
+| 网络 | BFF 需可达 DJI Cloud API 2（HTTP + WebSocket） |
 | 凭证 | server address + access token + workspace UUID |
 
 ## 最小初始化代码
@@ -84,7 +84,7 @@ public class FlightHubConfig {
 
         FlightHubSdkErrorCode result = FlightHubSDK.initialize(config);
         if (result != FlightHubSdkErrorCode.SUCCESS) {
-            throw new IllegalStateException("DJI CloudAPI2 SDK init failed: " + result);
+            throw new IllegalStateException("DJI Cloud API 2 SDK init failed: " + result);
         }
         return FlightHubSDK.getInstance();
     }

@@ -29,6 +29,7 @@ public class flighthubsdkmoduleJNI {
   public final static native long FlightHubError_from_http__SWIG_1(int jarg1, int jarg2);
   public final static native long FlightHubError_from_http__SWIG_2(int jarg1);
   public final static native long FlightHubError_from_server(int jarg1, String jarg2);
+  public final static native long FlightHubError_from_parse_error(int jarg1, String jarg2);
   public final static native String FlightHubError_me_error_to_string(int jarg1);
   public final static native long FlightHubError_from_drc__SWIG_0(int jarg1, int jarg2);
   public final static native long FlightHubError_from_drc__SWIG_1(int jarg1);
@@ -186,6 +187,56 @@ public class flighthubsdkmoduleJNI {
   public final static native long ControlRightsDeviceControlStatus_controls_get(long jarg1, ControlRightsDeviceControlStatus jarg1_);
   public final static native long new_ControlRightsDeviceControlStatus();
   public final static native void delete_ControlRightsDeviceControlStatus(long jarg1);
+  public final static native void ControlAuthGateway_sn_set(long jarg1, ControlAuthGateway jarg1_, String jarg2);
+  public final static native String ControlAuthGateway_sn_get(long jarg1, ControlAuthGateway jarg1_);
+  public final static native void ControlAuthGateway_id_set(long jarg1, ControlAuthGateway jarg1_, String jarg2);
+  public final static native String ControlAuthGateway_id_get(long jarg1, ControlAuthGateway jarg1_);
+  public final static native void ControlAuthGateway_auth_control_keys_set(long jarg1, ControlAuthGateway jarg1_, long jarg2, StringVector jarg2_);
+  public final static native long ControlAuthGateway_auth_control_keys_get(long jarg1, ControlAuthGateway jarg1_);
+  public final static native void ControlAuthGateway_device_model_class_set(long jarg1, ControlAuthGateway jarg1_, String jarg2);
+  public final static native String ControlAuthGateway_device_model_class_get(long jarg1, ControlAuthGateway jarg1_);
+  public final static native long new_ControlAuthGateway();
+  public final static native void delete_ControlAuthGateway(long jarg1);
+  public final static native void ControlAuthUser_call_sign_set(long jarg1, ControlAuthUser jarg1_, String jarg2);
+  public final static native String ControlAuthUser_call_sign_get(long jarg1, ControlAuthUser jarg1_);
+  public final static native void ControlAuthUser_user_id_set(long jarg1, ControlAuthUser jarg1_, String jarg2);
+  public final static native String ControlAuthUser_user_id_get(long jarg1, ControlAuthUser jarg1_);
+  public final static native void ControlAuthUser_type_set(long jarg1, ControlAuthUser jarg1_, String jarg2);
+  public final static native String ControlAuthUser_type_get(long jarg1, ControlAuthUser jarg1_);
+  public final static native long new_ControlAuthUser();
+  public final static native void delete_ControlAuthUser(long jarg1);
+  public final static native void ControlAuthSpec_is_locked_set(long jarg1, ControlAuthSpec jarg1_, boolean jarg2);
+  public final static native boolean ControlAuthSpec_is_locked_get(long jarg1, ControlAuthSpec jarg1_);
+  public final static native void ControlAuthSpec_payload_index_set(long jarg1, ControlAuthSpec jarg1_, String jarg2);
+  public final static native String ControlAuthSpec_payload_index_get(long jarg1, ControlAuthSpec jarg1_);
+  public final static native void ControlAuthSpec_is_cloud_control_auth_set(long jarg1, ControlAuthSpec jarg1_, boolean jarg2);
+  public final static native boolean ControlAuthSpec_is_cloud_control_auth_get(long jarg1, ControlAuthSpec jarg1_);
+  public final static native void ControlAuthSpec_waiting_for_auth_user_set(long jarg1, ControlAuthSpec jarg1_, String jarg2);
+  public final static native String ControlAuthSpec_waiting_for_auth_user_get(long jarg1, ControlAuthSpec jarg1_);
+  public final static native long new_ControlAuthSpec();
+  public final static native void delete_ControlAuthSpec(long jarg1);
+  public final static native void ControlAuthController_key_set(long jarg1, ControlAuthController jarg1_, String jarg2);
+  public final static native String ControlAuthController_key_get(long jarg1, ControlAuthController jarg1_);
+  public final static native void ControlAuthController_type_set(long jarg1, ControlAuthController jarg1_, String jarg2);
+  public final static native String ControlAuthController_type_get(long jarg1, ControlAuthController jarg1_);
+  public final static native void ControlAuthController_version_set(long jarg1, ControlAuthController jarg1_, long jarg2);
+  public final static native long ControlAuthController_version_get(long jarg1, ControlAuthController jarg1_);
+  public final static native void ControlAuthController_gateway_set(long jarg1, ControlAuthController jarg1_, long jarg2, ControlAuthGateway jarg2_);
+  public final static native long ControlAuthController_gateway_get(long jarg1, ControlAuthController jarg1_);
+  public final static native void ControlAuthController_user_set(long jarg1, ControlAuthController jarg1_, long jarg2, ControlAuthUser jarg2_);
+  public final static native long ControlAuthController_user_get(long jarg1, ControlAuthController jarg1_);
+  public final static native void ControlAuthController_spec_set(long jarg1, ControlAuthController jarg1_, long jarg2, ControlAuthSpec jarg2_);
+  public final static native long ControlAuthController_spec_get(long jarg1, ControlAuthController jarg1_);
+  public final static native long new_ControlAuthController();
+  public final static native void delete_ControlAuthController(long jarg1);
+  public final static native void ControlAuthResult_drone_sn_set(long jarg1, ControlAuthResult jarg1_, String jarg2);
+  public final static native String ControlAuthResult_drone_sn_get(long jarg1, ControlAuthResult jarg1_);
+  public final static native void ControlAuthResult_bid_set(long jarg1, ControlAuthResult jarg1_, String jarg2);
+  public final static native String ControlAuthResult_bid_get(long jarg1, ControlAuthResult jarg1_);
+  public final static native void ControlAuthResult_controls_set(long jarg1, ControlAuthResult jarg1_, long jarg2, ControlAuthControllerVector jarg2_);
+  public final static native long ControlAuthResult_controls_get(long jarg1, ControlAuthResult jarg1_);
+  public final static native long new_ControlAuthResult();
+  public final static native void delete_ControlAuthResult(long jarg1);
   public final static native void FlightTaskEventBreakPointResume_task_uuid_set(long jarg1, FlightTaskEventBreakPointResume jarg1_, String jarg2);
   public final static native String FlightTaskEventBreakPointResume_task_uuid_get(long jarg1, FlightTaskEventBreakPointResume jarg1_);
   public final static native void FlightTaskEventBreakPointResume_parent_uuid_set(long jarg1, FlightTaskEventBreakPointResume jarg1_, String jarg2);
@@ -232,8 +283,8 @@ public class flighthubsdkmoduleJNI {
   public final static native int DockNetworkState_type_get(long jarg1, DockNetworkState jarg1_);
   public final static native void DockNetworkState_quality_set(long jarg1, DockNetworkState jarg1_, int jarg2);
   public final static native int DockNetworkState_quality_get(long jarg1, DockNetworkState jarg1_);
-  public final static native void DockNetworkState_rate_set(long jarg1, DockNetworkState jarg1_, int jarg2);
-  public final static native int DockNetworkState_rate_get(long jarg1, DockNetworkState jarg1_);
+  public final static native void DockNetworkState_rate_set(long jarg1, DockNetworkState jarg1_, double jarg2);
+  public final static native double DockNetworkState_rate_get(long jarg1, DockNetworkState jarg1_);
   public final static native long new_DockNetworkState();
   public final static native void delete_DockNetworkState(long jarg1);
   public final static native void DockMediaFileDetail_remain_upload_set(long jarg1, DockMediaFileDetail jarg1_, int jarg2);
@@ -752,6 +803,24 @@ public class flighthubsdkmoduleJNI {
   public final static native long GetFlightTaskTrackResults_track_get(long jarg1, GetFlightTaskTrackResults jarg1_);
   public final static native long new_GetFlightTaskTrackResults();
   public final static native void delete_GetFlightTaskTrackResults(long jarg1);
+  public final static native void GetFlightRisksParams_task_uuid_set(long jarg1, GetFlightRisksParams jarg1_, String jarg2);
+  public final static native String GetFlightRisksParams_task_uuid_get(long jarg1, GetFlightRisksParams jarg1_);
+  public final static native long new_GetFlightRisksParams();
+  public final static native void delete_GetFlightRisksParams(long jarg1);
+  public final static native void FlightRiskItem_risk_type_set(long jarg1, FlightRiskItem jarg1_, int jarg2);
+  public final static native int FlightRiskItem_risk_type_get(long jarg1, FlightRiskItem jarg1_);
+  public final static native void FlightRiskItem_latitude_set(long jarg1, FlightRiskItem jarg1_, double jarg2);
+  public final static native double FlightRiskItem_latitude_get(long jarg1, FlightRiskItem jarg1_);
+  public final static native void FlightRiskItem_longitude_set(long jarg1, FlightRiskItem jarg1_, double jarg2);
+  public final static native double FlightRiskItem_longitude_get(long jarg1, FlightRiskItem jarg1_);
+  public final static native void FlightRiskItem_height_set(long jarg1, FlightRiskItem jarg1_, double jarg2);
+  public final static native double FlightRiskItem_height_get(long jarg1, FlightRiskItem jarg1_);
+  public final static native long new_FlightRiskItem();
+  public final static native void delete_FlightRiskItem(long jarg1);
+  public final static native void GetFlightRisksResults_list_set(long jarg1, GetFlightRisksResults jarg1_, long jarg2, FlightRiskItemVector jarg2_);
+  public final static native long GetFlightRisksResults_list_get(long jarg1, GetFlightRisksResults jarg1_);
+  public final static native long new_GetFlightRisksResults();
+  public final static native void delete_GetFlightRisksResults(long jarg1);
   public final static native void WaylineBreakPoint_index_set(long jarg1, WaylineBreakPoint jarg1_, int jarg2);
   public final static native int WaylineBreakPoint_index_get(long jarg1, WaylineBreakPoint jarg1_);
   public final static native void WaylineBreakPoint_state_set(long jarg1, WaylineBreakPoint jarg1_, int jarg2);
@@ -848,6 +917,10 @@ public class flighthubsdkmoduleJNI {
   public final static native String TaskDetail_run_at_get(long jarg1, TaskDetail jarg1_);
   public final static native void TaskDetail_tags_set(long jarg1, TaskDetail jarg1_, long jarg2, StringVector jarg2_);
   public final static native long TaskDetail_tags_get(long jarg1, TaskDetail jarg1_);
+  public final static native void TaskDetail_cloud_to_cloud_id_set(long jarg1, TaskDetail jarg1_, String jarg2);
+  public final static native String TaskDetail_cloud_to_cloud_id_get(long jarg1, TaskDetail jarg1_);
+  public final static native void TaskDetail_fast_reconstruction_set(long jarg1, TaskDetail jarg1_, boolean jarg2);
+  public final static native boolean TaskDetail_fast_reconstruction_get(long jarg1, TaskDetail jarg1_);
   public final static native void TaskDetail_updated_at_set(long jarg1, TaskDetail jarg1_, String jarg2);
   public final static native String TaskDetail_updated_at_get(long jarg1, TaskDetail jarg1_);
   public final static native void TaskDetail_wayline_duration_set(long jarg1, TaskDetail jarg1_, double jarg2);
@@ -1004,8 +1077,22 @@ public class flighthubsdkmoduleJNI {
   public final static native long DeviceRecommendationResp_devices_get(long jarg1, DeviceRecommendationResp jarg1_);
   public final static native long new_DeviceRecommendationResp();
   public final static native void delete_DeviceRecommendationResp(long jarg1);
+  public final static native void TCAZoneStatus_status_set(long jarg1, TCAZoneStatus jarg1_, int jarg2);
+  public final static native int TCAZoneStatus_status_get(long jarg1, TCAZoneStatus jarg1_);
+  public final static native void TCAZoneStatus_sn_set(long jarg1, TCAZoneStatus jarg1_, String jarg2);
+  public final static native String TCAZoneStatus_sn_get(long jarg1, TCAZoneStatus jarg1_);
+  public final static native void TCAZoneStatus_radius_set(long jarg1, TCAZoneStatus jarg1_, int jarg2);
+  public final static native int TCAZoneStatus_radius_get(long jarg1, TCAZoneStatus jarg1_);
+  public final static native long new_TCAZoneStatus();
+  public final static native void delete_TCAZoneStatus(long jarg1);
   public final static native void TCAInfo_center_sn_set(long jarg1, TCAInfo jarg1_, String jarg2);
   public final static native String TCAInfo_center_sn_get(long jarg1, TCAInfo jarg1_);
+  public final static native void TCAInfo_tca_set(long jarg1, TCAInfo jarg1_, long jarg2, TCAZoneStatusVector jarg2_);
+  public final static native long TCAInfo_tca_get(long jarg1, TCAInfo jarg1_);
+  public final static native void TCAInfo_tca_status_set(long jarg1, TCAInfo jarg1_, String jarg2);
+  public final static native String TCAInfo_tca_status_get(long jarg1, TCAInfo jarg1_);
+  public final static native void TCAInfo_version_set(long jarg1, TCAInfo jarg1_, long jarg2);
+  public final static native long TCAInfo_version_get(long jarg1, TCAInfo jarg1_);
   public final static native void TCAInfo_data_json_set(long jarg1, TCAInfo jarg1_, String jarg2);
   public final static native String TCAInfo_data_json_get(long jarg1, TCAInfo jarg1_);
   public final static native long new_TCAInfo();
@@ -1124,6 +1211,12 @@ public class flighthubsdkmoduleJNI {
   public final static native int AiDetectionTarget_target_h_get(long jarg1, AiDetectionTarget jarg1_);
   public final static native void AiDetectionTarget_target_distance_set(long jarg1, AiDetectionTarget jarg1_, long jarg2);
   public final static native long AiDetectionTarget_target_distance_get(long jarg1, AiDetectionTarget jarg1_);
+  public final static native void AiDetectionTarget_model_index_set(long jarg1, AiDetectionTarget jarg1_, int jarg2);
+  public final static native int AiDetectionTarget_model_index_get(long jarg1, AiDetectionTarget jarg1_);
+  public final static native void AiDetectionTarget_frame_source_set(long jarg1, AiDetectionTarget jarg1_, int jarg2);
+  public final static native int AiDetectionTarget_frame_source_get(long jarg1, AiDetectionTarget jarg1_);
+  public final static native void AiDetectionTarget_model_info_type_set(long jarg1, AiDetectionTarget jarg1_, int jarg2);
+  public final static native int AiDetectionTarget_model_info_type_get(long jarg1, AiDetectionTarget jarg1_);
   public final static native long new_AiDetectionTarget();
   public final static native void delete_AiDetectionTarget(long jarg1);
   public final static native void AiSeiInfo_targets_set(long jarg1, AiSeiInfo jarg1_, long jarg2, AiDetectionTargetVector jarg2_);
@@ -1184,16 +1277,6 @@ public class flighthubsdkmoduleJNI {
   public final static native long EisSeiInfo_left_bottom_get(long jarg1, EisSeiInfo jarg1_);
   public final static native long new_EisSeiInfo();
   public final static native void delete_EisSeiInfo(long jarg1);
-  public final static native void FlyToPointParams_latitude_set(long jarg1, FlyToPointParams jarg1_, double jarg2);
-  public final static native double FlyToPointParams_latitude_get(long jarg1, FlyToPointParams jarg1_);
-  public final static native void FlyToPointParams_longitude_set(long jarg1, FlyToPointParams jarg1_, double jarg2);
-  public final static native double FlyToPointParams_longitude_get(long jarg1, FlyToPointParams jarg1_);
-  public final static native void FlyToPointParams_height_set(long jarg1, FlyToPointParams jarg1_, double jarg2);
-  public final static native double FlyToPointParams_height_get(long jarg1, FlyToPointParams jarg1_);
-  public final static native void FlyToPointParams_max_speed_set(long jarg1, FlyToPointParams jarg1_, int jarg2);
-  public final static native int FlyToPointParams_max_speed_get(long jarg1, FlyToPointParams jarg1_);
-  public final static native long new_FlyToPointParams();
-  public final static native void delete_FlyToPointParams(long jarg1);
   public final static native void FlyToTargetPoint_latitude_set(long jarg1, FlyToTargetPoint jarg1_, double jarg2);
   public final static native double FlyToTargetPoint_latitude_get(long jarg1, FlyToTargetPoint jarg1_);
   public final static native void FlyToTargetPoint_longitude_set(long jarg1, FlyToTargetPoint jarg1_, double jarg2);
@@ -1202,6 +1285,26 @@ public class flighthubsdkmoduleJNI {
   public final static native double FlyToTargetPoint_height_get(long jarg1, FlyToTargetPoint jarg1_);
   public final static native long new_FlyToTargetPoint();
   public final static native void delete_FlyToTargetPoint(long jarg1);
+  public final static native void FlyToPointStartResult_fly_to_id_set(long jarg1, FlyToPointStartResult jarg1_, String jarg2);
+  public final static native String FlyToPointStartResult_fly_to_id_get(long jarg1, FlyToPointStartResult jarg1_);
+  public final static native void FlyToPointStartResult_flight_id_set(long jarg1, FlyToPointStartResult jarg1_, String jarg2);
+  public final static native String FlyToPointStartResult_flight_id_get(long jarg1, FlyToPointStartResult jarg1_);
+  public final static native long new_FlyToPointStartResult();
+  public final static native void delete_FlyToPointStartResult(long jarg1);
+  public final static native void FlyToPointParams_start_point_set(long jarg1, FlyToPointParams jarg1_, long jarg2, FlyToTargetPoint jarg2_);
+  public final static native long FlyToPointParams_start_point_get(long jarg1, FlyToPointParams jarg1_);
+  public final static native void FlyToPointParams_points_set(long jarg1, FlyToPointParams jarg1_, long jarg2, FlyToTargetPointVector jarg2_);
+  public final static native long FlyToPointParams_points_get(long jarg1, FlyToPointParams jarg1_);
+  public final static native void FlyToPointParams_max_speed_set(long jarg1, FlyToPointParams jarg1_, int jarg2);
+  public final static native int FlyToPointParams_max_speed_get(long jarg1, FlyToPointParams jarg1_);
+  public final static native void FlyToPointParams_speed_mode_set(long jarg1, FlyToPointParams jarg1_, int jarg2);
+  public final static native int FlyToPointParams_speed_mode_get(long jarg1, FlyToPointParams jarg1_);
+  public final static native void FlyToPointParams_real_height_cap_enabled_set(long jarg1, FlyToPointParams jarg1_, int jarg2);
+  public final static native int FlyToPointParams_real_height_cap_enabled_get(long jarg1, FlyToPointParams jarg1_);
+  public final static native void FlyToPointParams_real_height_cap_limit_set(long jarg1, FlyToPointParams jarg1_, int jarg2);
+  public final static native int FlyToPointParams_real_height_cap_limit_get(long jarg1, FlyToPointParams jarg1_);
+  public final static native long new_FlyToPointParams();
+  public final static native void delete_FlyToPointParams(long jarg1);
   public final static native void FlyToUpdateTargetPointsParams_fly_to_id_set(long jarg1, FlyToUpdateTargetPointsParams jarg1_, String jarg2);
   public final static native String FlyToUpdateTargetPointsParams_fly_to_id_get(long jarg1, FlyToUpdateTargetPointsParams jarg1_);
   public final static native void FlyToUpdateTargetPointsParams_start_point_set(long jarg1, FlyToUpdateTargetPointsParams jarg1_, long jarg2, FlyToTargetPoint jarg2_);
@@ -1210,6 +1313,14 @@ public class flighthubsdkmoduleJNI {
   public final static native long FlyToUpdateTargetPointsParams_points_get(long jarg1, FlyToUpdateTargetPointsParams jarg1_);
   public final static native void FlyToUpdateTargetPointsParams_max_speed_set(long jarg1, FlyToUpdateTargetPointsParams jarg1_, int jarg2);
   public final static native int FlyToUpdateTargetPointsParams_max_speed_get(long jarg1, FlyToUpdateTargetPointsParams jarg1_);
+  public final static native void FlyToUpdateTargetPointsParams_speed_mode_set(long jarg1, FlyToUpdateTargetPointsParams jarg1_, int jarg2);
+  public final static native int FlyToUpdateTargetPointsParams_speed_mode_get(long jarg1, FlyToUpdateTargetPointsParams jarg1_);
+  public final static native void FlyToUpdateTargetPointsParams_real_height_cap_enabled_set(long jarg1, FlyToUpdateTargetPointsParams jarg1_, int jarg2);
+  public final static native int FlyToUpdateTargetPointsParams_real_height_cap_enabled_get(long jarg1, FlyToUpdateTargetPointsParams jarg1_);
+  public final static native void FlyToUpdateTargetPointsParams_real_height_cap_limit_set(long jarg1, FlyToUpdateTargetPointsParams jarg1_, int jarg2);
+  public final static native int FlyToUpdateTargetPointsParams_real_height_cap_limit_get(long jarg1, FlyToUpdateTargetPointsParams jarg1_);
+  public final static native void FlyToUpdateTargetPointsParams_need_verify_flight_control_set(long jarg1, FlyToUpdateTargetPointsParams jarg1_, int jarg2);
+  public final static native int FlyToUpdateTargetPointsParams_need_verify_flight_control_get(long jarg1, FlyToUpdateTargetPointsParams jarg1_);
   public final static native long new_FlyToUpdateTargetPointsParams();
   public final static native void delete_FlyToUpdateTargetPointsParams(long jarg1);
   public final static native void FlyToDroneSelfPlanPathPoint_latitude_set(long jarg1, FlyToDroneSelfPlanPathPoint jarg1_, double jarg2);
@@ -1756,12 +1867,24 @@ public class flighthubsdkmoduleJNI {
   public final static native long PsdkSpeakerResource_opus_size_get(long jarg1, PsdkSpeakerResource jarg1_);
   public final static native void PsdkSpeakerResource_opus_md5_sum_set(long jarg1, PsdkSpeakerResource jarg1_, String jarg2);
   public final static native String PsdkSpeakerResource_opus_md5_sum_get(long jarg1, PsdkSpeakerResource jarg1_);
+  public final static native void PsdkSpeakerResource_project_id_set(long jarg1, PsdkSpeakerResource jarg1_, String jarg2);
+  public final static native String PsdkSpeakerResource_project_id_get(long jarg1, PsdkSpeakerResource jarg1_);
+  public final static native void PsdkSpeakerResource_visible_set(long jarg1, PsdkSpeakerResource jarg1_, boolean jarg2);
+  public final static native boolean PsdkSpeakerResource_visible_get(long jarg1, PsdkSpeakerResource jarg1_);
+  public final static native void PsdkSpeakerResource_create_scene_set(long jarg1, PsdkSpeakerResource jarg1_, String jarg2);
+  public final static native String PsdkSpeakerResource_create_scene_get(long jarg1, PsdkSpeakerResource jarg1_);
   public final static native long new_PsdkSpeakerResource();
   public final static native void delete_PsdkSpeakerResource(long jarg1);
   public final static native void PsdkSpeakerResourceList_resources_set(long jarg1, PsdkSpeakerResourceList jarg1_, long jarg2, PsdkSpeakerResourceVector jarg2_);
   public final static native long PsdkSpeakerResourceList_resources_get(long jarg1, PsdkSpeakerResourceList jarg1_);
   public final static native long new_PsdkSpeakerResourceList();
   public final static native void delete_PsdkSpeakerResourceList(long jarg1);
+  public final static native void PsdkSpeakerResourceListParams_file_type_set(long jarg1, PsdkSpeakerResourceListParams jarg1_, String jarg2);
+  public final static native String PsdkSpeakerResourceListParams_file_type_get(long jarg1, PsdkSpeakerResourceListParams jarg1_);
+  public final static native void PsdkSpeakerResourceListParams_md5_sum_set(long jarg1, PsdkSpeakerResourceListParams jarg1_, String jarg2);
+  public final static native String PsdkSpeakerResourceListParams_md5_sum_get(long jarg1, PsdkSpeakerResourceListParams jarg1_);
+  public final static native long new_PsdkSpeakerResourceListParams();
+  public final static native void delete_PsdkSpeakerResourceListParams(long jarg1);
   public final static native void GetMediaFileListParams_parent_id_set(long jarg1, GetMediaFileListParams jarg1_, int jarg2);
   public final static native int GetMediaFileListParams_parent_id_get(long jarg1, GetMediaFileListParams jarg1_);
   public final static native void GetMediaFileListParams_page_set(long jarg1, GetMediaFileListParams jarg1_, int jarg2);
@@ -1862,6 +1985,12 @@ public class flighthubsdkmoduleJNI {
   public final static native boolean EditPsdkSpeakerResourceParams_visible_get(long jarg1, EditPsdkSpeakerResourceParams jarg1_);
   public final static native void EditPsdkSpeakerResourceParams_content_set(long jarg1, EditPsdkSpeakerResourceParams jarg1_, String jarg2);
   public final static native String EditPsdkSpeakerResourceParams_content_get(long jarg1, EditPsdkSpeakerResourceParams jarg1_);
+  public final static native void EditPsdkSpeakerResourceParams_opus_object_key_set(long jarg1, EditPsdkSpeakerResourceParams jarg1_, String jarg2);
+  public final static native String EditPsdkSpeakerResourceParams_opus_object_key_get(long jarg1, EditPsdkSpeakerResourceParams jarg1_);
+  public final static native void EditPsdkSpeakerResourceParams_opus_size_set(long jarg1, EditPsdkSpeakerResourceParams jarg1_, long jarg2);
+  public final static native long EditPsdkSpeakerResourceParams_opus_size_get(long jarg1, EditPsdkSpeakerResourceParams jarg1_);
+  public final static native void EditPsdkSpeakerResourceParams_opus_md5_sum_set(long jarg1, EditPsdkSpeakerResourceParams jarg1_, String jarg2);
+  public final static native String EditPsdkSpeakerResourceParams_opus_md5_sum_get(long jarg1, EditPsdkSpeakerResourceParams jarg1_);
   public final static native long new_EditPsdkSpeakerResourceParams();
   public final static native void delete_EditPsdkSpeakerResourceParams(long jarg1);
   public final static native void STSCredential_access_key_id_set(long jarg1, STSCredential jarg1_, String jarg2);
@@ -1874,6 +2003,8 @@ public class flighthubsdkmoduleJNI {
   public final static native String STSCredential_security_token_get(long jarg1, STSCredential jarg1_);
   public final static native void STSCredential_platform_set(long jarg1, STSCredential jarg1_, int jarg2);
   public final static native int STSCredential_platform_get(long jarg1, STSCredential jarg1_);
+  public final static native void STSCredential_expiration_set(long jarg1, STSCredential jarg1_, String jarg2);
+  public final static native String STSCredential_expiration_get(long jarg1, STSCredential jarg1_);
   public final static native long new_STSCredential();
   public final static native void delete_STSCredential(long jarg1);
   public final static native void STSInfo_object_key_prefix_set(long jarg1, STSInfo jarg1_, String jarg2);
@@ -1982,6 +2113,12 @@ public class flighthubsdkmoduleJNI {
   public final static native String TakeoffParams_cloud_to_cloud_id_get(long jarg1, TakeoffParams jarg1_);
   public final static native void TakeoffParams_need_verify_flight_control_set(long jarg1, TakeoffParams jarg1_, int jarg2);
   public final static native int TakeoffParams_need_verify_flight_control_get(long jarg1, TakeoffParams jarg1_);
+  public final static native void TakeoffParams_speed_mode_set(long jarg1, TakeoffParams jarg1_, int jarg2);
+  public final static native int TakeoffParams_speed_mode_get(long jarg1, TakeoffParams jarg1_);
+  public final static native void TakeoffParams_real_height_cap_enabled_set(long jarg1, TakeoffParams jarg1_, int jarg2);
+  public final static native int TakeoffParams_real_height_cap_enabled_get(long jarg1, TakeoffParams jarg1_);
+  public final static native void TakeoffParams_real_height_cap_limit_set(long jarg1, TakeoffParams jarg1_, int jarg2);
+  public final static native int TakeoffParams_real_height_cap_limit_get(long jarg1, TakeoffParams jarg1_);
   public final static native long new_TakeoffParams();
   public final static native void delete_TakeoffParams(long jarg1);
   public final static native void TakeoffResult_flight_id_set(long jarg1, TakeoffResult jarg1_, String jarg2);
@@ -1990,36 +2127,16 @@ public class flighthubsdkmoduleJNI {
   public final static native String TakeoffResult_fly_to_id_get(long jarg1, TakeoffResult jarg1_);
   public final static native long new_TakeoffResult();
   public final static native void delete_TakeoffResult(long jarg1);
-  public final static native void DownloadEphemerisParams_ephemeris_url_set(long jarg1, DownloadEphemerisParams jarg1_, String jarg2);
-  public final static native String DownloadEphemerisParams_ephemeris_url_get(long jarg1, DownloadEphemerisParams jarg1_);
-  public final static native void DownloadEphemerisParams_ephemeris_file_name_set(long jarg1, DownloadEphemerisParams jarg1_, String jarg2);
-  public final static native String DownloadEphemerisParams_ephemeris_file_name_get(long jarg1, DownloadEphemerisParams jarg1_);
-  public final static native long new_DownloadEphemerisParams();
-  public final static native void delete_DownloadEphemerisParams(long jarg1);
-  public final static native void InOutWaylineDetectParams_task_id_set(long jarg1, InOutWaylineDetectParams jarg1_, String jarg2);
-  public final static native String InOutWaylineDetectParams_task_id_get(long jarg1, InOutWaylineDetectParams jarg1_);
-  public final static native void InOutWaylineDetectParams_task_cmd_set(long jarg1, InOutWaylineDetectParams jarg1_, int jarg2);
-  public final static native int InOutWaylineDetectParams_task_cmd_get(long jarg1, InOutWaylineDetectParams jarg1_);
-  public final static native void InOutWaylineDetectParams_is_auto_visual_scout_set(long jarg1, InOutWaylineDetectParams jarg1_, boolean jarg2);
-  public final static native boolean InOutWaylineDetectParams_is_auto_visual_scout_get(long jarg1, InOutWaylineDetectParams jarg1_);
-  public final static native void InOutWaylineDetectParams_scout_relative_height_set(long jarg1, InOutWaylineDetectParams jarg1_, double jarg2);
-  public final static native double InOutWaylineDetectParams_scout_relative_height_get(long jarg1, InOutWaylineDetectParams jarg1_);
-  public final static native void InOutWaylineDetectParams_patrol_relative_height_set(long jarg1, InOutWaylineDetectParams jarg1_, double jarg2);
-  public final static native double InOutWaylineDetectParams_patrol_relative_height_get(long jarg1, InOutWaylineDetectParams jarg1_);
-  public final static native long new_InOutWaylineDetectParams();
-  public final static native void delete_InOutWaylineDetectParams(long jarg1);
-  public final static native void InOutWaylineFlightSettingParams_sn_set(long jarg1, InOutWaylineFlightSettingParams jarg1_, String jarg2);
-  public final static native String InOutWaylineFlightSettingParams_sn_get(long jarg1, InOutWaylineFlightSettingParams jarg1_);
-  public final static native void InOutWaylineFlightSettingParams_min_return_home_height_set(long jarg1, InOutWaylineFlightSettingParams jarg1_, double jarg2);
-  public final static native double InOutWaylineFlightSettingParams_min_return_home_height_get(long jarg1, InOutWaylineFlightSettingParams jarg1_);
-  public final static native void InOutWaylineFlightSettingParams_lost_contact_action_set(long jarg1, InOutWaylineFlightSettingParams jarg1_, int jarg2);
-  public final static native int InOutWaylineFlightSettingParams_lost_contact_action_get(long jarg1, InOutWaylineFlightSettingParams jarg1_);
-  public final static native void InOutWaylineFlightSettingParams_max_height_limit_set(long jarg1, InOutWaylineFlightSettingParams jarg1_, double jarg2);
-  public final static native double InOutWaylineFlightSettingParams_max_height_limit_get(long jarg1, InOutWaylineFlightSettingParams jarg1_);
-  public final static native void InOutWaylineFlightSettingParams_max_distance_limit_set(long jarg1, InOutWaylineFlightSettingParams jarg1_, double jarg2);
-  public final static native double InOutWaylineFlightSettingParams_max_distance_limit_get(long jarg1, InOutWaylineFlightSettingParams jarg1_);
-  public final static native long new_InOutWaylineFlightSettingParams();
-  public final static native void delete_InOutWaylineFlightSettingParams(long jarg1);
+  public final static native void GroundTakeoffParams_auto_takeoff_height_set(long jarg1, GroundTakeoffParams jarg1_, int jarg2);
+  public final static native int GroundTakeoffParams_auto_takeoff_height_get(long jarg1, GroundTakeoffParams jarg1_);
+  public final static native void GroundTakeoffParams_out_of_control_action_set(long jarg1, GroundTakeoffParams jarg1_, int jarg2);
+  public final static native int GroundTakeoffParams_out_of_control_action_get(long jarg1, GroundTakeoffParams jarg1_);
+  public final static native long new_GroundTakeoffParams();
+  public final static native void delete_GroundTakeoffParams(long jarg1);
+  public final static native void GroundTakeoffResult_flight_id_set(long jarg1, GroundTakeoffResult jarg1_, String jarg2);
+  public final static native String GroundTakeoffResult_flight_id_get(long jarg1, GroundTakeoffResult jarg1_);
+  public final static native long new_GroundTakeoffResult();
+  public final static native void delete_GroundTakeoffResult(long jarg1);
   public final static native void LiveQualitySettingParams_sn_set(long jarg1, LiveQualitySettingParams jarg1_, String jarg2);
   public final static native String LiveQualitySettingParams_sn_get(long jarg1, LiveQualitySettingParams jarg1_);
   public final static native void LiveQualitySettingParams_camera_set(long jarg1, LiveQualitySettingParams jarg1_, String jarg2);
@@ -2090,14 +2207,22 @@ public class flighthubsdkmoduleJNI {
   public final static native String CreateTestFlightTaskParams_media_folder_id_paths_get(long jarg1, CreateTestFlightTaskParams jarg1_);
   public final static native void CreateTestFlightTaskParams_device_type_set(long jarg1, CreateTestFlightTaskParams jarg1_, int jarg2);
   public final static native int CreateTestFlightTaskParams_device_type_get(long jarg1, CreateTestFlightTaskParams jarg1_);
+  public final static native void CreateTestFlightTaskParams_cloud_to_cloud_id_set(long jarg1, CreateTestFlightTaskParams jarg1_, String jarg2);
+  public final static native String CreateTestFlightTaskParams_cloud_to_cloud_id_get(long jarg1, CreateTestFlightTaskParams jarg1_);
+  public final static native void CreateTestFlightTaskParams_tags_set(long jarg1, CreateTestFlightTaskParams jarg1_, long jarg2, StringVector jarg2_);
+  public final static native long CreateTestFlightTaskParams_tags_get(long jarg1, CreateTestFlightTaskParams jarg1_);
   public final static native long new_CreateTestFlightTaskParams();
   public final static native void delete_CreateTestFlightTaskParams(long jarg1);
   public final static native void CreateTestFlightTaskResponse_uuid_set(long jarg1, CreateTestFlightTaskResponse jarg1_, String jarg2);
   public final static native String CreateTestFlightTaskResponse_uuid_get(long jarg1, CreateTestFlightTaskResponse jarg1_);
-  public final static native void CreateTestFlightTaskResponse_begin_at_set(long jarg1, CreateTestFlightTaskResponse jarg1_, int jarg2);
-  public final static native int CreateTestFlightTaskResponse_begin_at_get(long jarg1, CreateTestFlightTaskResponse jarg1_);
-  public final static native void CreateTestFlightTaskResponse_end_at_set(long jarg1, CreateTestFlightTaskResponse jarg1_, int jarg2);
-  public final static native int CreateTestFlightTaskResponse_end_at_get(long jarg1, CreateTestFlightTaskResponse jarg1_);
+  public final static native void CreateTestFlightTaskResponse_begin_at_set(long jarg1, CreateTestFlightTaskResponse jarg1_, long jarg2);
+  public final static native long CreateTestFlightTaskResponse_begin_at_get(long jarg1, CreateTestFlightTaskResponse jarg1_);
+  public final static native void CreateTestFlightTaskResponse_end_at_set(long jarg1, CreateTestFlightTaskResponse jarg1_, long jarg2);
+  public final static native long CreateTestFlightTaskResponse_end_at_get(long jarg1, CreateTestFlightTaskResponse jarg1_);
+  public final static native void CreateTestFlightTaskResponse_wayline_validity_check_codes_set(long jarg1, CreateTestFlightTaskResponse jarg1_, long jarg2, LongLongVector jarg2_);
+  public final static native long CreateTestFlightTaskResponse_wayline_validity_check_codes_get(long jarg1, CreateTestFlightTaskResponse jarg1_);
+  public final static native void CreateTestFlightTaskResponse_is_task_created_set(long jarg1, CreateTestFlightTaskResponse jarg1_, boolean jarg2);
+  public final static native boolean CreateTestFlightTaskResponse_is_task_created_get(long jarg1, CreateTestFlightTaskResponse jarg1_);
   public final static native long new_CreateTestFlightTaskResponse();
   public final static native void delete_CreateTestFlightTaskResponse(long jarg1);
   public final static native void LiveVideoInfo_payload_index_set(long jarg1, LiveVideoInfo jarg1_, String jarg2);
@@ -2196,14 +2321,6 @@ public class flighthubsdkmoduleJNI {
   public final static native double DockLocation_longitude_get(long jarg1, DockLocation jarg1_);
   public final static native long new_DockLocation();
   public final static native void delete_DockLocation(long jarg1);
-  public final static native void DockDeparturePoint_longitude_set(long jarg1, DockDeparturePoint jarg1_, double jarg2);
-  public final static native double DockDeparturePoint_longitude_get(long jarg1, DockDeparturePoint jarg1_);
-  public final static native void DockDeparturePoint_latitude_set(long jarg1, DockDeparturePoint jarg1_, double jarg2);
-  public final static native double DockDeparturePoint_latitude_get(long jarg1, DockDeparturePoint jarg1_);
-  public final static native void DockDeparturePoint_height_set(long jarg1, DockDeparturePoint jarg1_, double jarg2);
-  public final static native double DockDeparturePoint_height_get(long jarg1, DockDeparturePoint jarg1_);
-  public final static native long new_DockDeparturePoint();
-  public final static native void delete_DockDeparturePoint(long jarg1);
   public final static native void DroneInDock_drone_in_dock_set(long jarg1, DroneInDock jarg1_, int jarg2);
   public final static native int DroneInDock_drone_in_dock_get(long jarg1, DroneInDock jarg1_);
   public final static native long new_DroneInDock();
@@ -2951,8 +3068,8 @@ public class flighthubsdkmoduleJNI {
   public final static native void delete_DockStatusBackupBatteryResult(long jarg1);
   public final static native void DockStatusNetworkStateResult_quality_set(long jarg1, DockStatusNetworkStateResult jarg1_, int jarg2);
   public final static native int DockStatusNetworkStateResult_quality_get(long jarg1, DockStatusNetworkStateResult jarg1_);
-  public final static native void DockStatusNetworkStateResult_rate_set(long jarg1, DockStatusNetworkStateResult jarg1_, int jarg2);
-  public final static native int DockStatusNetworkStateResult_rate_get(long jarg1, DockStatusNetworkStateResult jarg1_);
+  public final static native void DockStatusNetworkStateResult_rate_set(long jarg1, DockStatusNetworkStateResult jarg1_, double jarg2);
+  public final static native double DockStatusNetworkStateResult_rate_get(long jarg1, DockStatusNetworkStateResult jarg1_);
   public final static native void DockStatusNetworkStateResult_type_set(long jarg1, DockStatusNetworkStateResult jarg1_, int jarg2);
   public final static native int DockStatusNetworkStateResult_type_get(long jarg1, DockStatusNetworkStateResult jarg1_);
   public final static native long new_DockStatusNetworkStateResult();
@@ -3755,6 +3872,8 @@ public class flighthubsdkmoduleJNI {
   public final static native String HistoryHmsDataResultItem_status_key_get(long jarg1, HistoryHmsDataResultItem jarg1_);
   public final static native void HistoryHmsDataResultItem_sn_set(long jarg1, HistoryHmsDataResultItem jarg1_, String jarg2);
   public final static native String HistoryHmsDataResultItem_sn_get(long jarg1, HistoryHmsDataResultItem jarg1_);
+  public final static native void HistoryHmsDataResultItem_sub_hms_list_set(long jarg1, HistoryHmsDataResultItem jarg1_, long jarg2, HistoryHmsDataResultItemVector jarg2_);
+  public final static native long HistoryHmsDataResultItem_sub_hms_list_get(long jarg1, HistoryHmsDataResultItem jarg1_);
   public final static native long new_HistoryHmsDataResultItem();
   public final static native void delete_HistoryHmsDataResultItem(long jarg1);
   public final static native void HistoryHmsDataResult_pagination_set(long jarg1, HistoryHmsDataResult jarg1_, long jarg2, HistoryHmsDataResultPagination jarg2_);
@@ -3806,6 +3925,8 @@ public class flighthubsdkmoduleJNI {
   public final static native long SubDeviceInfo_parent_sns_get(long jarg1, SubDeviceInfo jarg1_);
   public final static native void SubDeviceInfo_nickname_set(long jarg1, SubDeviceInfo jarg1_, String jarg2);
   public final static native String SubDeviceInfo_nickname_get(long jarg1, SubDeviceInfo jarg1_);
+  public final static native void SubDeviceInfo_device_state_set(long jarg1, SubDeviceInfo jarg1_, String jarg2);
+  public final static native String SubDeviceInfo_device_state_get(long jarg1, SubDeviceInfo jarg1_);
   public final static native long new_SubDeviceInfo();
   public final static native void delete_SubDeviceInfo(long jarg1);
   public final static native void DeviceDetailInfo_device_sn_set(long jarg1, DeviceDetailInfo jarg1_, String jarg2);
@@ -3814,8 +3935,8 @@ public class flighthubsdkmoduleJNI {
   public final static native String DeviceDetailInfo_nickname_get(long jarg1, DeviceDetailInfo jarg1_);
   public final static native void DeviceDetailInfo_model_info_set(long jarg1, DeviceDetailInfo jarg1_, long jarg2, ModelInfo jarg2_);
   public final static native long DeviceDetailInfo_model_info_get(long jarg1, DeviceDetailInfo jarg1_);
-  public final static native void DeviceDetailInfo_device_add_time_set(long jarg1, DeviceDetailInfo jarg1_, int jarg2);
-  public final static native int DeviceDetailInfo_device_add_time_get(long jarg1, DeviceDetailInfo jarg1_);
+  public final static native void DeviceDetailInfo_device_add_time_set(long jarg1, DeviceDetailInfo jarg1_, long jarg2);
+  public final static native long DeviceDetailInfo_device_add_time_get(long jarg1, DeviceDetailInfo jarg1_);
   public final static native void DeviceDetailInfo_device_online_status_set(long jarg1, DeviceDetailInfo jarg1_, boolean jarg2);
   public final static native boolean DeviceDetailInfo_device_online_status_get(long jarg1, DeviceDetailInfo jarg1_);
   public final static native void DeviceDetailInfo_device_firmware_version_set(long jarg1, DeviceDetailInfo jarg1_, String jarg2);
@@ -3828,6 +3949,8 @@ public class flighthubsdkmoduleJNI {
   public final static native String DeviceDetailInfo_complete_machine_sn_get(long jarg1, DeviceDetailInfo jarg1_);
   public final static native void DeviceDetailInfo_sub_devices_set(long jarg1, DeviceDetailInfo jarg1_, long jarg2, SubDeviceInfoVector jarg2_);
   public final static native long DeviceDetailInfo_sub_devices_get(long jarg1, DeviceDetailInfo jarg1_);
+  public final static native void DeviceDetailInfo_device_state_set(long jarg1, DeviceDetailInfo jarg1_, String jarg2);
+  public final static native String DeviceDetailInfo_device_state_get(long jarg1, DeviceDetailInfo jarg1_);
   public final static native long new_DeviceDetailInfo();
   public final static native void delete_DeviceDetailInfo(long jarg1);
   public final static native void ModifyDeviceNameItem_device_sn_set(long jarg1, ModifyDeviceNameItem jarg1_, String jarg2);
@@ -3880,6 +4003,8 @@ public class flighthubsdkmoduleJNI {
   public final static native String FirmwareUpgradeResponseDeviceItemResult_sn_get(long jarg1, FirmwareUpgradeResponseDeviceItemResult jarg1_);
   public final static native long new_FirmwareUpgradeResponseDeviceItemResult();
   public final static native void delete_FirmwareUpgradeResponseDeviceItemResult(long jarg1);
+  public final static native void FirmwareUpgradeResult_bid_set(long jarg1, FirmwareUpgradeResult jarg1_, String jarg2);
+  public final static native String FirmwareUpgradeResult_bid_get(long jarg1, FirmwareUpgradeResult jarg1_);
   public final static native void FirmwareUpgradeResult_device_code_set(long jarg1, FirmwareUpgradeResult jarg1_, int jarg2);
   public final static native int FirmwareUpgradeResult_device_code_get(long jarg1, FirmwareUpgradeResult jarg1_);
   public final static native void FirmwareUpgradeResult_devices_set(long jarg1, FirmwareUpgradeResult jarg1_, long jarg2, FirmwareUpgradeResponseDeviceItemResultVector jarg2_);
@@ -3914,62 +4039,6 @@ public class flighthubsdkmoduleJNI {
   public final static native String FirmwareUpgradeAssociateRelay_sn_get(long jarg1, FirmwareUpgradeAssociateRelay jarg1_);
   public final static native long new_FirmwareUpgradeAssociateRelay();
   public final static native void delete_FirmwareUpgradeAssociateRelay(long jarg1);
-  public final static native void FirmwareUpgradeProgressItem_associate_drone_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, long jarg2, FirmwareUpgradeAssociateDrone jarg2_);
-  public final static native long FirmwareUpgradeProgressItem_associate_drone_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
-  public final static native void FirmwareUpgradeProgressItem_associate_relay_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, long jarg2, FirmwareUpgradeAssociateRelay jarg2_);
-  public final static native long FirmwareUpgradeProgressItem_associate_relay_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
-  public final static native void FirmwareUpgradeProgressItem_device_code_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, int jarg2);
-  public final static native int FirmwareUpgradeProgressItem_device_code_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
-  public final static native void FirmwareUpgradeProgressItem_firmware_status_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, int jarg2);
-  public final static native int FirmwareUpgradeProgressItem_firmware_status_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
-  public final static native void FirmwareUpgradeProgressItem_ota_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, long jarg2, FirmwareUpgradeProgressOTA jarg2_);
-  public final static native long FirmwareUpgradeProgressItem_ota_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
-  public final static native void FirmwareUpgradeProgressItem_sn_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, String jarg2);
-  public final static native String FirmwareUpgradeProgressItem_sn_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
-  public final static native void FirmwareUpgradeProgressItem_working_status_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, int jarg2);
-  public final static native int FirmwareUpgradeProgressItem_working_status_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
-  public final static native long new_FirmwareUpgradeProgressItem();
-  public final static native void delete_FirmwareUpgradeProgressItem(long jarg1);
-  public final static native void FirmwareUpgradeProgressResult_list_set(long jarg1, FirmwareUpgradeProgressResult jarg1_, long jarg2, FirmwareUpgradeProgressItemVector jarg2_);
-  public final static native long FirmwareUpgradeProgressResult_list_get(long jarg1, FirmwareUpgradeProgressResult jarg1_);
-  public final static native long new_FirmwareUpgradeProgressResult();
-  public final static native void delete_FirmwareUpgradeProgressResult(long jarg1);
-  public final static native void FirmwareItemResult_id_set(long jarg1, FirmwareItemResult jarg1_, int jarg2);
-  public final static native int FirmwareItemResult_id_get(long jarg1, FirmwareItemResult jarg1_);
-  public final static native void FirmwareItemResult_created_at_set(long jarg1, FirmwareItemResult jarg1_, String jarg2);
-  public final static native String FirmwareItemResult_created_at_get(long jarg1, FirmwareItemResult jarg1_);
-  public final static native void FirmwareItemResult_device_model_key_set(long jarg1, FirmwareItemResult jarg1_, String jarg2);
-  public final static native String FirmwareItemResult_device_model_key_get(long jarg1, FirmwareItemResult jarg1_);
-  public final static native void FirmwareItemResult_status_set(long jarg1, FirmwareItemResult jarg1_, String jarg2);
-  public final static native String FirmwareItemResult_status_get(long jarg1, FirmwareItemResult jarg1_);
-  public final static native void FirmwareItemResult_version_set(long jarg1, FirmwareItemResult jarg1_, String jarg2);
-  public final static native String FirmwareItemResult_version_get(long jarg1, FirmwareItemResult jarg1_);
-  public final static native void FirmwareItemResult_desc_set(long jarg1, FirmwareItemResult jarg1_, String jarg2);
-  public final static native String FirmwareItemResult_desc_get(long jarg1, FirmwareItemResult jarg1_);
-  public final static native long new_FirmwareItemResult();
-  public final static native void delete_FirmwareItemResult(long jarg1);
-  public final static native void FirmwareListResult_list_set(long jarg1, FirmwareListResult jarg1_, long jarg2, FirmwareItemResultVector jarg2_);
-  public final static native long FirmwareListResult_list_get(long jarg1, FirmwareListResult jarg1_);
-  public final static native long new_FirmwareListResult();
-  public final static native void delete_FirmwareListResult(long jarg1);
-  public final static native void FirmwareCompatibilityRulesResult_min_version_set(long jarg1, FirmwareCompatibilityRulesResult jarg1_, String jarg2);
-  public final static native String FirmwareCompatibilityRulesResult_min_version_get(long jarg1, FirmwareCompatibilityRulesResult jarg1_);
-  public final static native void FirmwareCompatibilityRulesResult_max_version_set(long jarg1, FirmwareCompatibilityRulesResult jarg1_, String jarg2);
-  public final static native String FirmwareCompatibilityRulesResult_max_version_get(long jarg1, FirmwareCompatibilityRulesResult jarg1_);
-  public final static native long new_FirmwareCompatibilityRulesResult();
-  public final static native void delete_FirmwareCompatibilityRulesResult(long jarg1);
-  public final static native void FirmwareCompatibilityConfigItemResult_device_model_key_set(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_, String jarg2);
-  public final static native String FirmwareCompatibilityConfigItemResult_device_model_key_get(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_);
-  public final static native void FirmwareCompatibilityConfigItemResult_compatible_versions_set(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_, long jarg2, StringVector jarg2_);
-  public final static native long FirmwareCompatibilityConfigItemResult_compatible_versions_get(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_);
-  public final static native void FirmwareCompatibilityConfigItemResult_rules_set(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_, long jarg2, FirmwareCompatibilityRulesResult jarg2_);
-  public final static native long FirmwareCompatibilityConfigItemResult_rules_get(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_);
-  public final static native long new_FirmwareCompatibilityConfigItemResult();
-  public final static native void delete_FirmwareCompatibilityConfigItemResult(long jarg1);
-  public final static native void FirmwareCompatibilityConfigResult_data_set(long jarg1, FirmwareCompatibilityConfigResult jarg1_, long jarg2, FirmwareCompatibilityConfigItemResultVector jarg2_);
-  public final static native long FirmwareCompatibilityConfigResult_data_get(long jarg1, FirmwareCompatibilityConfigResult jarg1_);
-  public final static native long new_FirmwareCompatibilityConfigResult();
-  public final static native void delete_FirmwareCompatibilityConfigResult(long jarg1);
   public final static native void FirmwareServiceProgress_percent_set(long jarg1, FirmwareServiceProgress jarg1_, int jarg2);
   public final static native int FirmwareServiceProgress_percent_get(long jarg1, FirmwareServiceProgress jarg1_);
   public final static native void FirmwareServiceProgress_current_step_set(long jarg1, FirmwareServiceProgress jarg1_, int jarg2);
@@ -4004,6 +4073,88 @@ public class flighthubsdkmoduleJNI {
   public final static native long FirmwareService_data_get(long jarg1, FirmwareService jarg1_);
   public final static native long new_FirmwareService();
   public final static native void delete_FirmwareService(long jarg1);
+  public final static native void FirmwareUpgradeProgressItem_associate_drone_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, long jarg2, FirmwareUpgradeAssociateDrone jarg2_);
+  public final static native long FirmwareUpgradeProgressItem_associate_drone_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
+  public final static native void FirmwareUpgradeProgressItem_associate_relay_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, long jarg2, FirmwareUpgradeAssociateRelay jarg2_);
+  public final static native long FirmwareUpgradeProgressItem_associate_relay_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
+  public final static native void FirmwareUpgradeProgressItem_device_code_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, int jarg2);
+  public final static native int FirmwareUpgradeProgressItem_device_code_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
+  public final static native void FirmwareUpgradeProgressItem_firmware_status_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, int jarg2);
+  public final static native int FirmwareUpgradeProgressItem_firmware_status_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
+  public final static native void FirmwareUpgradeProgressItem_ota_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, long jarg2, FirmwareUpgradeProgressOTA jarg2_);
+  public final static native long FirmwareUpgradeProgressItem_ota_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
+  public final static native void FirmwareUpgradeProgressItem_sn_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, String jarg2);
+  public final static native String FirmwareUpgradeProgressItem_sn_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
+  public final static native void FirmwareUpgradeProgressItem_working_status_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, int jarg2);
+  public final static native int FirmwareUpgradeProgressItem_working_status_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
+  public final static native void FirmwareUpgradeProgressItem_firmware_version_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, String jarg2);
+  public final static native String FirmwareUpgradeProgressItem_firmware_version_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
+  public final static native void FirmwareUpgradeProgressItem_device_model_key_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, String jarg2);
+  public final static native String FirmwareUpgradeProgressItem_device_model_key_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
+  public final static native void FirmwareUpgradeProgressItem_services_set(long jarg1, FirmwareUpgradeProgressItem jarg1_, long jarg2, FirmwareService jarg2_);
+  public final static native long FirmwareUpgradeProgressItem_services_get(long jarg1, FirmwareUpgradeProgressItem jarg1_);
+  public final static native long new_FirmwareUpgradeProgressItem();
+  public final static native void delete_FirmwareUpgradeProgressItem(long jarg1);
+  public final static native void FirmwareUpgradeProgressResult_list_set(long jarg1, FirmwareUpgradeProgressResult jarg1_, long jarg2, FirmwareUpgradeProgressItemVector jarg2_);
+  public final static native long FirmwareUpgradeProgressResult_list_get(long jarg1, FirmwareUpgradeProgressResult jarg1_);
+  public final static native long new_FirmwareUpgradeProgressResult();
+  public final static native void delete_FirmwareUpgradeProgressResult(long jarg1);
+  public final static native void FirmwareItemResult_id_set(long jarg1, FirmwareItemResult jarg1_, int jarg2);
+  public final static native int FirmwareItemResult_id_get(long jarg1, FirmwareItemResult jarg1_);
+  public final static native void FirmwareItemResult_created_at_set(long jarg1, FirmwareItemResult jarg1_, String jarg2);
+  public final static native String FirmwareItemResult_created_at_get(long jarg1, FirmwareItemResult jarg1_);
+  public final static native void FirmwareItemResult_device_model_key_set(long jarg1, FirmwareItemResult jarg1_, String jarg2);
+  public final static native String FirmwareItemResult_device_model_key_get(long jarg1, FirmwareItemResult jarg1_);
+  public final static native void FirmwareItemResult_status_set(long jarg1, FirmwareItemResult jarg1_, String jarg2);
+  public final static native String FirmwareItemResult_status_get(long jarg1, FirmwareItemResult jarg1_);
+  public final static native void FirmwareItemResult_version_set(long jarg1, FirmwareItemResult jarg1_, String jarg2);
+  public final static native String FirmwareItemResult_version_get(long jarg1, FirmwareItemResult jarg1_);
+  public final static native void FirmwareItemResult_desc_set(long jarg1, FirmwareItemResult jarg1_, String jarg2);
+  public final static native String FirmwareItemResult_desc_get(long jarg1, FirmwareItemResult jarg1_);
+  public final static native long new_FirmwareItemResult();
+  public final static native void delete_FirmwareItemResult(long jarg1);
+  public final static native void FirmwareListResult_list_set(long jarg1, FirmwareListResult jarg1_, long jarg2, FirmwareItemResultVector jarg2_);
+  public final static native long FirmwareListResult_list_get(long jarg1, FirmwareListResult jarg1_);
+  public final static native void FirmwareListResult_pagination_set(long jarg1, FirmwareListResult jarg1_, long jarg2, CommonPaginationData jarg2_);
+  public final static native long FirmwareListResult_pagination_get(long jarg1, FirmwareListResult jarg1_);
+  public final static native long new_FirmwareListResult();
+  public final static native void delete_FirmwareListResult(long jarg1);
+  public final static native void FirmwareCompatibilityRulesResult_min_version_set(long jarg1, FirmwareCompatibilityRulesResult jarg1_, String jarg2);
+  public final static native String FirmwareCompatibilityRulesResult_min_version_get(long jarg1, FirmwareCompatibilityRulesResult jarg1_);
+  public final static native void FirmwareCompatibilityRulesResult_max_version_set(long jarg1, FirmwareCompatibilityRulesResult jarg1_, String jarg2);
+  public final static native String FirmwareCompatibilityRulesResult_max_version_get(long jarg1, FirmwareCompatibilityRulesResult jarg1_);
+  public final static native long new_FirmwareCompatibilityRulesResult();
+  public final static native void delete_FirmwareCompatibilityRulesResult(long jarg1);
+  public final static native void FirmwareCompatibilityValidateResult_field_set(long jarg1, FirmwareCompatibilityValidateResult jarg1_, String jarg2);
+  public final static native String FirmwareCompatibilityValidateResult_field_get(long jarg1, FirmwareCompatibilityValidateResult jarg1_);
+  public final static native void FirmwareCompatibilityValidateResult_description_set(long jarg1, FirmwareCompatibilityValidateResult jarg1_, String jarg2);
+  public final static native String FirmwareCompatibilityValidateResult_description_get(long jarg1, FirmwareCompatibilityValidateResult jarg1_);
+  public final static native void FirmwareCompatibilityValidateResult_compare_set(long jarg1, FirmwareCompatibilityValidateResult jarg1_, String jarg2);
+  public final static native String FirmwareCompatibilityValidateResult_compare_get(long jarg1, FirmwareCompatibilityValidateResult jarg1_);
+  public final static native void FirmwareCompatibilityValidateResult_value_set(long jarg1, FirmwareCompatibilityValidateResult jarg1_, String jarg2);
+  public final static native String FirmwareCompatibilityValidateResult_value_get(long jarg1, FirmwareCompatibilityValidateResult jarg1_);
+  public final static native long new_FirmwareCompatibilityValidateResult();
+  public final static native void delete_FirmwareCompatibilityValidateResult(long jarg1);
+  public final static native void FirmwareCompatibilityConfigItemResult_device_model_key_set(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_, String jarg2);
+  public final static native String FirmwareCompatibilityConfigItemResult_device_model_key_get(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_);
+  public final static native void FirmwareCompatibilityConfigItemResult_compatible_versions_set(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_, long jarg2, StringVector jarg2_);
+  public final static native long FirmwareCompatibilityConfigItemResult_compatible_versions_get(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_);
+  public final static native void FirmwareCompatibilityConfigItemResult_rules_set(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_, long jarg2, FirmwareCompatibilityRulesResult jarg2_);
+  public final static native long FirmwareCompatibilityConfigItemResult_rules_get(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_);
+  public final static native void FirmwareCompatibilityConfigItemResult_key_set(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_, String jarg2);
+  public final static native String FirmwareCompatibilityConfigItemResult_key_get(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_);
+  public final static native void FirmwareCompatibilityConfigItemResult_user_type_set(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_, long jarg2, StringVector jarg2_);
+  public final static native long FirmwareCompatibilityConfigItemResult_user_type_get(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_);
+  public final static native void FirmwareCompatibilityConfigItemResult_description_set(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_, String jarg2);
+  public final static native String FirmwareCompatibilityConfigItemResult_description_get(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_);
+  public final static native void FirmwareCompatibilityConfigItemResult_validates_set(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_, long jarg2, FirmwareCompatibilityValidateResultVector jarg2_);
+  public final static native long FirmwareCompatibilityConfigItemResult_validates_get(long jarg1, FirmwareCompatibilityConfigItemResult jarg1_);
+  public final static native long new_FirmwareCompatibilityConfigItemResult();
+  public final static native void delete_FirmwareCompatibilityConfigItemResult(long jarg1);
+  public final static native void FirmwareCompatibilityConfigResult_data_set(long jarg1, FirmwareCompatibilityConfigResult jarg1_, long jarg2, FirmwareCompatibilityConfigItemResultVector jarg2_);
+  public final static native long FirmwareCompatibilityConfigResult_data_get(long jarg1, FirmwareCompatibilityConfigResult jarg1_);
+  public final static native long new_FirmwareCompatibilityConfigResult();
+  public final static native void delete_FirmwareCompatibilityConfigResult(long jarg1);
   public final static native void FirmwareStatusItem_sn_set(long jarg1, FirmwareStatusItem jarg1_, String jarg2);
   public final static native String FirmwareStatusItem_sn_get(long jarg1, FirmwareStatusItem jarg1_);
   public final static native void FirmwareStatusItem_firmware_version_set(long jarg1, FirmwareStatusItem jarg1_, String jarg2);
@@ -4070,9 +4221,17 @@ public class flighthubsdkmoduleJNI {
   public final static native String CheckUnlockLicenseResultItem_url_get(long jarg1, CheckUnlockLicenseResultItem jarg1_);
   public final static native long new_CheckUnlockLicenseResultItem();
   public final static native void delete_CheckUnlockLicenseResultItem(long jarg1);
+  public final static native void ErrCertMismatch_airport_sn_set(long jarg1, ErrCertMismatch jarg1_, String jarg2);
+  public final static native String ErrCertMismatch_airport_sn_get(long jarg1, ErrCertMismatch jarg1_);
+  public final static native void ErrCertMismatch_aircraft_sn_set(long jarg1, ErrCertMismatch jarg1_, String jarg2);
+  public final static native String ErrCertMismatch_aircraft_sn_get(long jarg1, ErrCertMismatch jarg1_);
+  public final static native void ErrCertMismatch_file_name_set(long jarg1, ErrCertMismatch jarg1_, String jarg2);
+  public final static native String ErrCertMismatch_file_name_get(long jarg1, ErrCertMismatch jarg1_);
+  public final static native long new_ErrCertMismatch();
+  public final static native void delete_ErrCertMismatch(long jarg1);
   public final static native void CheckUnlockLicenseResult_err_file_name_set(long jarg1, CheckUnlockLicenseResult jarg1_, long jarg2, StringVector jarg2_);
   public final static native long CheckUnlockLicenseResult_err_file_name_get(long jarg1, CheckUnlockLicenseResult jarg1_);
-  public final static native void CheckUnlockLicenseResult_err_cert_mismatch_set(long jarg1, CheckUnlockLicenseResult jarg1_, long jarg2, StringVector jarg2_);
+  public final static native void CheckUnlockLicenseResult_err_cert_mismatch_set(long jarg1, CheckUnlockLicenseResult jarg1_, long jarg2, ErrCertMismatchVector jarg2_);
   public final static native long CheckUnlockLicenseResult_err_cert_mismatch_get(long jarg1, CheckUnlockLicenseResult jarg1_);
   public final static native void CheckUnlockLicenseResult_list_set(long jarg1, CheckUnlockLicenseResult jarg1_, long jarg2, CheckUnlockLicenseResultItemVector jarg2_);
   public final static native long CheckUnlockLicenseResult_list_get(long jarg1, CheckUnlockLicenseResult jarg1_);
@@ -4222,6 +4381,10 @@ public class flighthubsdkmoduleJNI {
   public final static native long GetWaylineListParam_payload_types_get(long jarg1, GetWaylineListParam jarg1_);
   public final static native void GetWaylineListParam_wayline_types_set(long jarg1, GetWaylineListParam jarg1_, long jarg2, StringVector jarg2_);
   public final static native long GetWaylineListParam_wayline_types_get(long jarg1, GetWaylineListParam jarg1_);
+  public final static native void GetWaylineListParam_wayline_types_int_set(long jarg1, GetWaylineListParam jarg1_, long jarg2, IntVector jarg2_);
+  public final static native long GetWaylineListParam_wayline_types_int_get(long jarg1, GetWaylineListParam jarg1_);
+  public final static native void GetWaylineListParam_keyword_set(long jarg1, GetWaylineListParam jarg1_, String jarg2);
+  public final static native String GetWaylineListParam_keyword_get(long jarg1, GetWaylineListParam jarg1_);
   public final static native long new_GetWaylineListParam();
   public final static native void delete_GetWaylineListParam(long jarg1);
   public final static native void WaylineListPaginationResult_page_set(long jarg1, WaylineListPaginationResult jarg1_, int jarg2);
@@ -4232,6 +4395,20 @@ public class flighthubsdkmoduleJNI {
   public final static native int WaylineListPaginationResult_total_get(long jarg1, WaylineListPaginationResult jarg1_);
   public final static native long new_WaylineListPaginationResult();
   public final static native void delete_WaylineListPaginationResult(long jarg1);
+  public final static native void WaylineCollisionEvent_wayline_uuid_set(long jarg1, WaylineCollisionEvent jarg1_, String jarg2);
+  public final static native String WaylineCollisionEvent_wayline_uuid_get(long jarg1, WaylineCollisionEvent jarg1_);
+  public final static native void WaylineCollisionEvent_flight_task_uuid_set(long jarg1, WaylineCollisionEvent jarg1_, String jarg2);
+  public final static native String WaylineCollisionEvent_flight_task_uuid_get(long jarg1, WaylineCollisionEvent jarg1_);
+  public final static native void WaylineCollisionEvent_timestamp_set(long jarg1, WaylineCollisionEvent jarg1_, long jarg2);
+  public final static native long WaylineCollisionEvent_timestamp_get(long jarg1, WaylineCollisionEvent jarg1_);
+  public final static native void WaylineCollisionEvent_latitude_set(long jarg1, WaylineCollisionEvent jarg1_, double jarg2);
+  public final static native double WaylineCollisionEvent_latitude_get(long jarg1, WaylineCollisionEvent jarg1_);
+  public final static native void WaylineCollisionEvent_longitude_set(long jarg1, WaylineCollisionEvent jarg1_, double jarg2);
+  public final static native double WaylineCollisionEvent_longitude_get(long jarg1, WaylineCollisionEvent jarg1_);
+  public final static native void WaylineCollisionEvent_altitude_set(long jarg1, WaylineCollisionEvent jarg1_, double jarg2);
+  public final static native double WaylineCollisionEvent_altitude_get(long jarg1, WaylineCollisionEvent jarg1_);
+  public final static native long new_WaylineCollisionEvent();
+  public final static native void delete_WaylineCollisionEvent(long jarg1);
   public final static native void WaylineListItemResult_wayline_uuid_set(long jarg1, WaylineListItemResult jarg1_, String jarg2);
   public final static native String WaylineListItemResult_wayline_uuid_get(long jarg1, WaylineListItemResult jarg1_);
   public final static native void WaylineListItemResult_wayline_types_set(long jarg1, WaylineListItemResult jarg1_, long jarg2, IntVector jarg2_);
@@ -4254,6 +4431,14 @@ public class flighthubsdkmoduleJNI {
   public final static native boolean WaylineListItemResult_with_search_light_get(long jarg1, WaylineListItemResult jarg1_);
   public final static native void WaylineListItemResult_is_ai_wayline_set(long jarg1, WaylineListItemResult jarg1_, boolean jarg2);
   public final static native boolean WaylineListItemResult_is_ai_wayline_get(long jarg1, WaylineListItemResult jarg1_);
+  public final static native void WaylineListItemResult_editor_warnings_set(long jarg1, WaylineListItemResult jarg1_, long jarg2, StringStringMap jarg2_);
+  public final static native long WaylineListItemResult_editor_warnings_get(long jarg1, WaylineListItemResult jarg1_);
+  public final static native void WaylineListItemResult_execute_warnings_set(long jarg1, WaylineListItemResult jarg1_, long jarg2, StringStringMap jarg2_);
+  public final static native long WaylineListItemResult_execute_warnings_get(long jarg1, WaylineListItemResult jarg1_);
+  public final static native void WaylineListItemResult_has_collisions_set(long jarg1, WaylineListItemResult jarg1_, boolean jarg2);
+  public final static native boolean WaylineListItemResult_has_collisions_get(long jarg1, WaylineListItemResult jarg1_);
+  public final static native void WaylineListItemResult_collision_positions_set(long jarg1, WaylineListItemResult jarg1_, long jarg2, WaylineCollisionEventVector jarg2_);
+  public final static native long WaylineListItemResult_collision_positions_get(long jarg1, WaylineListItemResult jarg1_);
   public final static native long new_WaylineListItemResult();
   public final static native void delete_WaylineListItemResult(long jarg1);
   public final static native void GetWaylineListResult_pagination_set(long jarg1, GetWaylineListResult jarg1_, long jarg2, WaylineListPaginationResult jarg2_);
@@ -4368,8 +4553,46 @@ public class flighthubsdkmoduleJNI {
   public final static native long WaylineDetailKmzData_ai_audio_action_uuid_to_file_path_map_get(long jarg1, WaylineDetailKmzData jarg1_);
   public final static native void WaylineDetailKmzData_survey_area_scope_set(long jarg1, WaylineDetailKmzData jarg1_, long jarg2, WaylineDetailSurveyAreaScope jarg2_);
   public final static native long WaylineDetailKmzData_survey_area_scope_get(long jarg1, WaylineDetailKmzData jarg1_);
+  public final static native void WaylineDetailKmzData_md5_set(long jarg1, WaylineDetailKmzData jarg1_, String jarg2);
+  public final static native String WaylineDetailKmzData_md5_get(long jarg1, WaylineDetailKmzData jarg1_);
   public final static native long new_WaylineDetailKmzData();
   public final static native void delete_WaylineDetailKmzData(long jarg1);
+  public final static native void ConcatWaylineExtDataModelBoundary_latitude_set(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_, double jarg2);
+  public final static native double ConcatWaylineExtDataModelBoundary_latitude_get(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_);
+  public final static native void ConcatWaylineExtDataModelBoundary_longitude_set(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_, double jarg2);
+  public final static native double ConcatWaylineExtDataModelBoundary_longitude_get(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_);
+  public final static native void ConcatWaylineExtDataModelBoundary_altitude_set(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_, double jarg2);
+  public final static native double ConcatWaylineExtDataModelBoundary_altitude_get(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_);
+  public final static native void ConcatWaylineExtDataModelBoundary_half_x_set(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_, double jarg2);
+  public final static native double ConcatWaylineExtDataModelBoundary_half_x_get(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_);
+  public final static native void ConcatWaylineExtDataModelBoundary_half_y_set(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_, double jarg2);
+  public final static native double ConcatWaylineExtDataModelBoundary_half_y_get(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_);
+  public final static native void ConcatWaylineExtDataModelBoundary_half_z_set(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_, double jarg2);
+  public final static native double ConcatWaylineExtDataModelBoundary_half_z_get(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_);
+  public final static native void ConcatWaylineExtDataModelBoundary_transform_set(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_, long jarg2, DoubleVector jarg2_);
+  public final static native long ConcatWaylineExtDataModelBoundary_transform_get(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_);
+  public final static native long new_ConcatWaylineExtDataModelBoundary();
+  public final static native void delete_ConcatWaylineExtDataModelBoundary(long jarg1);
+  public final static native void ConcatWaylineExtDataModelBoundingPoint_lng_set(long jarg1, ConcatWaylineExtDataModelBoundingPoint jarg1_, double jarg2);
+  public final static native double ConcatWaylineExtDataModelBoundingPoint_lng_get(long jarg1, ConcatWaylineExtDataModelBoundingPoint jarg1_);
+  public final static native void ConcatWaylineExtDataModelBoundingPoint_lat_set(long jarg1, ConcatWaylineExtDataModelBoundingPoint jarg1_, double jarg2);
+  public final static native double ConcatWaylineExtDataModelBoundingPoint_lat_get(long jarg1, ConcatWaylineExtDataModelBoundingPoint jarg1_);
+  public final static native long new_ConcatWaylineExtDataModelBoundingPoint();
+  public final static native void delete_ConcatWaylineExtDataModelBoundingPoint(long jarg1);
+  public final static native void ConcatWaylineExtDataModelBounding_points_set(long jarg1, ConcatWaylineExtDataModelBounding jarg1_, long jarg2, ConcatWaylineExtDataModelBoundingPointVector jarg2_);
+  public final static native long ConcatWaylineExtDataModelBounding_points_get(long jarg1, ConcatWaylineExtDataModelBounding jarg1_);
+  public final static native long new_ConcatWaylineExtDataModelBounding();
+  public final static native void delete_ConcatWaylineExtDataModelBounding(long jarg1);
+  public final static native void ConcatWaylineExtDataModel_uuid_set(long jarg1, ConcatWaylineExtDataModel jarg1_, String jarg2);
+  public final static native String ConcatWaylineExtDataModel_uuid_get(long jarg1, ConcatWaylineExtDataModel jarg1_);
+  public final static native void ConcatWaylineExtDataModel_file_key_set(long jarg1, ConcatWaylineExtDataModel jarg1_, String jarg2);
+  public final static native String ConcatWaylineExtDataModel_file_key_get(long jarg1, ConcatWaylineExtDataModel jarg1_);
+  public final static native void ConcatWaylineExtDataModel_boundary_set(long jarg1, ConcatWaylineExtDataModel jarg1_, long jarg2, ConcatWaylineExtDataModelBoundary jarg2_);
+  public final static native long ConcatWaylineExtDataModel_boundary_get(long jarg1, ConcatWaylineExtDataModel jarg1_);
+  public final static native void ConcatWaylineExtDataModel_bounding_set(long jarg1, ConcatWaylineExtDataModel jarg1_, long jarg2, ConcatWaylineExtDataModelBounding jarg2_);
+  public final static native long ConcatWaylineExtDataModel_bounding_get(long jarg1, ConcatWaylineExtDataModel jarg1_);
+  public final static native long new_ConcatWaylineExtDataModel();
+  public final static native void delete_ConcatWaylineExtDataModel(long jarg1);
   public final static native void WaylineDetailExtData_kmz_without_res_object_key_set(long jarg1, WaylineDetailExtData jarg1_, String jarg2);
   public final static native String WaylineDetailExtData_kmz_without_res_object_key_get(long jarg1, WaylineDetailExtData jarg1_);
   public final static native void WaylineDetailExtData_kmz_without_res_md5_set(long jarg1, WaylineDetailExtData jarg1_, String jarg2);
@@ -4380,6 +4603,12 @@ public class flighthubsdkmoduleJNI {
   public final static native String WaylineDetailExtData_business_file_object_key_get(long jarg1, WaylineDetailExtData jarg1_);
   public final static native void WaylineDetailExtData_model_file_object_keys_set(long jarg1, WaylineDetailExtData jarg1_, long jarg2, StringVector jarg2_);
   public final static native long WaylineDetailExtData_model_file_object_keys_get(long jarg1, WaylineDetailExtData jarg1_);
+  public final static native void WaylineDetailExtData_elevation_file_object_keys_set(long jarg1, WaylineDetailExtData jarg1_, long jarg2, StringVector jarg2_);
+  public final static native long WaylineDetailExtData_elevation_file_object_keys_get(long jarg1, WaylineDetailExtData jarg1_);
+  public final static native void WaylineDetailExtData_content_length_set(long jarg1, WaylineDetailExtData jarg1_, long jarg2);
+  public final static native long WaylineDetailExtData_content_length_get(long jarg1, WaylineDetailExtData jarg1_);
+  public final static native void WaylineDetailExtData_models_set(long jarg1, WaylineDetailExtData jarg1_, long jarg2, ConcatWaylineExtDataModelVector jarg2_);
+  public final static native long WaylineDetailExtData_models_get(long jarg1, WaylineDetailExtData jarg1_);
   public final static native long new_WaylineDetailExtData();
   public final static native void delete_WaylineDetailExtData(long jarg1);
   public final static native void GetWaylineDetailResult_wayline_uuid_set(long jarg1, GetWaylineDetailResult jarg1_, String jarg2);
@@ -4412,6 +4641,14 @@ public class flighthubsdkmoduleJNI {
   public final static native long GetWaylineDetailResult_editor_warnings_get(long jarg1, GetWaylineDetailResult jarg1_);
   public final static native void GetWaylineDetailResult_execute_warnings_set(long jarg1, GetWaylineDetailResult jarg1_, long jarg2, StringStringUnorderedMap jarg2_);
   public final static native long GetWaylineDetailResult_execute_warnings_get(long jarg1, GetWaylineDetailResult jarg1_);
+  public final static native void GetWaylineDetailResult_wayline_point_nums_set(long jarg1, GetWaylineDetailResult jarg1_, int jarg2);
+  public final static native int GetWaylineDetailResult_wayline_point_nums_get(long jarg1, GetWaylineDetailResult jarg1_);
+  public final static native void GetWaylineDetailResult_obstacles_set(long jarg1, GetWaylineDetailResult jarg1_, long jarg2, WaylineObstacleVector jarg2_);
+  public final static native long GetWaylineDetailResult_obstacles_get(long jarg1, GetWaylineDetailResult jarg1_);
+  public final static native void GetWaylineDetailResult_elevation_uuid_set(long jarg1, GetWaylineDetailResult jarg1_, String jarg2);
+  public final static native String GetWaylineDetailResult_elevation_uuid_get(long jarg1, GetWaylineDetailResult jarg1_);
+  public final static native void GetWaylineDetailResult_collision_positions_set(long jarg1, GetWaylineDetailResult jarg1_, long jarg2, WaylineCollisionEventVector jarg2_);
+  public final static native long GetWaylineDetailResult_collision_positions_get(long jarg1, GetWaylineDetailResult jarg1_);
   public final static native long new_GetWaylineDetailResult();
   public final static native void delete_GetWaylineDetailResult(long jarg1);
   public final static native void SubmitWaylineInfoParam_kmz_object_key_set(long jarg1, SubmitWaylineInfoParam jarg1_, String jarg2);
@@ -4484,42 +4721,6 @@ public class flighthubsdkmoduleJNI {
   public final static native long ConcatWaylineParam_editor_warnings_get(long jarg1, ConcatWaylineParam jarg1_);
   public final static native long new_ConcatWaylineParam();
   public final static native void delete_ConcatWaylineParam(long jarg1);
-  public final static native void ConcatWaylineExtDataModelBoundary_latitude_set(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_, double jarg2);
-  public final static native double ConcatWaylineExtDataModelBoundary_latitude_get(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_);
-  public final static native void ConcatWaylineExtDataModelBoundary_longitude_set(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_, double jarg2);
-  public final static native double ConcatWaylineExtDataModelBoundary_longitude_get(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_);
-  public final static native void ConcatWaylineExtDataModelBoundary_altitude_set(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_, double jarg2);
-  public final static native double ConcatWaylineExtDataModelBoundary_altitude_get(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_);
-  public final static native void ConcatWaylineExtDataModelBoundary_half_x_set(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_, double jarg2);
-  public final static native double ConcatWaylineExtDataModelBoundary_half_x_get(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_);
-  public final static native void ConcatWaylineExtDataModelBoundary_half_y_set(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_, double jarg2);
-  public final static native double ConcatWaylineExtDataModelBoundary_half_y_get(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_);
-  public final static native void ConcatWaylineExtDataModelBoundary_half_z_set(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_, double jarg2);
-  public final static native double ConcatWaylineExtDataModelBoundary_half_z_get(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_);
-  public final static native void ConcatWaylineExtDataModelBoundary_transform_set(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_, long jarg2, DoubleVector jarg2_);
-  public final static native long ConcatWaylineExtDataModelBoundary_transform_get(long jarg1, ConcatWaylineExtDataModelBoundary jarg1_);
-  public final static native long new_ConcatWaylineExtDataModelBoundary();
-  public final static native void delete_ConcatWaylineExtDataModelBoundary(long jarg1);
-  public final static native void ConcatWaylineExtDataModelBoundingPoint_lng_set(long jarg1, ConcatWaylineExtDataModelBoundingPoint jarg1_, double jarg2);
-  public final static native double ConcatWaylineExtDataModelBoundingPoint_lng_get(long jarg1, ConcatWaylineExtDataModelBoundingPoint jarg1_);
-  public final static native void ConcatWaylineExtDataModelBoundingPoint_lat_set(long jarg1, ConcatWaylineExtDataModelBoundingPoint jarg1_, double jarg2);
-  public final static native double ConcatWaylineExtDataModelBoundingPoint_lat_get(long jarg1, ConcatWaylineExtDataModelBoundingPoint jarg1_);
-  public final static native long new_ConcatWaylineExtDataModelBoundingPoint();
-  public final static native void delete_ConcatWaylineExtDataModelBoundingPoint(long jarg1);
-  public final static native void ConcatWaylineExtDataModelBounding_points_set(long jarg1, ConcatWaylineExtDataModelBounding jarg1_, long jarg2, ConcatWaylineExtDataModelBoundingPointVector jarg2_);
-  public final static native long ConcatWaylineExtDataModelBounding_points_get(long jarg1, ConcatWaylineExtDataModelBounding jarg1_);
-  public final static native long new_ConcatWaylineExtDataModelBounding();
-  public final static native void delete_ConcatWaylineExtDataModelBounding(long jarg1);
-  public final static native void ConcatWaylineExtDataModel_uuid_set(long jarg1, ConcatWaylineExtDataModel jarg1_, String jarg2);
-  public final static native String ConcatWaylineExtDataModel_uuid_get(long jarg1, ConcatWaylineExtDataModel jarg1_);
-  public final static native void ConcatWaylineExtDataModel_file_key_set(long jarg1, ConcatWaylineExtDataModel jarg1_, String jarg2);
-  public final static native String ConcatWaylineExtDataModel_file_key_get(long jarg1, ConcatWaylineExtDataModel jarg1_);
-  public final static native void ConcatWaylineExtDataModel_boundary_set(long jarg1, ConcatWaylineExtDataModel jarg1_, long jarg2, ConcatWaylineExtDataModelBoundary jarg2_);
-  public final static native long ConcatWaylineExtDataModel_boundary_get(long jarg1, ConcatWaylineExtDataModel jarg1_);
-  public final static native void ConcatWaylineExtDataModel_bounding_set(long jarg1, ConcatWaylineExtDataModel jarg1_, long jarg2, ConcatWaylineExtDataModelBounding jarg2_);
-  public final static native long ConcatWaylineExtDataModel_bounding_get(long jarg1, ConcatWaylineExtDataModel jarg1_);
-  public final static native long new_ConcatWaylineExtDataModel();
-  public final static native void delete_ConcatWaylineExtDataModel(long jarg1);
   public final static native void ConcatWaylineExtData_kmz_without_res_object_key_set(long jarg1, ConcatWaylineExtData jarg1_, String jarg2);
   public final static native String ConcatWaylineExtData_kmz_without_res_object_key_get(long jarg1, ConcatWaylineExtData jarg1_);
   public final static native void ConcatWaylineExtData_kmz_without_res_md5_set(long jarg1, ConcatWaylineExtData jarg1_, String jarg2);
@@ -4548,6 +4749,8 @@ public class flighthubsdkmoduleJNI {
   public final static native void delete_ConcatWaylineResult(long jarg1);
   public final static native void ImportKmzItem_kmz_object_key_set(long jarg1, ImportKmzItem jarg1_, String jarg2);
   public final static native String ImportKmzItem_kmz_object_key_get(long jarg1, ImportKmzItem jarg1_);
+  public final static native void ImportKmzItem_wayline_uuid_set(long jarg1, ImportKmzItem jarg1_, String jarg2);
+  public final static native String ImportKmzItem_wayline_uuid_get(long jarg1, ImportKmzItem jarg1_);
   public final static native void ImportKmzItem_wayline_name_set(long jarg1, ImportKmzItem jarg1_, String jarg2);
   public final static native String ImportKmzItem_wayline_name_get(long jarg1, ImportKmzItem jarg1_);
   public final static native void ImportKmzItem_async_request_id_set(long jarg1, ImportKmzItem jarg1_, String jarg2);
@@ -4754,6 +4957,12 @@ public class flighthubsdkmoduleJNI {
   public final static native long AIInsideModelItem_digital_effect_get(long jarg1, AIInsideModelItem jarg1_);
   public final static native void AIInsideModelItem_vl_resolution_set(long jarg1, AIInsideModelItem jarg1_, long jarg2, IntVector jarg2_);
   public final static native long AIInsideModelItem_vl_resolution_get(long jarg1, AIInsideModelItem jarg1_);
+  public final static native void AIInsideModelItem_model_types_set(long jarg1, AIInsideModelItem jarg1_, long jarg2, IntVector jarg2_);
+  public final static native long AIInsideModelItem_model_types_get(long jarg1, AIInsideModelItem jarg1_);
+  public final static native void AIInsideModelItem_model_combination_set(long jarg1, AIInsideModelItem jarg1_, String jarg2);
+  public final static native String AIInsideModelItem_model_combination_get(long jarg1, AIInsideModelItem jarg1_);
+  public final static native void AIInsideModelItem_status_set(long jarg1, AIInsideModelItem jarg1_, String jarg2);
+  public final static native String AIInsideModelItem_status_get(long jarg1, AIInsideModelItem jarg1_);
   public final static native long new_AIInsideModelItem();
   public final static native void delete_AIInsideModelItem(long jarg1);
   public final static native void GetAIInsideModelsResult_models_set(long jarg1, GetAIInsideModelsResult jarg1_, long jarg2, AIInsideModelItemVector jarg2_);
@@ -4774,8 +4983,16 @@ public class flighthubsdkmoduleJNI {
   public final static native String AIInsideDeviceModel_device_model_key_get(long jarg1, AIInsideDeviceModel jarg1_);
   public final static native void AIInsideDeviceModel_domain_set(long jarg1, AIInsideDeviceModel jarg1_, String jarg2);
   public final static native String AIInsideDeviceModel_domain_get(long jarg1, AIInsideDeviceModel jarg1_);
+  public final static native void AIInsideDeviceModel_type_set(long jarg1, AIInsideDeviceModel jarg1_, String jarg2);
+  public final static native String AIInsideDeviceModel_type_get(long jarg1, AIInsideDeviceModel jarg1_);
+  public final static native void AIInsideDeviceModel_sub_type_set(long jarg1, AIInsideDeviceModel jarg1_, String jarg2);
+  public final static native String AIInsideDeviceModel_sub_type_get(long jarg1, AIInsideDeviceModel jarg1_);
   public final static native void AIInsideDeviceModel_name_set(long jarg1, AIInsideDeviceModel jarg1_, String jarg2);
   public final static native String AIInsideDeviceModel_name_get(long jarg1, AIInsideDeviceModel jarg1_);
+  public final static native void AIInsideDeviceModel_device_model_class_set(long jarg1, AIInsideDeviceModel jarg1_, String jarg2);
+  public final static native String AIInsideDeviceModel_device_model_class_get(long jarg1, AIInsideDeviceModel jarg1_);
+  public final static native void AIInsideDeviceModel_develop_code_set(long jarg1, AIInsideDeviceModel jarg1_, String jarg2);
+  public final static native String AIInsideDeviceModel_develop_code_get(long jarg1, AIInsideDeviceModel jarg1_);
   public final static native long new_AIInsideDeviceModel();
   public final static native void delete_AIInsideDeviceModel(long jarg1);
   public final static native void AIInsideOperateProgressDetail_percent_set(long jarg1, AIInsideOperateProgressDetail jarg1_, int jarg2);
@@ -4814,8 +5031,8 @@ public class flighthubsdkmoduleJNI {
   public final static native long AIInsideAssociateDrone_device_model_get(long jarg1, AIInsideAssociateDrone jarg1_);
   public final static native void AIInsideAssociateDrone_device_online_status_set(long jarg1, AIInsideAssociateDrone jarg1_, boolean jarg2);
   public final static native boolean AIInsideAssociateDrone_device_online_status_get(long jarg1, AIInsideAssociateDrone jarg1_);
-  public final static native void AIInsideAssociateDrone_device_working_status_set(long jarg1, AIInsideAssociateDrone jarg1_, int jarg2);
-  public final static native int AIInsideAssociateDrone_device_working_status_get(long jarg1, AIInsideAssociateDrone jarg1_);
+  public final static native void AIInsideAssociateDrone_device_working_status_set(long jarg1, AIInsideAssociateDrone jarg1_, double jarg2);
+  public final static native double AIInsideAssociateDrone_device_working_status_get(long jarg1, AIInsideAssociateDrone jarg1_);
   public final static native void AIInsideAssociateDrone_ai_model_info_set(long jarg1, AIInsideAssociateDrone jarg1_, long jarg2, AIInsideModelInfo jarg2_);
   public final static native long AIInsideAssociateDrone_ai_model_info_get(long jarg1, AIInsideAssociateDrone jarg1_);
   public final static native long new_AIInsideAssociateDrone();
@@ -4828,8 +5045,8 @@ public class flighthubsdkmoduleJNI {
   public final static native String AIInsideDeviceItem_complete_machine_sn_get(long jarg1, AIInsideDeviceItem jarg1_);
   public final static native void AIInsideDeviceItem_device_online_status_set(long jarg1, AIInsideDeviceItem jarg1_, boolean jarg2);
   public final static native boolean AIInsideDeviceItem_device_online_status_get(long jarg1, AIInsideDeviceItem jarg1_);
-  public final static native void AIInsideDeviceItem_device_working_status_set(long jarg1, AIInsideDeviceItem jarg1_, int jarg2);
-  public final static native int AIInsideDeviceItem_device_working_status_get(long jarg1, AIInsideDeviceItem jarg1_);
+  public final static native void AIInsideDeviceItem_device_working_status_set(long jarg1, AIInsideDeviceItem jarg1_, double jarg2);
+  public final static native double AIInsideDeviceItem_device_working_status_get(long jarg1, AIInsideDeviceItem jarg1_);
   public final static native void AIInsideDeviceItem_operate_ai_model_set(long jarg1, AIInsideDeviceItem jarg1_, long jarg2, AIInsideOperateProgress jarg2_);
   public final static native long AIInsideDeviceItem_operate_ai_model_get(long jarg1, AIInsideDeviceItem jarg1_);
   public final static native void AIInsideDeviceItem_associate_drone_device_info_set(long jarg1, AIInsideDeviceItem jarg1_, long jarg2, AIInsideAssociateDrone jarg2_);
@@ -4970,14 +5187,14 @@ public class flighthubsdkmoduleJNI {
   public final static native void delete_UploadAIInsideAlgorithmFileResult(long jarg1);
   public final static native void GridSignalItem_h3_index_set(long jarg1, GridSignalItem jarg1_, String jarg2);
   public final static native String GridSignalItem_h3_index_get(long jarg1, GridSignalItem jarg1_);
-  public final static native void GridSignalItem_sdr_avg_set(long jarg1, GridSignalItem jarg1_, int jarg2);
-  public final static native int GridSignalItem_sdr_avg_get(long jarg1, GridSignalItem jarg1_);
+  public final static native void GridSignalItem_sdr_avg_set(long jarg1, GridSignalItem jarg1_, double jarg2);
+  public final static native double GridSignalItem_sdr_avg_get(long jarg1, GridSignalItem jarg1_);
   public final static native void GridSignalItem_sdr_max_set(long jarg1, GridSignalItem jarg1_, int jarg2);
   public final static native int GridSignalItem_sdr_max_get(long jarg1, GridSignalItem jarg1_);
   public final static native void GridSignalItem_sdr_min_set(long jarg1, GridSignalItem jarg1_, int jarg2);
   public final static native int GridSignalItem_sdr_min_get(long jarg1, GridSignalItem jarg1_);
-  public final static native void GridSignalItem_signal_4g_avg_set(long jarg1, GridSignalItem jarg1_, int jarg2);
-  public final static native int GridSignalItem_signal_4g_avg_get(long jarg1, GridSignalItem jarg1_);
+  public final static native void GridSignalItem_signal_4g_avg_set(long jarg1, GridSignalItem jarg1_, double jarg2);
+  public final static native double GridSignalItem_signal_4g_avg_get(long jarg1, GridSignalItem jarg1_);
   public final static native void GridSignalItem_signal_4g_max_set(long jarg1, GridSignalItem jarg1_, int jarg2);
   public final static native int GridSignalItem_signal_4g_max_get(long jarg1, GridSignalItem jarg1_);
   public final static native void GridSignalItem_signal_4g_min_set(long jarg1, GridSignalItem jarg1_, int jarg2);
@@ -5132,12 +5349,26 @@ public class flighthubsdkmoduleJNI {
   public final static native long GetAreasSyncStatusResults_list_get(long jarg1, GetAreasSyncStatusResults jarg1_);
   public final static native long new_GetAreasSyncStatusResults();
   public final static native void delete_GetAreasSyncStatusResults(long jarg1);
+  public final static native void GetFlightAreasUrlResults_name_set(long jarg1, GetFlightAreasUrlResults jarg1_, String jarg2);
+  public final static native String GetFlightAreasUrlResults_name_get(long jarg1, GetFlightAreasUrlResults jarg1_);
+  public final static native void GetFlightAreasUrlResults_url_set(long jarg1, GetFlightAreasUrlResults jarg1_, String jarg2);
+  public final static native String GetFlightAreasUrlResults_url_get(long jarg1, GetFlightAreasUrlResults jarg1_);
+  public final static native void GetFlightAreasUrlResults_checksum_set(long jarg1, GetFlightAreasUrlResults jarg1_, String jarg2);
+  public final static native String GetFlightAreasUrlResults_checksum_get(long jarg1, GetFlightAreasUrlResults jarg1_);
+  public final static native void GetFlightAreasUrlResults_size_set(long jarg1, GetFlightAreasUrlResults jarg1_, long jarg2);
+  public final static native long GetFlightAreasUrlResults_size_get(long jarg1, GetFlightAreasUrlResults jarg1_);
+  public final static native long new_GetFlightAreasUrlResults();
+  public final static native void delete_GetFlightAreasUrlResults(long jarg1);
   public final static native void UpdateCustomizedFlightAreasParams_flight_area_id_set(long jarg1, UpdateCustomizedFlightAreasParams jarg1_, String jarg2);
   public final static native String UpdateCustomizedFlightAreasParams_flight_area_id_get(long jarg1, UpdateCustomizedFlightAreasParams jarg1_);
   public final static native void UpdateCustomizedFlightAreasParams_name_set(long jarg1, UpdateCustomizedFlightAreasParams jarg1_, String jarg2);
   public final static native String UpdateCustomizedFlightAreasParams_name_get(long jarg1, UpdateCustomizedFlightAreasParams jarg1_);
   public final static native void UpdateCustomizedFlightAreasParams_content_set(long jarg1, UpdateCustomizedFlightAreasParams jarg1_, long jarg2, FlightAreasContentData jarg2_);
   public final static native long UpdateCustomizedFlightAreasParams_content_get(long jarg1, UpdateCustomizedFlightAreasParams jarg1_);
+  public final static native void UpdateCustomizedFlightAreasParams_status_set(long jarg1, UpdateCustomizedFlightAreasParams jarg1_, String jarg2);
+  public final static native String UpdateCustomizedFlightAreasParams_status_get(long jarg1, UpdateCustomizedFlightAreasParams jarg1_);
+  public final static native void UpdateCustomizedFlightAreasParams_type_set(long jarg1, UpdateCustomizedFlightAreasParams jarg1_, String jarg2);
+  public final static native String UpdateCustomizedFlightAreasParams_type_get(long jarg1, UpdateCustomizedFlightAreasParams jarg1_);
   public final static native void UpdateCustomizedFlightAreasParams_update_by_set(long jarg1, UpdateCustomizedFlightAreasParams jarg1_, String jarg2);
   public final static native String UpdateCustomizedFlightAreasParams_update_by_get(long jarg1, UpdateCustomizedFlightAreasParams jarg1_);
   public final static native long new_UpdateCustomizedFlightAreasParams();
@@ -5152,8 +5383,8 @@ public class flighthubsdkmoduleJNI {
   public final static native long OfflineMapsModelData_updated_time_get(long jarg1, OfflineMapsModelData jarg1_);
   public final static native void OfflineMapsModelData_models_set(long jarg1, OfflineMapsModelData jarg1_, long jarg2, OfflineMapsModelInfoDataVector jarg2_);
   public final static native long OfflineMapsModelData_models_get(long jarg1, OfflineMapsModelData jarg1_);
-  public final static native void OfflineMapsModelData_percent_set(long jarg1, OfflineMapsModelData jarg1_, int jarg2);
-  public final static native int OfflineMapsModelData_percent_get(long jarg1, OfflineMapsModelData jarg1_);
+  public final static native void OfflineMapsModelData_percent_set(long jarg1, OfflineMapsModelData jarg1_, double jarg2);
+  public final static native double OfflineMapsModelData_percent_get(long jarg1, OfflineMapsModelData jarg1_);
   public final static native void OfflineMapsModelData_status_set(long jarg1, OfflineMapsModelData jarg1_, String jarg2);
   public final static native String OfflineMapsModelData_status_get(long jarg1, OfflineMapsModelData jarg1_);
   public final static native void OfflineMapsModelData_result_set(long jarg1, OfflineMapsModelData jarg1_, int jarg2);
@@ -5194,6 +5425,12 @@ public class flighthubsdkmoduleJNI {
   public final static native void delete_SetOfflineMapsParams(long jarg1);
   public final static native void GetMediaFilesListParams_flight_id_set(long jarg1, GetMediaFilesListParams jarg1_, String jarg2);
   public final static native String GetMediaFilesListParams_flight_id_get(long jarg1, GetMediaFilesListParams jarg1_);
+  public final static native void GetMediaFilesListParams_wayline_uuid_set(long jarg1, GetMediaFilesListParams jarg1_, String jarg2);
+  public final static native String GetMediaFilesListParams_wayline_uuid_get(long jarg1, GetMediaFilesListParams jarg1_);
+  public final static native void GetMediaFilesListParams_wayline_action_uuid_set(long jarg1, GetMediaFilesListParams jarg1_, String jarg2);
+  public final static native String GetMediaFilesListParams_wayline_action_uuid_get(long jarg1, GetMediaFilesListParams jarg1_);
+  public final static native void GetMediaFilesListParams_payload_types_set(long jarg1, GetMediaFilesListParams jarg1_, long jarg2, StringVector jarg2_);
+  public final static native long GetMediaFilesListParams_payload_types_get(long jarg1, GetMediaFilesListParams jarg1_);
   public final static native void GetMediaFilesListParams_start_index_set(long jarg1, GetMediaFilesListParams jarg1_, int jarg2);
   public final static native int GetMediaFilesListParams_start_index_get(long jarg1, GetMediaFilesListParams jarg1_);
   public final static native void GetMediaFilesListParams_page_size_set(long jarg1, GetMediaFilesListParams jarg1_, int jarg2);
@@ -5248,6 +5485,8 @@ public class flighthubsdkmoduleJNI {
   public final static native long MediaFilesListItemInfoData_file_id_get(long jarg1, MediaFilesListItemInfoData jarg1_);
   public final static native void MediaFilesListItemInfoData_flight_id_set(long jarg1, MediaFilesListItemInfoData jarg1_, String jarg2);
   public final static native String MediaFilesListItemInfoData_flight_id_get(long jarg1, MediaFilesListItemInfoData jarg1_);
+  public final static native void MediaFilesListItemInfoData_wayline_uuid_set(long jarg1, MediaFilesListItemInfoData jarg1_, String jarg2);
+  public final static native String MediaFilesListItemInfoData_wayline_uuid_get(long jarg1, MediaFilesListItemInfoData jarg1_);
   public final static native void MediaFilesListItemInfoData_wayline_action_uuid_set(long jarg1, MediaFilesListItemInfoData jarg1_, String jarg2);
   public final static native String MediaFilesListItemInfoData_wayline_action_uuid_get(long jarg1, MediaFilesListItemInfoData jarg1_);
   public final static native void MediaFilesListItemInfoData_size_set(long jarg1, MediaFilesListItemInfoData jarg1_, long jarg2);
@@ -5268,8 +5507,16 @@ public class flighthubsdkmoduleJNI {
   public final static native String MediaFilesListItemInfoData_device_sn_get(long jarg1, MediaFilesListItemInfoData jarg1_);
   public final static native void MediaFilesListItemInfoData_payload_type_set(long jarg1, MediaFilesListItemInfoData jarg1_, String jarg2);
   public final static native String MediaFilesListItemInfoData_payload_type_get(long jarg1, MediaFilesListItemInfoData jarg1_);
+  public final static native void MediaFilesListItemInfoData_preview_key_set(long jarg1, MediaFilesListItemInfoData jarg1_, String jarg2);
+  public final static native String MediaFilesListItemInfoData_preview_key_get(long jarg1, MediaFilesListItemInfoData jarg1_);
   public final static native void MediaFilesListItemInfoData_type_set(long jarg1, MediaFilesListItemInfoData jarg1_, int jarg2);
   public final static native int MediaFilesListItemInfoData_type_get(long jarg1, MediaFilesListItemInfoData jarg1_);
+  public final static native void MediaFilesListItemInfoData_pano_total_count_set(long jarg1, MediaFilesListItemInfoData jarg1_, int jarg2);
+  public final static native int MediaFilesListItemInfoData_pano_total_count_get(long jarg1, MediaFilesListItemInfoData jarg1_);
+  public final static native void MediaFilesListItemInfoData_pano_stitch_state_set(long jarg1, MediaFilesListItemInfoData jarg1_, int jarg2);
+  public final static native int MediaFilesListItemInfoData_pano_stitch_state_get(long jarg1, MediaFilesListItemInfoData jarg1_);
+  public final static native void MediaFilesListItemInfoData_pano_stitch_progress_set(long jarg1, MediaFilesListItemInfoData jarg1_, int jarg2);
+  public final static native int MediaFilesListItemInfoData_pano_stitch_progress_get(long jarg1, MediaFilesListItemInfoData jarg1_);
   public final static native long new_MediaFilesListItemInfoData();
   public final static native void delete_MediaFilesListItemInfoData(long jarg1);
   public final static native void GetMediaFilesListResults_list_set(long jarg1, GetMediaFilesListResults jarg1_, long jarg2, MediaFilesListItemInfoDataVector jarg2_);
@@ -5448,26 +5695,6 @@ public class flighthubsdkmoduleJNI {
   public final static native String ExportFlightRecordsRequestParams_locale_get(long jarg1, ExportFlightRecordsRequestParams jarg1_);
   public final static native long new_ExportFlightRecordsRequestParams();
   public final static native void delete_ExportFlightRecordsRequestParams(long jarg1);
-  public final static native void AircraftVisualScoutStatus_task_id_set(long jarg1, AircraftVisualScoutStatus jarg1_, String jarg2);
-  public final static native String AircraftVisualScoutStatus_task_id_get(long jarg1, AircraftVisualScoutStatus jarg1_);
-  public final static native void AircraftVisualScoutStatus_visual_scout_stage_set(long jarg1, AircraftVisualScoutStatus jarg1_, int jarg2);
-  public final static native int AircraftVisualScoutStatus_visual_scout_stage_get(long jarg1, AircraftVisualScoutStatus jarg1_);
-  public final static native void AircraftVisualScoutStatus_scout_wayline_generate_remain_time_set(long jarg1, AircraftVisualScoutStatus jarg1_, long jarg2);
-  public final static native long AircraftVisualScoutStatus_scout_wayline_generate_remain_time_get(long jarg1, AircraftVisualScoutStatus jarg1_);
-  public final static native long new_AircraftVisualScoutStatus();
-  public final static native void delete_AircraftVisualScoutStatus(long jarg1);
-  public final static native void AircraftVisualScoutAbnormalInfo_task_id_set(long jarg1, AircraftVisualScoutAbnormalInfo jarg1_, String jarg2);
-  public final static native String AircraftVisualScoutAbnormalInfo_task_id_get(long jarg1, AircraftVisualScoutAbnormalInfo jarg1_);
-  public final static native void AircraftVisualScoutAbnormalInfo_err_code_set(long jarg1, AircraftVisualScoutAbnormalInfo jarg1_, int jarg2);
-  public final static native int AircraftVisualScoutAbnormalInfo_err_code_get(long jarg1, AircraftVisualScoutAbnormalInfo jarg1_);
-  public final static native long new_AircraftVisualScoutAbnormalInfo();
-  public final static native void delete_AircraftVisualScoutAbnormalInfo(long jarg1);
-  public final static native void AircraftVisualScoutObstacleInfo_task_id_set(long jarg1, AircraftVisualScoutObstacleInfo jarg1_, String jarg2);
-  public final static native String AircraftVisualScoutObstacleInfo_task_id_get(long jarg1, AircraftVisualScoutObstacleInfo jarg1_);
-  public final static native void AircraftVisualScoutObstacleInfo_obstacle_tag_set(long jarg1, AircraftVisualScoutObstacleInfo jarg1_, boolean jarg2);
-  public final static native boolean AircraftVisualScoutObstacleInfo_obstacle_tag_get(long jarg1, AircraftVisualScoutObstacleInfo jarg1_);
-  public final static native long new_AircraftVisualScoutObstacleInfo();
-  public final static native void delete_AircraftVisualScoutObstacleInfo(long jarg1);
   public final static native void GeoCagingInfoParam_fg_longitude_set(long jarg1, GeoCagingInfoParam jarg1_, double jarg2);
   public final static native double GeoCagingInfoParam_fg_longitude_get(long jarg1, GeoCagingInfoParam jarg1_);
   public final static native void GeoCagingInfoParam_fg_latitude_set(long jarg1, GeoCagingInfoParam jarg1_, double jarg2);
@@ -5486,14 +5713,6 @@ public class flighthubsdkmoduleJNI {
   public final static native int GeoCagingInfoParam_cv_height_get(long jarg1, GeoCagingInfoParam jarg1_);
   public final static native long new_GeoCagingInfoParam();
   public final static native void delete_GeoCagingInfoParam(long jarg1);
-  public final static native void EphemerisDownloadState_state_set(long jarg1, EphemerisDownloadState jarg1_, int jarg2);
-  public final static native int EphemerisDownloadState_state_get(long jarg1, EphemerisDownloadState jarg1_);
-  public final static native long new_EphemerisDownloadState();
-  public final static native void delete_EphemerisDownloadState(long jarg1);
-  public final static native void EphemerisInfo_ephemeris_set(long jarg1, EphemerisInfo jarg1_, String jarg2);
-  public final static native String EphemerisInfo_ephemeris_get(long jarg1, EphemerisInfo jarg1_);
-  public final static native long new_EphemerisInfo();
-  public final static native void delete_EphemerisInfo(long jarg1);
   public final static native void FlightSafeSyncField_field_set(long jarg1, FlightSafeSyncField jarg1_, String jarg2);
   public final static native String FlightSafeSyncField_field_get(long jarg1, FlightSafeSyncField jarg1_);
   public final static native void FlightSafeSyncField_synced_set(long jarg1, FlightSafeSyncField jarg1_, boolean jarg2);
@@ -5526,8 +5745,8 @@ public class flighthubsdkmoduleJNI {
   public final static native long FlightOutOfControlActionResult_device_shadow_sync_get(long jarg1, FlightOutOfControlActionResult jarg1_);
   public final static native long new_FlightOutOfControlActionResult();
   public final static native void delete_FlightOutOfControlActionResult(long jarg1);
-  public final static native void FlightCommanderHeightSetting_commander_flight_height_set(long jarg1, FlightCommanderHeightSetting jarg1_, int jarg2);
-  public final static native int FlightCommanderHeightSetting_commander_flight_height_get(long jarg1, FlightCommanderHeightSetting jarg1_);
+  public final static native void FlightCommanderHeightSetting_commander_flight_height_set(long jarg1, FlightCommanderHeightSetting jarg1_, double jarg2);
+  public final static native double FlightCommanderHeightSetting_commander_flight_height_get(long jarg1, FlightCommanderHeightSetting jarg1_);
   public final static native long new_FlightCommanderHeightSetting();
   public final static native void delete_FlightCommanderHeightSetting(long jarg1);
   public final static native void FlightCommanderHeightResult_settings_set(long jarg1, FlightCommanderHeightResult jarg1_, long jarg2, FlightCommanderHeightSetting jarg2_);
@@ -6070,6 +6289,26 @@ public class flighthubsdkmoduleJNI {
   public final static native String GetSelfDiagnosisReportResults_qr_code_content_get(long jarg1, GetSelfDiagnosisReportResults jarg1_);
   public final static native void GetSelfDiagnosisReportResults_qr_guide_text_set(long jarg1, GetSelfDiagnosisReportResults jarg1_, String jarg2);
   public final static native String GetSelfDiagnosisReportResults_qr_guide_text_get(long jarg1, GetSelfDiagnosisReportResults jarg1_);
+  public final static native void GetSelfDiagnosisReportResults_cloud_submit_status_set(long jarg1, GetSelfDiagnosisReportResults jarg1_, String jarg2);
+  public final static native String GetSelfDiagnosisReportResults_cloud_submit_status_get(long jarg1, GetSelfDiagnosisReportResults jarg1_);
+  public final static native void GetSelfDiagnosisReportResults_qr_code_url_set(long jarg1, GetSelfDiagnosisReportResults jarg1_, String jarg2);
+  public final static native String GetSelfDiagnosisReportResults_qr_code_url_get(long jarg1, GetSelfDiagnosisReportResults jarg1_);
+  public final static native void GetSelfDiagnosisReportResults_qr_code_sign_set(long jarg1, GetSelfDiagnosisReportResults jarg1_, String jarg2);
+  public final static native String GetSelfDiagnosisReportResults_qr_code_sign_get(long jarg1, GetSelfDiagnosisReportResults jarg1_);
+  public final static native void GetSelfDiagnosisReportResults_qr_code_nonce_set(long jarg1, GetSelfDiagnosisReportResults jarg1_, String jarg2);
+  public final static native String GetSelfDiagnosisReportResults_qr_code_nonce_get(long jarg1, GetSelfDiagnosisReportResults jarg1_);
+  public final static native void GetSelfDiagnosisReportResults_device_callback_updated_at_set(long jarg1, GetSelfDiagnosisReportResults jarg1_, String jarg2);
+  public final static native String GetSelfDiagnosisReportResults_device_callback_updated_at_get(long jarg1, GetSelfDiagnosisReportResults jarg1_);
+  public final static native void GetSelfDiagnosisReportResults_created_at_set(long jarg1, GetSelfDiagnosisReportResults jarg1_, String jarg2);
+  public final static native String GetSelfDiagnosisReportResults_created_at_get(long jarg1, GetSelfDiagnosisReportResults jarg1_);
+  public final static native void GetSelfDiagnosisReportResults_updated_at_set(long jarg1, GetSelfDiagnosisReportResults jarg1_, String jarg2);
+  public final static native String GetSelfDiagnosisReportResults_updated_at_get(long jarg1, GetSelfDiagnosisReportResults jarg1_);
+  public final static native void GetSelfDiagnosisReportResults_organization_uuid_set(long jarg1, GetSelfDiagnosisReportResults jarg1_, String jarg2);
+  public final static native String GetSelfDiagnosisReportResults_organization_uuid_get(long jarg1, GetSelfDiagnosisReportResults jarg1_);
+  public final static native void GetSelfDiagnosisReportResults_project_uuid_set(long jarg1, GetSelfDiagnosisReportResults jarg1_, String jarg2);
+  public final static native String GetSelfDiagnosisReportResults_project_uuid_get(long jarg1, GetSelfDiagnosisReportResults jarg1_);
+  public final static native void GetSelfDiagnosisReportResults_device_type_set(long jarg1, GetSelfDiagnosisReportResults jarg1_, String jarg2);
+  public final static native String GetSelfDiagnosisReportResults_device_type_get(long jarg1, GetSelfDiagnosisReportResults jarg1_);
   public final static native long new_GetSelfDiagnosisReportResults();
   public final static native void delete_GetSelfDiagnosisReportResults(long jarg1);
   public final static native void GetSelfDiagnosisReportListResults_pagination_set(long jarg1, GetSelfDiagnosisReportListResults jarg1_, long jarg2, CommonPaginationData jarg2_);
@@ -6518,6 +6757,62 @@ public class flighthubsdkmoduleJNI {
   public final static native long WaylineTaskEvent_task_data_get(long jarg1, WaylineTaskEvent jarg1_);
   public final static native long new_WaylineTaskEvent();
   public final static native void delete_WaylineTaskEvent(long jarg1);
+  public final static native void MultiDockHomeInfo_sn_set(long jarg1, MultiDockHomeInfo jarg1_, String jarg2);
+  public final static native String MultiDockHomeInfo_sn_get(long jarg1, MultiDockHomeInfo jarg1_);
+  public final static native void MultiDockHomeInfo_plan_status_set(long jarg1, MultiDockHomeInfo jarg1_, int jarg2);
+  public final static native int MultiDockHomeInfo_plan_status_get(long jarg1, MultiDockHomeInfo jarg1_);
+  public final static native void MultiDockHomeInfo_estimated_battery_consumption_set(long jarg1, MultiDockHomeInfo jarg1_, int jarg2);
+  public final static native int MultiDockHomeInfo_estimated_battery_consumption_get(long jarg1, MultiDockHomeInfo jarg1_);
+  public final static native void MultiDockHomeInfo_home_distance_set(long jarg1, MultiDockHomeInfo jarg1_, double jarg2);
+  public final static native double MultiDockHomeInfo_home_distance_get(long jarg1, MultiDockHomeInfo jarg1_);
+  public final static native long new_MultiDockHomeInfo();
+  public final static native void delete_MultiDockHomeInfo(long jarg1);
+  public final static native void ReturnHomeInfo_timestamp_set(long jarg1, ReturnHomeInfo jarg1_, long jarg2);
+  public final static native long ReturnHomeInfo_timestamp_get(long jarg1, ReturnHomeInfo jarg1_);
+  public final static native void ReturnHomeInfo_planned_path_points_set(long jarg1, ReturnHomeInfo jarg1_, long jarg2, WaypointVector jarg2_);
+  public final static native long ReturnHomeInfo_planned_path_points_get(long jarg1, ReturnHomeInfo jarg1_);
+  public final static native void ReturnHomeInfo_last_point_type_set(long jarg1, ReturnHomeInfo jarg1_, int jarg2);
+  public final static native int ReturnHomeInfo_last_point_type_get(long jarg1, ReturnHomeInfo jarg1_);
+  public final static native void ReturnHomeInfo_home_dock_sn_set(long jarg1, ReturnHomeInfo jarg1_, String jarg2);
+  public final static native String ReturnHomeInfo_home_dock_sn_get(long jarg1, ReturnHomeInfo jarg1_);
+  public final static native void ReturnHomeInfo_multi_dock_home_info_set(long jarg1, ReturnHomeInfo jarg1_, long jarg2, MultiDockHomeInfoVector jarg2_);
+  public final static native long ReturnHomeInfo_multi_dock_home_info_get(long jarg1, ReturnHomeInfo jarg1_);
+  public final static native long new_ReturnHomeInfo();
+  public final static native void delete_ReturnHomeInfo(long jarg1);
+  public final static native void ReturnHomeInfoEvent_flight_id_set(long jarg1, ReturnHomeInfoEvent jarg1_, String jarg2);
+  public final static native String ReturnHomeInfoEvent_flight_id_get(long jarg1, ReturnHomeInfoEvent jarg1_);
+  public final static native void ReturnHomeInfoEvent_sn_set(long jarg1, ReturnHomeInfoEvent jarg1_, String jarg2);
+  public final static native String ReturnHomeInfoEvent_sn_get(long jarg1, ReturnHomeInfoEvent jarg1_);
+  public final static native void ReturnHomeInfoEvent_info_set(long jarg1, ReturnHomeInfoEvent jarg1_, long jarg2, ReturnHomeInfo jarg2_);
+  public final static native long ReturnHomeInfoEvent_info_get(long jarg1, ReturnHomeInfoEvent jarg1_);
+  public final static native long new_ReturnHomeInfoEvent();
+  public final static native void delete_ReturnHomeInfoEvent(long jarg1);
+  public final static native void TaskExceptionItem_code_set(long jarg1, TaskExceptionItem jarg1_, int jarg2);
+  public final static native int TaskExceptionItem_code_get(long jarg1, TaskExceptionItem jarg1_);
+  public final static native void TaskExceptionItem_message_set(long jarg1, TaskExceptionItem jarg1_, String jarg2);
+  public final static native String TaskExceptionItem_message_get(long jarg1, TaskExceptionItem jarg1_);
+  public final static native void TaskExceptionItem_sn_set(long jarg1, TaskExceptionItem jarg1_, String jarg2);
+  public final static native String TaskExceptionItem_sn_get(long jarg1, TaskExceptionItem jarg1_);
+  public final static native void TaskExceptionItem_happen_at_set(long jarg1, TaskExceptionItem jarg1_, long jarg2);
+  public final static native long TaskExceptionItem_happen_at_get(long jarg1, TaskExceptionItem jarg1_);
+  public final static native long new_TaskExceptionItem();
+  public final static native void delete_TaskExceptionItem(long jarg1);
+  public final static native void TaskExceptionEvent_uuid_set(long jarg1, TaskExceptionEvent jarg1_, String jarg2);
+  public final static native String TaskExceptionEvent_uuid_get(long jarg1, TaskExceptionEvent jarg1_);
+  public final static native void TaskExceptionEvent_name_set(long jarg1, TaskExceptionEvent jarg1_, String jarg2);
+  public final static native String TaskExceptionEvent_name_get(long jarg1, TaskExceptionEvent jarg1_);
+  public final static native void TaskExceptionEvent_sn_set(long jarg1, TaskExceptionEvent jarg1_, String jarg2);
+  public final static native String TaskExceptionEvent_sn_get(long jarg1, TaskExceptionEvent jarg1_);
+  public final static native void TaskExceptionEvent_task_type_set(long jarg1, TaskExceptionEvent jarg1_, int jarg2);
+  public final static native int TaskExceptionEvent_task_type_get(long jarg1, TaskExceptionEvent jarg1_);
+  public final static native void TaskExceptionEvent_status_set(long jarg1, TaskExceptionEvent jarg1_, int jarg2);
+  public final static native int TaskExceptionEvent_status_get(long jarg1, TaskExceptionEvent jarg1_);
+  public final static native void TaskExceptionEvent_timestamp_set(long jarg1, TaskExceptionEvent jarg1_, long jarg2);
+  public final static native long TaskExceptionEvent_timestamp_get(long jarg1, TaskExceptionEvent jarg1_);
+  public final static native void TaskExceptionEvent_exceptions_set(long jarg1, TaskExceptionEvent jarg1_, long jarg2, TaskExceptionItemVector jarg2_);
+  public final static native long TaskExceptionEvent_exceptions_get(long jarg1, TaskExceptionEvent jarg1_);
+  public final static native long new_TaskExceptionEvent();
+  public final static native void delete_TaskExceptionEvent(long jarg1);
   public final static native void CreateInFlightWaylineTaskParams_wayline_uuid_set(long jarg1, CreateInFlightWaylineTaskParams jarg1_, String jarg2);
   public final static native String CreateInFlightWaylineTaskParams_wayline_uuid_get(long jarg1, CreateInFlightWaylineTaskParams jarg1_);
   public final static native void CreateInFlightWaylineTaskParams_rth_altitude_set(long jarg1, CreateInFlightWaylineTaskParams jarg1_, int jarg2);
@@ -6698,16 +6993,28 @@ public class flighthubsdkmoduleJNI {
   public final static native String FlightPoiProgress_sn_get(long jarg1, FlightPoiProgress jarg1_);
   public final static native void FlightPoiProgress_device_sn_set(long jarg1, FlightPoiProgress jarg1_, String jarg2);
   public final static native String FlightPoiProgress_device_sn_get(long jarg1, FlightPoiProgress jarg1_);
+  public final static native void FlightPoiProgress_drone_sn_set(long jarg1, FlightPoiProgress jarg1_, String jarg2);
+  public final static native String FlightPoiProgress_drone_sn_get(long jarg1, FlightPoiProgress jarg1_);
   public final static native void FlightPoiProgress_poi_center_point_set(long jarg1, FlightPoiProgress jarg1_, long jarg2, FlightPoiProgressCenterPoint jarg2_);
   public final static native long FlightPoiProgress_poi_center_point_get(long jarg1, FlightPoiProgress jarg1_);
   public final static native void FlightPoiProgress_speed_set(long jarg1, FlightPoiProgress jarg1_, double jarg2);
   public final static native double FlightPoiProgress_speed_get(long jarg1, FlightPoiProgress jarg1_);
+  public final static native void FlightPoiProgress_circle_speed_set(long jarg1, FlightPoiProgress jarg1_, double jarg2);
+  public final static native double FlightPoiProgress_circle_speed_get(long jarg1, FlightPoiProgress jarg1_);
+  public final static native void FlightPoiProgress_max_circle_speed_set(long jarg1, FlightPoiProgress jarg1_, double jarg2);
+  public final static native double FlightPoiProgress_max_circle_speed_get(long jarg1, FlightPoiProgress jarg1_);
   public final static native void FlightPoiProgress_circle_radius_set(long jarg1, FlightPoiProgress jarg1_, double jarg2);
   public final static native double FlightPoiProgress_circle_radius_get(long jarg1, FlightPoiProgress jarg1_);
   public final static native void FlightPoiProgress_payload_index_set(long jarg1, FlightPoiProgress jarg1_, String jarg2);
   public final static native String FlightPoiProgress_payload_index_get(long jarg1, FlightPoiProgress jarg1_);
-  public final static native void FlightPoiProgress_status_set(long jarg1, FlightPoiProgress jarg1_, int jarg2);
-  public final static native int FlightPoiProgress_status_get(long jarg1, FlightPoiProgress jarg1_);
+  public final static native void FlightPoiProgress_status_set(long jarg1, FlightPoiProgress jarg1_, String jarg2);
+  public final static native String FlightPoiProgress_status_get(long jarg1, FlightPoiProgress jarg1_);
+  public final static native void FlightPoiProgress_reason_set(long jarg1, FlightPoiProgress jarg1_, int jarg2);
+  public final static native int FlightPoiProgress_reason_get(long jarg1, FlightPoiProgress jarg1_);
+  public final static native void FlightPoiProgress_timestamp_set(long jarg1, FlightPoiProgress jarg1_, long jarg2);
+  public final static native long FlightPoiProgress_timestamp_get(long jarg1, FlightPoiProgress jarg1_);
+  public final static native void FlightPoiProgress_execute_duration_set(long jarg1, FlightPoiProgress jarg1_, int jarg2);
+  public final static native int FlightPoiProgress_execute_duration_get(long jarg1, FlightPoiProgress jarg1_);
   public final static native void FlightPoiProgress_err_code_set(long jarg1, FlightPoiProgress jarg1_, int jarg2);
   public final static native int FlightPoiProgress_err_code_get(long jarg1, FlightPoiProgress jarg1_);
   public final static native long new_FlightPoiProgress();
@@ -6806,6 +7113,54 @@ public class flighthubsdkmoduleJNI {
   public final static native long FlashLedConfigList_configs_get(long jarg1, FlashLedConfigList jarg1_);
   public final static native long new_FlashLedConfigList();
   public final static native void delete_FlashLedConfigList(long jarg1);
+  public final static native void AutoRecordItem_sn_set(long jarg1, AutoRecordItem jarg1_, String jarg2);
+  public final static native String AutoRecordItem_sn_get(long jarg1, AutoRecordItem jarg1_);
+  public final static native void AutoRecordItem_camera_index_set(long jarg1, AutoRecordItem jarg1_, String jarg2);
+  public final static native String AutoRecordItem_camera_index_get(long jarg1, AutoRecordItem jarg1_);
+  public final static native void AutoRecordItem_camera_sn_set(long jarg1, AutoRecordItem jarg1_, String jarg2);
+  public final static native String AutoRecordItem_camera_sn_get(long jarg1, AutoRecordItem jarg1_);
+  public final static native void AutoRecordItem_recording_strategy_set(long jarg1, AutoRecordItem jarg1_, int jarg2);
+  public final static native int AutoRecordItem_recording_strategy_get(long jarg1, AutoRecordItem jarg1_);
+  public final static native long new_AutoRecordItem();
+  public final static native void delete_AutoRecordItem(long jarg1);
+  public final static native void AutoRecordConfig_id_set(long jarg1, AutoRecordConfig jarg1_, long jarg2);
+  public final static native long AutoRecordConfig_id_get(long jarg1, AutoRecordConfig jarg1_);
+  public final static native void AutoRecordConfig_project_id_set(long jarg1, AutoRecordConfig jarg1_, String jarg2);
+  public final static native String AutoRecordConfig_project_id_get(long jarg1, AutoRecordConfig jarg1_);
+  public final static native void AutoRecordConfig_created_at_set(long jarg1, AutoRecordConfig jarg1_, long jarg2);
+  public final static native long AutoRecordConfig_created_at_get(long jarg1, AutoRecordConfig jarg1_);
+  public final static native void AutoRecordConfig_updated_at_set(long jarg1, AutoRecordConfig jarg1_, long jarg2);
+  public final static native long AutoRecordConfig_updated_at_get(long jarg1, AutoRecordConfig jarg1_);
+  public final static native void AutoRecordConfig_auto_cleaning_time_set(long jarg1, AutoRecordConfig jarg1_, int jarg2);
+  public final static native int AutoRecordConfig_auto_cleaning_time_get(long jarg1, AutoRecordConfig jarg1_);
+  public final static native void AutoRecordConfig_disabled_auto_clean_set(long jarg1, AutoRecordConfig jarg1_, boolean jarg2);
+  public final static native boolean AutoRecordConfig_disabled_auto_clean_get(long jarg1, AutoRecordConfig jarg1_);
+  public final static native void AutoRecordConfig_disable_dock_recording_set(long jarg1, AutoRecordConfig jarg1_, boolean jarg2);
+  public final static native boolean AutoRecordConfig_disable_dock_recording_get(long jarg1, AutoRecordConfig jarg1_);
+  public final static native void AutoRecordConfig_disable_drone_recording_set(long jarg1, AutoRecordConfig jarg1_, boolean jarg2);
+  public final static native boolean AutoRecordConfig_disable_drone_recording_get(long jarg1, AutoRecordConfig jarg1_);
+  public final static native void AutoRecordConfig_disable_base_station_recording_set(long jarg1, AutoRecordConfig jarg1_, boolean jarg2);
+  public final static native boolean AutoRecordConfig_disable_base_station_recording_get(long jarg1, AutoRecordConfig jarg1_);
+  public final static native void AutoRecordConfig_disable_rtmp_recording_set(long jarg1, AutoRecordConfig jarg1_, boolean jarg2);
+  public final static native boolean AutoRecordConfig_disable_rtmp_recording_get(long jarg1, AutoRecordConfig jarg1_);
+  public final static native void AutoRecordConfig_recording_items_set(long jarg1, AutoRecordConfig jarg1_, long jarg2, AutoRecordItemVector jarg2_);
+  public final static native long AutoRecordConfig_recording_items_get(long jarg1, AutoRecordConfig jarg1_);
+  public final static native long new_AutoRecordConfig();
+  public final static native void delete_AutoRecordConfig(long jarg1);
+  public final static native void SaveAutoRecordConfigParams_auto_cleaning_time_set(long jarg1, SaveAutoRecordConfigParams jarg1_, int jarg2);
+  public final static native int SaveAutoRecordConfigParams_auto_cleaning_time_get(long jarg1, SaveAutoRecordConfigParams jarg1_);
+  public final static native void SaveAutoRecordConfigParams_disable_dock_recording_set(long jarg1, SaveAutoRecordConfigParams jarg1_, boolean jarg2);
+  public final static native boolean SaveAutoRecordConfigParams_disable_dock_recording_get(long jarg1, SaveAutoRecordConfigParams jarg1_);
+  public final static native void SaveAutoRecordConfigParams_disable_drone_recording_set(long jarg1, SaveAutoRecordConfigParams jarg1_, boolean jarg2);
+  public final static native boolean SaveAutoRecordConfigParams_disable_drone_recording_get(long jarg1, SaveAutoRecordConfigParams jarg1_);
+  public final static native void SaveAutoRecordConfigParams_disable_base_station_recording_set(long jarg1, SaveAutoRecordConfigParams jarg1_, boolean jarg2);
+  public final static native boolean SaveAutoRecordConfigParams_disable_base_station_recording_get(long jarg1, SaveAutoRecordConfigParams jarg1_);
+  public final static native void SaveAutoRecordConfigParams_disable_rtmp_recording_set(long jarg1, SaveAutoRecordConfigParams jarg1_, boolean jarg2);
+  public final static native boolean SaveAutoRecordConfigParams_disable_rtmp_recording_get(long jarg1, SaveAutoRecordConfigParams jarg1_);
+  public final static native void SaveAutoRecordConfigParams_recording_items_set(long jarg1, SaveAutoRecordConfigParams jarg1_, long jarg2, AutoRecordItemVector jarg2_);
+  public final static native long SaveAutoRecordConfigParams_recording_items_get(long jarg1, SaveAutoRecordConfigParams jarg1_);
+  public final static native long new_SaveAutoRecordConfigParams();
+  public final static native void delete_SaveAutoRecordConfigParams(long jarg1);
   public final static native void CameraLookAtParams_payload_index_set(long jarg1, CameraLookAtParams jarg1_, String jarg2);
   public final static native String CameraLookAtParams_payload_index_get(long jarg1, CameraLookAtParams jarg1_);
   public final static native void CameraLookAtParams_locked_set(long jarg1, CameraLookAtParams jarg1_, boolean jarg2);
@@ -6904,6 +7259,16 @@ public class flighthubsdkmoduleJNI {
   public final static native int DrcParachuteInfo_parachute_is_abnormal_get(long jarg1, DrcParachuteInfo jarg1_);
   public final static native long new_DrcParachuteInfo();
   public final static native void delete_DrcParachuteInfo(long jarg1);
+  public final static native void DrcLandingMissionState_landing_state_set(long jarg1, DrcLandingMissionState jarg1_, int jarg2);
+  public final static native int DrcLandingMissionState_landing_state_get(long jarg1, DrcLandingMissionState jarg1_);
+  public final static native void DrcLandingMissionState_pause_reason_set(long jarg1, DrcLandingMissionState jarg1_, int jarg2);
+  public final static native int DrcLandingMissionState_pause_reason_get(long jarg1, DrcLandingMissionState jarg1_);
+  public final static native void DrcLandingMissionState_cover_percent_set(long jarg1, DrcLandingMissionState jarg1_, int jarg2);
+  public final static native int DrcLandingMissionState_cover_percent_get(long jarg1, DrcLandingMissionState jarg1_);
+  public final static native void DrcLandingMissionState_cover_error_code_set(long jarg1, DrcLandingMissionState jarg1_, int jarg2);
+  public final static native int DrcLandingMissionState_cover_error_code_get(long jarg1, DrcLandingMissionState jarg1_);
+  public final static native long new_DrcLandingMissionState();
+  public final static native void delete_DrcLandingMissionState(long jarg1);
   public final static native void RtcQualityTestParams_index_set(long jarg1, RtcQualityTestParams jarg1_, int jarg2);
   public final static native int RtcQualityTestParams_index_get(long jarg1, RtcQualityTestParams jarg1_);
   public final static native void RtcQualityTestParams_length_set(long jarg1, RtcQualityTestParams jarg1_, int jarg2);
@@ -7268,6 +7633,8 @@ public class flighthubsdkmoduleJNI {
   public final static native double MediaFileGeoPosition_lng_get(long jarg1, MediaFileGeoPosition jarg1_);
   public final static native void MediaFileGeoPosition_abs_alt_set(long jarg1, MediaFileGeoPosition jarg1_, double jarg2);
   public final static native double MediaFileGeoPosition_abs_alt_get(long jarg1, MediaFileGeoPosition jarg1_);
+  public final static native void MediaFileGeoPosition_rel_alt_set(long jarg1, MediaFileGeoPosition jarg1_, double jarg2);
+  public final static native double MediaFileGeoPosition_rel_alt_get(long jarg1, MediaFileGeoPosition jarg1_);
   public final static native long new_MediaFileGeoPosition();
   public final static native void delete_MediaFileGeoPosition(long jarg1);
   public final static native void MediaFileDetailExt_width_set(long jarg1, MediaFileDetailExt jarg1_, int jarg2);
@@ -7276,6 +7643,68 @@ public class flighthubsdkmoduleJNI {
   public final static native int MediaFileDetailExt_height_get(long jarg1, MediaFileDetailExt jarg1_);
   public final static native void MediaFileDetailExt_photo_position_set(long jarg1, MediaFileDetailExt jarg1_, long jarg2, MediaFileGeoPosition jarg2_);
   public final static native long MediaFileDetailExt_photo_position_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_resolution_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_resolution_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_photographer_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_photographer_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_task_name_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_task_name_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_line_name_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_line_name_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_wayline_uuid_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_wayline_uuid_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_origin_wayline_uuid_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_origin_wayline_uuid_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_wayline_action_uuid_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_wayline_action_uuid_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_payload_model_key_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_payload_model_key_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_drone_model_key_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_drone_model_key_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_is_original_set(long jarg1, MediaFileDetailExt jarg1_, boolean jarg2);
+  public final static native boolean MediaFileDetailExt_is_original_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_digital_zoom_ratio_set(long jarg1, MediaFileDetailExt jarg1_, double jarg2);
+  public final static native double MediaFileDetailExt_digital_zoom_ratio_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_length_in35mm_film_set(long jarg1, MediaFileDetailExt jarg1_, double jarg2);
+  public final static native double MediaFileDetailExt_length_in35mm_film_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_gimbal_roll_set(long jarg1, MediaFileDetailExt jarg1_, double jarg2);
+  public final static native double MediaFileDetailExt_gimbal_roll_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_gimbal_yaw_set(long jarg1, MediaFileDetailExt jarg1_, double jarg2);
+  public final static native double MediaFileDetailExt_gimbal_yaw_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_gimbal_yaw_degree_set(long jarg1, MediaFileDetailExt jarg1_, double jarg2);
+  public final static native double MediaFileDetailExt_gimbal_yaw_degree_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_flight_id_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_flight_id_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_duration_set(long jarg1, MediaFileDetailExt jarg1_, double jarg2);
+  public final static native double MediaFileDetailExt_duration_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_shoot_position_set(long jarg1, MediaFileDetailExt jarg1_, long jarg2, MediaFileGeoPosition jarg2_);
+  public final static native long MediaFileDetailExt_shoot_position_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_absolute_altitude_set(long jarg1, MediaFileDetailExt jarg1_, double jarg2);
+  public final static native double MediaFileDetailExt_absolute_altitude_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_relative_altitude_set(long jarg1, MediaFileDetailExt jarg1_, double jarg2);
+  public final static native double MediaFileDetailExt_relative_altitude_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_created_time_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_created_time_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_creation_time_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_creation_time_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_create_time_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_create_time_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_encoder_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_encoder_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_format_long_name_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_format_long_name_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_format_name_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_format_name_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_ext_size_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_ext_size_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_flight_yaw_set(long jarg1, MediaFileDetailExt jarg1_, double jarg2);
+  public final static native double MediaFileDetailExt_flight_yaw_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_focal_length_set(long jarg1, MediaFileDetailExt jarg1_, double jarg2);
+  public final static native double MediaFileDetailExt_focal_length_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_gimbal_pitch_set(long jarg1, MediaFileDetailExt jarg1_, double jarg2);
+  public final static native double MediaFileDetailExt_gimbal_pitch_get(long jarg1, MediaFileDetailExt jarg1_);
+  public final static native void MediaFileDetailExt_image_type_set(long jarg1, MediaFileDetailExt jarg1_, String jarg2);
+  public final static native String MediaFileDetailExt_image_type_get(long jarg1, MediaFileDetailExt jarg1_);
   public final static native long new_MediaFileDetailExt();
   public final static native void delete_MediaFileDetailExt(long jarg1);
   public final static native void GetMediaFileDetailByIdResult_url_set(long jarg1, GetMediaFileDetailByIdResult jarg1_, String jarg2);
@@ -7294,8 +7723,48 @@ public class flighthubsdkmoduleJNI {
   public final static native String GetMediaFileDetailByIdResult_create_at_get(long jarg1, GetMediaFileDetailByIdResult jarg1_);
   public final static native void GetMediaFileDetailByIdResult_ext_set(long jarg1, GetMediaFileDetailByIdResult jarg1_, long jarg2, MediaFileDetailExt jarg2_);
   public final static native long GetMediaFileDetailByIdResult_ext_get(long jarg1, GetMediaFileDetailByIdResult jarg1_);
+  public final static native void GetMediaFileDetailByIdResult_pano_stitch_state_set(long jarg1, GetMediaFileDetailByIdResult jarg1_, int jarg2);
+  public final static native int GetMediaFileDetailByIdResult_pano_stitch_state_get(long jarg1, GetMediaFileDetailByIdResult jarg1_);
+  public final static native void GetMediaFileDetailByIdResult_pano_stitch_progress_set(long jarg1, GetMediaFileDetailByIdResult jarg1_, int jarg2);
+  public final static native int GetMediaFileDetailByIdResult_pano_stitch_progress_get(long jarg1, GetMediaFileDetailByIdResult jarg1_);
+  public final static native void GetMediaFileDetailByIdResult_pano_error_code_set(long jarg1, GetMediaFileDetailByIdResult jarg1_, int jarg2);
+  public final static native int GetMediaFileDetailByIdResult_pano_error_code_get(long jarg1, GetMediaFileDetailByIdResult jarg1_);
   public final static native long new_GetMediaFileDetailByIdResult();
   public final static native void delete_GetMediaFileDetailByIdResult(long jarg1);
+  public final static native void PanoTierCookie_name_set(long jarg1, PanoTierCookie jarg1_, String jarg2);
+  public final static native String PanoTierCookie_name_get(long jarg1, PanoTierCookie jarg1_);
+  public final static native void PanoTierCookie_value_set(long jarg1, PanoTierCookie jarg1_, String jarg2);
+  public final static native String PanoTierCookie_value_get(long jarg1, PanoTierCookie jarg1_);
+  public final static native void PanoTierCookie_path_set(long jarg1, PanoTierCookie jarg1_, String jarg2);
+  public final static native String PanoTierCookie_path_get(long jarg1, PanoTierCookie jarg1_);
+  public final static native void PanoTierCookie_expires_unix_sec_set(long jarg1, PanoTierCookie jarg1_, long jarg2);
+  public final static native long PanoTierCookie_expires_unix_sec_get(long jarg1, PanoTierCookie jarg1_);
+  public final static native long new_PanoTierCookie();
+  public final static native void delete_PanoTierCookie(long jarg1);
+  public final static native void GetPanoTierTileUrlResult_state_set(long jarg1, GetPanoTierTileUrlResult jarg1_, int jarg2);
+  public final static native int GetPanoTierTileUrlResult_state_get(long jarg1, GetPanoTierTileUrlResult jarg1_);
+  public final static native void GetPanoTierTileUrlResult_base_url_set(long jarg1, GetPanoTierTileUrlResult jarg1_, String jarg2);
+  public final static native String GetPanoTierTileUrlResult_base_url_get(long jarg1, GetPanoTierTileUrlResult jarg1_);
+  public final static native void GetPanoTierTileUrlResult_cookies_set(long jarg1, GetPanoTierTileUrlResult jarg1_, long jarg2);
+  public final static native long GetPanoTierTileUrlResult_cookies_get(long jarg1, GetPanoTierTileUrlResult jarg1_);
+  public final static native void GetPanoTierTileUrlResult_query_params_set(long jarg1, GetPanoTierTileUrlResult jarg1_, long jarg2, StringStringMap jarg2_);
+  public final static native long GetPanoTierTileUrlResult_query_params_get(long jarg1, GetPanoTierTileUrlResult jarg1_);
+  public final static native long new_GetPanoTierTileUrlResult();
+  public final static native void delete_GetPanoTierTileUrlResult(long jarg1);
+  public final static native void PanoStitchProgressMsg_workspace_id_set(long jarg1, PanoStitchProgressMsg jarg1_, String jarg2);
+  public final static native String PanoStitchProgressMsg_workspace_id_get(long jarg1, PanoStitchProgressMsg jarg1_);
+  public final static native void PanoStitchProgressMsg_file_id_set(long jarg1, PanoStitchProgressMsg jarg1_, long jarg2);
+  public final static native long PanoStitchProgressMsg_file_id_get(long jarg1, PanoStitchProgressMsg jarg1_);
+  public final static native void PanoStitchProgressMsg_name_set(long jarg1, PanoStitchProgressMsg jarg1_, String jarg2);
+  public final static native String PanoStitchProgressMsg_name_get(long jarg1, PanoStitchProgressMsg jarg1_);
+  public final static native void PanoStitchProgressMsg_pano_stitch_state_set(long jarg1, PanoStitchProgressMsg jarg1_, int jarg2);
+  public final static native int PanoStitchProgressMsg_pano_stitch_state_get(long jarg1, PanoStitchProgressMsg jarg1_);
+  public final static native void PanoStitchProgressMsg_pano_stitch_progress_set(long jarg1, PanoStitchProgressMsg jarg1_, int jarg2);
+  public final static native int PanoStitchProgressMsg_pano_stitch_progress_get(long jarg1, PanoStitchProgressMsg jarg1_);
+  public final static native void PanoStitchProgressMsg_pano_error_code_set(long jarg1, PanoStitchProgressMsg jarg1_, int jarg2);
+  public final static native int PanoStitchProgressMsg_pano_error_code_get(long jarg1, PanoStitchProgressMsg jarg1_);
+  public final static native long new_PanoStitchProgressMsg();
+  public final static native void delete_PanoStitchProgressMsg(long jarg1);
   public final static native void AiAlertAlarmInfo_alarm_method_set(long jarg1, AiAlertAlarmInfo jarg1_, long jarg2, IntVector jarg2_);
   public final static native long AiAlertAlarmInfo_alarm_method_get(long jarg1, AiAlertAlarmInfo jarg1_);
   public final static native void AiAlertAlarmInfo_alarm_interval_set(long jarg1, AiAlertAlarmInfo jarg1_, int jarg2);
@@ -7324,10 +7793,24 @@ public class flighthubsdkmoduleJNI {
   public final static native double AiAlertLocation_altitude_get(long jarg1, AiAlertLocation jarg1_);
   public final static native long new_AiAlertLocation();
   public final static native void delete_AiAlertLocation(long jarg1);
+  public final static native void AiAlertTriggerAction_action_set(long jarg1, AiAlertTriggerAction jarg1_, int jarg2);
+  public final static native int AiAlertTriggerAction_action_get(long jarg1, AiAlertTriggerAction jarg1_);
+  public final static native void AiAlertTriggerAction_duration_set(long jarg1, AiAlertTriggerAction jarg1_, int jarg2);
+  public final static native int AiAlertTriggerAction_duration_get(long jarg1, AiAlertTriggerAction jarg1_);
+  public final static native long new_AiAlertTriggerAction();
+  public final static native void delete_AiAlertTriggerAction(long jarg1);
   public final static native void AiAlertTargetAlertInfo_target_type_set(long jarg1, AiAlertTargetAlertInfo jarg1_, int jarg2);
   public final static native int AiAlertTargetAlertInfo_target_type_get(long jarg1, AiAlertTargetAlertInfo jarg1_);
-  public final static native void AiAlertTargetAlertInfo_target_value_set(long jarg1, AiAlertTargetAlertInfo jarg1_, int jarg2);
-  public final static native int AiAlertTargetAlertInfo_target_value_get(long jarg1, AiAlertTargetAlertInfo jarg1_);
+  public final static native void AiAlertTargetAlertInfo_target_value_set(long jarg1, AiAlertTargetAlertInfo jarg1_, double jarg2);
+  public final static native double AiAlertTargetAlertInfo_target_value_get(long jarg1, AiAlertTargetAlertInfo jarg1_);
+  public final static native void AiAlertTargetAlertInfo_use_min_threshold_set(long jarg1, AiAlertTargetAlertInfo jarg1_, boolean jarg2);
+  public final static native boolean AiAlertTargetAlertInfo_use_min_threshold_get(long jarg1, AiAlertTargetAlertInfo jarg1_);
+  public final static native void AiAlertTargetAlertInfo_use_max_threshold_set(long jarg1, AiAlertTargetAlertInfo jarg1_, boolean jarg2);
+  public final static native boolean AiAlertTargetAlertInfo_use_max_threshold_get(long jarg1, AiAlertTargetAlertInfo jarg1_);
+  public final static native void AiAlertTargetAlertInfo_target_max_threshold_set(long jarg1, AiAlertTargetAlertInfo jarg1_, double jarg2);
+  public final static native double AiAlertTargetAlertInfo_target_max_threshold_get(long jarg1, AiAlertTargetAlertInfo jarg1_);
+  public final static native void AiAlertTargetAlertInfo_target_min_threshold_set(long jarg1, AiAlertTargetAlertInfo jarg1_, double jarg2);
+  public final static native double AiAlertTargetAlertInfo_target_min_threshold_get(long jarg1, AiAlertTargetAlertInfo jarg1_);
   public final static native void AiAlertTargetAlertInfo_label_set(long jarg1, AiAlertTargetAlertInfo jarg1_, String jarg2);
   public final static native String AiAlertTargetAlertInfo_label_get(long jarg1, AiAlertTargetAlertInfo jarg1_);
   public final static native long new_AiAlertTargetAlertInfo();
@@ -7342,22 +7825,34 @@ public class flighthubsdkmoduleJNI {
   public final static native int AiAlertFlightItem_status_get(long jarg1, AiAlertFlightItem jarg1_);
   public final static native void AiAlertFlightItem_start_time_set(long jarg1, AiAlertFlightItem jarg1_, long jarg2);
   public final static native long AiAlertFlightItem_start_time_get(long jarg1, AiAlertFlightItem jarg1_);
+  public final static native void AiAlertFlightItem_flight_task_type_set(long jarg1, AiAlertFlightItem jarg1_, int jarg2);
+  public final static native int AiAlertFlightItem_flight_task_type_get(long jarg1, AiAlertFlightItem jarg1_);
+  public final static native void AiAlertFlightItem_is_commented_set(long jarg1, AiAlertFlightItem jarg1_, boolean jarg2);
+  public final static native boolean AiAlertFlightItem_is_commented_get(long jarg1, AiAlertFlightItem jarg1_);
   public final static native long new_AiAlertFlightItem();
   public final static native void delete_AiAlertFlightItem(long jarg1);
   public final static native void AiAlertRecordItem_alert_uuid_set(long jarg1, AiAlertRecordItem jarg1_, String jarg2);
   public final static native String AiAlertRecordItem_alert_uuid_get(long jarg1, AiAlertRecordItem jarg1_);
   public final static native void AiAlertRecordItem_flight_id_set(long jarg1, AiAlertRecordItem jarg1_, String jarg2);
   public final static native String AiAlertRecordItem_flight_id_get(long jarg1, AiAlertRecordItem jarg1_);
+  public final static native void AiAlertRecordItem_project_id_set(long jarg1, AiAlertRecordItem jarg1_, String jarg2);
+  public final static native String AiAlertRecordItem_project_id_get(long jarg1, AiAlertRecordItem jarg1_);
   public final static native void AiAlertRecordItem_drone_sn_set(long jarg1, AiAlertRecordItem jarg1_, String jarg2);
   public final static native String AiAlertRecordItem_drone_sn_get(long jarg1, AiAlertRecordItem jarg1_);
   public final static native void AiAlertRecordItem_gateway_sn_set(long jarg1, AiAlertRecordItem jarg1_, String jarg2);
   public final static native String AiAlertRecordItem_gateway_sn_get(long jarg1, AiAlertRecordItem jarg1_);
   public final static native void AiAlertRecordItem_status_set(long jarg1, AiAlertRecordItem jarg1_, int jarg2);
   public final static native int AiAlertRecordItem_status_get(long jarg1, AiAlertRecordItem jarg1_);
+  public final static native void AiAlertRecordItem_reason_set(long jarg1, AiAlertRecordItem jarg1_, String jarg2);
+  public final static native String AiAlertRecordItem_reason_get(long jarg1, AiAlertRecordItem jarg1_);
   public final static native void AiAlertRecordItem_algorithm_source_set(long jarg1, AiAlertRecordItem jarg1_, int jarg2);
   public final static native int AiAlertRecordItem_algorithm_source_get(long jarg1, AiAlertRecordItem jarg1_);
   public final static native void AiAlertRecordItem_location_set(long jarg1, AiAlertRecordItem jarg1_, long jarg2, AiAlertLocation jarg2_);
   public final static native long AiAlertRecordItem_location_get(long jarg1, AiAlertRecordItem jarg1_);
+  public final static native void AiAlertRecordItem_file_id_set(long jarg1, AiAlertRecordItem jarg1_, long jarg2);
+  public final static native long AiAlertRecordItem_file_id_get(long jarg1, AiAlertRecordItem jarg1_);
+  public final static native void AiAlertRecordItem_trigger_actions_set(long jarg1, AiAlertRecordItem jarg1_, long jarg2, AiAlertTriggerActionVector jarg2_);
+  public final static native long AiAlertRecordItem_trigger_actions_get(long jarg1, AiAlertRecordItem jarg1_);
   public final static native void AiAlertRecordItem_target_alert_infos_set(long jarg1, AiAlertRecordItem jarg1_, long jarg2, AiAlertTargetAlertInfoVector jarg2_);
   public final static native long AiAlertRecordItem_target_alert_infos_get(long jarg1, AiAlertRecordItem jarg1_);
   public final static native void AiAlertRecordItem_thumbnail_url_set(long jarg1, AiAlertRecordItem jarg1_, String jarg2);
@@ -7368,8 +7863,10 @@ public class flighthubsdkmoduleJNI {
   public final static native long AiAlertRecordItem_timestamp_get(long jarg1, AiAlertRecordItem jarg1_);
   public final static native void AiAlertRecordItem_task_name_set(long jarg1, AiAlertRecordItem jarg1_, String jarg2);
   public final static native String AiAlertRecordItem_task_name_get(long jarg1, AiAlertRecordItem jarg1_);
-  public final static native void AiAlertRecordItem_media_index_set(long jarg1, AiAlertRecordItem jarg1_, int jarg2);
-  public final static native int AiAlertRecordItem_media_index_get(long jarg1, AiAlertRecordItem jarg1_);
+  public final static native void AiAlertRecordItem_media_index_set(long jarg1, AiAlertRecordItem jarg1_, long jarg2);
+  public final static native long AiAlertRecordItem_media_index_get(long jarg1, AiAlertRecordItem jarg1_);
+  public final static native void AiAlertRecordItem_interval_seconds_set(long jarg1, AiAlertRecordItem jarg1_, int jarg2);
+  public final static native int AiAlertRecordItem_interval_seconds_get(long jarg1, AiAlertRecordItem jarg1_);
   public final static native long new_AiAlertRecordItem();
   public final static native void delete_AiAlertRecordItem(long jarg1);
   public final static native void PostAiAlertDeviceSettingParam_drone_sn_set(long jarg1, PostAiAlertDeviceSettingParam jarg1_, String jarg2);
@@ -7478,6 +7975,70 @@ public class flighthubsdkmoduleJNI {
   public final static native int GetAiAlertRecordsResult_page_count_get(long jarg1, GetAiAlertRecordsResult jarg1_);
   public final static native long new_GetAiAlertRecordsResult();
   public final static native void delete_GetAiAlertRecordsResult(long jarg1);
+  public final static native void DeleteAiAlertRecordParam_alert_uuid_set(long jarg1, DeleteAiAlertRecordParam jarg1_, String jarg2);
+  public final static native String DeleteAiAlertRecordParam_alert_uuid_get(long jarg1, DeleteAiAlertRecordParam jarg1_);
+  public final static native void DeleteAiAlertRecordParam_flight_id_set(long jarg1, DeleteAiAlertRecordParam jarg1_, String jarg2);
+  public final static native String DeleteAiAlertRecordParam_flight_id_get(long jarg1, DeleteAiAlertRecordParam jarg1_);
+  public final static native long new_DeleteAiAlertRecordParam();
+  public final static native void delete_DeleteAiAlertRecordParam(long jarg1);
+  public final static native void AiAlertNotifyTargetInfo_target_type_set(long jarg1, AiAlertNotifyTargetInfo jarg1_, int jarg2);
+  public final static native int AiAlertNotifyTargetInfo_target_type_get(long jarg1, AiAlertNotifyTargetInfo jarg1_);
+  public final static native void AiAlertNotifyTargetInfo_target_value_set(long jarg1, AiAlertNotifyTargetInfo jarg1_, double jarg2);
+  public final static native double AiAlertNotifyTargetInfo_target_value_get(long jarg1, AiAlertNotifyTargetInfo jarg1_);
+  public final static native void AiAlertNotifyTargetInfo_use_min_threshold_set(long jarg1, AiAlertNotifyTargetInfo jarg1_, boolean jarg2);
+  public final static native boolean AiAlertNotifyTargetInfo_use_min_threshold_get(long jarg1, AiAlertNotifyTargetInfo jarg1_);
+  public final static native void AiAlertNotifyTargetInfo_use_max_threshold_set(long jarg1, AiAlertNotifyTargetInfo jarg1_, boolean jarg2);
+  public final static native boolean AiAlertNotifyTargetInfo_use_max_threshold_get(long jarg1, AiAlertNotifyTargetInfo jarg1_);
+  public final static native void AiAlertNotifyTargetInfo_target_max_threshold_set(long jarg1, AiAlertNotifyTargetInfo jarg1_, double jarg2);
+  public final static native double AiAlertNotifyTargetInfo_target_max_threshold_get(long jarg1, AiAlertNotifyTargetInfo jarg1_);
+  public final static native void AiAlertNotifyTargetInfo_target_min_threshold_set(long jarg1, AiAlertNotifyTargetInfo jarg1_, double jarg2);
+  public final static native double AiAlertNotifyTargetInfo_target_min_threshold_get(long jarg1, AiAlertNotifyTargetInfo jarg1_);
+  public final static native void AiAlertNotifyTargetInfo_label_set(long jarg1, AiAlertNotifyTargetInfo jarg1_, String jarg2);
+  public final static native String AiAlertNotifyTargetInfo_label_get(long jarg1, AiAlertNotifyTargetInfo jarg1_);
+  public final static native long new_AiAlertNotifyTargetInfo();
+  public final static native void delete_AiAlertNotifyTargetInfo(long jarg1);
+  public final static native void AiAlertNotifyRecordItem_alert_uuid_set(long jarg1, AiAlertNotifyRecordItem jarg1_, String jarg2);
+  public final static native String AiAlertNotifyRecordItem_alert_uuid_get(long jarg1, AiAlertNotifyRecordItem jarg1_);
+  public final static native void AiAlertNotifyRecordItem_flight_id_set(long jarg1, AiAlertNotifyRecordItem jarg1_, String jarg2);
+  public final static native String AiAlertNotifyRecordItem_flight_id_get(long jarg1, AiAlertNotifyRecordItem jarg1_);
+  public final static native void AiAlertNotifyRecordItem_drone_sn_set(long jarg1, AiAlertNotifyRecordItem jarg1_, String jarg2);
+  public final static native String AiAlertNotifyRecordItem_drone_sn_get(long jarg1, AiAlertNotifyRecordItem jarg1_);
+  public final static native void AiAlertNotifyRecordItem_gateway_sn_set(long jarg1, AiAlertNotifyRecordItem jarg1_, String jarg2);
+  public final static native String AiAlertNotifyRecordItem_gateway_sn_get(long jarg1, AiAlertNotifyRecordItem jarg1_);
+  public final static native void AiAlertNotifyRecordItem_status_set(long jarg1, AiAlertNotifyRecordItem jarg1_, int jarg2);
+  public final static native int AiAlertNotifyRecordItem_status_get(long jarg1, AiAlertNotifyRecordItem jarg1_);
+  public final static native void AiAlertNotifyRecordItem_algorithm_source_set(long jarg1, AiAlertNotifyRecordItem jarg1_, int jarg2);
+  public final static native int AiAlertNotifyRecordItem_algorithm_source_get(long jarg1, AiAlertNotifyRecordItem jarg1_);
+  public final static native void AiAlertNotifyRecordItem_location_set(long jarg1, AiAlertNotifyRecordItem jarg1_, long jarg2, AiAlertLocation jarg2_);
+  public final static native long AiAlertNotifyRecordItem_location_get(long jarg1, AiAlertNotifyRecordItem jarg1_);
+  public final static native void AiAlertNotifyRecordItem_file_id_set(long jarg1, AiAlertNotifyRecordItem jarg1_, long jarg2);
+  public final static native long AiAlertNotifyRecordItem_file_id_get(long jarg1, AiAlertNotifyRecordItem jarg1_);
+  public final static native void AiAlertNotifyRecordItem_media_index_set(long jarg1, AiAlertNotifyRecordItem jarg1_, long jarg2);
+  public final static native long AiAlertNotifyRecordItem_media_index_get(long jarg1, AiAlertNotifyRecordItem jarg1_);
+  public final static native void AiAlertNotifyRecordItem_task_name_set(long jarg1, AiAlertNotifyRecordItem jarg1_, String jarg2);
+  public final static native String AiAlertNotifyRecordItem_task_name_get(long jarg1, AiAlertNotifyRecordItem jarg1_);
+  public final static native void AiAlertNotifyRecordItem_target_alert_infos_set(long jarg1, AiAlertNotifyRecordItem jarg1_, long jarg2, AiAlertNotifyTargetInfoVector jarg2_);
+  public final static native long AiAlertNotifyRecordItem_target_alert_infos_get(long jarg1, AiAlertNotifyRecordItem jarg1_);
+  public final static native void AiAlertNotifyRecordItem_timestamp_set(long jarg1, AiAlertNotifyRecordItem jarg1_, long jarg2);
+  public final static native long AiAlertNotifyRecordItem_timestamp_get(long jarg1, AiAlertNotifyRecordItem jarg1_);
+  public final static native void AiAlertNotifyRecordItem_thumbnail_url_set(long jarg1, AiAlertNotifyRecordItem jarg1_, String jarg2);
+  public final static native String AiAlertNotifyRecordItem_thumbnail_url_get(long jarg1, AiAlertNotifyRecordItem jarg1_);
+  public final static native void AiAlertNotifyRecordItem_labels_set(long jarg1, AiAlertNotifyRecordItem jarg1_, long jarg2, StringVector jarg2_);
+  public final static native long AiAlertNotifyRecordItem_labels_get(long jarg1, AiAlertNotifyRecordItem jarg1_);
+  public final static native long new_AiAlertNotifyRecordItem();
+  public final static native void delete_AiAlertNotifyRecordItem(long jarg1);
+  public final static native void AiAlertNotifyFlightData_flight_id_set(long jarg1, AiAlertNotifyFlightData jarg1_, String jarg2);
+  public final static native String AiAlertNotifyFlightData_flight_id_get(long jarg1, AiAlertNotifyFlightData jarg1_);
+  public final static native void AiAlertNotifyFlightData_flight_task_name_set(long jarg1, AiAlertNotifyFlightData jarg1_, String jarg2);
+  public final static native String AiAlertNotifyFlightData_flight_task_name_get(long jarg1, AiAlertNotifyFlightData jarg1_);
+  public final static native void AiAlertNotifyFlightData_records_set(long jarg1, AiAlertNotifyFlightData jarg1_, long jarg2, AiAlertNotifyRecordItemVector jarg2_);
+  public final static native long AiAlertNotifyFlightData_records_get(long jarg1, AiAlertNotifyFlightData jarg1_);
+  public final static native long new_AiAlertNotifyFlightData();
+  public final static native void delete_AiAlertNotifyFlightData(long jarg1);
+  public final static native void AiAlertRecordsNotifyResult_data_set(long jarg1, AiAlertRecordsNotifyResult jarg1_, long jarg2, AiAlertNotifyFlightDataVector jarg2_);
+  public final static native long AiAlertRecordsNotifyResult_data_get(long jarg1, AiAlertRecordsNotifyResult jarg1_);
+  public final static native long new_AiAlertRecordsNotifyResult();
+  public final static native void delete_AiAlertRecordsNotifyResult(long jarg1);
   public final static native void LiveSyncSchemaOption_server_id_set(long jarg1, LiveSyncSchemaOption jarg1_, String jarg2);
   public final static native String LiveSyncSchemaOption_server_id_get(long jarg1, LiveSyncSchemaOption jarg1_);
   public final static native void LiveSyncSchemaOption_server_ip_set(long jarg1, LiveSyncSchemaOption jarg1_, String jarg2);
@@ -7790,6 +8351,44 @@ public class flighthubsdkmoduleJNI {
   public final static native long DronePsdkUiResource_psdk_ui_resource_get(long jarg1, DronePsdkUiResource jarg1_);
   public final static native long new_DronePsdkUiResource();
   public final static native void delete_DronePsdkUiResource(long jarg1);
+  public final static native void PsdkCustomDataTransmission_value_set(long jarg1, PsdkCustomDataTransmission jarg1_, String jarg2);
+  public final static native String PsdkCustomDataTransmission_value_get(long jarg1, PsdkCustomDataTransmission jarg1_);
+  public final static native long new_PsdkCustomDataTransmission();
+  public final static native void delete_PsdkCustomDataTransmission(long jarg1);
+  public final static native void EsdkCustomDataTransmission_value_set(long jarg1, EsdkCustomDataTransmission jarg1_, String jarg2);
+  public final static native String EsdkCustomDataTransmission_value_get(long jarg1, EsdkCustomDataTransmission jarg1_);
+  public final static native long new_EsdkCustomDataTransmission();
+  public final static native void delete_EsdkCustomDataTransmission(long jarg1);
+  public final static native void HighestPriorityUploadFlighttaskMedia_flight_id_set(long jarg1, HighestPriorityUploadFlighttaskMedia jarg1_, String jarg2);
+  public final static native String HighestPriorityUploadFlighttaskMedia_flight_id_get(long jarg1, HighestPriorityUploadFlighttaskMedia jarg1_);
+  public final static native long new_HighestPriorityUploadFlighttaskMedia();
+  public final static native void delete_HighestPriorityUploadFlighttaskMedia(long jarg1);
+  public final static native void AirsenseWarningItem_icao_set(long jarg1, AirsenseWarningItem jarg1_, String jarg2);
+  public final static native String AirsenseWarningItem_icao_get(long jarg1, AirsenseWarningItem jarg1_);
+  public final static native void AirsenseWarningItem_warning_level_set(long jarg1, AirsenseWarningItem jarg1_, int jarg2);
+  public final static native int AirsenseWarningItem_warning_level_get(long jarg1, AirsenseWarningItem jarg1_);
+  public final static native void AirsenseWarningItem_latitude_set(long jarg1, AirsenseWarningItem jarg1_, double jarg2);
+  public final static native double AirsenseWarningItem_latitude_get(long jarg1, AirsenseWarningItem jarg1_);
+  public final static native void AirsenseWarningItem_longitude_set(long jarg1, AirsenseWarningItem jarg1_, double jarg2);
+  public final static native double AirsenseWarningItem_longitude_get(long jarg1, AirsenseWarningItem jarg1_);
+  public final static native void AirsenseWarningItem_altitude_set(long jarg1, AirsenseWarningItem jarg1_, int jarg2);
+  public final static native int AirsenseWarningItem_altitude_get(long jarg1, AirsenseWarningItem jarg1_);
+  public final static native void AirsenseWarningItem_altitude_type_set(long jarg1, AirsenseWarningItem jarg1_, int jarg2);
+  public final static native int AirsenseWarningItem_altitude_type_get(long jarg1, AirsenseWarningItem jarg1_);
+  public final static native void AirsenseWarningItem_heading_set(long jarg1, AirsenseWarningItem jarg1_, double jarg2);
+  public final static native double AirsenseWarningItem_heading_get(long jarg1, AirsenseWarningItem jarg1_);
+  public final static native void AirsenseWarningItem_relative_altitude_set(long jarg1, AirsenseWarningItem jarg1_, int jarg2);
+  public final static native int AirsenseWarningItem_relative_altitude_get(long jarg1, AirsenseWarningItem jarg1_);
+  public final static native void AirsenseWarningItem_vert_trend_set(long jarg1, AirsenseWarningItem jarg1_, int jarg2);
+  public final static native int AirsenseWarningItem_vert_trend_get(long jarg1, AirsenseWarningItem jarg1_);
+  public final static native void AirsenseWarningItem_distance_set(long jarg1, AirsenseWarningItem jarg1_, int jarg2);
+  public final static native int AirsenseWarningItem_distance_get(long jarg1, AirsenseWarningItem jarg1_);
+  public final static native long new_AirsenseWarningItem();
+  public final static native void delete_AirsenseWarningItem(long jarg1);
+  public final static native void AirsenseWarning_data_set(long jarg1, AirsenseWarning jarg1_, long jarg2, AirsenseWarningItemVector jarg2_);
+  public final static native long AirsenseWarning_data_get(long jarg1, AirsenseWarning jarg1_);
+  public final static native long new_AirsenseWarning();
+  public final static native void delete_AirsenseWarning(long jarg1);
   public final static native void DroneModeCodeReason_mode_code_reason_set(long jarg1, DroneModeCodeReason jarg1_, long jarg2);
   public final static native long DroneModeCodeReason_mode_code_reason_get(long jarg1, DroneModeCodeReason jarg1_);
   public final static native long new_DroneModeCodeReason();
@@ -7950,6 +8549,21 @@ public class flighthubsdkmoduleJNI {
   public final static native long HmsDataItemVector_doSet(long jarg1, HmsDataItemVector jarg1_, int jarg2, long jarg3, HmsDataItem jarg3_);
   public final static native void HmsDataItemVector_doRemoveRange(long jarg1, HmsDataItemVector jarg1_, int jarg2, int jarg3);
   public final static native void delete_HmsDataItemVector(long jarg1);
+  public final static native long new_AirsenseWarningItemVector__SWIG_0();
+  public final static native long new_AirsenseWarningItemVector__SWIG_1(long jarg1, AirsenseWarningItemVector jarg1_);
+  public final static native boolean AirsenseWarningItemVector_isEmpty(long jarg1, AirsenseWarningItemVector jarg1_);
+  public final static native void AirsenseWarningItemVector_clear(long jarg1, AirsenseWarningItemVector jarg1_);
+  public final static native long new_AirsenseWarningItemVector__SWIG_2(int jarg1, long jarg2, AirsenseWarningItem jarg2_);
+  public final static native int AirsenseWarningItemVector_doCapacity(long jarg1, AirsenseWarningItemVector jarg1_);
+  public final static native void AirsenseWarningItemVector_doReserve(long jarg1, AirsenseWarningItemVector jarg1_, int jarg2);
+  public final static native int AirsenseWarningItemVector_doSize(long jarg1, AirsenseWarningItemVector jarg1_);
+  public final static native void AirsenseWarningItemVector_doAdd__SWIG_0(long jarg1, AirsenseWarningItemVector jarg1_, long jarg2, AirsenseWarningItem jarg2_);
+  public final static native void AirsenseWarningItemVector_doAdd__SWIG_1(long jarg1, AirsenseWarningItemVector jarg1_, int jarg2, long jarg3, AirsenseWarningItem jarg3_);
+  public final static native long AirsenseWarningItemVector_doRemove(long jarg1, AirsenseWarningItemVector jarg1_, int jarg2);
+  public final static native long AirsenseWarningItemVector_doGet(long jarg1, AirsenseWarningItemVector jarg1_, int jarg2);
+  public final static native long AirsenseWarningItemVector_doSet(long jarg1, AirsenseWarningItemVector jarg1_, int jarg2, long jarg3, AirsenseWarningItem jarg3_);
+  public final static native void AirsenseWarningItemVector_doRemoveRange(long jarg1, AirsenseWarningItemVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_AirsenseWarningItemVector(long jarg1);
   public final static native long new_AircraftPayloadCameraInfoVector__SWIG_0();
   public final static native long new_AircraftPayloadCameraInfoVector__SWIG_1(long jarg1, AircraftPayloadCameraInfoVector jarg1_);
   public final static native boolean AircraftPayloadCameraInfoVector_isEmpty(long jarg1, AircraftPayloadCameraInfoVector jarg1_);
@@ -8160,6 +8774,21 @@ public class flighthubsdkmoduleJNI {
   public final static native long PsdkWidgetResourceVector_doSet(long jarg1, PsdkWidgetResourceVector jarg1_, int jarg2, long jarg3, PsdkWidgetResource jarg3_);
   public final static native void PsdkWidgetResourceVector_doRemoveRange(long jarg1, PsdkWidgetResourceVector jarg1_, int jarg2, int jarg3);
   public final static native void delete_PsdkWidgetResourceVector(long jarg1);
+  public final static native long new_WaylineCollisionEventVector__SWIG_0();
+  public final static native long new_WaylineCollisionEventVector__SWIG_1(long jarg1, WaylineCollisionEventVector jarg1_);
+  public final static native boolean WaylineCollisionEventVector_isEmpty(long jarg1, WaylineCollisionEventVector jarg1_);
+  public final static native void WaylineCollisionEventVector_clear(long jarg1, WaylineCollisionEventVector jarg1_);
+  public final static native long new_WaylineCollisionEventVector__SWIG_2(int jarg1, long jarg2, WaylineCollisionEvent jarg2_);
+  public final static native int WaylineCollisionEventVector_doCapacity(long jarg1, WaylineCollisionEventVector jarg1_);
+  public final static native void WaylineCollisionEventVector_doReserve(long jarg1, WaylineCollisionEventVector jarg1_, int jarg2);
+  public final static native int WaylineCollisionEventVector_doSize(long jarg1, WaylineCollisionEventVector jarg1_);
+  public final static native void WaylineCollisionEventVector_doAdd__SWIG_0(long jarg1, WaylineCollisionEventVector jarg1_, long jarg2, WaylineCollisionEvent jarg2_);
+  public final static native void WaylineCollisionEventVector_doAdd__SWIG_1(long jarg1, WaylineCollisionEventVector jarg1_, int jarg2, long jarg3, WaylineCollisionEvent jarg3_);
+  public final static native long WaylineCollisionEventVector_doRemove(long jarg1, WaylineCollisionEventVector jarg1_, int jarg2);
+  public final static native long WaylineCollisionEventVector_doGet(long jarg1, WaylineCollisionEventVector jarg1_, int jarg2);
+  public final static native long WaylineCollisionEventVector_doSet(long jarg1, WaylineCollisionEventVector jarg1_, int jarg2, long jarg3, WaylineCollisionEvent jarg3_);
+  public final static native void WaylineCollisionEventVector_doRemoveRange(long jarg1, WaylineCollisionEventVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_WaylineCollisionEventVector(long jarg1);
   public final static native long new_RecommendedDeviceVector__SWIG_0();
   public final static native long new_RecommendedDeviceVector__SWIG_1(long jarg1, RecommendedDeviceVector jarg1_);
   public final static native boolean RecommendedDeviceVector_isEmpty(long jarg1, RecommendedDeviceVector jarg1_);
@@ -8190,6 +8819,51 @@ public class flighthubsdkmoduleJNI {
   public final static native String StringVector_doSet(long jarg1, StringVector jarg1_, int jarg2, String jarg3);
   public final static native void StringVector_doRemoveRange(long jarg1, StringVector jarg1_, int jarg2, int jarg3);
   public final static native void delete_StringVector(long jarg1);
+  public final static native long new_CascadeNodeInfoVector__SWIG_0();
+  public final static native long new_CascadeNodeInfoVector__SWIG_1(long jarg1, CascadeNodeInfoVector jarg1_);
+  public final static native boolean CascadeNodeInfoVector_isEmpty(long jarg1, CascadeNodeInfoVector jarg1_);
+  public final static native void CascadeNodeInfoVector_clear(long jarg1, CascadeNodeInfoVector jarg1_);
+  public final static native long new_CascadeNodeInfoVector__SWIG_2(int jarg1, long jarg2, CascadeNodeInfo jarg2_);
+  public final static native int CascadeNodeInfoVector_doCapacity(long jarg1, CascadeNodeInfoVector jarg1_);
+  public final static native void CascadeNodeInfoVector_doReserve(long jarg1, CascadeNodeInfoVector jarg1_, int jarg2);
+  public final static native int CascadeNodeInfoVector_doSize(long jarg1, CascadeNodeInfoVector jarg1_);
+  public final static native void CascadeNodeInfoVector_doAdd__SWIG_0(long jarg1, CascadeNodeInfoVector jarg1_, long jarg2, CascadeNodeInfo jarg2_);
+  public final static native void CascadeNodeInfoVector_doAdd__SWIG_1(long jarg1, CascadeNodeInfoVector jarg1_, int jarg2, long jarg3, CascadeNodeInfo jarg3_);
+  public final static native long CascadeNodeInfoVector_doRemove(long jarg1, CascadeNodeInfoVector jarg1_, int jarg2);
+  public final static native long CascadeNodeInfoVector_doGet(long jarg1, CascadeNodeInfoVector jarg1_, int jarg2);
+  public final static native long CascadeNodeInfoVector_doSet(long jarg1, CascadeNodeInfoVector jarg1_, int jarg2, long jarg3, CascadeNodeInfo jarg3_);
+  public final static native void CascadeNodeInfoVector_doRemoveRange(long jarg1, CascadeNodeInfoVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_CascadeNodeInfoVector(long jarg1);
+  public final static native long new_CascadeChildNodeStatusVector__SWIG_0();
+  public final static native long new_CascadeChildNodeStatusVector__SWIG_1(long jarg1, CascadeChildNodeStatusVector jarg1_);
+  public final static native boolean CascadeChildNodeStatusVector_isEmpty(long jarg1, CascadeChildNodeStatusVector jarg1_);
+  public final static native void CascadeChildNodeStatusVector_clear(long jarg1, CascadeChildNodeStatusVector jarg1_);
+  public final static native long new_CascadeChildNodeStatusVector__SWIG_2(int jarg1, long jarg2, CascadeChildNodeStatus jarg2_);
+  public final static native int CascadeChildNodeStatusVector_doCapacity(long jarg1, CascadeChildNodeStatusVector jarg1_);
+  public final static native void CascadeChildNodeStatusVector_doReserve(long jarg1, CascadeChildNodeStatusVector jarg1_, int jarg2);
+  public final static native int CascadeChildNodeStatusVector_doSize(long jarg1, CascadeChildNodeStatusVector jarg1_);
+  public final static native void CascadeChildNodeStatusVector_doAdd__SWIG_0(long jarg1, CascadeChildNodeStatusVector jarg1_, long jarg2, CascadeChildNodeStatus jarg2_);
+  public final static native void CascadeChildNodeStatusVector_doAdd__SWIG_1(long jarg1, CascadeChildNodeStatusVector jarg1_, int jarg2, long jarg3, CascadeChildNodeStatus jarg3_);
+  public final static native long CascadeChildNodeStatusVector_doRemove(long jarg1, CascadeChildNodeStatusVector jarg1_, int jarg2);
+  public final static native long CascadeChildNodeStatusVector_doGet(long jarg1, CascadeChildNodeStatusVector jarg1_, int jarg2);
+  public final static native long CascadeChildNodeStatusVector_doSet(long jarg1, CascadeChildNodeStatusVector jarg1_, int jarg2, long jarg3, CascadeChildNodeStatus jarg3_);
+  public final static native void CascadeChildNodeStatusVector_doRemoveRange(long jarg1, CascadeChildNodeStatusVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_CascadeChildNodeStatusVector(long jarg1);
+  public final static native long new_CascadeConnectivityItemVector__SWIG_0();
+  public final static native long new_CascadeConnectivityItemVector__SWIG_1(long jarg1, CascadeConnectivityItemVector jarg1_);
+  public final static native boolean CascadeConnectivityItemVector_isEmpty(long jarg1, CascadeConnectivityItemVector jarg1_);
+  public final static native void CascadeConnectivityItemVector_clear(long jarg1, CascadeConnectivityItemVector jarg1_);
+  public final static native long new_CascadeConnectivityItemVector__SWIG_2(int jarg1, long jarg2, CascadeConnectivityItem jarg2_);
+  public final static native int CascadeConnectivityItemVector_doCapacity(long jarg1, CascadeConnectivityItemVector jarg1_);
+  public final static native void CascadeConnectivityItemVector_doReserve(long jarg1, CascadeConnectivityItemVector jarg1_, int jarg2);
+  public final static native int CascadeConnectivityItemVector_doSize(long jarg1, CascadeConnectivityItemVector jarg1_);
+  public final static native void CascadeConnectivityItemVector_doAdd__SWIG_0(long jarg1, CascadeConnectivityItemVector jarg1_, long jarg2, CascadeConnectivityItem jarg2_);
+  public final static native void CascadeConnectivityItemVector_doAdd__SWIG_1(long jarg1, CascadeConnectivityItemVector jarg1_, int jarg2, long jarg3, CascadeConnectivityItem jarg3_);
+  public final static native long CascadeConnectivityItemVector_doRemove(long jarg1, CascadeConnectivityItemVector jarg1_, int jarg2);
+  public final static native long CascadeConnectivityItemVector_doGet(long jarg1, CascadeConnectivityItemVector jarg1_, int jarg2);
+  public final static native long CascadeConnectivityItemVector_doSet(long jarg1, CascadeConnectivityItemVector jarg1_, int jarg2, long jarg3, CascadeConnectivityItem jarg3_);
+  public final static native void CascadeConnectivityItemVector_doRemoveRange(long jarg1, CascadeConnectivityItemVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_CascadeConnectivityItemVector(long jarg1);
   public final static native long new_DockStatusItemResultVector__SWIG_0();
   public final static native long new_DockStatusItemResultVector__SWIG_1(long jarg1, DockStatusItemResultVector jarg1_);
   public final static native boolean DockStatusItemResultVector_isEmpty(long jarg1, DockStatusItemResultVector jarg1_);
@@ -8295,6 +8969,21 @@ public class flighthubsdkmoduleJNI {
   public final static native long FlightTrackPointVector_doSet(long jarg1, FlightTrackPointVector jarg1_, int jarg2, long jarg3, FlightTrackPoint jarg3_);
   public final static native void FlightTrackPointVector_doRemoveRange(long jarg1, FlightTrackPointVector jarg1_, int jarg2, int jarg3);
   public final static native void delete_FlightTrackPointVector(long jarg1);
+  public final static native long new_FlightRiskItemVector__SWIG_0();
+  public final static native long new_FlightRiskItemVector__SWIG_1(long jarg1, FlightRiskItemVector jarg1_);
+  public final static native boolean FlightRiskItemVector_isEmpty(long jarg1, FlightRiskItemVector jarg1_);
+  public final static native void FlightRiskItemVector_clear(long jarg1, FlightRiskItemVector jarg1_);
+  public final static native long new_FlightRiskItemVector__SWIG_2(int jarg1, long jarg2, FlightRiskItem jarg2_);
+  public final static native int FlightRiskItemVector_doCapacity(long jarg1, FlightRiskItemVector jarg1_);
+  public final static native void FlightRiskItemVector_doReserve(long jarg1, FlightRiskItemVector jarg1_, int jarg2);
+  public final static native int FlightRiskItemVector_doSize(long jarg1, FlightRiskItemVector jarg1_);
+  public final static native void FlightRiskItemVector_doAdd__SWIG_0(long jarg1, FlightRiskItemVector jarg1_, long jarg2, FlightRiskItem jarg2_);
+  public final static native void FlightRiskItemVector_doAdd__SWIG_1(long jarg1, FlightRiskItemVector jarg1_, int jarg2, long jarg3, FlightRiskItem jarg3_);
+  public final static native long FlightRiskItemVector_doRemove(long jarg1, FlightRiskItemVector jarg1_, int jarg2);
+  public final static native long FlightRiskItemVector_doGet(long jarg1, FlightRiskItemVector jarg1_, int jarg2);
+  public final static native long FlightRiskItemVector_doSet(long jarg1, FlightRiskItemVector jarg1_, int jarg2, long jarg3, FlightRiskItem jarg3_);
+  public final static native void FlightRiskItemVector_doRemoveRange(long jarg1, FlightRiskItemVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_FlightRiskItemVector(long jarg1);
   public final static native long new_TCAInfoVector__SWIG_0();
   public final static native long new_TCAInfoVector__SWIG_1(long jarg1, TCAInfoVector jarg1_);
   public final static native boolean TCAInfoVector_isEmpty(long jarg1, TCAInfoVector jarg1_);
@@ -8310,6 +8999,21 @@ public class flighthubsdkmoduleJNI {
   public final static native long TCAInfoVector_doSet(long jarg1, TCAInfoVector jarg1_, int jarg2, long jarg3, TCAInfo jarg3_);
   public final static native void TCAInfoVector_doRemoveRange(long jarg1, TCAInfoVector jarg1_, int jarg2, int jarg3);
   public final static native void delete_TCAInfoVector(long jarg1);
+  public final static native long new_TCAZoneStatusVector__SWIG_0();
+  public final static native long new_TCAZoneStatusVector__SWIG_1(long jarg1, TCAZoneStatusVector jarg1_);
+  public final static native boolean TCAZoneStatusVector_isEmpty(long jarg1, TCAZoneStatusVector jarg1_);
+  public final static native void TCAZoneStatusVector_clear(long jarg1, TCAZoneStatusVector jarg1_);
+  public final static native long new_TCAZoneStatusVector__SWIG_2(int jarg1, long jarg2, TCAZoneStatus jarg2_);
+  public final static native int TCAZoneStatusVector_doCapacity(long jarg1, TCAZoneStatusVector jarg1_);
+  public final static native void TCAZoneStatusVector_doReserve(long jarg1, TCAZoneStatusVector jarg1_, int jarg2);
+  public final static native int TCAZoneStatusVector_doSize(long jarg1, TCAZoneStatusVector jarg1_);
+  public final static native void TCAZoneStatusVector_doAdd__SWIG_0(long jarg1, TCAZoneStatusVector jarg1_, long jarg2, TCAZoneStatus jarg2_);
+  public final static native void TCAZoneStatusVector_doAdd__SWIG_1(long jarg1, TCAZoneStatusVector jarg1_, int jarg2, long jarg3, TCAZoneStatus jarg3_);
+  public final static native long TCAZoneStatusVector_doRemove(long jarg1, TCAZoneStatusVector jarg1_, int jarg2);
+  public final static native long TCAZoneStatusVector_doGet(long jarg1, TCAZoneStatusVector jarg1_, int jarg2);
+  public final static native long TCAZoneStatusVector_doSet(long jarg1, TCAZoneStatusVector jarg1_, int jarg2, long jarg3, TCAZoneStatus jarg3_);
+  public final static native void TCAZoneStatusVector_doRemoveRange(long jarg1, TCAZoneStatusVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_TCAZoneStatusVector(long jarg1);
   public final static native long new_RoamingStationSnResultVector__SWIG_0();
   public final static native long new_RoamingStationSnResultVector__SWIG_1(long jarg1, RoamingStationSnResultVector jarg1_);
   public final static native boolean RoamingStationSnResultVector_isEmpty(long jarg1, RoamingStationSnResultVector jarg1_);
@@ -8370,6 +9074,51 @@ public class flighthubsdkmoduleJNI {
   public final static native long FlightTaskExceptionDetailVector_doSet(long jarg1, FlightTaskExceptionDetailVector jarg1_, int jarg2, long jarg3, FlightTaskExceptionDetail jarg3_);
   public final static native void FlightTaskExceptionDetailVector_doRemoveRange(long jarg1, FlightTaskExceptionDetailVector jarg1_, int jarg2, int jarg3);
   public final static native void delete_FlightTaskExceptionDetailVector(long jarg1);
+  public final static native long new_TaskExceptionItemVector__SWIG_0();
+  public final static native long new_TaskExceptionItemVector__SWIG_1(long jarg1, TaskExceptionItemVector jarg1_);
+  public final static native boolean TaskExceptionItemVector_isEmpty(long jarg1, TaskExceptionItemVector jarg1_);
+  public final static native void TaskExceptionItemVector_clear(long jarg1, TaskExceptionItemVector jarg1_);
+  public final static native long new_TaskExceptionItemVector__SWIG_2(int jarg1, long jarg2, TaskExceptionItem jarg2_);
+  public final static native int TaskExceptionItemVector_doCapacity(long jarg1, TaskExceptionItemVector jarg1_);
+  public final static native void TaskExceptionItemVector_doReserve(long jarg1, TaskExceptionItemVector jarg1_, int jarg2);
+  public final static native int TaskExceptionItemVector_doSize(long jarg1, TaskExceptionItemVector jarg1_);
+  public final static native void TaskExceptionItemVector_doAdd__SWIG_0(long jarg1, TaskExceptionItemVector jarg1_, long jarg2, TaskExceptionItem jarg2_);
+  public final static native void TaskExceptionItemVector_doAdd__SWIG_1(long jarg1, TaskExceptionItemVector jarg1_, int jarg2, long jarg3, TaskExceptionItem jarg3_);
+  public final static native long TaskExceptionItemVector_doRemove(long jarg1, TaskExceptionItemVector jarg1_, int jarg2);
+  public final static native long TaskExceptionItemVector_doGet(long jarg1, TaskExceptionItemVector jarg1_, int jarg2);
+  public final static native long TaskExceptionItemVector_doSet(long jarg1, TaskExceptionItemVector jarg1_, int jarg2, long jarg3, TaskExceptionItem jarg3_);
+  public final static native void TaskExceptionItemVector_doRemoveRange(long jarg1, TaskExceptionItemVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_TaskExceptionItemVector(long jarg1);
+  public final static native long new_WaypointVector__SWIG_0();
+  public final static native long new_WaypointVector__SWIG_1(long jarg1, WaypointVector jarg1_);
+  public final static native boolean WaypointVector_isEmpty(long jarg1, WaypointVector jarg1_);
+  public final static native void WaypointVector_clear(long jarg1, WaypointVector jarg1_);
+  public final static native long new_WaypointVector__SWIG_2(int jarg1, long jarg2, Waypoint jarg2_);
+  public final static native int WaypointVector_doCapacity(long jarg1, WaypointVector jarg1_);
+  public final static native void WaypointVector_doReserve(long jarg1, WaypointVector jarg1_, int jarg2);
+  public final static native int WaypointVector_doSize(long jarg1, WaypointVector jarg1_);
+  public final static native void WaypointVector_doAdd__SWIG_0(long jarg1, WaypointVector jarg1_, long jarg2, Waypoint jarg2_);
+  public final static native void WaypointVector_doAdd__SWIG_1(long jarg1, WaypointVector jarg1_, int jarg2, long jarg3, Waypoint jarg3_);
+  public final static native long WaypointVector_doRemove(long jarg1, WaypointVector jarg1_, int jarg2);
+  public final static native long WaypointVector_doGet(long jarg1, WaypointVector jarg1_, int jarg2);
+  public final static native long WaypointVector_doSet(long jarg1, WaypointVector jarg1_, int jarg2, long jarg3, Waypoint jarg3_);
+  public final static native void WaypointVector_doRemoveRange(long jarg1, WaypointVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_WaypointVector(long jarg1);
+  public final static native long new_MultiDockHomeInfoVector__SWIG_0();
+  public final static native long new_MultiDockHomeInfoVector__SWIG_1(long jarg1, MultiDockHomeInfoVector jarg1_);
+  public final static native boolean MultiDockHomeInfoVector_isEmpty(long jarg1, MultiDockHomeInfoVector jarg1_);
+  public final static native void MultiDockHomeInfoVector_clear(long jarg1, MultiDockHomeInfoVector jarg1_);
+  public final static native long new_MultiDockHomeInfoVector__SWIG_2(int jarg1, long jarg2, MultiDockHomeInfo jarg2_);
+  public final static native int MultiDockHomeInfoVector_doCapacity(long jarg1, MultiDockHomeInfoVector jarg1_);
+  public final static native void MultiDockHomeInfoVector_doReserve(long jarg1, MultiDockHomeInfoVector jarg1_, int jarg2);
+  public final static native int MultiDockHomeInfoVector_doSize(long jarg1, MultiDockHomeInfoVector jarg1_);
+  public final static native void MultiDockHomeInfoVector_doAdd__SWIG_0(long jarg1, MultiDockHomeInfoVector jarg1_, long jarg2, MultiDockHomeInfo jarg2_);
+  public final static native void MultiDockHomeInfoVector_doAdd__SWIG_1(long jarg1, MultiDockHomeInfoVector jarg1_, int jarg2, long jarg3, MultiDockHomeInfo jarg3_);
+  public final static native long MultiDockHomeInfoVector_doRemove(long jarg1, MultiDockHomeInfoVector jarg1_, int jarg2);
+  public final static native long MultiDockHomeInfoVector_doGet(long jarg1, MultiDockHomeInfoVector jarg1_, int jarg2);
+  public final static native long MultiDockHomeInfoVector_doSet(long jarg1, MultiDockHomeInfoVector jarg1_, int jarg2, long jarg3, MultiDockHomeInfo jarg3_);
+  public final static native void MultiDockHomeInfoVector_doRemoveRange(long jarg1, MultiDockHomeInfoVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_MultiDockHomeInfoVector(long jarg1);
   public final static native long new_DeviceChangeVector__SWIG_0();
   public final static native long new_DeviceChangeVector__SWIG_1(long jarg1, DeviceChangeVector jarg1_);
   public final static native boolean DeviceChangeVector_isEmpty(long jarg1, DeviceChangeVector jarg1_);
@@ -8670,6 +9419,36 @@ public class flighthubsdkmoduleJNI {
   public final static native long TasksMediaStatusVector_doSet(long jarg1, TasksMediaStatusVector jarg1_, int jarg2, long jarg3, TasksMediaStatus jarg3_);
   public final static native void TasksMediaStatusVector_doRemoveRange(long jarg1, TasksMediaStatusVector jarg1_, int jarg2, int jarg3);
   public final static native void delete_TasksMediaStatusVector(long jarg1);
+  public final static native long new_ErrCertMismatchVector__SWIG_0();
+  public final static native long new_ErrCertMismatchVector__SWIG_1(long jarg1, ErrCertMismatchVector jarg1_);
+  public final static native boolean ErrCertMismatchVector_isEmpty(long jarg1, ErrCertMismatchVector jarg1_);
+  public final static native void ErrCertMismatchVector_clear(long jarg1, ErrCertMismatchVector jarg1_);
+  public final static native long new_ErrCertMismatchVector__SWIG_2(int jarg1, long jarg2, ErrCertMismatch jarg2_);
+  public final static native int ErrCertMismatchVector_doCapacity(long jarg1, ErrCertMismatchVector jarg1_);
+  public final static native void ErrCertMismatchVector_doReserve(long jarg1, ErrCertMismatchVector jarg1_, int jarg2);
+  public final static native int ErrCertMismatchVector_doSize(long jarg1, ErrCertMismatchVector jarg1_);
+  public final static native void ErrCertMismatchVector_doAdd__SWIG_0(long jarg1, ErrCertMismatchVector jarg1_, long jarg2, ErrCertMismatch jarg2_);
+  public final static native void ErrCertMismatchVector_doAdd__SWIG_1(long jarg1, ErrCertMismatchVector jarg1_, int jarg2, long jarg3, ErrCertMismatch jarg3_);
+  public final static native long ErrCertMismatchVector_doRemove(long jarg1, ErrCertMismatchVector jarg1_, int jarg2);
+  public final static native long ErrCertMismatchVector_doGet(long jarg1, ErrCertMismatchVector jarg1_, int jarg2);
+  public final static native long ErrCertMismatchVector_doSet(long jarg1, ErrCertMismatchVector jarg1_, int jarg2, long jarg3, ErrCertMismatch jarg3_);
+  public final static native void ErrCertMismatchVector_doRemoveRange(long jarg1, ErrCertMismatchVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_ErrCertMismatchVector(long jarg1);
+  public final static native long new_ControlAuthControllerVector__SWIG_0();
+  public final static native long new_ControlAuthControllerVector__SWIG_1(long jarg1, ControlAuthControllerVector jarg1_);
+  public final static native boolean ControlAuthControllerVector_isEmpty(long jarg1, ControlAuthControllerVector jarg1_);
+  public final static native void ControlAuthControllerVector_clear(long jarg1, ControlAuthControllerVector jarg1_);
+  public final static native long new_ControlAuthControllerVector__SWIG_2(int jarg1, long jarg2, ControlAuthController jarg2_);
+  public final static native int ControlAuthControllerVector_doCapacity(long jarg1, ControlAuthControllerVector jarg1_);
+  public final static native void ControlAuthControllerVector_doReserve(long jarg1, ControlAuthControllerVector jarg1_, int jarg2);
+  public final static native int ControlAuthControllerVector_doSize(long jarg1, ControlAuthControllerVector jarg1_);
+  public final static native void ControlAuthControllerVector_doAdd__SWIG_0(long jarg1, ControlAuthControllerVector jarg1_, long jarg2, ControlAuthController jarg2_);
+  public final static native void ControlAuthControllerVector_doAdd__SWIG_1(long jarg1, ControlAuthControllerVector jarg1_, int jarg2, long jarg3, ControlAuthController jarg3_);
+  public final static native long ControlAuthControllerVector_doRemove(long jarg1, ControlAuthControllerVector jarg1_, int jarg2);
+  public final static native long ControlAuthControllerVector_doGet(long jarg1, ControlAuthControllerVector jarg1_, int jarg2);
+  public final static native long ControlAuthControllerVector_doSet(long jarg1, ControlAuthControllerVector jarg1_, int jarg2, long jarg3, ControlAuthController jarg3_);
+  public final static native void ControlAuthControllerVector_doRemoveRange(long jarg1, ControlAuthControllerVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_ControlAuthControllerVector(long jarg1);
   public final static native long new_FlightTaskVector__SWIG_0();
   public final static native long new_FlightTaskVector__SWIG_1(long jarg1, FlightTaskVector jarg1_);
   public final static native boolean FlightTaskVector_isEmpty(long jarg1, FlightTaskVector jarg1_);
@@ -9129,6 +9908,24 @@ public class flighthubsdkmoduleJNI {
   public final static native void StringStringUnorderedMap_putUnchecked(long jarg1, StringStringUnorderedMap jarg1_, String jarg2, String jarg3);
   public final static native void StringStringUnorderedMap_removeUnchecked(long jarg1, StringStringUnorderedMap jarg1_, long jarg2, StringStringUnorderedMap.Iterator jarg2_);
   public final static native void delete_StringStringUnorderedMap(long jarg1);
+  public final static native long new_StringStringMap__SWIG_0();
+  public final static native long new_StringStringMap__SWIG_1(long jarg1, StringStringMap jarg1_);
+  public final static native long StringStringMap_Iterator_getNextUnchecked(long jarg1, StringStringMap.Iterator jarg1_);
+  public final static native boolean StringStringMap_Iterator_isNot(long jarg1, StringStringMap.Iterator jarg1_, long jarg2, StringStringMap.Iterator jarg2_);
+  public final static native String StringStringMap_Iterator_getKey(long jarg1, StringStringMap.Iterator jarg1_);
+  public final static native String StringStringMap_Iterator_getValue(long jarg1, StringStringMap.Iterator jarg1_);
+  public final static native void StringStringMap_Iterator_setValue(long jarg1, StringStringMap.Iterator jarg1_, String jarg2);
+  public final static native void delete_StringStringMap_Iterator(long jarg1);
+  public final static native boolean StringStringMap_isEmpty(long jarg1, StringStringMap jarg1_);
+  public final static native void StringStringMap_clear(long jarg1, StringStringMap jarg1_);
+  public final static native long StringStringMap_find(long jarg1, StringStringMap jarg1_, String jarg2);
+  public final static native long StringStringMap_begin(long jarg1, StringStringMap jarg1_);
+  public final static native long StringStringMap_end(long jarg1, StringStringMap jarg1_);
+  public final static native int StringStringMap_sizeImpl(long jarg1, StringStringMap jarg1_);
+  public final static native boolean StringStringMap_containsImpl(long jarg1, StringStringMap jarg1_, String jarg2);
+  public final static native void StringStringMap_putUnchecked(long jarg1, StringStringMap jarg1_, String jarg2, String jarg3);
+  public final static native void StringStringMap_removeUnchecked(long jarg1, StringStringMap jarg1_, long jarg2, StringStringMap.Iterator jarg2_);
+  public final static native void delete_StringStringMap(long jarg1);
   public final static native long new_ImportWaylineEventPointVector__SWIG_0();
   public final static native long new_ImportWaylineEventPointVector__SWIG_1(long jarg1, ImportWaylineEventPointVector jarg1_);
   public final static native boolean ImportWaylineEventPointVector_isEmpty(long jarg1, ImportWaylineEventPointVector jarg1_);
@@ -9624,6 +10421,21 @@ public class flighthubsdkmoduleJNI {
   public final static native long FirmwareCompatibilityConfigItemResultVector_doSet(long jarg1, FirmwareCompatibilityConfigItemResultVector jarg1_, int jarg2, long jarg3, FirmwareCompatibilityConfigItemResult jarg3_);
   public final static native void FirmwareCompatibilityConfigItemResultVector_doRemoveRange(long jarg1, FirmwareCompatibilityConfigItemResultVector jarg1_, int jarg2, int jarg3);
   public final static native void delete_FirmwareCompatibilityConfigItemResultVector(long jarg1);
+  public final static native long new_FirmwareCompatibilityValidateResultVector__SWIG_0();
+  public final static native long new_FirmwareCompatibilityValidateResultVector__SWIG_1(long jarg1, FirmwareCompatibilityValidateResultVector jarg1_);
+  public final static native boolean FirmwareCompatibilityValidateResultVector_isEmpty(long jarg1, FirmwareCompatibilityValidateResultVector jarg1_);
+  public final static native void FirmwareCompatibilityValidateResultVector_clear(long jarg1, FirmwareCompatibilityValidateResultVector jarg1_);
+  public final static native long new_FirmwareCompatibilityValidateResultVector__SWIG_2(int jarg1, long jarg2, FirmwareCompatibilityValidateResult jarg2_);
+  public final static native int FirmwareCompatibilityValidateResultVector_doCapacity(long jarg1, FirmwareCompatibilityValidateResultVector jarg1_);
+  public final static native void FirmwareCompatibilityValidateResultVector_doReserve(long jarg1, FirmwareCompatibilityValidateResultVector jarg1_, int jarg2);
+  public final static native int FirmwareCompatibilityValidateResultVector_doSize(long jarg1, FirmwareCompatibilityValidateResultVector jarg1_);
+  public final static native void FirmwareCompatibilityValidateResultVector_doAdd__SWIG_0(long jarg1, FirmwareCompatibilityValidateResultVector jarg1_, long jarg2, FirmwareCompatibilityValidateResult jarg2_);
+  public final static native void FirmwareCompatibilityValidateResultVector_doAdd__SWIG_1(long jarg1, FirmwareCompatibilityValidateResultVector jarg1_, int jarg2, long jarg3, FirmwareCompatibilityValidateResult jarg3_);
+  public final static native long FirmwareCompatibilityValidateResultVector_doRemove(long jarg1, FirmwareCompatibilityValidateResultVector jarg1_, int jarg2);
+  public final static native long FirmwareCompatibilityValidateResultVector_doGet(long jarg1, FirmwareCompatibilityValidateResultVector jarg1_, int jarg2);
+  public final static native long FirmwareCompatibilityValidateResultVector_doSet(long jarg1, FirmwareCompatibilityValidateResultVector jarg1_, int jarg2, long jarg3, FirmwareCompatibilityValidateResult jarg3_);
+  public final static native void FirmwareCompatibilityValidateResultVector_doRemoveRange(long jarg1, FirmwareCompatibilityValidateResultVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_FirmwareCompatibilityValidateResultVector(long jarg1);
   public final static native long new_FirmwareStatusItemVector__SWIG_0();
   public final static native long new_FirmwareStatusItemVector__SWIG_1(long jarg1, FirmwareStatusItemVector jarg1_);
   public final static native boolean FirmwareStatusItemVector_isEmpty(long jarg1, FirmwareStatusItemVector jarg1_);
@@ -9834,6 +10646,21 @@ public class flighthubsdkmoduleJNI {
   public final static native long FlashLedConfigVector_doSet(long jarg1, FlashLedConfigVector jarg1_, int jarg2, long jarg3, FlashLedConfig jarg3_);
   public final static native void FlashLedConfigVector_doRemoveRange(long jarg1, FlashLedConfigVector jarg1_, int jarg2, int jarg3);
   public final static native void delete_FlashLedConfigVector(long jarg1);
+  public final static native long new_AutoRecordItemVector__SWIG_0();
+  public final static native long new_AutoRecordItemVector__SWIG_1(long jarg1, AutoRecordItemVector jarg1_);
+  public final static native boolean AutoRecordItemVector_isEmpty(long jarg1, AutoRecordItemVector jarg1_);
+  public final static native void AutoRecordItemVector_clear(long jarg1, AutoRecordItemVector jarg1_);
+  public final static native long new_AutoRecordItemVector__SWIG_2(int jarg1, long jarg2, AutoRecordItem jarg2_);
+  public final static native int AutoRecordItemVector_doCapacity(long jarg1, AutoRecordItemVector jarg1_);
+  public final static native void AutoRecordItemVector_doReserve(long jarg1, AutoRecordItemVector jarg1_, int jarg2);
+  public final static native int AutoRecordItemVector_doSize(long jarg1, AutoRecordItemVector jarg1_);
+  public final static native void AutoRecordItemVector_doAdd__SWIG_0(long jarg1, AutoRecordItemVector jarg1_, long jarg2, AutoRecordItem jarg2_);
+  public final static native void AutoRecordItemVector_doAdd__SWIG_1(long jarg1, AutoRecordItemVector jarg1_, int jarg2, long jarg3, AutoRecordItem jarg3_);
+  public final static native long AutoRecordItemVector_doRemove(long jarg1, AutoRecordItemVector jarg1_, int jarg2);
+  public final static native long AutoRecordItemVector_doGet(long jarg1, AutoRecordItemVector jarg1_, int jarg2);
+  public final static native long AutoRecordItemVector_doSet(long jarg1, AutoRecordItemVector jarg1_, int jarg2, long jarg3, AutoRecordItem jarg3_);
+  public final static native void AutoRecordItemVector_doRemoveRange(long jarg1, AutoRecordItemVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_AutoRecordItemVector(long jarg1);
   public final static native long new_GeoCagingInfoParamVector__SWIG_0();
   public final static native long new_GeoCagingInfoParamVector__SWIG_1(long jarg1, GeoCagingInfoParamVector jarg1_);
   public final static native boolean GeoCagingInfoParamVector_isEmpty(long jarg1, GeoCagingInfoParamVector jarg1_);
@@ -10194,6 +11021,21 @@ public class flighthubsdkmoduleJNI {
   public final static native long AiAlertTargetAlertInfoVector_doSet(long jarg1, AiAlertTargetAlertInfoVector jarg1_, int jarg2, long jarg3, AiAlertTargetAlertInfo jarg3_);
   public final static native void AiAlertTargetAlertInfoVector_doRemoveRange(long jarg1, AiAlertTargetAlertInfoVector jarg1_, int jarg2, int jarg3);
   public final static native void delete_AiAlertTargetAlertInfoVector(long jarg1);
+  public final static native long new_AiAlertTriggerActionVector__SWIG_0();
+  public final static native long new_AiAlertTriggerActionVector__SWIG_1(long jarg1, AiAlertTriggerActionVector jarg1_);
+  public final static native boolean AiAlertTriggerActionVector_isEmpty(long jarg1, AiAlertTriggerActionVector jarg1_);
+  public final static native void AiAlertTriggerActionVector_clear(long jarg1, AiAlertTriggerActionVector jarg1_);
+  public final static native long new_AiAlertTriggerActionVector__SWIG_2(int jarg1, long jarg2, AiAlertTriggerAction jarg2_);
+  public final static native int AiAlertTriggerActionVector_doCapacity(long jarg1, AiAlertTriggerActionVector jarg1_);
+  public final static native void AiAlertTriggerActionVector_doReserve(long jarg1, AiAlertTriggerActionVector jarg1_, int jarg2);
+  public final static native int AiAlertTriggerActionVector_doSize(long jarg1, AiAlertTriggerActionVector jarg1_);
+  public final static native void AiAlertTriggerActionVector_doAdd__SWIG_0(long jarg1, AiAlertTriggerActionVector jarg1_, long jarg2, AiAlertTriggerAction jarg2_);
+  public final static native void AiAlertTriggerActionVector_doAdd__SWIG_1(long jarg1, AiAlertTriggerActionVector jarg1_, int jarg2, long jarg3, AiAlertTriggerAction jarg3_);
+  public final static native long AiAlertTriggerActionVector_doRemove(long jarg1, AiAlertTriggerActionVector jarg1_, int jarg2);
+  public final static native long AiAlertTriggerActionVector_doGet(long jarg1, AiAlertTriggerActionVector jarg1_, int jarg2);
+  public final static native long AiAlertTriggerActionVector_doSet(long jarg1, AiAlertTriggerActionVector jarg1_, int jarg2, long jarg3, AiAlertTriggerAction jarg3_);
+  public final static native void AiAlertTriggerActionVector_doRemoveRange(long jarg1, AiAlertTriggerActionVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_AiAlertTriggerActionVector(long jarg1);
   public final static native long new_AiAlertRecordItemVector__SWIG_0();
   public final static native long new_AiAlertRecordItemVector__SWIG_1(long jarg1, AiAlertRecordItemVector jarg1_);
   public final static native boolean AiAlertRecordItemVector_isEmpty(long jarg1, AiAlertRecordItemVector jarg1_);
@@ -10227,6 +11069,51 @@ public class flighthubsdkmoduleJNI {
   public final static native void AiAlertRecordItemVectorMap_putUnchecked(long jarg1, AiAlertRecordItemVectorMap jarg1_, String jarg2, long jarg3, AiAlertRecordItemVector jarg3_);
   public final static native void AiAlertRecordItemVectorMap_removeUnchecked(long jarg1, AiAlertRecordItemVectorMap jarg1_, long jarg2, AiAlertRecordItemVectorMap.Iterator jarg2_);
   public final static native void delete_AiAlertRecordItemVectorMap(long jarg1);
+  public final static native long new_AiAlertNotifyTargetInfoVector__SWIG_0();
+  public final static native long new_AiAlertNotifyTargetInfoVector__SWIG_1(long jarg1, AiAlertNotifyTargetInfoVector jarg1_);
+  public final static native boolean AiAlertNotifyTargetInfoVector_isEmpty(long jarg1, AiAlertNotifyTargetInfoVector jarg1_);
+  public final static native void AiAlertNotifyTargetInfoVector_clear(long jarg1, AiAlertNotifyTargetInfoVector jarg1_);
+  public final static native long new_AiAlertNotifyTargetInfoVector__SWIG_2(int jarg1, long jarg2, AiAlertNotifyTargetInfo jarg2_);
+  public final static native int AiAlertNotifyTargetInfoVector_doCapacity(long jarg1, AiAlertNotifyTargetInfoVector jarg1_);
+  public final static native void AiAlertNotifyTargetInfoVector_doReserve(long jarg1, AiAlertNotifyTargetInfoVector jarg1_, int jarg2);
+  public final static native int AiAlertNotifyTargetInfoVector_doSize(long jarg1, AiAlertNotifyTargetInfoVector jarg1_);
+  public final static native void AiAlertNotifyTargetInfoVector_doAdd__SWIG_0(long jarg1, AiAlertNotifyTargetInfoVector jarg1_, long jarg2, AiAlertNotifyTargetInfo jarg2_);
+  public final static native void AiAlertNotifyTargetInfoVector_doAdd__SWIG_1(long jarg1, AiAlertNotifyTargetInfoVector jarg1_, int jarg2, long jarg3, AiAlertNotifyTargetInfo jarg3_);
+  public final static native long AiAlertNotifyTargetInfoVector_doRemove(long jarg1, AiAlertNotifyTargetInfoVector jarg1_, int jarg2);
+  public final static native long AiAlertNotifyTargetInfoVector_doGet(long jarg1, AiAlertNotifyTargetInfoVector jarg1_, int jarg2);
+  public final static native long AiAlertNotifyTargetInfoVector_doSet(long jarg1, AiAlertNotifyTargetInfoVector jarg1_, int jarg2, long jarg3, AiAlertNotifyTargetInfo jarg3_);
+  public final static native void AiAlertNotifyTargetInfoVector_doRemoveRange(long jarg1, AiAlertNotifyTargetInfoVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_AiAlertNotifyTargetInfoVector(long jarg1);
+  public final static native long new_AiAlertNotifyRecordItemVector__SWIG_0();
+  public final static native long new_AiAlertNotifyRecordItemVector__SWIG_1(long jarg1, AiAlertNotifyRecordItemVector jarg1_);
+  public final static native boolean AiAlertNotifyRecordItemVector_isEmpty(long jarg1, AiAlertNotifyRecordItemVector jarg1_);
+  public final static native void AiAlertNotifyRecordItemVector_clear(long jarg1, AiAlertNotifyRecordItemVector jarg1_);
+  public final static native long new_AiAlertNotifyRecordItemVector__SWIG_2(int jarg1, long jarg2, AiAlertNotifyRecordItem jarg2_);
+  public final static native int AiAlertNotifyRecordItemVector_doCapacity(long jarg1, AiAlertNotifyRecordItemVector jarg1_);
+  public final static native void AiAlertNotifyRecordItemVector_doReserve(long jarg1, AiAlertNotifyRecordItemVector jarg1_, int jarg2);
+  public final static native int AiAlertNotifyRecordItemVector_doSize(long jarg1, AiAlertNotifyRecordItemVector jarg1_);
+  public final static native void AiAlertNotifyRecordItemVector_doAdd__SWIG_0(long jarg1, AiAlertNotifyRecordItemVector jarg1_, long jarg2, AiAlertNotifyRecordItem jarg2_);
+  public final static native void AiAlertNotifyRecordItemVector_doAdd__SWIG_1(long jarg1, AiAlertNotifyRecordItemVector jarg1_, int jarg2, long jarg3, AiAlertNotifyRecordItem jarg3_);
+  public final static native long AiAlertNotifyRecordItemVector_doRemove(long jarg1, AiAlertNotifyRecordItemVector jarg1_, int jarg2);
+  public final static native long AiAlertNotifyRecordItemVector_doGet(long jarg1, AiAlertNotifyRecordItemVector jarg1_, int jarg2);
+  public final static native long AiAlertNotifyRecordItemVector_doSet(long jarg1, AiAlertNotifyRecordItemVector jarg1_, int jarg2, long jarg3, AiAlertNotifyRecordItem jarg3_);
+  public final static native void AiAlertNotifyRecordItemVector_doRemoveRange(long jarg1, AiAlertNotifyRecordItemVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_AiAlertNotifyRecordItemVector(long jarg1);
+  public final static native long new_AiAlertNotifyFlightDataVector__SWIG_0();
+  public final static native long new_AiAlertNotifyFlightDataVector__SWIG_1(long jarg1, AiAlertNotifyFlightDataVector jarg1_);
+  public final static native boolean AiAlertNotifyFlightDataVector_isEmpty(long jarg1, AiAlertNotifyFlightDataVector jarg1_);
+  public final static native void AiAlertNotifyFlightDataVector_clear(long jarg1, AiAlertNotifyFlightDataVector jarg1_);
+  public final static native long new_AiAlertNotifyFlightDataVector__SWIG_2(int jarg1, long jarg2, AiAlertNotifyFlightData jarg2_);
+  public final static native int AiAlertNotifyFlightDataVector_doCapacity(long jarg1, AiAlertNotifyFlightDataVector jarg1_);
+  public final static native void AiAlertNotifyFlightDataVector_doReserve(long jarg1, AiAlertNotifyFlightDataVector jarg1_, int jarg2);
+  public final static native int AiAlertNotifyFlightDataVector_doSize(long jarg1, AiAlertNotifyFlightDataVector jarg1_);
+  public final static native void AiAlertNotifyFlightDataVector_doAdd__SWIG_0(long jarg1, AiAlertNotifyFlightDataVector jarg1_, long jarg2, AiAlertNotifyFlightData jarg2_);
+  public final static native void AiAlertNotifyFlightDataVector_doAdd__SWIG_1(long jarg1, AiAlertNotifyFlightDataVector jarg1_, int jarg2, long jarg3, AiAlertNotifyFlightData jarg3_);
+  public final static native long AiAlertNotifyFlightDataVector_doRemove(long jarg1, AiAlertNotifyFlightDataVector jarg1_, int jarg2);
+  public final static native long AiAlertNotifyFlightDataVector_doGet(long jarg1, AiAlertNotifyFlightDataVector jarg1_, int jarg2);
+  public final static native long AiAlertNotifyFlightDataVector_doSet(long jarg1, AiAlertNotifyFlightDataVector jarg1_, int jarg2, long jarg3, AiAlertNotifyFlightData jarg3_);
+  public final static native void AiAlertNotifyFlightDataVector_doRemoveRange(long jarg1, AiAlertNotifyFlightDataVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_AiAlertNotifyFlightDataVector(long jarg1);
   public final static native long new_LiveSyncVideoCapacityVector__SWIG_0();
   public final static native long new_LiveSyncVideoCapacityVector__SWIG_1(long jarg1, LiveSyncVideoCapacityVector jarg1_);
   public final static native boolean LiveSyncVideoCapacityVector_isEmpty(long jarg1, LiveSyncVideoCapacityVector jarg1_);
@@ -10382,6 +11269,11 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_HmsDataCallback();
   public final static native void HmsDataCallback_director_connect(HmsDataCallback obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void HmsDataCallback_change_ownership(HmsDataCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_AirsenseWarningCallback(long jarg1);
+  public final static native void AirsenseWarningCallback_onAirsenseWarning(long jarg1, AirsenseWarningCallback jarg1_, long jarg2, AirsenseWarning jarg2_);
+  public final static native long new_AirsenseWarningCallback();
+  public final static native void AirsenseWarningCallback_director_connect(AirsenseWarningCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void AirsenseWarningCallback_change_ownership(AirsenseWarningCallback obj, long cptr, boolean take_or_release);
   public final static native void delete_AircraftPayloadsOsdInfoListCallback(long jarg1);
   public final static native void AircraftPayloadsOsdInfoListCallback_onAircraftPayloadsOsdInfoList(long jarg1, AircraftPayloadsOsdInfoListCallback jarg1_, long jarg2, AircraftPayloadsOsdInfoList jarg2_);
   public final static native long new_AircraftPayloadsOsdInfoListCallback();
@@ -10547,6 +11439,11 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_ResultCallbackWithError();
   public final static native void ResultCallbackWithError_director_connect(ResultCallbackWithError obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void ResultCallbackWithError_change_ownership(ResultCallbackWithError obj, long cptr, boolean take_or_release);
+  public final static native void delete_ControlAuthResultCallback(long jarg1);
+  public final static native void ControlAuthResultCallback_onResult(long jarg1, ControlAuthResultCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, ControlAuthResult jarg3_);
+  public final static native long new_ControlAuthResultCallback();
+  public final static native void ControlAuthResultCallback_director_connect(ControlAuthResultCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void ControlAuthResultCallback_change_ownership(ControlAuthResultCallback obj, long cptr, boolean take_or_release);
   public final static native void delete_LiveStreamStartCallback(long jarg1);
   public final static native void LiveStreamStartCallback_onResult(long jarg1, LiveStreamStartCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, LiveStreamStartResult jarg3_);
   public final static native long new_LiveStreamStartCallback();
@@ -10567,6 +11464,11 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_FlyToPointStartCallback();
   public final static native void FlyToPointStartCallback_director_connect(FlyToPointStartCallback obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void FlyToPointStartCallback_change_ownership(FlyToPointStartCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_FlyToPointStartResultCallback(long jarg1);
+  public final static native void FlyToPointStartResultCallback_onFlyToPointStartResult(long jarg1, FlyToPointStartResultCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, FlyToPointStartResult jarg3_);
+  public final static native long new_FlyToPointStartResultCallback();
+  public final static native void FlyToPointStartResultCallback_director_connect(FlyToPointStartResultCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void FlyToPointStartResultCallback_change_ownership(FlyToPointStartResultCallback obj, long cptr, boolean take_or_release);
   public final static native void delete_FlyToDroneSelfPlanPathCallback(long jarg1);
   public final static native void FlyToDroneSelfPlanPathCallback_onFlyToDroneSelfPlanPath(long jarg1, FlyToDroneSelfPlanPathCallback jarg1_, long jarg2, FlyToDroneSelfPlanPath jarg2_);
   public final static native long new_FlyToDroneSelfPlanPathCallback();
@@ -10637,6 +11539,11 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_TakeoffResultCallback();
   public final static native void TakeoffResultCallback_director_connect(TakeoffResultCallback obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void TakeoffResultCallback_change_ownership(TakeoffResultCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_GroundTakeoffResultCallback(long jarg1);
+  public final static native void GroundTakeoffResultCallback_onResult(long jarg1, GroundTakeoffResultCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, GroundTakeoffResult jarg3_);
+  public final static native long new_GroundTakeoffResultCallback();
+  public final static native void GroundTakeoffResultCallback_director_connect(GroundTakeoffResultCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void GroundTakeoffResultCallback_change_ownership(GroundTakeoffResultCallback obj, long cptr, boolean take_or_release);
   public final static native void delete_CreateInFlightWaylineTaskCallback(long jarg1);
   public final static native void CreateInFlightWaylineTaskCallback_onResult(long jarg1, CreateInFlightWaylineTaskCallback jarg1_, long jarg2, CreateInFlightWaylineTaskResult jarg2_, long jarg3, FlightHubError jarg3_);
   public final static native long new_CreateInFlightWaylineTaskCallback();
@@ -10812,6 +11719,11 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_GetFlightTaskTrackCallback();
   public final static native void GetFlightTaskTrackCallback_director_connect(GetFlightTaskTrackCallback obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void GetFlightTaskTrackCallback_change_ownership(GetFlightTaskTrackCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_GetFlightRisksCallback(long jarg1);
+  public final static native void GetFlightRisksCallback_onGetFlightRisks(long jarg1, GetFlightRisksCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, GetFlightRisksResults jarg3_);
+  public final static native long new_GetFlightRisksCallback();
+  public final static native void GetFlightRisksCallback_director_connect(GetFlightRisksCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void GetFlightRisksCallback_change_ownership(GetFlightRisksCallback obj, long cptr, boolean take_or_release);
   public final static native void delete_CreateFlightTaskCallback(long jarg1);
   public final static native void CreateFlightTaskCallback_onCreateFlightTask(long jarg1, CreateFlightTaskCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, CreateTaskResp jarg3_);
   public final static native long new_CreateFlightTaskCallback();
@@ -11007,6 +11919,16 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_WaylineTaskEventCallback();
   public final static native void WaylineTaskEventCallback_director_connect(WaylineTaskEventCallback obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void WaylineTaskEventCallback_change_ownership(WaylineTaskEventCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_ReturnHomeInfoEventCallback(long jarg1);
+  public final static native void ReturnHomeInfoEventCallback_onReturnHomeInfoEvent(long jarg1, ReturnHomeInfoEventCallback jarg1_, long jarg2, ReturnHomeInfoEvent jarg2_);
+  public final static native long new_ReturnHomeInfoEventCallback();
+  public final static native void ReturnHomeInfoEventCallback_director_connect(ReturnHomeInfoEventCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void ReturnHomeInfoEventCallback_change_ownership(ReturnHomeInfoEventCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_TaskExceptionEventCallback(long jarg1);
+  public final static native void TaskExceptionEventCallback_onTaskExceptionEvent(long jarg1, TaskExceptionEventCallback jarg1_, long jarg2, TaskExceptionEvent jarg2_);
+  public final static native long new_TaskExceptionEventCallback();
+  public final static native void TaskExceptionEventCallback_director_connect(TaskExceptionEventCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void TaskExceptionEventCallback_change_ownership(TaskExceptionEventCallback obj, long cptr, boolean take_or_release);
   public final static native void delete_DockLocationCallback(long jarg1);
   public final static native void DockLocationCallback_onDockLocation(long jarg1, DockLocationCallback jarg1_, long jarg2, DockLocation jarg2_);
   public final static native long new_DockLocationCallback();
@@ -11377,6 +12299,21 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_GetMediaFileDetailByIdCallback();
   public final static native void GetMediaFileDetailByIdCallback_director_connect(GetMediaFileDetailByIdCallback obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void GetMediaFileDetailByIdCallback_change_ownership(GetMediaFileDetailByIdCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_PanoStitchActionCallback(long jarg1);
+  public final static native void PanoStitchActionCallback_onPanoStitchAction(long jarg1, PanoStitchActionCallback jarg1_, long jarg2, FlightHubError jarg2_);
+  public final static native long new_PanoStitchActionCallback();
+  public final static native void PanoStitchActionCallback_director_connect(PanoStitchActionCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void PanoStitchActionCallback_change_ownership(PanoStitchActionCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_GetPanoTierTileUrlCallback(long jarg1);
+  public final static native void GetPanoTierTileUrlCallback_onGetPanoTierTileUrl(long jarg1, GetPanoTierTileUrlCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, GetPanoTierTileUrlResult jarg3_);
+  public final static native long new_GetPanoTierTileUrlCallback();
+  public final static native void GetPanoTierTileUrlCallback_director_connect(GetPanoTierTileUrlCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void GetPanoTierTileUrlCallback_change_ownership(GetPanoTierTileUrlCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_PanoStitchProgressCallback(long jarg1);
+  public final static native void PanoStitchProgressCallback_onPanoStitchProgress(long jarg1, PanoStitchProgressCallback jarg1_, long jarg2, PanoStitchProgressMsg jarg2_);
+  public final static native long new_PanoStitchProgressCallback();
+  public final static native void PanoStitchProgressCallback_director_connect(PanoStitchProgressCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void PanoStitchProgressCallback_change_ownership(PanoStitchProgressCallback obj, long cptr, boolean take_or_release);
   public final static native void delete_GetWaylineEditorStsCallback(long jarg1);
   public final static native void GetWaylineEditorStsCallback_onGetWaylineEditorSts(long jarg1, GetWaylineEditorStsCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, GetWaylineEditorStsResult jarg3_);
   public final static native long new_GetWaylineEditorStsCallback();
@@ -11477,6 +12414,11 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_TerraShowOnMapCallback();
   public final static native void TerraShowOnMapCallback_director_connect(TerraShowOnMapCallback obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void TerraShowOnMapCallback_change_ownership(TerraShowOnMapCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_TerraDeleteModelFilesCallback(long jarg1);
+  public final static native void TerraDeleteModelFilesCallback_onTerraDeleteModelFiles(long jarg1, TerraDeleteModelFilesCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, TerraDeleteModelFilesResult jarg3_);
+  public final static native long new_TerraDeleteModelFilesCallback();
+  public final static native void TerraDeleteModelFilesCallback_director_connect(TerraDeleteModelFilesCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void TerraDeleteModelFilesCallback_change_ownership(TerraDeleteModelFilesCallback obj, long cptr, boolean take_or_release);
   public final static native void delete_TerraUnzipProgressCallback(long jarg1);
   public final static native void TerraUnzipProgressCallback_onTerraUnzipProgress(long jarg1, TerraUnzipProgressCallback jarg1_, long jarg2, TerraUnzipProgressMsg jarg2_);
   public final static native long new_TerraUnzipProgressCallback();
@@ -11542,6 +12484,11 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_GetFlightAreasSyncStatusCallback();
   public final static native void GetFlightAreasSyncStatusCallback_director_connect(GetFlightAreasSyncStatusCallback obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void GetFlightAreasSyncStatusCallback_change_ownership(GetFlightAreasSyncStatusCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_GetFlightAreasUrlCallback(long jarg1);
+  public final static native void GetFlightAreasUrlCallback_onGetFlightAreasUrl(long jarg1, GetFlightAreasUrlCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, GetFlightAreasUrlResults jarg3_);
+  public final static native long new_GetFlightAreasUrlCallback();
+  public final static native void GetFlightAreasUrlCallback_director_connect(GetFlightAreasUrlCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void GetFlightAreasUrlCallback_change_ownership(GetFlightAreasUrlCallback obj, long cptr, boolean take_or_release);
   public final static native void delete_GetOfflineMapsModelInfoCallback(long jarg1);
   public final static native void GetOfflineMapsModelInfoCallback_onGetOfflineMapsModelInfo(long jarg1, GetOfflineMapsModelInfoCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, GetOfflineMapsModelInfoResults jarg3_);
   public final static native long new_GetOfflineMapsModelInfoCallback();
@@ -11932,6 +12879,11 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_GetAiAlertRecordsCallback();
   public final static native void GetAiAlertRecordsCallback_director_connect(GetAiAlertRecordsCallback obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void GetAiAlertRecordsCallback_change_ownership(GetAiAlertRecordsCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_AiAlertRecordsNotifyCallback(long jarg1);
+  public final static native void AiAlertRecordsNotifyCallback_onAiAlertRecordsNotify(long jarg1, AiAlertRecordsNotifyCallback jarg1_, long jarg2, AiAlertRecordsNotifyResult jarg2_);
+  public final static native long new_AiAlertRecordsNotifyCallback();
+  public final static native void AiAlertRecordsNotifyCallback_director_connect(AiAlertRecordsNotifyCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void AiAlertRecordsNotifyCallback_change_ownership(AiAlertRecordsNotifyCallback obj, long cptr, boolean take_or_release);
   public final static native void delete_CreateLiveSyncCallback(long jarg1);
   public final static native void CreateLiveSyncCallback_onCreateLiveSync(long jarg1, CreateLiveSyncCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, LiveSyncCreateResult jarg3_);
   public final static native long new_CreateLiveSyncCallback();
@@ -12092,41 +13044,6 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_OperateAppCallback();
   public final static native void OperateAppCallback_director_connect(OperateAppCallback obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void OperateAppCallback_change_ownership(OperateAppCallback obj, long cptr, boolean take_or_release);
-  public final static native void delete_DockDeparturePointCallback(long jarg1);
-  public final static native void DockDeparturePointCallback_onDockDeparturePoint(long jarg1, DockDeparturePointCallback jarg1_, long jarg2, DockDeparturePoint jarg2_);
-  public final static native long new_DockDeparturePointCallback();
-  public final static native void DockDeparturePointCallback_director_connect(DockDeparturePointCallback obj, long cptr, boolean mem_own, boolean weak_global);
-  public final static native void DockDeparturePointCallback_change_ownership(DockDeparturePointCallback obj, long cptr, boolean take_or_release);
-  public final static native void delete_AircraftVisualScoutStatusCallback(long jarg1);
-  public final static native void AircraftVisualScoutStatusCallback_onAircraftVisualScoutStatus(long jarg1, AircraftVisualScoutStatusCallback jarg1_, long jarg2, AircraftVisualScoutStatus jarg2_);
-  public final static native long new_AircraftVisualScoutStatusCallback();
-  public final static native void AircraftVisualScoutStatusCallback_director_connect(AircraftVisualScoutStatusCallback obj, long cptr, boolean mem_own, boolean weak_global);
-  public final static native void AircraftVisualScoutStatusCallback_change_ownership(AircraftVisualScoutStatusCallback obj, long cptr, boolean take_or_release);
-  public final static native void delete_AircraftVisualScoutAbnormalInfoCallback(long jarg1);
-  public final static native void AircraftVisualScoutAbnormalInfoCallback_onAircraftVisualScoutAbnormalInfo(long jarg1, AircraftVisualScoutAbnormalInfoCallback jarg1_, long jarg2, AircraftVisualScoutAbnormalInfo jarg2_);
-  public final static native long new_AircraftVisualScoutAbnormalInfoCallback();
-  public final static native void AircraftVisualScoutAbnormalInfoCallback_director_connect(AircraftVisualScoutAbnormalInfoCallback obj, long cptr, boolean mem_own, boolean weak_global);
-  public final static native void AircraftVisualScoutAbnormalInfoCallback_change_ownership(AircraftVisualScoutAbnormalInfoCallback obj, long cptr, boolean take_or_release);
-  public final static native void delete_AircraftVisualScoutObstacleInfoCallback(long jarg1);
-  public final static native void AircraftVisualScoutObstacleInfoCallback_onAircraftVisualScoutObstacleInfo(long jarg1, AircraftVisualScoutObstacleInfoCallback jarg1_, long jarg2, AircraftVisualScoutObstacleInfo jarg2_);
-  public final static native long new_AircraftVisualScoutObstacleInfoCallback();
-  public final static native void AircraftVisualScoutObstacleInfoCallback_director_connect(AircraftVisualScoutObstacleInfoCallback obj, long cptr, boolean mem_own, boolean weak_global);
-  public final static native void AircraftVisualScoutObstacleInfoCallback_change_ownership(AircraftVisualScoutObstacleInfoCallback obj, long cptr, boolean take_or_release);
-  public final static native void delete_EphemerisDownloadStateCallback(long jarg1);
-  public final static native void EphemerisDownloadStateCallback_onEphemerisDownloadState(long jarg1, EphemerisDownloadStateCallback jarg1_, long jarg2, EphemerisDownloadState jarg2_);
-  public final static native long new_EphemerisDownloadStateCallback();
-  public final static native void EphemerisDownloadStateCallback_director_connect(EphemerisDownloadStateCallback obj, long cptr, boolean mem_own, boolean weak_global);
-  public final static native void EphemerisDownloadStateCallback_change_ownership(EphemerisDownloadStateCallback obj, long cptr, boolean take_or_release);
-  public final static native void delete_EphemerisInfoCallback(long jarg1);
-  public final static native void EphemerisInfoCallback_onEphemerisInfo(long jarg1, EphemerisInfoCallback jarg1_, long jarg2, EphemerisInfo jarg2_);
-  public final static native long new_EphemerisInfoCallback();
-  public final static native void EphemerisInfoCallback_director_connect(EphemerisInfoCallback obj, long cptr, boolean mem_own, boolean weak_global);
-  public final static native void EphemerisInfoCallback_change_ownership(EphemerisInfoCallback obj, long cptr, boolean take_or_release);
-  public final static native void delete_InOutWaylineFlightSettingResultCallback(long jarg1);
-  public final static native void InOutWaylineFlightSettingResultCallback_onResult(long jarg1, InOutWaylineFlightSettingResultCallback jarg1_, long jarg2, InOutWaylineFlightSettingParams jarg2_, long jarg3, FlightHubError jarg3_);
-  public final static native long new_InOutWaylineFlightSettingResultCallback();
-  public final static native void InOutWaylineFlightSettingResultCallback_director_connect(InOutWaylineFlightSettingResultCallback obj, long cptr, boolean mem_own, boolean weak_global);
-  public final static native void InOutWaylineFlightSettingResultCallback_change_ownership(InOutWaylineFlightSettingResultCallback obj, long cptr, boolean take_or_release);
   public final static native void delete_DeviceOtaProgressCallback(long jarg1);
   public final static native void DeviceOtaProgressCallback_onDeviceOtaProgress(long jarg1, DeviceOtaProgressCallback jarg1_, long jarg2, DeviceOtaProgress jarg2_);
   public final static native long new_DeviceOtaProgressCallback();
@@ -12147,6 +13064,21 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_PsdkSpeakerTtsPlayStartProgressCallback();
   public final static native void PsdkSpeakerTtsPlayStartProgressCallback_director_connect(PsdkSpeakerTtsPlayStartProgressCallback obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void PsdkSpeakerTtsPlayStartProgressCallback_change_ownership(PsdkSpeakerTtsPlayStartProgressCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_PsdkCustomDataTransmissionFromPsdkCallback(long jarg1);
+  public final static native void PsdkCustomDataTransmissionFromPsdkCallback_onPsdkCustomDataTransmissionFromPsdk(long jarg1, PsdkCustomDataTransmissionFromPsdkCallback jarg1_, long jarg2, PsdkCustomDataTransmission jarg2_);
+  public final static native long new_PsdkCustomDataTransmissionFromPsdkCallback();
+  public final static native void PsdkCustomDataTransmissionFromPsdkCallback_director_connect(PsdkCustomDataTransmissionFromPsdkCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void PsdkCustomDataTransmissionFromPsdkCallback_change_ownership(PsdkCustomDataTransmissionFromPsdkCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_EsdkCustomDataTransmissionFromEsdkCallback(long jarg1);
+  public final static native void EsdkCustomDataTransmissionFromEsdkCallback_onEsdkCustomDataTransmissionFromEsdk(long jarg1, EsdkCustomDataTransmissionFromEsdkCallback jarg1_, long jarg2, EsdkCustomDataTransmission jarg2_);
+  public final static native long new_EsdkCustomDataTransmissionFromEsdkCallback();
+  public final static native void EsdkCustomDataTransmissionFromEsdkCallback_director_connect(EsdkCustomDataTransmissionFromEsdkCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void EsdkCustomDataTransmissionFromEsdkCallback_change_ownership(EsdkCustomDataTransmissionFromEsdkCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_HighestPriorityUploadFlighttaskMediaCallback(long jarg1);
+  public final static native void HighestPriorityUploadFlighttaskMediaCallback_onHighestPriorityUploadFlighttaskMedia(long jarg1, HighestPriorityUploadFlighttaskMediaCallback jarg1_, long jarg2, HighestPriorityUploadFlighttaskMedia jarg2_);
+  public final static native long new_HighestPriorityUploadFlighttaskMediaCallback();
+  public final static native void HighestPriorityUploadFlighttaskMediaCallback_director_connect(HighestPriorityUploadFlighttaskMediaCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void HighestPriorityUploadFlighttaskMediaCallback_change_ownership(HighestPriorityUploadFlighttaskMediaCallback obj, long cptr, boolean take_or_release);
   public final static native void delete_FlightPoiProgressCallback(long jarg1);
   public final static native void FlightPoiProgressCallback_onFlightPoiProgress(long jarg1, FlightPoiProgressCallback jarg1_, long jarg2, FlightPoiProgress jarg2_);
   public final static native long new_FlightPoiProgressCallback();
@@ -12167,6 +13099,11 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_DrcParachuteInfoCallback();
   public final static native void DrcParachuteInfoCallback_director_connect(DrcParachuteInfoCallback obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void DrcParachuteInfoCallback_change_ownership(DrcParachuteInfoCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_DrcLandingMissionStateCallback(long jarg1);
+  public final static native void DrcLandingMissionStateCallback_onDrcLandingMissionState(long jarg1, DrcLandingMissionStateCallback jarg1_, long jarg2, DrcLandingMissionState jarg2_);
+  public final static native long new_DrcLandingMissionStateCallback();
+  public final static native void DrcLandingMissionStateCallback_director_connect(DrcLandingMissionStateCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void DrcLandingMissionStateCallback_change_ownership(DrcLandingMissionStateCallback obj, long cptr, boolean take_or_release);
   public final static native void delete_FlashLedStateInfoCallback(long jarg1);
   public final static native void FlashLedStateInfoCallback_onFlashLedStateInfo(long jarg1, FlashLedStateInfoCallback jarg1_, long jarg2, FlashLedStateInfo jarg2_);
   public final static native long new_FlashLedStateInfoCallback();
@@ -12182,6 +13119,11 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_FlashLedConfigCallback();
   public final static native void FlashLedConfigCallback_director_connect(FlashLedConfigCallback obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void FlashLedConfigCallback_change_ownership(FlashLedConfigCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_AutoRecordConfigCallback(long jarg1);
+  public final static native void AutoRecordConfigCallback_onAutoRecordConfig(long jarg1, AutoRecordConfigCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, AutoRecordConfig jarg3_);
+  public final static native long new_AutoRecordConfigCallback();
+  public final static native void AutoRecordConfigCallback_director_connect(AutoRecordConfigCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void AutoRecordConfigCallback_change_ownership(AutoRecordConfigCallback obj, long cptr, boolean take_or_release);
   public final static native void delete_AiAlarmStateCallback(long jarg1);
   public final static native void AiAlarmStateCallback_onAiAlarmState(long jarg1, AiAlarmStateCallback jarg1_, long jarg2, AiAlarmStateInfo jarg2_);
   public final static native long new_AiAlarmStateCallback();
@@ -12267,10 +13209,77 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_DroneCameraWatermarkSettingsPushCallback();
   public final static native void DroneCameraWatermarkSettingsPushCallback_director_connect(DroneCameraWatermarkSettingsPushCallback obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void DroneCameraWatermarkSettingsPushCallback_change_ownership(DroneCameraWatermarkSettingsPushCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_CascadeAddChildNodeCallback(long jarg1);
+  public final static native void CascadeAddChildNodeCallback_onCascadeAddChildNode(long jarg1, CascadeAddChildNodeCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, AddChildNodeResult jarg3_);
+  public final static native long new_CascadeAddChildNodeCallback();
+  public final static native void CascadeAddChildNodeCallback_director_connect(CascadeAddChildNodeCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void CascadeAddChildNodeCallback_change_ownership(CascadeAddChildNodeCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_CascadeEnableChildNodesCallback(long jarg1);
+  public final static native void CascadeEnableChildNodesCallback_onCascadeEnableChildNodes(long jarg1, CascadeEnableChildNodesCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, CascadeBatchOpResult jarg3_);
+  public final static native long new_CascadeEnableChildNodesCallback();
+  public final static native void CascadeEnableChildNodesCallback_director_connect(CascadeEnableChildNodesCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void CascadeEnableChildNodesCallback_change_ownership(CascadeEnableChildNodesCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_CascadeDisableChildNodesCallback(long jarg1);
+  public final static native void CascadeDisableChildNodesCallback_onCascadeDisableChildNodes(long jarg1, CascadeDisableChildNodesCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, CascadeBatchOpResult jarg3_);
+  public final static native long new_CascadeDisableChildNodesCallback();
+  public final static native void CascadeDisableChildNodesCallback_director_connect(CascadeDisableChildNodesCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void CascadeDisableChildNodesCallback_change_ownership(CascadeDisableChildNodesCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_CascadeDeleteChildNodeCallback(long jarg1);
+  public final static native void CascadeDeleteChildNodeCallback_onCascadeDeleteChildNode(long jarg1, CascadeDeleteChildNodeCallback jarg1_, long jarg2, FlightHubError jarg2_);
+  public final static native long new_CascadeDeleteChildNodeCallback();
+  public final static native void CascadeDeleteChildNodeCallback_director_connect(CascadeDeleteChildNodeCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void CascadeDeleteChildNodeCallback_change_ownership(CascadeDeleteChildNodeCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_CascadeGetReachableChildrenCallback(long jarg1);
+  public final static native void CascadeGetReachableChildrenCallback_onCascadeGetReachableChildren(long jarg1, CascadeGetReachableChildrenCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, CascadeChildNodeListResult jarg3_);
+  public final static native long new_CascadeGetReachableChildrenCallback();
+  public final static native void CascadeGetReachableChildrenCallback_director_connect(CascadeGetReachableChildrenCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void CascadeGetReachableChildrenCallback_change_ownership(CascadeGetReachableChildrenCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_CascadeGetParentNodeCallback(long jarg1);
+  public final static native void CascadeGetParentNodeCallback_onCascadeGetParentNode(long jarg1, CascadeGetParentNodeCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, CascadeParentNodeInfo jarg3_);
+  public final static native long new_CascadeGetParentNodeCallback();
+  public final static native void CascadeGetParentNodeCallback_director_connect(CascadeGetParentNodeCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void CascadeGetParentNodeCallback_change_ownership(CascadeGetParentNodeCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_CascadeRespondToParentCallback(long jarg1);
+  public final static native void CascadeRespondToParentCallback_onCascadeRespondToParent(long jarg1, CascadeRespondToParentCallback jarg1_, long jarg2, FlightHubError jarg2_);
+  public final static native long new_CascadeRespondToParentCallback();
+  public final static native void CascadeRespondToParentCallback_director_connect(CascadeRespondToParentCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void CascadeRespondToParentCallback_change_ownership(CascadeRespondToParentCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_CascadeGetNodeIndexCallback(long jarg1);
+  public final static native void CascadeGetNodeIndexCallback_onCascadeGetNodeIndex(long jarg1, CascadeGetNodeIndexCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, CascadeChildNodeListResult jarg3_);
+  public final static native long new_CascadeGetNodeIndexCallback();
+  public final static native void CascadeGetNodeIndexCallback_director_connect(CascadeGetNodeIndexCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void CascadeGetNodeIndexCallback_change_ownership(CascadeGetNodeIndexCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_CascadeGetConnectivityCallback(long jarg1);
+  public final static native void CascadeGetConnectivityCallback_onCascadeGetConnectivity(long jarg1, CascadeGetConnectivityCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, CascadeConnectivityResult jarg3_);
+  public final static native long new_CascadeGetConnectivityCallback();
+  public final static native void CascadeGetConnectivityCallback_director_connect(CascadeGetConnectivityCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void CascadeGetConnectivityCallback_change_ownership(CascadeGetConnectivityCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_CascadeGetParentConnectivityCallback(long jarg1);
+  public final static native void CascadeGetParentConnectivityCallback_onCascadeGetParentConnectivity(long jarg1, CascadeGetParentConnectivityCallback jarg1_, long jarg2, FlightHubError jarg2_, long jarg3, CascadeParentConnectivity jarg3_);
+  public final static native long new_CascadeGetParentConnectivityCallback();
+  public final static native void CascadeGetParentConnectivityCallback_director_connect(CascadeGetParentConnectivityCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void CascadeGetParentConnectivityCallback_change_ownership(CascadeGetParentConnectivityCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_CascadePostToNodeCallback(long jarg1);
+  public final static native void CascadePostToNodeCallback_onCascadePostToNode(long jarg1, CascadePostToNodeCallback jarg1_, long jarg2, FlightHubError jarg2_);
+  public final static native long new_CascadePostToNodeCallback();
+  public final static native void CascadePostToNodeCallback_director_connect(CascadePostToNodeCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void CascadePostToNodeCallback_change_ownership(CascadePostToNodeCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_CascadeNodeStatusEventCallback(long jarg1);
+  public final static native void CascadeNodeStatusEventCallback_onCascadeNodeStatusEvent(long jarg1, CascadeNodeStatusEventCallback jarg1_, long jarg2, CascadeNodeStatusEvent jarg2_);
+  public final static native long new_CascadeNodeStatusEventCallback();
+  public final static native void CascadeNodeStatusEventCallback_director_connect(CascadeNodeStatusEventCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void CascadeNodeStatusEventCallback_change_ownership(CascadeNodeStatusEventCallback obj, long cptr, boolean take_or_release);
+  public final static native void delete_CascadeNotifyEventCallback(long jarg1);
+  public final static native void CascadeNotifyEventCallback_onCascadeNotifyEvent(long jarg1, CascadeNotifyEventCallback jarg1_, long jarg2, CascadeNotifyEvent jarg2_);
+  public final static native long new_CascadeNotifyEventCallback();
+  public final static native void CascadeNotifyEventCallback_director_connect(CascadeNotifyEventCallback obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void CascadeNotifyEventCallback_change_ownership(CascadeNotifyEventCallback obj, long cptr, boolean take_or_release);
   public final static native void delete_IFlightTaskModule(long jarg1);
+  public final static native void IFlightTaskModule_getFlightRisks(long jarg1, IFlightTaskModule jarg1_, long jarg2, GetFlightRisksParams jarg2_, long jarg3);
   public final static native void IFlightTaskModule_getFlightTaskListWrapper(long jarg1, IFlightTaskModule jarg1_, long jarg2, FlightTaskListParams jarg2_, long jarg3, GetFlightTaskListCallback jarg3_);
   public final static native void IFlightTaskModule_getCommandTaskListWrapper(long jarg1, IFlightTaskModule jarg1_, long jarg2, GetCommandTaskListParams jarg2_, long jarg3, GetCommandTaskListCallback jarg3_);
   public final static native void IFlightTaskModule_getFlightTaskTrackWrapper(long jarg1, IFlightTaskModule jarg1_, long jarg2, GetFlightTaskTrackParams jarg2_, long jarg3, GetFlightTaskTrackCallback jarg3_);
+  public final static native void IFlightTaskModule_getFlightRisksWrapper(long jarg1, IFlightTaskModule jarg1_, long jarg2, GetFlightRisksParams jarg2_, long jarg3, GetFlightRisksCallback jarg3_);
   public final static native void IFlightTaskModule_createFlightTaskWrapper(long jarg1, IFlightTaskModule jarg1_, long jarg2, CreateTaskReq jarg2_, long jarg3, CreateFlightTaskCallback jarg3_);
   public final static native void IFlightTaskModule_getFlightTaskDetailWrapper(long jarg1, IFlightTaskModule jarg1_, String jarg2, long jarg3, GetFlightTaskDetailCallback jarg3_);
   public final static native void IFlightTaskModule_editFlightTaskWrapper(long jarg1, IFlightTaskModule jarg1_, String jarg2, long jarg3, EditTaskReq jarg3_, long jarg4, CreateFlightTaskCallback jarg4_);
@@ -12362,6 +13371,7 @@ public class flighthubsdkmoduleJNI {
   public final static native void IFlyToPointModule_unsubscribeFlyToDroneSelfPlanPath(long jarg1, IFlyToPointModule jarg1_, int jarg2);
   public final static native void IFlyToPointModule_unsubscribeFlyToPointProgress(long jarg1, IFlyToPointModule jarg1_, int jarg2);
   public final static native void IFlyToPointModule_startWrapper(long jarg1, IFlyToPointModule jarg1_, long jarg2, FlyToPointParams jarg2_, long jarg3, FlyToPointStartCallback jarg3_);
+  public final static native void IFlyToPointModule_startWithResultWrapper(long jarg1, IFlyToPointModule jarg1_, long jarg2, FlyToPointParams jarg2_, long jarg3, FlyToPointStartResultCallback jarg3_);
   public final static native void IFlyToPointModule_drcStopWrapper(long jarg1, IFlyToPointModule jarg1_, long jarg2, ResultCallbackWithError jarg2_);
   public final static native int IFlyToPointModule_subscribeFlyToDroneSelfPlanPathWrapper(long jarg1, IFlyToPointModule jarg1_, long jarg2, FlyToDroneSelfPlanPathCallback jarg2_);
   public final static native int IFlyToPointModule_subscribeFlyToPointProgressWrapper(long jarg1, IFlyToPointModule jarg1_, long jarg2, FlyToPointProgressCallback jarg2_);
@@ -12388,6 +13398,12 @@ public class flighthubsdkmoduleJNI {
   public final static native void delete_IFlightTaskControlModule(long jarg1);
   public final static native int IFlightTaskControlModule_listenWaylineTaskEventWrapper(long jarg1, IFlightTaskControlModule jarg1_, long jarg2, WaylineTaskEventCallback jarg2_);
   public final static native void IFlightTaskControlModule_cancelListenWaylineTaskEventWrapper(long jarg1, IFlightTaskControlModule jarg1_, int jarg2);
+  public final static native int IFlightTaskControlModule_listenReturnHomeInfoEventWrapper(long jarg1, IFlightTaskControlModule jarg1_, long jarg2, ReturnHomeInfoEventCallback jarg2_);
+  public final static native int IFlightTaskControlModule_listenReturnHomeInfoEventByDeviceWrapper(long jarg1, IFlightTaskControlModule jarg1_, String jarg2, long jarg3, ReturnHomeInfoEventCallback jarg3_);
+  public final static native void IFlightTaskControlModule_cancelListenReturnHomeInfoEventWrapper(long jarg1, IFlightTaskControlModule jarg1_, int jarg2);
+  public final static native void IFlightTaskControlModule_cancelListenReturnHomeInfoEventByDeviceWrapper(long jarg1, IFlightTaskControlModule jarg1_, int jarg2);
+  public final static native int IFlightTaskControlModule_listenTaskExceptionEventWrapper(long jarg1, IFlightTaskControlModule jarg1_, long jarg2, TaskExceptionEventCallback jarg2_);
+  public final static native void IFlightTaskControlModule_cancelListenTaskExceptionEventWrapper(long jarg1, IFlightTaskControlModule jarg1_, int jarg2);
   public final static native void IFlightTaskControlModule_pauseWrapper(long jarg1, IFlightTaskControlModule jarg1_, long jarg2, ResultCallbackWithError jarg2_);
   public final static native void IFlightTaskControlModule_resumeWrapper(long jarg1, IFlightTaskControlModule jarg1_, long jarg2, ResultCallbackWithError jarg2_);
   public final static native long new_IFlightTaskControlModule();
@@ -12406,6 +13422,12 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_ITakeoffModule();
   public final static native void ITakeoffModule_director_connect(ITakeoffModule obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void ITakeoffModule_change_ownership(ITakeoffModule obj, long cptr, boolean take_or_release);
+  public final static native void delete_IGroundFlightModule(long jarg1);
+  public final static native void IGroundFlightModule_groundTakeoffWrapper(long jarg1, IGroundFlightModule jarg1_, long jarg2, GroundTakeoffParams jarg2_, long jarg3, GroundTakeoffResultCallback jarg3_);
+  public final static native void IGroundFlightModule_groundLandingWrapper(long jarg1, IGroundFlightModule jarg1_, int jarg2, long jarg3, ResultCallbackWithError jarg3_);
+  public final static native long new_IGroundFlightModule();
+  public final static native void IGroundFlightModule_director_connect(IGroundFlightModule obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void IGroundFlightModule_change_ownership(IGroundFlightModule obj, long cptr, boolean take_or_release);
   public final static native void delete_IInFlightWaylineModule(long jarg1);
   public final static native void IInFlightWaylineModule_createInFlightWaylineTaskWrapper(long jarg1, IInFlightWaylineModule jarg1_, long jarg2, CreateInFlightWaylineTaskParams jarg2_, long jarg3, CreateInFlightWaylineTaskCallback jarg3_);
   public final static native void IInFlightWaylineModule_controlInFlightWaylineTaskWrapper(long jarg1, IInFlightWaylineModule jarg1_, int jarg2, long jarg3, ResultCallbackWithError jarg3_);
@@ -12420,10 +13442,12 @@ public class flighthubsdkmoduleJNI {
   public final static native void IFlightControlModule_drcEmergencyLandingWrapper(long jarg1, IFlightControlModule jarg1_, long jarg2, ResultCallbackWithError jarg2_);
   public final static native void IFlightControlModule_drcForceLandingWrapper(long jarg1, IFlightControlModule jarg1_, long jarg2, ResultCallbackWithError jarg2_);
   public final static native void IFlightControlModule_returnHomeWrapper(long jarg1, IFlightControlModule jarg1_, long jarg2, ResultCallbackWithError jarg2_);
+  public final static native void IFlightControlModule_returnHomeToDockWrapper(long jarg1, IFlightControlModule jarg1_, String jarg2, long jarg3, ResultCallbackWithError jarg3_);
   public final static native void IFlightControlModule_returnHomeCancelWrapper(long jarg1, IFlightControlModule jarg1_, long jarg2, ResultCallbackWithError jarg2_);
   public final static native void IFlightControlModule_drcSendStickControlWrapper(long jarg1, IFlightControlModule jarg1_, long jarg2, StickControlData jarg2_);
   public final static native void IFlightControlModule_drcSetDroneHoverWrapper(long jarg1, IFlightControlModule jarg1_, int jarg2, long jarg3, ResultCallbackWithError jarg3_);
   public final static native void IFlightControlModule_drcSetFollowMouseParameterWrapper(long jarg1, IFlightControlModule jarg1_, int jarg2, long jarg3, ResultCallbackWithError jarg3_);
+  public final static native void IFlightControlModule_drcSetFlyingMaxSpeedWrapper(long jarg1, IFlightControlModule jarg1_, double jarg2, long jarg3, ResultCallbackWithError jarg3_);
   public final static native void IFlightControlModule_drcSetNightLightsStateWrapper(long jarg1, IFlightControlModule jarg1_, int jarg2, long jarg3, ResultCallbackWithError jarg3_);
   public final static native void IFlightControlModule_drcSetStealthStateWrapper(long jarg1, IFlightControlModule jarg1_, int jarg2, long jarg3, ResultCallbackWithError jarg3_);
   public final static native void IFlightControlModule_drcOpenParachuteWrapper(long jarg1, IFlightControlModule jarg1_, int jarg2, long jarg3, ResultCallbackWithError jarg3_);
@@ -12437,6 +13461,8 @@ public class flighthubsdkmoduleJNI {
   public final static native void IFlightControlModule_cancelListenDrcParachuteInfoWrapper(long jarg1, IFlightControlModule jarg1_, int jarg2);
   public final static native int IFlightControlModule_listenDrcFlashLedWrapper(long jarg1, IFlightControlModule jarg1_, long jarg2, FlashLedStateInfoCallback jarg2_);
   public final static native void IFlightControlModule_cancelListenDrcFlashLedWrapper(long jarg1, IFlightControlModule jarg1_, int jarg2);
+  public final static native int IFlightControlModule_listenDrcLandingMissionStateWrapper(long jarg1, IFlightControlModule jarg1_, long jarg2, DrcLandingMissionStateCallback jarg2_);
+  public final static native void IFlightControlModule_cancelListenDrcLandingMissionStateWrapper(long jarg1, IFlightControlModule jarg1_, int jarg2);
   public final static native long new_IFlightControlModule();
   public final static native void IFlightControlModule_director_connect(IFlightControlModule obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void IFlightControlModule_change_ownership(IFlightControlModule obj, long cptr, boolean take_or_release);
@@ -12448,6 +13474,10 @@ public class flighthubsdkmoduleJNI {
   public final static native int IControlAuthModule_listenFlightControlAuthorityWrapper(long jarg1, IControlAuthModule jarg1_, long jarg2, FlightControlAuthorityCallback jarg2_);
   public final static native void IControlAuthModule_acquirePayloadControlAuthorityWrapper(long jarg1, IControlAuthModule jarg1_, String jarg2, long jarg3, ResultCallbackWithError jarg3_);
   public final static native void IControlAuthModule_releasePayloadControlAuthorityWrapper(long jarg1, IControlAuthModule jarg1_, String jarg2, long jarg3, ResultCallbackWithError jarg3_);
+  public final static native void IControlAuthModule_acquireFlightControlAuthorityWithResultWrapper(long jarg1, IControlAuthModule jarg1_, long jarg2, ControlAuthResultCallback jarg2_);
+  public final static native void IControlAuthModule_releaseFlightControlAuthorityWithResultWrapper(long jarg1, IControlAuthModule jarg1_, long jarg2, ControlAuthResultCallback jarg2_);
+  public final static native void IControlAuthModule_acquirePayloadControlAuthorityWithResultWrapper(long jarg1, IControlAuthModule jarg1_, String jarg2, long jarg3, ControlAuthResultCallback jarg3_);
+  public final static native void IControlAuthModule_releasePayloadControlAuthorityWithResultWrapper(long jarg1, IControlAuthModule jarg1_, String jarg2, long jarg3, ControlAuthResultCallback jarg3_);
   public final static native int IControlAuthModule_listenPayloadControlAuthorityWrapper(long jarg1, IControlAuthModule jarg1_, String jarg2, long jarg3, PayloadControlAuthorityCallback jarg3_);
   public final static native long new_IControlAuthModule();
   public final static native void IControlAuthModule_director_connect(IControlAuthModule obj, long cptr, boolean mem_own, boolean weak_global);
@@ -12468,7 +13498,7 @@ public class flighthubsdkmoduleJNI {
   public final static native void delete_IFlightSettingsModule(long jarg1);
   public final static native void IFlightSettingsModule_setFlightSmartPlanModeWrapper(long jarg1, IFlightSettingsModule jarg1_, String jarg2, int jarg3, long jarg4, SetFlightSmartPlanModeCallback jarg4_);
   public final static native void IFlightSettingsModule_setOutOfControlActionWrapper(long jarg1, IFlightSettingsModule jarg1_, String jarg2, String jarg3, long jarg4, SetOutOfControlActionCallback jarg4_);
-  public final static native void IFlightSettingsModule_setFlightTaskHeightWrapper(long jarg1, IFlightSettingsModule jarg1_, String jarg2, int jarg3, long jarg4, SetFlightTaskHeightCallback jarg4_);
+  public final static native void IFlightSettingsModule_setFlightTaskHeightWrapper(long jarg1, IFlightSettingsModule jarg1_, String jarg2, double jarg3, long jarg4, SetFlightTaskHeightCallback jarg4_);
   public final static native void IFlightSettingsModule_setRthAltitudeWrapper(long jarg1, IFlightSettingsModule jarg1_, String jarg2, int jarg3, long jarg4, SetRthAltitudeCallback jarg4_);
   public final static native void IFlightSettingsModule_setAirTransferEnableWrapper(long jarg1, IFlightSettingsModule jarg1_, String jarg2, boolean jarg3, long jarg4, SetAirTransferEnableCallback jarg4_);
   public final static native long new_IFlightSettingsModule();
@@ -12539,9 +13569,26 @@ public class flighthubsdkmoduleJNI {
   public final static native void IPsdkControlModule_cancelListenPsdkSpeakerTtsPlayStartProgressWrapper(long jarg1, IPsdkControlModule jarg1_, int jarg2);
   public final static native int IPsdkControlModule_listenDronePsdkUiResourceWrapper(long jarg1, IPsdkControlModule jarg1_, long jarg2, DronePsdkUiResourceCallback jarg2_);
   public final static native void IPsdkControlModule_cancelListenDronePsdkUiResourceWrapper(long jarg1, IPsdkControlModule jarg1_, int jarg2);
+  public final static native int IPsdkControlModule_listenPsdkCustomDataTransmissionFromPsdkWrapper(long jarg1, IPsdkControlModule jarg1_, long jarg2, PsdkCustomDataTransmissionFromPsdkCallback jarg2_);
+  public final static native void IPsdkControlModule_cancelListenPsdkCustomDataTransmissionFromPsdkWrapper(long jarg1, IPsdkControlModule jarg1_, int jarg2);
+  public final static native void IPsdkControlModule_sendPsdkCustomDataTransmissionToPsdkWrapper(long jarg1, IPsdkControlModule jarg1_, String jarg2, long jarg3, ResultCallbackWithError jarg3_);
   public final static native long new_IPsdkControlModule();
   public final static native void IPsdkControlModule_director_connect(IPsdkControlModule obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void IPsdkControlModule_change_ownership(IPsdkControlModule obj, long cptr, boolean take_or_release);
+  public final static native void delete_IEsdkControlModule(long jarg1);
+  public final static native int IEsdkControlModule_listenEsdkCustomDataTransmissionFromEsdkWrapper(long jarg1, IEsdkControlModule jarg1_, long jarg2, EsdkCustomDataTransmissionFromEsdkCallback jarg2_);
+  public final static native void IEsdkControlModule_cancelListenEsdkCustomDataTransmissionFromEsdkWrapper(long jarg1, IEsdkControlModule jarg1_, int jarg2);
+  public final static native void IEsdkControlModule_sendEsdkCustomDataTransmissionToEsdkWrapper(long jarg1, IEsdkControlModule jarg1_, String jarg2, long jarg3, ResultCallbackWithError jarg3_);
+  public final static native long new_IEsdkControlModule();
+  public final static native void IEsdkControlModule_director_connect(IEsdkControlModule obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void IEsdkControlModule_change_ownership(IEsdkControlModule obj, long cptr, boolean take_or_release);
+  public final static native void delete_IFlightTaskMediaUploadModule(long jarg1);
+  public final static native void IFlightTaskMediaUploadModule_uploadFlighttaskMediaPrioritizeWrapper(long jarg1, IFlightTaskMediaUploadModule jarg1_, String jarg2, long jarg3, ResultCallbackWithError jarg3_);
+  public final static native int IFlightTaskMediaUploadModule_listenHighestPriorityUploadFlighttaskMediaWrapper(long jarg1, IFlightTaskMediaUploadModule jarg1_, long jarg2, HighestPriorityUploadFlighttaskMediaCallback jarg2_);
+  public final static native void IFlightTaskMediaUploadModule_cancelListenHighestPriorityUploadFlighttaskMediaWrapper(long jarg1, IFlightTaskMediaUploadModule jarg1_, int jarg2);
+  public final static native long new_IFlightTaskMediaUploadModule();
+  public final static native void IFlightTaskMediaUploadModule_director_connect(IFlightTaskMediaUploadModule obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void IFlightTaskMediaUploadModule_change_ownership(IFlightTaskMediaUploadModule obj, long cptr, boolean take_or_release);
   public final static native void delete_ICameraControlModule(long jarg1);
   public final static native void ICameraControlModule_drcSetPhotoStorageSettings(long jarg1, ICameraControlModule jarg1_, long jarg2, SetPhotoStorageSettingsParams jarg2_, long jarg3);
   public final static native void ICameraControlModule_drcSetVideoStorageSettings(long jarg1, ICameraControlModule jarg1_, long jarg2, SetVideoStorageSettingsParams jarg2_, long jarg3);
@@ -12838,6 +13885,7 @@ public class flighthubsdkmoduleJNI {
   public final static native long IDrone_getLiveRecord(long jarg1, IDrone jarg1_, long jarg2, LiveInfo jarg2_);
   public final static native long IDrone_getLiveDeviceModule(long jarg1, IDrone jarg1_);
   public final static native long IDrone_getTakeoffModule(long jarg1, IDrone jarg1_);
+  public final static native long IDrone_getGroundFlightModule(long jarg1, IDrone jarg1_);
   public final static native long IDrone_getFlightControlModule(long jarg1, IDrone jarg1_);
   public final static native long IDrone_getControlAuthModule(long jarg1, IDrone jarg1_);
   public final static native long IDrone_getDrcModule(long jarg1, IDrone jarg1_);
@@ -12845,6 +13893,8 @@ public class flighthubsdkmoduleJNI {
   public final static native long IDrone_getTestFlightModule(long jarg1, IDrone jarg1_);
   public final static native long IDrone_getOnboardAiModule(long jarg1, IDrone jarg1_);
   public final static native long IDrone_getPsdkControlModule(long jarg1, IDrone jarg1_);
+  public final static native long IDrone_getEsdkControlModule(long jarg1, IDrone jarg1_);
+  public final static native long IDrone_getFlightTaskMediaUploadModule(long jarg1, IDrone jarg1_);
   public final static native long IDrone_getCameraControlModule(long jarg1, IDrone jarg1_);
   public final static native long IDrone_getFlyToPointModule(long jarg1, IDrone jarg1_);
   public final static native long IDrone_getFlightTaskControlModule(long jarg1, IDrone jarg1_);
@@ -12853,6 +13903,7 @@ public class flighthubsdkmoduleJNI {
   public final static native long IDrone_getDroneOsdModule(long jarg1, IDrone jarg1_);
   public final static native long IDrone_getDeviceStateModule(long jarg1, IDrone jarg1_);
   public final static native long IDrone_getDeviceHMSModule(long jarg1, IDrone jarg1_);
+  public final static native long IDrone_getAirsenseWarningModule(long jarg1, IDrone jarg1_);
   public final static native long IDrone_getDeviceDebugModule(long jarg1, IDrone jarg1_);
   public final static native long IDrone_getAIBoxModule(long jarg1, IDrone jarg1_);
   public final static native long new_IDrone();
@@ -12872,6 +13923,12 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_IDeviceHMSModule();
   public final static native void IDeviceHMSModule_director_connect(IDeviceHMSModule obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void IDeviceHMSModule_change_ownership(IDeviceHMSModule obj, long cptr, boolean take_or_release);
+  public final static native void delete_IAirsenseWarningModule(long jarg1);
+  public final static native int IAirsenseWarningModule_listenAirsenseWarningWrapper(long jarg1, IAirsenseWarningModule jarg1_, long jarg2, AirsenseWarningCallback jarg2_);
+  public final static native void IAirsenseWarningModule_cancelListenAirsenseWarningWrapper(long jarg1, IAirsenseWarningModule jarg1_, int jarg2);
+  public final static native long new_IAirsenseWarningModule();
+  public final static native void IAirsenseWarningModule_director_connect(IAirsenseWarningModule obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void IAirsenseWarningModule_change_ownership(IAirsenseWarningModule obj, long cptr, boolean take_or_release);
   public final static native void delete_ILiveDeviceModule(long jarg1);
   public final static native int ILiveDeviceModule_listenLiveAvailableRangeWrapper(long jarg1, ILiveDeviceModule jarg1_, long jarg2, LiveAvailableRangeCallback jarg2_);
   public final static native void ILiveDeviceModule_cancelListenLiveAvailableRangeWrapper(long jarg1, ILiveDeviceModule jarg1_, int jarg2);
@@ -12883,26 +13940,6 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_ILiveDeviceModule();
   public final static native void ILiveDeviceModule_director_connect(ILiveDeviceModule obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void ILiveDeviceModule_change_ownership(ILiveDeviceModule obj, long cptr, boolean take_or_release);
-  public final static native void delete_IDeployModule(long jarg1);
-  public final static native int IDeployModule_listenDockDeparturePointWrapper(long jarg1, IDeployModule jarg1_, long jarg2, DockDeparturePointCallback jarg2_);
-  public final static native void IDeployModule_cancelListenDockDeparturePointWrapper(long jarg1, IDeployModule jarg1_, int jarg2);
-  public final static native int IDeployModule_listenAircraftVisualScoutStatusWrapper(long jarg1, IDeployModule jarg1_, long jarg2, AircraftVisualScoutStatusCallback jarg2_);
-  public final static native void IDeployModule_cancelListenAircraftVisualScoutStatusWrapper(long jarg1, IDeployModule jarg1_, int jarg2);
-  public final static native int IDeployModule_listenAircraftVisualScoutAbnormalInfoWrapper(long jarg1, IDeployModule jarg1_, long jarg2, AircraftVisualScoutAbnormalInfoCallback jarg2_);
-  public final static native void IDeployModule_cancelListenAircraftVisualScoutAbnormalInfoWrapper(long jarg1, IDeployModule jarg1_, int jarg2);
-  public final static native int IDeployModule_listenAircraftVisualScoutObstacleInfoWrapper(long jarg1, IDeployModule jarg1_, long jarg2, AircraftVisualScoutObstacleInfoCallback jarg2_);
-  public final static native void IDeployModule_cancelListenAircraftVisualScoutObstacleInfoWrapper(long jarg1, IDeployModule jarg1_, int jarg2);
-  public final static native int IDeployModule_listenAircraftEphemerisDownloadStateWrapper(long jarg1, IDeployModule jarg1_, long jarg2, EphemerisDownloadStateCallback jarg2_);
-  public final static native void IDeployModule_cancelListenAircraftEphemerisDownloadStateWrapper(long jarg1, IDeployModule jarg1_, int jarg2);
-  public final static native int IDeployModule_listenAircraftEphemerisInfoWrapper(long jarg1, IDeployModule jarg1_, long jarg2, EphemerisInfoCallback jarg2_);
-  public final static native void IDeployModule_cancelListenAircraftEphemerisInfoWrapper(long jarg1, IDeployModule jarg1_, int jarg2);
-  public final static native void IDeployModule_downloadEphemerisWrapper(long jarg1, IDeployModule jarg1_, long jarg2, DownloadEphemerisParams jarg2_, long jarg3, ResultCallbackWithError jarg3_);
-  public final static native void IDeployModule_executeInOutWaylineDetectWrapper(long jarg1, IDeployModule jarg1_, long jarg2, InOutWaylineDetectParams jarg2_, long jarg3, ResultCallbackWithError jarg3_);
-  public final static native void IDeployModule_setInOutWaylineFlightWrapper(long jarg1, IDeployModule jarg1_, long jarg2, InOutWaylineFlightSettingParams jarg2_, long jarg3, ResultCallbackWithError jarg3_);
-  public final static native void IDeployModule_getInOutWaylineFlightSettingWrapper(long jarg1, IDeployModule jarg1_, long jarg2, InOutWaylineFlightSettingResultCallback jarg2_);
-  public final static native long new_IDeployModule();
-  public final static native void IDeployModule_director_connect(IDeployModule obj, long cptr, boolean mem_own, boolean weak_global);
-  public final static native void IDeployModule_change_ownership(IDeployModule obj, long cptr, boolean take_or_release);
   public final static native void delete_IDockControlModule(long jarg1);
   public final static native void IDockControlModule_changeDockCameraPositionWrapper(long jarg1, IDockControlModule jarg1_, long jarg2, LiveInfo jarg2_, int jarg3, String jarg4, long jarg5, ResultCallbackWithError jarg5_);
   public final static native int IDockControlModule_listenDockAirConditionerStatusInfoWrapper(long jarg1, IDockControlModule jarg1_, long jarg2, DockAirConditionerStatusInfoCallback jarg2_);
@@ -12921,7 +13958,6 @@ public class flighthubsdkmoduleJNI {
   public final static native long IDock_getLiveRecord(long jarg1, IDock jarg1_, long jarg2, LiveInfo jarg2_);
   public final static native long IDock_getLiveDeviceModule(long jarg1, IDock jarg1_);
   public final static native long IDock_getDockOsdModule(long jarg1, IDock jarg1_);
-  public final static native long IDock_getDeployModule(long jarg1, IDock jarg1_);
   public final static native long IDock_getDockControlModule(long jarg1, IDock jarg1_);
   public final static native long IDock_getRtkCalibrationModule(long jarg1, IDock jarg1_);
   public final static native long IDock_getNetworkTestModule(long jarg1, IDock jarg1_);
@@ -13043,14 +14079,189 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_IDeviceDebugModule();
   public final static native void IDeviceDebugModule_director_connect(IDeviceDebugModule obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void IDeviceDebugModule_change_ownership(IDeviceDebugModule obj, long cptr, boolean take_or_release);
+  public final static native void CascadePage_total_set(long jarg1, CascadePage jarg1_, int jarg2);
+  public final static native int CascadePage_total_get(long jarg1, CascadePage jarg1_);
+  public final static native void CascadePage_page_set(long jarg1, CascadePage jarg1_, int jarg2);
+  public final static native int CascadePage_page_get(long jarg1, CascadePage jarg1_);
+  public final static native void CascadePage_size_set(long jarg1, CascadePage jarg1_, int jarg2);
+  public final static native int CascadePage_size_get(long jarg1, CascadePage jarg1_);
+  public final static native long new_CascadePage();
+  public final static native void delete_CascadePage(long jarg1);
+  public final static native void CascadeNodeInfo_nodeId_set(long jarg1, CascadeNodeInfo jarg1_, String jarg2);
+  public final static native String CascadeNodeInfo_nodeId_get(long jarg1, CascadeNodeInfo jarg1_);
+  public final static native void CascadeNodeInfo_name_set(long jarg1, CascadeNodeInfo jarg1_, String jarg2);
+  public final static native String CascadeNodeInfo_name_get(long jarg1, CascadeNodeInfo jarg1_);
+  public final static native void CascadeNodeInfo_code_set(long jarg1, CascadeNodeInfo jarg1_, String jarg2);
+  public final static native String CascadeNodeInfo_code_get(long jarg1, CascadeNodeInfo jarg1_);
+  public final static native void CascadeNodeInfo_parentId_set(long jarg1, CascadeNodeInfo jarg1_, String jarg2);
+  public final static native String CascadeNodeInfo_parentId_get(long jarg1, CascadeNodeInfo jarg1_);
+  public final static native void CascadeNodeInfo_level_set(long jarg1, CascadeNodeInfo jarg1_, int jarg2);
+  public final static native int CascadeNodeInfo_level_get(long jarg1, CascadeNodeInfo jarg1_);
+  public final static native void CascadeNodeInfo_enabled_set(long jarg1, CascadeNodeInfo jarg1_, boolean jarg2);
+  public final static native boolean CascadeNodeInfo_enabled_get(long jarg1, CascadeNodeInfo jarg1_);
+  public final static native void CascadeNodeInfo_online_set(long jarg1, CascadeNodeInfo jarg1_, String jarg2);
+  public final static native String CascadeNodeInfo_online_get(long jarg1, CascadeNodeInfo jarg1_);
+  public final static native void CascadeNodeInfo_address_set(long jarg1, CascadeNodeInfo jarg1_, String jarg2);
+  public final static native String CascadeNodeInfo_address_get(long jarg1, CascadeNodeInfo jarg1_);
+  public final static native void CascadeNodeInfo_networked_set(long jarg1, CascadeNodeInfo jarg1_, boolean jarg2);
+  public final static native boolean CascadeNodeInfo_networked_get(long jarg1, CascadeNodeInfo jarg1_);
+  public final static native void CascadeNodeInfo_net_status_set(long jarg1, CascadeNodeInfo jarg1_, String jarg2);
+  public final static native String CascadeNodeInfo_net_status_get(long jarg1, CascadeNodeInfo jarg1_);
+  public final static native long new_CascadeNodeInfo();
+  public final static native void delete_CascadeNodeInfo(long jarg1);
+  public final static native void CascadeChildNodeListResult_list_set(long jarg1, CascadeChildNodeListResult jarg1_, long jarg2, CascadeNodeInfoVector jarg2_);
+  public final static native long CascadeChildNodeListResult_list_get(long jarg1, CascadeChildNodeListResult jarg1_);
+  public final static native void CascadeChildNodeListResult_page_set(long jarg1, CascadeChildNodeListResult jarg1_, long jarg2, CascadePage jarg2_);
+  public final static native long CascadeChildNodeListResult_page_get(long jarg1, CascadeChildNodeListResult jarg1_);
+  public final static native long new_CascadeChildNodeListResult();
+  public final static native void delete_CascadeChildNodeListResult(long jarg1);
+  public final static native void CascadeParentNodeInfo_nodeId_set(long jarg1, CascadeParentNodeInfo jarg1_, String jarg2);
+  public final static native String CascadeParentNodeInfo_nodeId_get(long jarg1, CascadeParentNodeInfo jarg1_);
+  public final static native void CascadeParentNodeInfo_name_set(long jarg1, CascadeParentNodeInfo jarg1_, String jarg2);
+  public final static native String CascadeParentNodeInfo_name_get(long jarg1, CascadeParentNodeInfo jarg1_);
+  public final static native void CascadeParentNodeInfo_online_set(long jarg1, CascadeParentNodeInfo jarg1_, String jarg2);
+  public final static native String CascadeParentNodeInfo_online_get(long jarg1, CascadeParentNodeInfo jarg1_);
+  public final static native void CascadeParentNodeInfo_depth_set(long jarg1, CascadeParentNodeInfo jarg1_, int jarg2);
+  public final static native int CascadeParentNodeInfo_depth_get(long jarg1, CascadeParentNodeInfo jarg1_);
+  public final static native void CascadeParentNodeInfo_enabled_set(long jarg1, CascadeParentNodeInfo jarg1_, boolean jarg2);
+  public final static native boolean CascadeParentNodeInfo_enabled_get(long jarg1, CascadeParentNodeInfo jarg1_);
+  public final static native void CascadeParentNodeInfo_heartbeatPeriod_set(long jarg1, CascadeParentNodeInfo jarg1_, long jarg2);
+  public final static native long CascadeParentNodeInfo_heartbeatPeriod_get(long jarg1, CascadeParentNodeInfo jarg1_);
+  public final static native void CascadeParentNodeInfo_net_status_set(long jarg1, CascadeParentNodeInfo jarg1_, String jarg2);
+  public final static native String CascadeParentNodeInfo_net_status_get(long jarg1, CascadeParentNodeInfo jarg1_);
+  public final static native long new_CascadeParentNodeInfo();
+  public final static native void delete_CascadeParentNodeInfo(long jarg1);
+  public final static native void CascadeBatchOpResult_okCount_set(long jarg1, CascadeBatchOpResult jarg1_, int jarg2);
+  public final static native int CascadeBatchOpResult_okCount_get(long jarg1, CascadeBatchOpResult jarg1_);
+  public final static native void CascadeBatchOpResult_failCount_set(long jarg1, CascadeBatchOpResult jarg1_, int jarg2);
+  public final static native int CascadeBatchOpResult_failCount_get(long jarg1, CascadeBatchOpResult jarg1_);
+  public final static native long new_CascadeBatchOpResult();
+  public final static native void delete_CascadeBatchOpResult(long jarg1);
+  public final static native void CascadeChildrenQuery_nodeId_set(long jarg1, CascadeChildrenQuery jarg1_, String jarg2);
+  public final static native String CascadeChildrenQuery_nodeId_get(long jarg1, CascadeChildrenQuery jarg1_);
+  public final static native void CascadeChildrenQuery_page_set(long jarg1, CascadeChildrenQuery jarg1_, int jarg2);
+  public final static native int CascadeChildrenQuery_page_get(long jarg1, CascadeChildrenQuery jarg1_);
+  public final static native void CascadeChildrenQuery_size_set(long jarg1, CascadeChildrenQuery jarg1_, int jarg2);
+  public final static native int CascadeChildrenQuery_size_get(long jarg1, CascadeChildrenQuery jarg1_);
+  public final static native void CascadeChildrenQuery_name_set(long jarg1, CascadeChildrenQuery jarg1_, String jarg2);
+  public final static native String CascadeChildrenQuery_name_get(long jarg1, CascadeChildrenQuery jarg1_);
+  public final static native void CascadeChildrenQuery_status_set(long jarg1, CascadeChildrenQuery jarg1_, String jarg2);
+  public final static native String CascadeChildrenQuery_status_get(long jarg1, CascadeChildrenQuery jarg1_);
+  public final static native long new_CascadeChildrenQuery();
+  public final static native void delete_CascadeChildrenQuery(long jarg1);
+  public final static native void AddChildNodeRequest_sourceAddr_set(long jarg1, AddChildNodeRequest jarg1_, String jarg2);
+  public final static native String AddChildNodeRequest_sourceAddr_get(long jarg1, AddChildNodeRequest jarg1_);
+  public final static native void AddChildNodeRequest_childAddr_set(long jarg1, AddChildNodeRequest jarg1_, String jarg2);
+  public final static native String AddChildNodeRequest_childAddr_get(long jarg1, AddChildNodeRequest jarg1_);
+  public final static native void AddChildNodeRequest_name_set(long jarg1, AddChildNodeRequest jarg1_, String jarg2);
+  public final static native String AddChildNodeRequest_name_get(long jarg1, AddChildNodeRequest jarg1_);
+  public final static native void AddChildNodeRequest_code_set(long jarg1, AddChildNodeRequest jarg1_, String jarg2);
+  public final static native String AddChildNodeRequest_code_get(long jarg1, AddChildNodeRequest jarg1_);
+  public final static native void AddChildNodeRequest_token_set(long jarg1, AddChildNodeRequest jarg1_, String jarg2);
+  public final static native String AddChildNodeRequest_token_get(long jarg1, AddChildNodeRequest jarg1_);
+  public final static native long new_AddChildNodeRequest();
+  public final static native void delete_AddChildNodeRequest(long jarg1);
+  public final static native void AddChildNodeResult_nodeId_set(long jarg1, AddChildNodeResult jarg1_, String jarg2);
+  public final static native String AddChildNodeResult_nodeId_get(long jarg1, AddChildNodeResult jarg1_);
+  public final static native void AddChildNodeResult_grantId_set(long jarg1, AddChildNodeResult jarg1_, String jarg2);
+  public final static native String AddChildNodeResult_grantId_get(long jarg1, AddChildNodeResult jarg1_);
+  public final static native void AddChildNodeResult_parentId_set(long jarg1, AddChildNodeResult jarg1_, String jarg2);
+  public final static native String AddChildNodeResult_parentId_get(long jarg1, AddChildNodeResult jarg1_);
+  public final static native void AddChildNodeResult_executedBy_set(long jarg1, AddChildNodeResult jarg1_, String jarg2);
+  public final static native String AddChildNodeResult_executedBy_get(long jarg1, AddChildNodeResult jarg1_);
+  public final static native void AddChildNodeResult_enabled_set(long jarg1, AddChildNodeResult jarg1_, boolean jarg2);
+  public final static native boolean AddChildNodeResult_enabled_get(long jarg1, AddChildNodeResult jarg1_);
+  public final static native long new_AddChildNodeResult();
+  public final static native void delete_AddChildNodeResult(long jarg1);
+  public final static native void CascadeConnectivityItem_nodeId_set(long jarg1, CascadeConnectivityItem jarg1_, String jarg2);
+  public final static native String CascadeConnectivityItem_nodeId_get(long jarg1, CascadeConnectivityItem jarg1_);
+  public final static native void CascadeConnectivityItem_name_set(long jarg1, CascadeConnectivityItem jarg1_, String jarg2);
+  public final static native String CascadeConnectivityItem_name_get(long jarg1, CascadeConnectivityItem jarg1_);
+  public final static native void CascadeConnectivityItem_reachable_set(long jarg1, CascadeConnectivityItem jarg1_, boolean jarg2);
+  public final static native boolean CascadeConnectivityItem_reachable_get(long jarg1, CascadeConnectivityItem jarg1_);
+  public final static native void CascadeConnectivityItem_rtt_set(long jarg1, CascadeConnectivityItem jarg1_, long jarg2);
+  public final static native long CascadeConnectivityItem_rtt_get(long jarg1, CascadeConnectivityItem jarg1_);
+  public final static native long new_CascadeConnectivityItem();
+  public final static native void delete_CascadeConnectivityItem(long jarg1);
+  public final static native void CascadeConnectivityResult_items_set(long jarg1, CascadeConnectivityResult jarg1_, long jarg2, CascadeConnectivityItemVector jarg2_);
+  public final static native long CascadeConnectivityResult_items_get(long jarg1, CascadeConnectivityResult jarg1_);
+  public final static native long new_CascadeConnectivityResult();
+  public final static native void delete_CascadeConnectivityResult(long jarg1);
+  public final static native void CascadeParentConnectivity_nodeId_set(long jarg1, CascadeParentConnectivity jarg1_, String jarg2);
+  public final static native String CascadeParentConnectivity_nodeId_get(long jarg1, CascadeParentConnectivity jarg1_);
+  public final static native void CascadeParentConnectivity_name_set(long jarg1, CascadeParentConnectivity jarg1_, String jarg2);
+  public final static native String CascadeParentConnectivity_name_get(long jarg1, CascadeParentConnectivity jarg1_);
+  public final static native void CascadeParentConnectivity_reachable_set(long jarg1, CascadeParentConnectivity jarg1_, boolean jarg2);
+  public final static native boolean CascadeParentConnectivity_reachable_get(long jarg1, CascadeParentConnectivity jarg1_);
+  public final static native void CascadeParentConnectivity_rtt_set(long jarg1, CascadeParentConnectivity jarg1_, long jarg2);
+  public final static native long CascadeParentConnectivity_rtt_get(long jarg1, CascadeParentConnectivity jarg1_);
+  public final static native long new_CascadeParentConnectivity();
+  public final static native void delete_CascadeParentConnectivity(long jarg1);
+  public final static native void CascadeParentRespondRequest_nodeId_set(long jarg1, CascadeParentRespondRequest jarg1_, String jarg2);
+  public final static native String CascadeParentRespondRequest_nodeId_get(long jarg1, CascadeParentRespondRequest jarg1_);
+  public final static native void CascadeParentRespondRequest_parentId_set(long jarg1, CascadeParentRespondRequest jarg1_, String jarg2);
+  public final static native String CascadeParentRespondRequest_parentId_get(long jarg1, CascadeParentRespondRequest jarg1_);
+  public final static native void CascadeParentRespondRequest_status_set(long jarg1, CascadeParentRespondRequest jarg1_, String jarg2);
+  public final static native String CascadeParentRespondRequest_status_get(long jarg1, CascadeParentRespondRequest jarg1_);
+  public final static native long new_CascadeParentRespondRequest();
+  public final static native void delete_CascadeParentRespondRequest(long jarg1);
+  public final static native String kCascadeNodeStatusTopic_get();
+  public final static native void CascadeChildNodeStatus_nodeId_set(long jarg1, CascadeChildNodeStatus jarg1_, String jarg2);
+  public final static native String CascadeChildNodeStatus_nodeId_get(long jarg1, CascadeChildNodeStatus jarg1_);
+  public final static native void CascadeChildNodeStatus_status_set(long jarg1, CascadeChildNodeStatus jarg1_, String jarg2);
+  public final static native String CascadeChildNodeStatus_status_get(long jarg1, CascadeChildNodeStatus jarg1_);
+  public final static native long new_CascadeChildNodeStatus();
+  public final static native void delete_CascadeChildNodeStatus(long jarg1);
+  public final static native void CascadeParentNodeStatus_nodeId_set(long jarg1, CascadeParentNodeStatus jarg1_, String jarg2);
+  public final static native String CascadeParentNodeStatus_nodeId_get(long jarg1, CascadeParentNodeStatus jarg1_);
+  public final static native void CascadeParentNodeStatus_status_set(long jarg1, CascadeParentNodeStatus jarg1_, String jarg2);
+  public final static native String CascadeParentNodeStatus_status_get(long jarg1, CascadeParentNodeStatus jarg1_);
+  public final static native long new_CascadeParentNodeStatus();
+  public final static native void delete_CascadeParentNodeStatus(long jarg1);
+  public final static native void CascadeNodeStatusEvent_childNodeStatusList_set(long jarg1, CascadeNodeStatusEvent jarg1_, long jarg2, CascadeChildNodeStatusVector jarg2_);
+  public final static native long CascadeNodeStatusEvent_childNodeStatusList_get(long jarg1, CascadeNodeStatusEvent jarg1_);
+  public final static native void CascadeNodeStatusEvent_parentNodeStatus_set(long jarg1, CascadeNodeStatusEvent jarg1_, long jarg2, CascadeParentNodeStatus jarg2_);
+  public final static native long CascadeNodeStatusEvent_parentNodeStatus_get(long jarg1, CascadeNodeStatusEvent jarg1_);
+  public final static native void CascadeNodeStatusEvent_changedAt_set(long jarg1, CascadeNodeStatusEvent jarg1_, long jarg2);
+  public final static native long CascadeNodeStatusEvent_changedAt_get(long jarg1, CascadeNodeStatusEvent jarg1_);
+  public final static native long new_CascadeNodeStatusEvent();
+  public final static native void delete_CascadeNodeStatusEvent(long jarg1);
+  public final static native String kCascadeNotifyTopic_get();
+  public final static native void CascadeNotifyEvent_payload_set(long jarg1, CascadeNotifyEvent jarg1_, String jarg2);
+  public final static native String CascadeNotifyEvent_payload_get(long jarg1, CascadeNotifyEvent jarg1_);
+  public final static native long new_CascadeNotifyEvent();
+  public final static native void delete_CascadeNotifyEvent(long jarg1);
+  public final static native void delete_ICascadeModule(long jarg1);
+  public final static native void ICascadeModule_addChildNodeWrapper(long jarg1, ICascadeModule jarg1_, long jarg2, AddChildNodeRequest jarg2_, long jarg3, CascadeAddChildNodeCallback jarg3_);
+  public final static native void ICascadeModule_enableChildNodesWrapper(long jarg1, ICascadeModule jarg1_, long jarg2, StringVector jarg2_, long jarg3, CascadeEnableChildNodesCallback jarg3_);
+  public final static native void ICascadeModule_disableChildNodesWrapper(long jarg1, ICascadeModule jarg1_, long jarg2, StringVector jarg2_, long jarg3, CascadeDisableChildNodesCallback jarg3_);
+  public final static native void ICascadeModule_deleteChildNodeWrapper(long jarg1, ICascadeModule jarg1_, String jarg2, long jarg3, CascadeDeleteChildNodeCallback jarg3_);
+  public final static native void ICascadeModule_getReachableChildrenWrapper(long jarg1, ICascadeModule jarg1_, long jarg2, CascadeChildrenQuery jarg2_, long jarg3, CascadeGetReachableChildrenCallback jarg3_);
+  public final static native void ICascadeModule_getParentNodeWrapper(long jarg1, ICascadeModule jarg1_, long jarg2, CascadeGetParentNodeCallback jarg2_);
+  public final static native void ICascadeModule_respondToParentWrapper(long jarg1, ICascadeModule jarg1_, long jarg2, CascadeParentRespondRequest jarg2_, long jarg3, CascadeRespondToParentCallback jarg3_);
+  public final static native void ICascadeModule_getNodeIndexWrapper(long jarg1, ICascadeModule jarg1_, int jarg2, int jarg3, long jarg4, CascadeGetNodeIndexCallback jarg4_);
+  public final static native void ICascadeModule_getConnectivityWrapper(long jarg1, ICascadeModule jarg1_, long jarg2, CascadeGetConnectivityCallback jarg2_);
+  public final static native void ICascadeModule_getParentConnectivityWrapper(long jarg1, ICascadeModule jarg1_, long jarg2, CascadeGetParentConnectivityCallback jarg2_);
+  public final static native void ICascadeModule_postToNodeWrapper(long jarg1, ICascadeModule jarg1_, String jarg2, String jarg3, long jarg4, CascadePostToNodeCallback jarg4_);
+  public final static native int ICascadeModule_listenNodeStatusChangedWrapper(long jarg1, ICascadeModule jarg1_, long jarg2, CascadeNodeStatusEventCallback jarg2_);
+  public final static native void ICascadeModule_cancelListenNodeStatusChangedWrapper(long jarg1, ICascadeModule jarg1_, int jarg2);
+  public final static native int ICascadeModule_listenNotifyPayloadWrapper(long jarg1, ICascadeModule jarg1_, long jarg2, CascadeNotifyEventCallback jarg2_);
+  public final static native void ICascadeModule_cancelListenNotifyPayloadWrapper(long jarg1, ICascadeModule jarg1_, int jarg2);
+  public final static native long new_ICascadeModule();
+  public final static native void ICascadeModule_director_connect(ICascadeModule obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void ICascadeModule_change_ownership(ICascadeModule obj, long cptr, boolean take_or_release);
   public final static native void MediaUploadStsCredentials_access_key_id_set(long jarg1, MediaUploadStsCredentials jarg1_, String jarg2);
   public final static native String MediaUploadStsCredentials_access_key_id_get(long jarg1, MediaUploadStsCredentials jarg1_);
   public final static native void MediaUploadStsCredentials_access_key_secret_set(long jarg1, MediaUploadStsCredentials jarg1_, String jarg2);
   public final static native String MediaUploadStsCredentials_access_key_secret_get(long jarg1, MediaUploadStsCredentials jarg1_);
-  public final static native void MediaUploadStsCredentials_expire_set(long jarg1, MediaUploadStsCredentials jarg1_, int jarg2);
-  public final static native int MediaUploadStsCredentials_expire_get(long jarg1, MediaUploadStsCredentials jarg1_);
   public final static native void MediaUploadStsCredentials_security_token_set(long jarg1, MediaUploadStsCredentials jarg1_, String jarg2);
   public final static native String MediaUploadStsCredentials_security_token_get(long jarg1, MediaUploadStsCredentials jarg1_);
+  public final static native void MediaUploadStsCredentials_expire_set(long jarg1, MediaUploadStsCredentials jarg1_, int jarg2);
+  public final static native int MediaUploadStsCredentials_expire_get(long jarg1, MediaUploadStsCredentials jarg1_);
+  public final static native void MediaUploadStsCredentials_expiration_set(long jarg1, MediaUploadStsCredentials jarg1_, String jarg2);
+  public final static native String MediaUploadStsCredentials_expiration_get(long jarg1, MediaUploadStsCredentials jarg1_);
+  public final static native void MediaUploadStsCredentials_platform_set(long jarg1, MediaUploadStsCredentials jarg1_, int jarg2);
+  public final static native int MediaUploadStsCredentials_platform_get(long jarg1, MediaUploadStsCredentials jarg1_);
   public final static native long new_MediaUploadStsCredentials();
   public final static native void delete_MediaUploadStsCredentials(long jarg1);
   public final static native void GetMediaUploadStsResult_bucket_set(long jarg1, GetMediaUploadStsResult jarg1_, String jarg2);
@@ -13065,6 +14276,8 @@ public class flighthubsdkmoduleJNI {
   public final static native String GetMediaUploadStsResult_provider_get(long jarg1, GetMediaUploadStsResult jarg1_);
   public final static native void GetMediaUploadStsResult_region_set(long jarg1, GetMediaUploadStsResult jarg1_, String jarg2);
   public final static native String GetMediaUploadStsResult_region_get(long jarg1, GetMediaUploadStsResult jarg1_);
+  public final static native void GetMediaUploadStsResult_ext_set(long jarg1, GetMediaUploadStsResult jarg1_, String jarg2);
+  public final static native String GetMediaUploadStsResult_ext_get(long jarg1, GetMediaUploadStsResult jarg1_);
   public final static native long new_GetMediaUploadStsResult();
   public final static native void delete_GetMediaUploadStsResult(long jarg1);
   public final static native void MediaUploadCallbackResult_object_key_set(long jarg1, MediaUploadCallbackResult jarg1_, String jarg2);
@@ -13107,12 +14320,22 @@ public class flighthubsdkmoduleJNI {
   public final static native String MediaUploadCallbackFileExt_user_id_get(long jarg1, MediaUploadCallbackFileExt jarg1_);
   public final static native void MediaUploadCallbackFileExt_wayline_id_set(long jarg1, MediaUploadCallbackFileExt jarg1_, String jarg2);
   public final static native String MediaUploadCallbackFileExt_wayline_id_get(long jarg1, MediaUploadCallbackFileExt jarg1_);
+  public final static native void MediaUploadCallbackFileExt_wayline_action_uuid_set(long jarg1, MediaUploadCallbackFileExt jarg1_, String jarg2);
+  public final static native String MediaUploadCallbackFileExt_wayline_action_uuid_get(long jarg1, MediaUploadCallbackFileExt jarg1_);
+  public final static native void MediaUploadCallbackFileExt_task_name_set(long jarg1, MediaUploadCallbackFileExt jarg1_, String jarg2);
+  public final static native String MediaUploadCallbackFileExt_task_name_get(long jarg1, MediaUploadCallbackFileExt jarg1_);
+  public final static native void MediaUploadCallbackFileExt_sn_set(long jarg1, MediaUploadCallbackFileExt jarg1_, String jarg2);
+  public final static native String MediaUploadCallbackFileExt_sn_get(long jarg1, MediaUploadCallbackFileExt jarg1_);
   public final static native void MediaUploadCallbackFileExt_tinny_fingerprint_set(long jarg1, MediaUploadCallbackFileExt jarg1_, String jarg2);
   public final static native String MediaUploadCallbackFileExt_tinny_fingerprint_get(long jarg1, MediaUploadCallbackFileExt jarg1_);
   public final static native void MediaUploadCallbackFileExt_fast_reconstruction_media_type_set(long jarg1, MediaUploadCallbackFileExt jarg1_, int jarg2);
   public final static native int MediaUploadCallbackFileExt_fast_reconstruction_media_type_get(long jarg1, MediaUploadCallbackFileExt jarg1_);
   public final static native void MediaUploadCallbackFileExt_media_index_set(long jarg1, MediaUploadCallbackFileExt jarg1_, long jarg2);
   public final static native long MediaUploadCallbackFileExt_media_index_get(long jarg1, MediaUploadCallbackFileExt jarg1_);
+  public final static native void MediaUploadCallbackFileExt_expected_file_count_set(long jarg1, MediaUploadCallbackFileExt jarg1_, int jarg2);
+  public final static native int MediaUploadCallbackFileExt_expected_file_count_get(long jarg1, MediaUploadCallbackFileExt jarg1_);
+  public final static native void MediaUploadCallbackFileExt_pano_total_count_set(long jarg1, MediaUploadCallbackFileExt jarg1_, int jarg2);
+  public final static native int MediaUploadCallbackFileExt_pano_total_count_get(long jarg1, MediaUploadCallbackFileExt jarg1_);
   public final static native long new_MediaUploadCallbackFileExt();
   public final static native void delete_MediaUploadCallbackFileExt(long jarg1);
   public final static native void MediaUploadCallbackShootPosition_lat_set(long jarg1, MediaUploadCallbackShootPosition jarg1_, double jarg2);
@@ -13186,6 +14409,13 @@ public class flighthubsdkmoduleJNI {
   public final static native void IMediaServiceModule_mediaUploadCallbackWrapper(long jarg1, IMediaServiceModule jarg1_, long jarg2, MediaUploadCallbackParams jarg2_, long jarg3, MediaUploadCallbackCallback jarg3_);
   public final static native void IMediaServiceModule_uploadGeoMediaFileWrapper(long jarg1, IMediaServiceModule jarg1_, long jarg2, UploadGeoMediaFileParams jarg2_, long jarg3, UploadGeoMediaFileCallback jarg3_);
   public final static native void IMediaServiceModule_getMediaFileDetailByIdWrapper(long jarg1, IMediaServiceModule jarg1_, int jarg2, long jarg3, GetMediaFileDetailByIdCallback jarg3_);
+  public final static native void IMediaServiceModule_startPanoStitchWrapper(long jarg1, IMediaServiceModule jarg1_, long jarg2, long jarg3, PanoStitchActionCallback jarg3_);
+  public final static native void IMediaServiceModule_stopPanoStitchWrapper(long jarg1, IMediaServiceModule jarg1_, long jarg2, long jarg3, PanoStitchActionCallback jarg3_);
+  public final static native void IMediaServiceModule_retryPanoStitchWrapper(long jarg1, IMediaServiceModule jarg1_, long jarg2, long jarg3, PanoStitchActionCallback jarg3_);
+  public final static native void IMediaServiceModule_startPanoTierWrapper(long jarg1, IMediaServiceModule jarg1_, long jarg2, long jarg3, PanoStitchActionCallback jarg3_);
+  public final static native void IMediaServiceModule_getPanoTierTileUrlWrapper(long jarg1, IMediaServiceModule jarg1_, long jarg2, long jarg3, GetPanoTierTileUrlCallback jarg3_);
+  public final static native int IMediaServiceModule_subscribePanoStitchProgressWrapper(long jarg1, IMediaServiceModule jarg1_, long jarg2, PanoStitchProgressCallback jarg2_);
+  public final static native void IMediaServiceModule_cancelListenPanoStitchProgressWrapper(long jarg1, IMediaServiceModule jarg1_, int jarg2);
   public final static native long new_IMediaServiceModule();
   public final static native void IMediaServiceModule_director_connect(IMediaServiceModule obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void IMediaServiceModule_change_ownership(IMediaServiceModule obj, long cptr, boolean take_or_release);
@@ -13817,6 +15047,28 @@ public class flighthubsdkmoduleJNI {
   public final static native long TerraSelectFilterJavaParams_except_ids_get(long jarg1, TerraSelectFilterJavaParams jarg1_);
   public final static native void TerraSelectFilterJavaParams_key_set(long jarg1, TerraSelectFilterJavaParams jarg1_, String jarg2);
   public final static native String TerraSelectFilterJavaParams_key_get(long jarg1, TerraSelectFilterJavaParams jarg1_);
+  public final static native void TerraSelectFilterJavaParams_get_sub_file_set(long jarg1, TerraSelectFilterJavaParams jarg1_, boolean jarg2);
+  public final static native boolean TerraSelectFilterJavaParams_get_sub_file_get(long jarg1, TerraSelectFilterJavaParams jarg1_);
+  public final static native void TerraSelectFilterJavaParams_start_time_set(long jarg1, TerraSelectFilterJavaParams jarg1_, long jarg2);
+  public final static native long TerraSelectFilterJavaParams_start_time_get(long jarg1, TerraSelectFilterJavaParams jarg1_);
+  public final static native void TerraSelectFilterJavaParams_end_time_set(long jarg1, TerraSelectFilterJavaParams jarg1_, long jarg2);
+  public final static native long TerraSelectFilterJavaParams_end_time_get(long jarg1, TerraSelectFilterJavaParams jarg1_);
+  public final static native void TerraSelectFilterJavaParams_file_all_types_set(long jarg1, TerraSelectFilterJavaParams jarg1_, long jarg2, StringVector jarg2_);
+  public final static native long TerraSelectFilterJavaParams_file_all_types_get(long jarg1, TerraSelectFilterJavaParams jarg1_);
+  public final static native void TerraSelectFilterJavaParams_payload_model_key_set(long jarg1, TerraSelectFilterJavaParams jarg1_, long jarg2, StringVector jarg2_);
+  public final static native long TerraSelectFilterJavaParams_payload_model_key_get(long jarg1, TerraSelectFilterJavaParams jarg1_);
+  public final static native void TerraSelectFilterJavaParams_parent_id_set(long jarg1, TerraSelectFilterJavaParams jarg1_, int jarg2);
+  public final static native int TerraSelectFilterJavaParams_parent_id_get(long jarg1, TerraSelectFilterJavaParams jarg1_);
+  public final static native void TerraSelectFilterJavaParams_file_tags_set(long jarg1, TerraSelectFilterJavaParams jarg1_, long jarg2, StringVector jarg2_);
+  public final static native long TerraSelectFilterJavaParams_file_tags_get(long jarg1, TerraSelectFilterJavaParams jarg1_);
+  public final static native void TerraSelectFilterJavaParams_share_state_set(long jarg1, TerraSelectFilterJavaParams jarg1_, int jarg2);
+  public final static native int TerraSelectFilterJavaParams_share_state_get(long jarg1, TerraSelectFilterJavaParams jarg1_);
+  public final static native void TerraSelectFilterJavaParams_share_state_set_set(long jarg1, TerraSelectFilterJavaParams jarg1_, boolean jarg2);
+  public final static native boolean TerraSelectFilterJavaParams_share_state_set_get(long jarg1, TerraSelectFilterJavaParams jarg1_);
+  public final static native void TerraSelectFilterJavaParams_show_on_map_set(long jarg1, TerraSelectFilterJavaParams jarg1_, boolean jarg2);
+  public final static native boolean TerraSelectFilterJavaParams_show_on_map_get(long jarg1, TerraSelectFilterJavaParams jarg1_);
+  public final static native void TerraSelectFilterJavaParams_show_on_map_set_set(long jarg1, TerraSelectFilterJavaParams jarg1_, boolean jarg2);
+  public final static native boolean TerraSelectFilterJavaParams_show_on_map_set_get(long jarg1, TerraSelectFilterJavaParams jarg1_);
   public final static native long new_TerraSelectFilterJavaParams();
   public final static native void delete_TerraSelectFilterJavaParams(long jarg1);
   public final static native void TerraShowOnMapJavaParams_ids_set(long jarg1, TerraShowOnMapJavaParams jarg1_, long jarg2, IntVector jarg2_);
@@ -13829,6 +15081,20 @@ public class flighthubsdkmoduleJNI {
   public final static native boolean TerraShowOnMapJavaParams_is_distributed_get(long jarg1, TerraShowOnMapJavaParams jarg1_);
   public final static native void TerraShowOnMapJavaParams_is_distributed_set_set(long jarg1, TerraShowOnMapJavaParams jarg1_, boolean jarg2);
   public final static native boolean TerraShowOnMapJavaParams_is_distributed_set_get(long jarg1, TerraShowOnMapJavaParams jarg1_);
+  public final static native void TerraShowOnMapJavaParams_restore_set(long jarg1, TerraShowOnMapJavaParams jarg1_, boolean jarg2);
+  public final static native boolean TerraShowOnMapJavaParams_restore_get(long jarg1, TerraShowOnMapJavaParams jarg1_);
+  public final static native void TerraShowOnMapJavaParams_is_displayed_set(long jarg1, TerraShowOnMapJavaParams jarg1_, boolean jarg2);
+  public final static native boolean TerraShowOnMapJavaParams_is_displayed_get(long jarg1, TerraShowOnMapJavaParams jarg1_);
+  public final static native void TerraShowOnMapJavaParams_is_displayed_set_set(long jarg1, TerraShowOnMapJavaParams jarg1_, boolean jarg2);
+  public final static native boolean TerraShowOnMapJavaParams_is_displayed_set_get(long jarg1, TerraShowOnMapJavaParams jarg1_);
+  public final static native void TerraShowOnMapJavaParams_in_uniform_height_set(long jarg1, TerraShowOnMapJavaParams jarg1_, boolean jarg2);
+  public final static native boolean TerraShowOnMapJavaParams_in_uniform_height_get(long jarg1, TerraShowOnMapJavaParams jarg1_);
+  public final static native void TerraShowOnMapJavaParams_in_uniform_height_set_set(long jarg1, TerraShowOnMapJavaParams jarg1_, boolean jarg2);
+  public final static native boolean TerraShowOnMapJavaParams_in_uniform_height_set_get(long jarg1, TerraShowOnMapJavaParams jarg1_);
+  public final static native void TerraShowOnMapJavaParams_model_display_mod_set(long jarg1, TerraShowOnMapJavaParams jarg1_, int jarg2);
+  public final static native int TerraShowOnMapJavaParams_model_display_mod_get(long jarg1, TerraShowOnMapJavaParams jarg1_);
+  public final static native void TerraShowOnMapJavaParams_model_display_mod_set_set(long jarg1, TerraShowOnMapJavaParams jarg1_, boolean jarg2);
+  public final static native boolean TerraShowOnMapJavaParams_model_display_mod_set_get(long jarg1, TerraShowOnMapJavaParams jarg1_);
   public final static native void TerraShowOnMapJavaParams_select_filter_set(long jarg1, TerraShowOnMapJavaParams jarg1_, long jarg2, TerraSelectFilterJavaParams jarg2_);
   public final static native long TerraShowOnMapJavaParams_select_filter_get(long jarg1, TerraShowOnMapJavaParams jarg1_);
   public final static native void TerraShowOnMapJavaParams_select_filter_set_set(long jarg1, TerraShowOnMapJavaParams jarg1_, boolean jarg2);
@@ -14033,6 +15299,14 @@ public class flighthubsdkmoduleJNI {
   public final static native int ElementPropertiesJavaParams_font_size_get(long jarg1, ElementPropertiesJavaParams jarg1_);
   public final static native void ElementPropertiesJavaParams_icon_set(long jarg1, ElementPropertiesJavaParams jarg1_, int jarg2);
   public final static native int ElementPropertiesJavaParams_icon_get(long jarg1, ElementPropertiesJavaParams jarg1_);
+  public final static native void ElementPropertiesJavaParams_icon_url_set(long jarg1, ElementPropertiesJavaParams jarg1_, String jarg2);
+  public final static native String ElementPropertiesJavaParams_icon_url_get(long jarg1, ElementPropertiesJavaParams jarg1_);
+  public final static native void ElementPropertiesJavaParams_width_set(long jarg1, ElementPropertiesJavaParams jarg1_, int jarg2);
+  public final static native int ElementPropertiesJavaParams_width_get(long jarg1, ElementPropertiesJavaParams jarg1_);
+  public final static native void ElementPropertiesJavaParams_start_cap_set(long jarg1, ElementPropertiesJavaParams jarg1_, int jarg2);
+  public final static native int ElementPropertiesJavaParams_start_cap_get(long jarg1, ElementPropertiesJavaParams jarg1_);
+  public final static native void ElementPropertiesJavaParams_end_cap_set(long jarg1, ElementPropertiesJavaParams jarg1_, int jarg2);
+  public final static native int ElementPropertiesJavaParams_end_cap_get(long jarg1, ElementPropertiesJavaParams jarg1_);
   public final static native long new_ElementPropertiesJavaParams();
   public final static native void delete_ElementPropertiesJavaParams(long jarg1);
   public final static native void ElementMediaImageJavaParams_object_key_set(long jarg1, ElementMediaImageJavaParams jarg1_, String jarg2);
@@ -14211,6 +15485,8 @@ public class flighthubsdkmoduleJNI {
   public final static native int TerraBuildModelFileItem_state_get(long jarg1, TerraBuildModelFileItem jarg1_);
   public final static native void TerraBuildModelFileItem_reconstruction_type_set(long jarg1, TerraBuildModelFileItem jarg1_, long jarg2, IntVector jarg2_);
   public final static native long TerraBuildModelFileItem_reconstruction_type_get(long jarg1, TerraBuildModelFileItem jarg1_);
+  public final static native void TerraBuildModelFileItem_preview_url_set(long jarg1, TerraBuildModelFileItem jarg1_, String jarg2);
+  public final static native String TerraBuildModelFileItem_preview_url_get(long jarg1, TerraBuildModelFileItem jarg1_);
   public final static native void TerraBuildModelFileItem_thumbnail_url_set(long jarg1, TerraBuildModelFileItem jarg1_, String jarg2);
   public final static native String TerraBuildModelFileItem_thumbnail_url_get(long jarg1, TerraBuildModelFileItem jarg1_);
   public final static native void TerraBuildModelFileItem_zip_url_set(long jarg1, TerraBuildModelFileItem jarg1_, String jarg2);
@@ -14305,6 +15581,12 @@ public class flighthubsdkmoduleJNI {
   public final static native long TerraShowOnMapResult_ids_get(long jarg1, TerraShowOnMapResult jarg1_);
   public final static native long new_TerraShowOnMapResult();
   public final static native void delete_TerraShowOnMapResult(long jarg1);
+  public final static native void TerraDeleteModelFilesResult_has_lock_files_set(long jarg1, TerraDeleteModelFilesResult jarg1_, boolean jarg2);
+  public final static native boolean TerraDeleteModelFilesResult_has_lock_files_get(long jarg1, TerraDeleteModelFilesResult jarg1_);
+  public final static native void TerraDeleteModelFilesResult_lock_files_set(long jarg1, TerraDeleteModelFilesResult jarg1_, long jarg2, StringVector jarg2_);
+  public final static native long TerraDeleteModelFilesResult_lock_files_get(long jarg1, TerraDeleteModelFilesResult jarg1_);
+  public final static native long new_TerraDeleteModelFilesResult();
+  public final static native void delete_TerraDeleteModelFilesResult(long jarg1);
   public final static native void TerraUnzipProgressMsg_file_id_set(long jarg1, TerraUnzipProgressMsg jarg1_, long jarg2);
   public final static native long TerraUnzipProgressMsg_file_id_get(long jarg1, TerraUnzipProgressMsg jarg1_);
   public final static native void TerraUnzipProgressMsg_uuid_set(long jarg1, TerraUnzipProgressMsg jarg1_, String jarg2);
@@ -14411,6 +15693,24 @@ public class flighthubsdkmoduleJNI {
   public final static native long TerraSelectFilterParams_except_ids_get(long jarg1, TerraSelectFilterParams jarg1_);
   public final static native void TerraSelectFilterParams_key_set(long jarg1, TerraSelectFilterParams jarg1_, String jarg2);
   public final static native String TerraSelectFilterParams_key_get(long jarg1, TerraSelectFilterParams jarg1_);
+  public final static native void TerraSelectFilterParams_get_sub_file_set(long jarg1, TerraSelectFilterParams jarg1_, boolean jarg2);
+  public final static native boolean TerraSelectFilterParams_get_sub_file_get(long jarg1, TerraSelectFilterParams jarg1_);
+  public final static native void TerraSelectFilterParams_start_time_set(long jarg1, TerraSelectFilterParams jarg1_, long jarg2);
+  public final static native long TerraSelectFilterParams_start_time_get(long jarg1, TerraSelectFilterParams jarg1_);
+  public final static native void TerraSelectFilterParams_end_time_set(long jarg1, TerraSelectFilterParams jarg1_, long jarg2);
+  public final static native long TerraSelectFilterParams_end_time_get(long jarg1, TerraSelectFilterParams jarg1_);
+  public final static native void TerraSelectFilterParams_file_all_types_set(long jarg1, TerraSelectFilterParams jarg1_, long jarg2, StringVector jarg2_);
+  public final static native long TerraSelectFilterParams_file_all_types_get(long jarg1, TerraSelectFilterParams jarg1_);
+  public final static native void TerraSelectFilterParams_payload_model_key_set(long jarg1, TerraSelectFilterParams jarg1_, long jarg2, StringVector jarg2_);
+  public final static native long TerraSelectFilterParams_payload_model_key_get(long jarg1, TerraSelectFilterParams jarg1_);
+  public final static native void TerraSelectFilterParams_parent_id_set(long jarg1, TerraSelectFilterParams jarg1_, int jarg2);
+  public final static native int TerraSelectFilterParams_parent_id_get(long jarg1, TerraSelectFilterParams jarg1_);
+  public final static native void TerraSelectFilterParams_file_tags_set(long jarg1, TerraSelectFilterParams jarg1_, long jarg2, StringVector jarg2_);
+  public final static native long TerraSelectFilterParams_file_tags_get(long jarg1, TerraSelectFilterParams jarg1_);
+  public final static native void TerraSelectFilterParams_share_state_set(long jarg1, TerraSelectFilterParams jarg1_, long jarg2);
+  public final static native long TerraSelectFilterParams_share_state_get(long jarg1, TerraSelectFilterParams jarg1_);
+  public final static native void TerraSelectFilterParams_show_on_map_set(long jarg1, TerraSelectFilterParams jarg1_, long jarg2);
+  public final static native long TerraSelectFilterParams_show_on_map_get(long jarg1, TerraSelectFilterParams jarg1_);
   public final static native long new_TerraSelectFilterParams();
   public final static native void delete_TerraSelectFilterParams(long jarg1);
   public final static native void TerraShowOnMapParams_ids_set(long jarg1, TerraShowOnMapParams jarg1_, long jarg2, IntVector jarg2_);
@@ -14419,6 +15719,14 @@ public class flighthubsdkmoduleJNI {
   public final static native long TerraShowOnMapParams_show_on_map_get(long jarg1, TerraShowOnMapParams jarg1_);
   public final static native void TerraShowOnMapParams_is_distributed_set(long jarg1, TerraShowOnMapParams jarg1_, long jarg2);
   public final static native long TerraShowOnMapParams_is_distributed_get(long jarg1, TerraShowOnMapParams jarg1_);
+  public final static native void TerraShowOnMapParams_restore_set(long jarg1, TerraShowOnMapParams jarg1_, boolean jarg2);
+  public final static native boolean TerraShowOnMapParams_restore_get(long jarg1, TerraShowOnMapParams jarg1_);
+  public final static native void TerraShowOnMapParams_is_displayed_set(long jarg1, TerraShowOnMapParams jarg1_, long jarg2);
+  public final static native long TerraShowOnMapParams_is_displayed_get(long jarg1, TerraShowOnMapParams jarg1_);
+  public final static native void TerraShowOnMapParams_in_uniform_height_set(long jarg1, TerraShowOnMapParams jarg1_, long jarg2);
+  public final static native long TerraShowOnMapParams_in_uniform_height_get(long jarg1, TerraShowOnMapParams jarg1_);
+  public final static native void TerraShowOnMapParams_model_display_mod_set(long jarg1, TerraShowOnMapParams jarg1_, long jarg2);
+  public final static native long TerraShowOnMapParams_model_display_mod_get(long jarg1, TerraShowOnMapParams jarg1_);
   public final static native void TerraShowOnMapParams_select_filter_set(long jarg1, TerraShowOnMapParams jarg1_, long jarg2);
   public final static native long TerraShowOnMapParams_select_filter_get(long jarg1, TerraShowOnMapParams jarg1_);
   public final static native long new_TerraShowOnMapParams();
@@ -14450,6 +15758,8 @@ public class flighthubsdkmoduleJNI {
   public final static native void ITerraBuildModule_createReconstructionWithParamsWrapper(long jarg1, ITerraBuildModule jarg1_, long jarg2, CreateReconstructionJavaParams jarg2_, long jarg3, TerraBuildCreateReconstructionCallback jarg3_);
   public final static native void ITerraBuildModule_deleteModelFileWrapper(long jarg1, ITerraBuildModule jarg1_, int jarg2, long jarg3, ResultCallback jarg3_);
   public final static native void ITerraBuildModule_batchDeleteModelFilesWrapper(long jarg1, ITerraBuildModule jarg1_, long jarg2, IntVector jarg2_, long jarg3, ResultCallback jarg3_);
+  public final static native void ITerraBuildModule_deleteModelFileWithResultWrapper(long jarg1, ITerraBuildModule jarg1_, int jarg2, long jarg3, TerraDeleteModelFilesCallback jarg3_);
+  public final static native void ITerraBuildModule_batchDeleteModelFilesWithResultWrapper(long jarg1, ITerraBuildModule jarg1_, long jarg2, IntVector jarg2_, long jarg3, TerraDeleteModelFilesCallback jarg3_);
   public final static native void ITerraBuildModule_createPanoramaWrapper(long jarg1, ITerraBuildModule jarg1_, String jarg2, long jarg3, StringVector jarg3_, String jarg4, boolean jarg5, long jarg6, TerraBuildCreatePanoramaCallback jarg6_);
   public final static native void ITerraBuildModule_getReconstructionImagesWrapper(long jarg1, ITerraBuildModule jarg1_, String jarg2, long jarg3, TerraBuildReconstructionImagesCallback jarg3_);
   public final static native int ITerraBuildModule_listenReconstructionStatusChangedWrapper(long jarg1, ITerraBuildModule jarg1_, long jarg2, TerraBuildReconstructionStatusChangedCallback jarg2_);
@@ -14480,6 +15790,7 @@ public class flighthubsdkmoduleJNI {
   public final static native void ISafetyServiceModule_deleteCustomizedFlightAreasWrapper(long jarg1, ISafetyServiceModule jarg1_, String jarg2, long jarg3, ResultCallbackWithError jarg3_);
   public final static native void ISafetyServiceModule_syncCustomizedFlightAreasWrapper(long jarg1, ISafetyServiceModule jarg1_, long jarg2, StringVector jarg2_, long jarg3, SyncCustomizedFlightAreasCallback jarg3_);
   public final static native void ISafetyServiceModule_getFlightAreasSyncStatusWrapper(long jarg1, ISafetyServiceModule jarg1_, long jarg2, StringVector jarg2_, long jarg3, GetFlightAreasSyncStatusCallback jarg3_);
+  public final static native void ISafetyServiceModule_getFlightAreasUrlWrapper(long jarg1, ISafetyServiceModule jarg1_, long jarg2, GetFlightAreasUrlCallback jarg2_);
   public final static native void ISafetyServiceModule_getOfflineMapsModelInfoWrapper(long jarg1, ISafetyServiceModule jarg1_, long jarg2, GetOfflineMapsModelInfoCallback jarg2_);
   public final static native void ISafetyServiceModule_updateOfflineMapsModelInfoWrapper(long jarg1, ISafetyServiceModule jarg1_, long jarg2, UpdateOfflineMapsParams jarg2_, long jarg3, ResultCallbackWithError jarg3_);
   public final static native void ISafetyServiceModule_cancelOfflineMapsModelInfoWrapper(long jarg1, ISafetyServiceModule jarg1_, long jarg2, ResultCallbackWithError jarg2_);
@@ -14549,9 +15860,10 @@ public class flighthubsdkmoduleJNI {
   public final static native void IFirmwareManageModule_change_ownership(IFirmwareManageModule obj, long cptr, boolean take_or_release);
   public final static native void delete_IPsdkResourceModule(long jarg1);
   public final static native void IPsdkResourceModule_getPsdkSpeakerResourceListWrapper(long jarg1, IPsdkResourceModule jarg1_, long jarg2, PsdkSpeakerResourceListCallback jarg2_);
+  public final static native void IPsdkResourceModule_getPsdkSpeakerResourceListWithFilterWrapper(long jarg1, IPsdkResourceModule jarg1_, long jarg2, PsdkSpeakerResourceListParams jarg2_, long jarg3, PsdkSpeakerResourceListCallback jarg3_);
   public final static native void IPsdkResourceModule_createPsdkSpeakerResourceWrapper(long jarg1, IPsdkResourceModule jarg1_, long jarg2, CreatePsdkSpeakerResourceParams jarg2_, long jarg3, PsdkSpeakerResourceCallback jarg3_);
   public final static native void IPsdkResourceModule_editPsdkSpeakerResourceWrapper(long jarg1, IPsdkResourceModule jarg1_, long jarg2, EditPsdkSpeakerResourceParams jarg2_, long jarg3, PsdkSpeakerResourceCallback jarg3_);
-  public final static native void IPsdkResourceModule_deletePsdkSpeakerResourceWrapper(long jarg1, IPsdkResourceModule jarg1_, int jarg2, long jarg3, ResultCallbackWithError jarg3_);
+  public final static native void IPsdkResourceModule_deletePsdkSpeakerResourceWrapper(long jarg1, IPsdkResourceModule jarg1_, long jarg2, long jarg3, ResultCallbackWithError jarg3_);
   public final static native void IPsdkResourceModule_getSTSWrapper(long jarg1, IPsdkResourceModule jarg1_, long jarg2, STSInfoCallback jarg2_);
   public final static native void IPsdkResourceModule_uploadSpeakerAudioFileWrapper(long jarg1, IPsdkResourceModule jarg1_, String jarg2, long jarg3, STSInfo jarg3_, long jarg4, ResultCallbackWithError jarg4_);
   public final static native void IPsdkResourceModule_getPsdkWidgetResourcesWrapper(long jarg1, IPsdkResourceModule jarg1_, long jarg2, GetPsdkWidgetResourceParams jarg2_, long jarg3, PsdkWidgetResourceListCallback jarg3_);
@@ -14566,6 +15878,12 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_IFlashLedModule();
   public final static native void IFlashLedModule_director_connect(IFlashLedModule obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void IFlashLedModule_change_ownership(IFlashLedModule obj, long cptr, boolean take_or_release);
+  public final static native void delete_IAutoRecordModule(long jarg1);
+  public final static native void IAutoRecordModule_getAutoRecordConfigWrapper(long jarg1, IAutoRecordModule jarg1_, long jarg2, AutoRecordConfigCallback jarg2_);
+  public final static native void IAutoRecordModule_saveAutoRecordConfigWrapper(long jarg1, IAutoRecordModule jarg1_, long jarg2, SaveAutoRecordConfigParams jarg2_, long jarg3, ResultCallbackWithError jarg3_);
+  public final static native long new_IAutoRecordModule();
+  public final static native void IAutoRecordModule_director_connect(IAutoRecordModule obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void IAutoRecordModule_change_ownership(IAutoRecordModule obj, long cptr, boolean take_or_release);
   public final static native void delete_IWaylineManageModule(long jarg1);
   public final static native void IWaylineManageModule_getWaylineListWrapper(long jarg1, IWaylineManageModule jarg1_, long jarg2, GetWaylineListParam jarg2_, long jarg3, GetWaylineListCallback jarg3_);
   public final static native void IWaylineManageModule_getWaylineDetailWrapper(long jarg1, IWaylineManageModule jarg1_, String jarg2, long jarg3, GetWaylineDetailCallback jarg3_);
@@ -14602,6 +15920,9 @@ public class flighthubsdkmoduleJNI {
   public final static native void IAIAlertModule_getAlgorithmSettingWrapper(long jarg1, IAIAlertModule jarg1_, long jarg2, GetAiAlertAlgorithmSettingParam jarg2_, long jarg3, GetAiAlertAlgorithmSettingCallback jarg3_);
   public final static native void IAIAlertModule_getAiAlertFlightsWrapper(long jarg1, IAIAlertModule jarg1_, long jarg2, GetAiAlertFlightsParam jarg2_, long jarg3, GetAiAlertFlightsCallback jarg3_);
   public final static native void IAIAlertModule_getAiAlertRecordsWrapper(long jarg1, IAIAlertModule jarg1_, long jarg2, GetAiAlertRecordsParam jarg2_, long jarg3, GetAiAlertRecordsCallback jarg3_);
+  public final static native int IAIAlertModule_listenAiAlertRecordsWrapper(long jarg1, IAIAlertModule jarg1_, String jarg2, long jarg3, AiAlertRecordsNotifyCallback jarg3_);
+  public final static native void IAIAlertModule_cancelListenAiAlertRecordsWrapper(long jarg1, IAIAlertModule jarg1_, int jarg2);
+  public final static native void IAIAlertModule_deleteAiAlertRecordWrapper(long jarg1, IAIAlertModule jarg1_, long jarg2, DeleteAiAlertRecordParam jarg2_, long jarg3, ResultCallbackWithError jarg3_);
   public final static native long new_IAIAlertModule();
   public final static native void IAIAlertModule_director_connect(IAIAlertModule obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void IAIAlertModule_change_ownership(IAIAlertModule obj, long cptr, boolean take_or_release);
@@ -14632,6 +15953,14 @@ public class flighthubsdkmoduleJNI {
   public final static native int ElementProperties_font_size_get(long jarg1, ElementProperties jarg1_);
   public final static native void ElementProperties_icon_set(long jarg1, ElementProperties jarg1_, int jarg2);
   public final static native int ElementProperties_icon_get(long jarg1, ElementProperties jarg1_);
+  public final static native void ElementProperties_icon_url_set(long jarg1, ElementProperties jarg1_, String jarg2);
+  public final static native String ElementProperties_icon_url_get(long jarg1, ElementProperties jarg1_);
+  public final static native void ElementProperties_width_set(long jarg1, ElementProperties jarg1_, int jarg2);
+  public final static native int ElementProperties_width_get(long jarg1, ElementProperties jarg1_);
+  public final static native void ElementProperties_start_cap_set(long jarg1, ElementProperties jarg1_, int jarg2);
+  public final static native int ElementProperties_start_cap_get(long jarg1, ElementProperties jarg1_);
+  public final static native void ElementProperties_end_cap_set(long jarg1, ElementProperties jarg1_, int jarg2);
+  public final static native int ElementProperties_end_cap_get(long jarg1, ElementProperties jarg1_);
   public final static native long new_ElementProperties();
   public final static native void delete_ElementProperties(long jarg1);
   public final static native void ElementGeoPoint_lng_set(long jarg1, ElementGeoPoint jarg1_, double jarg2);
@@ -14658,6 +15987,16 @@ public class flighthubsdkmoduleJNI {
   public final static native int ElementMediaImage_media_file_id_get(long jarg1, ElementMediaImage jarg1_);
   public final static native void ElementMediaImage_media_file_uuid_set(long jarg1, ElementMediaImage jarg1_, String jarg2);
   public final static native String ElementMediaImage_media_file_uuid_get(long jarg1, ElementMediaImage jarg1_);
+  public final static native void ElementMediaImage_url_set(long jarg1, ElementMediaImage jarg1_, String jarg2);
+  public final static native String ElementMediaImage_url_get(long jarg1, ElementMediaImage jarg1_);
+  public final static native void ElementMediaImage_preview_url_set(long jarg1, ElementMediaImage jarg1_, String jarg2);
+  public final static native String ElementMediaImage_preview_url_get(long jarg1, ElementMediaImage jarg1_);
+  public final static native void ElementMediaImage_webp_url_set(long jarg1, ElementMediaImage jarg1_, String jarg2);
+  public final static native String ElementMediaImage_webp_url_get(long jarg1, ElementMediaImage jarg1_);
+  public final static native void ElementMediaImage_file_type_set(long jarg1, ElementMediaImage jarg1_, int jarg2);
+  public final static native int ElementMediaImage_file_type_get(long jarg1, ElementMediaImage jarg1_);
+  public final static native void ElementMediaImage_sub_file_type_set(long jarg1, ElementMediaImage jarg1_, int jarg2);
+  public final static native int ElementMediaImage_sub_file_type_get(long jarg1, ElementMediaImage jarg1_);
   public final static native long new_ElementMediaImage();
   public final static native void delete_ElementMediaImage(long jarg1);
   public final static native void ElementMediaResources_images_set(long jarg1, ElementMediaResources jarg1_, long jarg2, ElementMediaImageVector jarg2_);
@@ -14956,6 +16295,7 @@ public class flighthubsdkmoduleJNI {
   public final static native long IWorkspace_getWaylineManageModule(long jarg1, IWorkspace jarg1_);
   public final static native long IWorkspace_getPsdkResourceModule(long jarg1, IWorkspace jarg1_);
   public final static native long IWorkspace_getFlashLedModule(long jarg1, IWorkspace jarg1_);
+  public final static native long IWorkspace_getAutoRecordModule(long jarg1, IWorkspace jarg1_);
   public final static native long IWorkspace_getTerraBuildModule(long jarg1, IWorkspace jarg1_);
   public final static native long IWorkspace_getAIInsideManageModule(long jarg1, IWorkspace jarg1_);
   public final static native long IWorkspace_getElementModule(long jarg1, IWorkspace jarg1_);
@@ -14964,6 +16304,46 @@ public class flighthubsdkmoduleJNI {
   public final static native long new_IWorkspace();
   public final static native void IWorkspace_director_connect(IWorkspace obj, long cptr, boolean mem_own, boolean weak_global);
   public final static native void IWorkspace_change_ownership(IWorkspace obj, long cptr, boolean take_or_release);
+  public final static native void SessionConfig_node_id_set(long jarg1, SessionConfig jarg1_, String jarg2);
+  public final static native String SessionConfig_node_id_get(long jarg1, SessionConfig jarg1_);
+  public final static native void SessionConfig_display_name_set(long jarg1, SessionConfig jarg1_, String jarg2);
+  public final static native String SessionConfig_display_name_get(long jarg1, SessionConfig jarg1_);
+  public final static native long new_SessionConfig__SWIG_0();
+  public final static native long new_SessionConfig__SWIG_1(String jarg1);
+  public final static native void delete_SessionConfig(long jarg1);
+  public final static native void SessionInfo_session_id_set(long jarg1, SessionInfo jarg1_, int jarg2);
+  public final static native int SessionInfo_session_id_get(long jarg1, SessionInfo jarg1_);
+  public final static native void SessionInfo_node_id_set(long jarg1, SessionInfo jarg1_, String jarg2);
+  public final static native String SessionInfo_node_id_get(long jarg1, SessionInfo jarg1_);
+  public final static native void SessionInfo_display_name_set(long jarg1, SessionInfo jarg1_, String jarg2);
+  public final static native String SessionInfo_display_name_get(long jarg1, SessionInfo jarg1_);
+  public final static native void SessionInfo_notify_url_set(long jarg1, SessionInfo jarg1_, String jarg2);
+  public final static native String SessionInfo_notify_url_get(long jarg1, SessionInfo jarg1_);
+  public final static native String SessionInfo_ToString(long jarg1, SessionInfo jarg1_);
+  public final static native long new_SessionInfo();
+  public final static native void delete_SessionInfo(long jarg1);
+  public final static native int kDefaultSessionId_get();
+  public final static native void delete_ISessionManager(long jarg1);
+  public final static native int ISessionManager_registerSession(long jarg1, ISessionManager jarg1_, long jarg2, SessionConfig jarg2_);
+  public final static native long ISessionManager_getAllSessionInfo(long jarg1, ISessionManager jarg1_);
+  public final static native long new_ISessionManager();
+  public final static native void ISessionManager_director_connect(ISessionManager obj, long cptr, boolean mem_own, boolean weak_global);
+  public final static native void ISessionManager_change_ownership(ISessionManager obj, long cptr, boolean take_or_release);
+  public final static native long new_SessionInfoVector__SWIG_0();
+  public final static native long new_SessionInfoVector__SWIG_1(long jarg1, SessionInfoVector jarg1_);
+  public final static native boolean SessionInfoVector_isEmpty(long jarg1, SessionInfoVector jarg1_);
+  public final static native void SessionInfoVector_clear(long jarg1, SessionInfoVector jarg1_);
+  public final static native long new_SessionInfoVector__SWIG_2(int jarg1, long jarg2, SessionInfo jarg2_);
+  public final static native int SessionInfoVector_doCapacity(long jarg1, SessionInfoVector jarg1_);
+  public final static native void SessionInfoVector_doReserve(long jarg1, SessionInfoVector jarg1_, int jarg2);
+  public final static native int SessionInfoVector_doSize(long jarg1, SessionInfoVector jarg1_);
+  public final static native void SessionInfoVector_doAdd__SWIG_0(long jarg1, SessionInfoVector jarg1_, long jarg2, SessionInfo jarg2_);
+  public final static native void SessionInfoVector_doAdd__SWIG_1(long jarg1, SessionInfoVector jarg1_, int jarg2, long jarg3, SessionInfo jarg3_);
+  public final static native long SessionInfoVector_doRemove(long jarg1, SessionInfoVector jarg1_, int jarg2);
+  public final static native long SessionInfoVector_doGet(long jarg1, SessionInfoVector jarg1_, int jarg2);
+  public final static native long SessionInfoVector_doSet(long jarg1, SessionInfoVector jarg1_, int jarg2, long jarg3, SessionInfo jarg3_);
+  public final static native void SessionInfoVector_doRemoveRange(long jarg1, SessionInfoVector jarg1_, int jarg2, int jarg3);
+  public final static native void delete_SessionInfoVector(long jarg1);
   public final static native void delete_FlightHubSdk(long jarg1);
   public final static native int FlightHubSdk_initialize__SWIG_0(long jarg1, FlightHubSdkConfig jarg1_);
   public final static native int FlightHubSdk_initialize__SWIG_1();
@@ -14977,13 +16357,21 @@ public class flighthubsdkmoduleJNI {
   public final static native long FlightHubSdk_getWebSocketAuthHeaders();
   public final static native int FlightHubSdk_setHttpHeaders(long jarg1, HeaderKeyValueVector jarg1_);
   public final static native long FlightHubSdk_getHttpHeaders();
-  public final static native long FlightHubSdk_getWorkspaceInstance();
-  public final static native long FlightHubSdk_getDroneInstance(String jarg1);
-  public final static native long FlightHubSdk_getDockInstance(String jarg1);
-  public final static native long FlightHubSdk_getRemoteControllerInstance(String jarg1);
-  public final static native long FlightHubSdk_getBaseStationInstance(String jarg1);
-  public final static native long FlightHubSdk_getRelayInstance(String jarg1);
+  public final static native long FlightHubSdk_getWorkspaceInstance__SWIG_0();
+  public final static native long FlightHubSdk_getWorkspaceInstance__SWIG_1(int jarg1);
+  public final static native long FlightHubSdk_getDroneInstance__SWIG_0(String jarg1);
+  public final static native long FlightHubSdk_getDroneInstance__SWIG_1(int jarg1, String jarg2);
+  public final static native long FlightHubSdk_getDockInstance__SWIG_0(String jarg1);
+  public final static native long FlightHubSdk_getDockInstance__SWIG_1(int jarg1, String jarg2);
+  public final static native long FlightHubSdk_getRemoteControllerInstance__SWIG_0(String jarg1);
+  public final static native long FlightHubSdk_getRemoteControllerInstance__SWIG_1(int jarg1, String jarg2);
+  public final static native long FlightHubSdk_getBaseStationInstance__SWIG_0(String jarg1);
+  public final static native long FlightHubSdk_getBaseStationInstance__SWIG_1(int jarg1, String jarg2);
+  public final static native long FlightHubSdk_getRelayInstance__SWIG_0(String jarg1);
+  public final static native long FlightHubSdk_getRelayInstance__SWIG_1(int jarg1, String jarg2);
   public final static native long FlightHubSdk_getStream();
+  public final static native long FlightHubSdk_getCascadeModule();
+  public final static native long FlightHubSdk_getSessionManager();
   public final static native int FlightHubSdk_injectRtcChannelManager(long jarg1);
   public final static native int FlightHubSdk_injectMqttClientManager(long jarg1);
   public final static native int FlightHubSdk_injectWebSocket(long jarg1);
@@ -14993,6 +16381,9 @@ public class flighthubsdkmoduleJNI {
 
   public static void SwigDirector_HmsDataCallback_onHmsData(HmsDataCallback jself, long hms_data) {
     jself.onHmsData(new HmsData(hms_data, false));
+  }
+  public static void SwigDirector_AirsenseWarningCallback_onAirsenseWarning(AirsenseWarningCallback jself, long msg) {
+    jself.onAirsenseWarning(new AirsenseWarning(msg, false));
   }
   public static void SwigDirector_AircraftPayloadsOsdInfoListCallback_onAircraftPayloadsOsdInfoList(AircraftPayloadsOsdInfoListCallback jself, long payloads_list) {
     jself.onAircraftPayloadsOsdInfoList(new AircraftPayloadsOsdInfoList(payloads_list, false));
@@ -15093,6 +16484,9 @@ public class flighthubsdkmoduleJNI {
   public static void SwigDirector_ResultCallbackWithError_onResult(ResultCallbackWithError jself, long err) {
     jself.onResult(new FlightHubError(err, false));
   }
+  public static void SwigDirector_ControlAuthResultCallback_onResult(ControlAuthResultCallback jself, long err, long result) {
+    jself.onResult(new FlightHubError(err, false), new ControlAuthResult(result, false));
+  }
   public static void SwigDirector_LiveStreamStartCallback_onResult(LiveStreamStartCallback jself, long err, long result) {
     jself.onResult(new FlightHubError(err, true), new LiveStreamStartResult(result, false));
   }
@@ -15104,6 +16498,9 @@ public class flighthubsdkmoduleJNI {
   }
   public static void SwigDirector_FlyToPointStartCallback_onFlyToPointStart(FlyToPointStartCallback jself, long err, String fly_to_id) {
     jself.onFlyToPointStart(new FlightHubError(err, true), fly_to_id);
+  }
+  public static void SwigDirector_FlyToPointStartResultCallback_onFlyToPointStartResult(FlyToPointStartResultCallback jself, long err, long result) {
+    jself.onFlyToPointStartResult(new FlightHubError(err, true), new FlyToPointStartResult(result, false));
   }
   public static void SwigDirector_FlyToDroneSelfPlanPathCallback_onFlyToDroneSelfPlanPath(FlyToDroneSelfPlanPathCallback jself, long fly_to_drone_self_plan_path) {
     jself.onFlyToDroneSelfPlanPath(new FlyToDroneSelfPlanPath(fly_to_drone_self_plan_path, false));
@@ -15146,6 +16543,9 @@ public class flighthubsdkmoduleJNI {
   }
   public static void SwigDirector_TakeoffResultCallback_onResult(TakeoffResultCallback jself, long err, long result) {
     jself.onResult(new FlightHubError(err, false), new TakeoffResult(result, false));
+  }
+  public static void SwigDirector_GroundTakeoffResultCallback_onResult(GroundTakeoffResultCallback jself, long err, long result) {
+    jself.onResult(new FlightHubError(err, false), new GroundTakeoffResult(result, false));
   }
   public static void SwigDirector_CreateInFlightWaylineTaskCallback_onResult(CreateInFlightWaylineTaskCallback jself, long result, long err) {
     jself.onResult(new CreateInFlightWaylineTaskResult(result, false), new FlightHubError(err, false));
@@ -15251,6 +16651,9 @@ public class flighthubsdkmoduleJNI {
   }
   public static void SwigDirector_GetFlightTaskTrackCallback_onGetFlightTaskTrack(GetFlightTaskTrackCallback jself, long err, long results) {
     jself.onGetFlightTaskTrack(new FlightHubError(err, true), new GetFlightTaskTrackResults(results, false));
+  }
+  public static void SwigDirector_GetFlightRisksCallback_onGetFlightRisks(GetFlightRisksCallback jself, long err, long results) {
+    jself.onGetFlightRisks(new FlightHubError(err, true), new GetFlightRisksResults(results, false));
   }
   public static void SwigDirector_CreateFlightTaskCallback_onCreateFlightTask(CreateFlightTaskCallback jself, long err, long result) {
     jself.onCreateFlightTask(new FlightHubError(err, true), new CreateTaskResp(result, false));
@@ -15368,6 +16771,12 @@ public class flighthubsdkmoduleJNI {
   }
   public static void SwigDirector_WaylineTaskEventCallback_onWaylineTaskEvent(WaylineTaskEventCallback jself, long event) {
     jself.onWaylineTaskEvent(new WaylineTaskEvent(event, false));
+  }
+  public static void SwigDirector_ReturnHomeInfoEventCallback_onReturnHomeInfoEvent(ReturnHomeInfoEventCallback jself, long event) {
+    jself.onReturnHomeInfoEvent(new ReturnHomeInfoEvent(event, false));
+  }
+  public static void SwigDirector_TaskExceptionEventCallback_onTaskExceptionEvent(TaskExceptionEventCallback jself, long event) {
+    jself.onTaskExceptionEvent(new TaskExceptionEvent(event, false));
   }
   public static void SwigDirector_DockLocationCallback_onDockLocation(DockLocationCallback jself, long location) {
     jself.onDockLocation(new DockLocation(location, false));
@@ -15591,6 +17000,15 @@ public class flighthubsdkmoduleJNI {
   public static void SwigDirector_GetMediaFileDetailByIdCallback_onGetMediaFileDetailById(GetMediaFileDetailByIdCallback jself, long err, long result) {
     jself.onGetMediaFileDetailById(new FlightHubError(err, true), new GetMediaFileDetailByIdResult(result, false));
   }
+  public static void SwigDirector_PanoStitchActionCallback_onPanoStitchAction(PanoStitchActionCallback jself, long err) {
+    jself.onPanoStitchAction(new FlightHubError(err, true));
+  }
+  public static void SwigDirector_GetPanoTierTileUrlCallback_onGetPanoTierTileUrl(GetPanoTierTileUrlCallback jself, long err, long result) {
+    jself.onGetPanoTierTileUrl(new FlightHubError(err, true), new GetPanoTierTileUrlResult(result, false));
+  }
+  public static void SwigDirector_PanoStitchProgressCallback_onPanoStitchProgress(PanoStitchProgressCallback jself, long msg) {
+    jself.onPanoStitchProgress(new PanoStitchProgressMsg(msg, false));
+  }
   public static void SwigDirector_GetWaylineEditorStsCallback_onGetWaylineEditorSts(GetWaylineEditorStsCallback jself, long err, long result) {
     jself.onGetWaylineEditorSts(new FlightHubError(err, true), new GetWaylineEditorStsResult(result, false));
   }
@@ -15651,6 +17069,9 @@ public class flighthubsdkmoduleJNI {
   public static void SwigDirector_TerraShowOnMapCallback_onTerraShowOnMap(TerraShowOnMapCallback jself, long err, long result) {
     jself.onTerraShowOnMap(new FlightHubError(err, true), new TerraShowOnMapResult(result, false));
   }
+  public static void SwigDirector_TerraDeleteModelFilesCallback_onTerraDeleteModelFiles(TerraDeleteModelFilesCallback jself, long err, long result) {
+    jself.onTerraDeleteModelFiles(new FlightHubError(err, true), new TerraDeleteModelFilesResult(result, false));
+  }
   public static void SwigDirector_TerraUnzipProgressCallback_onTerraUnzipProgress(TerraUnzipProgressCallback jself, long msg) {
     jself.onTerraUnzipProgress(new TerraUnzipProgressMsg(msg, false));
   }
@@ -15689,6 +17110,9 @@ public class flighthubsdkmoduleJNI {
   }
   public static void SwigDirector_GetFlightAreasSyncStatusCallback_onGetFlightAreasSyncStatus(GetFlightAreasSyncStatusCallback jself, long err, long result) {
     jself.onGetFlightAreasSyncStatus(new FlightHubError(err, true), new GetAreasSyncStatusResults(result, false));
+  }
+  public static void SwigDirector_GetFlightAreasUrlCallback_onGetFlightAreasUrl(GetFlightAreasUrlCallback jself, long err, long result) {
+    jself.onGetFlightAreasUrl(new FlightHubError(err, true), new GetFlightAreasUrlResults(result, false));
   }
   public static void SwigDirector_GetOfflineMapsModelInfoCallback_onGetOfflineMapsModelInfo(GetOfflineMapsModelInfoCallback jself, long err, long result) {
     jself.onGetOfflineMapsModelInfo(new FlightHubError(err, true), new GetOfflineMapsModelInfoResults(result, false));
@@ -15924,6 +17348,9 @@ public class flighthubsdkmoduleJNI {
   public static void SwigDirector_GetAiAlertRecordsCallback_onGetAiAlertRecords(GetAiAlertRecordsCallback jself, long err, long result) {
     jself.onGetAiAlertRecords(new FlightHubError(err, true), new GetAiAlertRecordsResult(result, true));
   }
+  public static void SwigDirector_AiAlertRecordsNotifyCallback_onAiAlertRecordsNotify(AiAlertRecordsNotifyCallback jself, long result) {
+    jself.onAiAlertRecordsNotify(new AiAlertRecordsNotifyResult(result, true));
+  }
   public static void SwigDirector_CreateLiveSyncCallback_onCreateLiveSync(CreateLiveSyncCallback jself, long err, long result) {
     jself.onCreateLiveSync(new FlightHubError(err, true), new LiveSyncCreateResult(result, true));
   }
@@ -16020,27 +17447,6 @@ public class flighthubsdkmoduleJNI {
   public static void SwigDirector_OperateAppCallback_onOperateApp(OperateAppCallback jself, long err, long results) {
     jself.onOperateApp(new FlightHubError(err, true), new OperateAppResults(results, true));
   }
-  public static void SwigDirector_DockDeparturePointCallback_onDockDeparturePoint(DockDeparturePointCallback jself, long msg) {
-    jself.onDockDeparturePoint(new DockDeparturePoint(msg, false));
-  }
-  public static void SwigDirector_AircraftVisualScoutStatusCallback_onAircraftVisualScoutStatus(AircraftVisualScoutStatusCallback jself, long msg) {
-    jself.onAircraftVisualScoutStatus(new AircraftVisualScoutStatus(msg, false));
-  }
-  public static void SwigDirector_AircraftVisualScoutAbnormalInfoCallback_onAircraftVisualScoutAbnormalInfo(AircraftVisualScoutAbnormalInfoCallback jself, long msg) {
-    jself.onAircraftVisualScoutAbnormalInfo(new AircraftVisualScoutAbnormalInfo(msg, false));
-  }
-  public static void SwigDirector_AircraftVisualScoutObstacleInfoCallback_onAircraftVisualScoutObstacleInfo(AircraftVisualScoutObstacleInfoCallback jself, long msg) {
-    jself.onAircraftVisualScoutObstacleInfo(new AircraftVisualScoutObstacleInfo(msg, false));
-  }
-  public static void SwigDirector_EphemerisDownloadStateCallback_onEphemerisDownloadState(EphemerisDownloadStateCallback jself, long msg) {
-    jself.onEphemerisDownloadState(new EphemerisDownloadState(msg, false));
-  }
-  public static void SwigDirector_EphemerisInfoCallback_onEphemerisInfo(EphemerisInfoCallback jself, long msg) {
-    jself.onEphemerisInfo(new EphemerisInfo(msg, false));
-  }
-  public static void SwigDirector_InOutWaylineFlightSettingResultCallback_onResult(InOutWaylineFlightSettingResultCallback jself, long params, long err) {
-    jself.onResult(new InOutWaylineFlightSettingParams(params, false), new FlightHubError(err, true));
-  }
   public static void SwigDirector_DeviceOtaProgressCallback_onDeviceOtaProgress(DeviceOtaProgressCallback jself, long msg) {
     jself.onDeviceOtaProgress(new DeviceOtaProgress(msg, false));
   }
@@ -16052,6 +17458,15 @@ public class flighthubsdkmoduleJNI {
   }
   public static void SwigDirector_PsdkSpeakerTtsPlayStartProgressCallback_onPsdkSpeakerTtsPlayStartProgress(PsdkSpeakerTtsPlayStartProgressCallback jself, long msg) {
     jself.onPsdkSpeakerTtsPlayStartProgress(new PsdkSpeakerPlayStartProgress(msg, false));
+  }
+  public static void SwigDirector_PsdkCustomDataTransmissionFromPsdkCallback_onPsdkCustomDataTransmissionFromPsdk(PsdkCustomDataTransmissionFromPsdkCallback jself, long msg) {
+    jself.onPsdkCustomDataTransmissionFromPsdk(new PsdkCustomDataTransmission(msg, false));
+  }
+  public static void SwigDirector_EsdkCustomDataTransmissionFromEsdkCallback_onEsdkCustomDataTransmissionFromEsdk(EsdkCustomDataTransmissionFromEsdkCallback jself, long msg) {
+    jself.onEsdkCustomDataTransmissionFromEsdk(new EsdkCustomDataTransmission(msg, false));
+  }
+  public static void SwigDirector_HighestPriorityUploadFlighttaskMediaCallback_onHighestPriorityUploadFlighttaskMedia(HighestPriorityUploadFlighttaskMediaCallback jself, long msg) {
+    jself.onHighestPriorityUploadFlighttaskMedia(new HighestPriorityUploadFlighttaskMedia(msg, false));
   }
   public static void SwigDirector_FlightPoiProgressCallback_onFlightPoiProgress(FlightPoiProgressCallback jself, long msg) {
     jself.onFlightPoiProgress(new FlightPoiProgress(msg, false));
@@ -16065,6 +17480,9 @@ public class flighthubsdkmoduleJNI {
   public static void SwigDirector_DrcParachuteInfoCallback_onDrcParachuteInfo(DrcParachuteInfoCallback jself, long info) {
     jself.onDrcParachuteInfo(new DrcParachuteInfo(info, false));
   }
+  public static void SwigDirector_DrcLandingMissionStateCallback_onDrcLandingMissionState(DrcLandingMissionStateCallback jself, long info) {
+    jself.onDrcLandingMissionState(new DrcLandingMissionState(info, false));
+  }
   public static void SwigDirector_FlashLedStateInfoCallback_onFlashLedStateInfo(FlashLedStateInfoCallback jself, long info) {
     jself.onFlashLedStateInfo(new FlashLedStateInfo(info, false));
   }
@@ -16073,6 +17491,9 @@ public class flighthubsdkmoduleJNI {
   }
   public static void SwigDirector_FlashLedConfigCallback_onFlashLedConfig(FlashLedConfigCallback jself, long err, long config) {
     jself.onFlashLedConfig(new FlightHubError(err, true), new FlashLedConfig(config, false));
+  }
+  public static void SwigDirector_AutoRecordConfigCallback_onAutoRecordConfig(AutoRecordConfigCallback jself, long err, long config) {
+    jself.onAutoRecordConfig(new FlightHubError(err, true), new AutoRecordConfig(config, false));
   }
   public static void SwigDirector_AiAlarmStateCallback_onAiAlarmState(AiAlarmStateCallback jself, long info) {
     jself.onAiAlarmState(new AiAlarmStateInfo(info, false));
@@ -16124,6 +17545,48 @@ public class flighthubsdkmoduleJNI {
   }
   public static void SwigDirector_DroneCameraWatermarkSettingsPushCallback_onDroneCameraWatermarkSettingsPush(DroneCameraWatermarkSettingsPushCallback jself, long settings) {
     jself.onDroneCameraWatermarkSettingsPush(new DroneCameraWatermarkSettingsPush(settings, false));
+  }
+  public static void SwigDirector_CascadeAddChildNodeCallback_onCascadeAddChildNode(CascadeAddChildNodeCallback jself, long err, long result) {
+    jself.onCascadeAddChildNode(new FlightHubError(err, true), new AddChildNodeResult(result, false));
+  }
+  public static void SwigDirector_CascadeEnableChildNodesCallback_onCascadeEnableChildNodes(CascadeEnableChildNodesCallback jself, long err, long result) {
+    jself.onCascadeEnableChildNodes(new FlightHubError(err, true), new CascadeBatchOpResult(result, false));
+  }
+  public static void SwigDirector_CascadeDisableChildNodesCallback_onCascadeDisableChildNodes(CascadeDisableChildNodesCallback jself, long err, long result) {
+    jself.onCascadeDisableChildNodes(new FlightHubError(err, true), new CascadeBatchOpResult(result, false));
+  }
+  public static void SwigDirector_CascadeDeleteChildNodeCallback_onCascadeDeleteChildNode(CascadeDeleteChildNodeCallback jself, long err) {
+    jself.onCascadeDeleteChildNode(new FlightHubError(err, true));
+  }
+  public static void SwigDirector_CascadeGetReachableChildrenCallback_onCascadeGetReachableChildren(CascadeGetReachableChildrenCallback jself, long err, long result) {
+    jself.onCascadeGetReachableChildren(new FlightHubError(err, true), new CascadeChildNodeListResult(result, false));
+  }
+  public static void SwigDirector_CascadeGetParentNodeCallback_onCascadeGetParentNode(CascadeGetParentNodeCallback jself, long err, long info) {
+    jself.onCascadeGetParentNode(new FlightHubError(err, true), new CascadeParentNodeInfo(info, false));
+  }
+  public static void SwigDirector_CascadeRespondToParentCallback_onCascadeRespondToParent(CascadeRespondToParentCallback jself, long err) {
+    jself.onCascadeRespondToParent(new FlightHubError(err, true));
+  }
+  public static void SwigDirector_CascadeGetNodeIndexCallback_onCascadeGetNodeIndex(CascadeGetNodeIndexCallback jself, long err, long result) {
+    jself.onCascadeGetNodeIndex(new FlightHubError(err, true), new CascadeChildNodeListResult(result, false));
+  }
+  public static void SwigDirector_CascadeGetConnectivityCallback_onCascadeGetConnectivity(CascadeGetConnectivityCallback jself, long err, long result) {
+    jself.onCascadeGetConnectivity(new FlightHubError(err, true), new CascadeConnectivityResult(result, false));
+  }
+  public static void SwigDirector_CascadeGetParentConnectivityCallback_onCascadeGetParentConnectivity(CascadeGetParentConnectivityCallback jself, long err, long result) {
+    jself.onCascadeGetParentConnectivity(new FlightHubError(err, true), new CascadeParentConnectivity(result, false));
+  }
+  public static void SwigDirector_CascadePostToNodeCallback_onCascadePostToNode(CascadePostToNodeCallback jself, long err) {
+    jself.onCascadePostToNode(new FlightHubError(err, true));
+  }
+  public static void SwigDirector_CascadeNodeStatusEventCallback_onCascadeNodeStatusEvent(CascadeNodeStatusEventCallback jself, long event) {
+    jself.onCascadeNodeStatusEvent(new CascadeNodeStatusEvent(event, false));
+  }
+  public static void SwigDirector_CascadeNotifyEventCallback_onCascadeNotifyEvent(CascadeNotifyEventCallback jself, long event) {
+    jself.onCascadeNotifyEvent(new CascadeNotifyEvent(event, false));
+  }
+  public static void SwigDirector_IFlightTaskModule_getFlightRisks(IFlightTaskModule jself, long params, long callback) {
+    jself.getFlightRisks(new GetFlightRisksParams(params, false), new SWIGTYPE_p_std__functionT_void_fflight_hub_sdk__FlightHubError_flight_hub_sdk__GetFlightRisksResults_const_RF_t(callback, true));
   }
   public static void SwigDirector_IPullStreamModule_stop(IPullStreamModule jself) {
     jself.stop();
@@ -16230,6 +17693,9 @@ public class flighthubsdkmoduleJNI {
   public static long SwigDirector_IDrone_getTakeoffModule(IDrone jself) {
     return ITakeoffModule.getCPtr(jself.getTakeoffModule());
   }
+  public static long SwigDirector_IDrone_getGroundFlightModule(IDrone jself) {
+    return IGroundFlightModule.getCPtr(jself.getGroundFlightModule());
+  }
   public static long SwigDirector_IDrone_getFlightControlModule(IDrone jself) {
     return IFlightControlModule.getCPtr(jself.getFlightControlModule());
   }
@@ -16250,6 +17716,12 @@ public class flighthubsdkmoduleJNI {
   }
   public static long SwigDirector_IDrone_getPsdkControlModule(IDrone jself) {
     return IPsdkControlModule.getCPtr(jself.getPsdkControlModule());
+  }
+  public static long SwigDirector_IDrone_getEsdkControlModule(IDrone jself) {
+    return IEsdkControlModule.getCPtr(jself.getEsdkControlModule());
+  }
+  public static long SwigDirector_IDrone_getFlightTaskMediaUploadModule(IDrone jself) {
+    return IFlightTaskMediaUploadModule.getCPtr(jself.getFlightTaskMediaUploadModule());
   }
   public static long SwigDirector_IDrone_getCameraControlModule(IDrone jself) {
     return ICameraControlModule.getCPtr(jself.getCameraControlModule());
@@ -16275,6 +17747,9 @@ public class flighthubsdkmoduleJNI {
   public static long SwigDirector_IDrone_getDeviceHMSModule(IDrone jself) {
     return IDeviceHMSModule.getCPtr(jself.getDeviceHMSModule());
   }
+  public static long SwigDirector_IDrone_getAirsenseWarningModule(IDrone jself) {
+    return IAirsenseWarningModule.getCPtr(jself.getAirsenseWarningModule());
+  }
   public static long SwigDirector_IDrone_getDeviceDebugModule(IDrone jself) {
     return IDeviceDebugModule.getCPtr(jself.getDeviceDebugModule());
   }
@@ -16292,9 +17767,6 @@ public class flighthubsdkmoduleJNI {
   }
   public static long SwigDirector_IDock_getDockOsdModule(IDock jself) {
     return IDockOsdModule.getCPtr(jself.getDockOsdModule());
-  }
-  public static long SwigDirector_IDock_getDeployModule(IDock jself) {
-    return IDeployModule.getCPtr(jself.getDeployModule());
   }
   public static long SwigDirector_IDock_getDockControlModule(IDock jself) {
     return IDockControlModule.getCPtr(jself.getDockControlModule());
@@ -16386,6 +17858,9 @@ public class flighthubsdkmoduleJNI {
   public static long SwigDirector_IWorkspace_getFlashLedModule(IWorkspace jself) {
     return IFlashLedModule.getCPtr(jself.getFlashLedModule());
   }
+  public static long SwigDirector_IWorkspace_getAutoRecordModule(IWorkspace jself) {
+    return IAutoRecordModule.getCPtr(jself.getAutoRecordModule());
+  }
   public static long SwigDirector_IWorkspace_getTerraBuildModule(IWorkspace jself) {
     return ITerraBuildModule.getCPtr(jself.getTerraBuildModule());
   }
@@ -16400,6 +17875,12 @@ public class flighthubsdkmoduleJNI {
   }
   public static long SwigDirector_IWorkspace_getLiveSyncModule(IWorkspace jself) {
     return ILiveSyncModule.getCPtr(jself.getLiveSyncModule());
+  }
+  public static int SwigDirector_ISessionManager_registerSession(ISessionManager jself, long config) {
+    return jself.registerSession(new SessionConfig(config, false));
+  }
+  public static long SwigDirector_ISessionManager_getAllSessionInfo(ISessionManager jself) {
+    return SessionInfoVector.getCPtr(jself.getAllSessionInfo());
   }
 
   private final static native void swig_module_init();

@@ -76,6 +76,7 @@ namespace drtc
                     DRTC_OUT     const DrtcStream                   &stream,
                     DRTC_OUT     DrtcDataEvent                      &event) = 0;
 
+                /* Deprecated Now */
                 virtual void DrtcOnMessageReceived(
                     DRTC_OUT     const DrtcClient                   &peer_client,
                     DRTC_OUT     DeviceSdkMessage                   &message) = 0;
@@ -103,8 +104,7 @@ namespace drtc
                     DRTC_OUT     const DrtcNetworkQualityNotify          &notify) = 0;
 
                 virtual void DrtcOnClientBandwidthNotify(
-                    DRTC_OUT     const DrtcClient                   &peer_client,
-                    DRTC_OUT     uint32_t                           bw_kbps) = 0;
+                    DRTC_OUT     const std::vector<DrtcPeerBandwidthNotify> &peer_bws) = 0;
 
                 virtual ~Listener() {};
         };
@@ -154,6 +154,7 @@ namespace drtc
             DRTC_IN       const DrtcStream                     &stream,
             DRTC_IN       const DrtcDataEvent                  &event) = 0;
 
+        /* Deprecated Now */
         virtual devicesdk_result_t DrtcSendMessage(
             DRTC_IN       const DrtcClient                     &peer_client,
             DRTC_IN       const DeviceSdkMessage               &message,

@@ -17,4 +17,5 @@ last_updated: 2026-08-05
 |------|------|
 | [deployment.md](deployment.md) | Docker Compose 部署架构、CI/CD、环境配置 |
 | [frontend-sdk-auth-checklist.md](frontend-sdk-auth-checklist.md) | SDK 前端组件初始化失败的排查顺序：config.js → 容器 .env 变量 → FH2 网关路径白名单 → WebSocket 连通性 |
+| [mcp-auth-troubleshooting.md](mcp-auth-troubleshooting.md) | MCP Server 两层鉴权排查：SSE 传输层（FH_SSE_AUTH_TOKEN）和 SDK 网关层（FH_HTTP_AUTH_KEY/VALUE） |
 | [live-stream-troubleshooting.md](live-stream-troubleshooting.md) | EA340D/EA340T/EA610 私有化环境无法直播的五步自查：固件版本、上云方式、DRTC 与底座 .env、端口开放 |

@@ -27,7 +27,7 @@ import org.springframework.context.annotation.Bean;
 /**
  * 媒体管理 feature 自动装配。
  *
- * <p>默认启用；ISV 设 {@code fh.skeleton.feature.media.enabled=false} 可禁用。
+ * <p>默认启用；集成商 设 {@code fh.skeleton.feature.media.enabled=false} 可禁用。
  * SDK 模式下由 {@link SdkMediaAutoConfiguration} 提供真实实现，覆盖 mock 默认。
  *
  * @author DJI DevKit Team

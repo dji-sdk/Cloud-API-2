@@ -67,6 +67,14 @@ public class MediaUploadStsCredentials {
     return flighthubsdkmoduleJNI.MediaUploadStsCredentials_access_key_secret_get(swigCPtr, this);
   }
 
+  public void setSecurity_token(String value) {
+    flighthubsdkmoduleJNI.MediaUploadStsCredentials_security_token_set(swigCPtr, this, value);
+  }
+
+  public String getSecurity_token() {
+    return flighthubsdkmoduleJNI.MediaUploadStsCredentials_security_token_get(swigCPtr, this);
+  }
+
   public void setExpire(int value) {
     flighthubsdkmoduleJNI.MediaUploadStsCredentials_expire_set(swigCPtr, this, value);
   }
@@ -75,12 +83,20 @@ public class MediaUploadStsCredentials {
     return flighthubsdkmoduleJNI.MediaUploadStsCredentials_expire_get(swigCPtr, this);
   }
 
-  public void setSecurity_token(String value) {
-    flighthubsdkmoduleJNI.MediaUploadStsCredentials_security_token_set(swigCPtr, this, value);
+  public void setExpiration(String value) {
+    flighthubsdkmoduleJNI.MediaUploadStsCredentials_expiration_set(swigCPtr, this, value);
   }
 
-  public String getSecurity_token() {
-    return flighthubsdkmoduleJNI.MediaUploadStsCredentials_security_token_get(swigCPtr, this);
+  public String getExpiration() {
+    return flighthubsdkmoduleJNI.MediaUploadStsCredentials_expiration_get(swigCPtr, this);
+  }
+
+  public void setPlatform(int value) {
+    flighthubsdkmoduleJNI.MediaUploadStsCredentials_platform_set(swigCPtr, this, value);
+  }
+
+  public int getPlatform() {
+    return flighthubsdkmoduleJNI.MediaUploadStsCredentials_platform_get(swigCPtr, this);
   }
 
   public MediaUploadStsCredentials() {

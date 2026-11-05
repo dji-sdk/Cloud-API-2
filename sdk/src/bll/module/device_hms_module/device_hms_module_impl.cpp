@@ -5,6 +5,7 @@
 #include <base/common/logger.h>
 #include "notification_center/notification_center.h"
 #include <BusinessManager.h>
+#include "session/session_bm.h"
 
 using namespace flight_hub_sdk;
 using namespace notification_center;
@@ -51,19 +52,23 @@ flight_hub_sdk::HmsData ConvertNcHmsDataToSdk(const notification_center::HmsData
 
 } // namespace
 
-DeviceHMSModuleImpl::DeviceHMSModuleImpl(DeviceKind kind, const std::string& sn)
-    : kind_(kind), sn_(sn) {
+DeviceHMSModuleImpl::DeviceHMSModuleImpl(DeviceKind kind, const std::string& sn, int session_id)
+    : kind_(kind), sn_(sn), session_id_(session_id) {
     registerNotificationCenterListener();
 }
 
 DeviceHMSModuleImpl::~DeviceHMSModuleImpl() {
+    auto bm = ResolveBusinessManager(session_id_);
     if (hms_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(hms_listen_id_);
+        if (bm) {
+            bm->CancelObserve(hms_listen_id_);
+        }
         hms_listen_id_ = -1;
     }
 }
 
 void DeviceHMSModuleImpl::registerNotificationCenterListener() {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(p);
 
     auto on_msg = [this, p](const notification_center::HmsData& msg) -> void {
@@ -81,7 +86,10 @@ void DeviceHMSModuleImpl::registerNotificationCenterListener() {
         }
     };
 
-    auto bm = NotificationCenter::getInstance()->getBusinessManager();
+    if (!bm) {
+        LOG_ERROR("[DeviceHMSModule-%s] session bm null, skip HMS subscribe", sn_.c_str());
+        return;
+    }
     if (kind_ == DeviceKind::Dock) {
         hms_listen_id_ = bm->ListenDockHMS(on_msg, on_err, sn_, NotificationFrequency_OnChanged);
     } else {

@@ -179,6 +179,23 @@ public class CreateTestFlightTaskParams {
     return flighthubsdkmoduleJNI.CreateTestFlightTaskParams_device_type_get(swigCPtr, this);
   }
 
+  public void setCloud_to_cloud_id(String value) {
+    flighthubsdkmoduleJNI.CreateTestFlightTaskParams_cloud_to_cloud_id_set(swigCPtr, this, value);
+  }
+
+  public String getCloud_to_cloud_id() {
+    return flighthubsdkmoduleJNI.CreateTestFlightTaskParams_cloud_to_cloud_id_get(swigCPtr, this);
+  }
+
+  public void setTags(StringVector value) {
+    flighthubsdkmoduleJNI.CreateTestFlightTaskParams_tags_set(swigCPtr, this, StringVector.getCPtr(value), value);
+  }
+
+  public StringVector getTags() {
+    long cPtr = flighthubsdkmoduleJNI.CreateTestFlightTaskParams_tags_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new StringVector(cPtr, false);
+  }
+
   public CreateTestFlightTaskParams() {
     this(flighthubsdkmoduleJNI.new_CreateTestFlightTaskParams(), true);
   }

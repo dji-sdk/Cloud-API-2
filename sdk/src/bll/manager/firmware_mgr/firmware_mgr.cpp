@@ -11,8 +11,8 @@
 
 namespace flight_hub_sdk {
 
-FirmwareManager::FirmwareManager() {
-    LOG_INFO("[FirmwareManager] constructor");
+FirmwareManager::FirmwareManager(int session_id) : session_id_(session_id) {
+    LOG_INFO("[FirmwareManager] constructor, session_id=%d", session_id_);
 }
 
 FirmwareManager::~FirmwareManager() {
@@ -23,12 +23,13 @@ void FirmwareManager::getLatestFirmwareReleaseNote(const std::vector<std::string
     WeakDummy(weak_ptr);
     get_latest_firmware_release_note(device_model_keys, language, [this, weak_ptr, callback](const FirmwareReleaseNoteListResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 获取最新固件发布说明; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_GET_LATEST_RELEASE_NOTE, err, "[FirmwareManager]");
+            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_GET_LATEST_RELEASE_NOTE, err, session_id, "[FirmwareManager]");
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_INFO("getLatestFirmwareReleaseNote: err_code: %d", static_cast<int>(err.error_code));
             }
@@ -46,7 +47,7 @@ void FirmwareManager::getLatestFirmwareReleaseNote(const std::vector<std::string
                 callback(err, result);
             }
         });
-    });
+    }, session_id_);
 }
 
 void FirmwareManager::invokeFirmwareUpgrade(const FirmwareUpgradeParam& params, std::function<void(FlightHubError err, const FirmwareUpgradeResult& result)> callback) {
@@ -62,42 +63,37 @@ void FirmwareManager::invokeFirmwareUpgrade(const FirmwareUpgradeParam& params, 
     }
     post_invoke_firmware_upgrade(request, [this, weak_ptr, callback](const FirmwareUpgradeResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 触发固件升级; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_INVOKE_UPGRADE, err, "[FirmwareManager]");
+            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_INVOKE_UPGRADE, err, session_id, "[FirmwareManager]");
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_INFO("invokeFirmwareUpgrade: err_code: %d", static_cast<int>(err.error_code));
             }
             FirmwareUpgradeResult result;
-            result.device_code = response.device_code;
+            result.bid = response.bid;
             result.status = response.status;
-            for (auto& item : response.devices) {
-                FirmwareUpgradeResponseDeviceItemResult device_item;
-                device_item.sn = item.sn;
-                device_item.firmware_upgrade_type = item.firmware_upgrade_type;
-                device_item.product_version = item.product_version;
-                result.devices.push_back(device_item);
-            }
             if (callback) {
                 callback(err, result);
             }
         });
-    });
+    }, session_id_);
 }
 
 void FirmwareManager::queryFirmwareUpgradeProgress(const std::string& device_sn, std::function<void(FlightHubError err, const FirmwareUpgradeProgressResult& progress_list)> callback) {
     WeakDummy(weak_ptr);
     get_query_firmware_upgrade_progress(device_sn, [this, weak_ptr, callback](const FirmwareUpgradeProgressResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 查询固件升级进度; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_QUERY_UPGRADE_PROGRESS, err, "[FirmwareManager]");
+            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_QUERY_UPGRADE_PROGRESS, err, session_id, "[FirmwareManager]");
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_INFO("queryFirmwareUpgradeProgress: err_code: %d", static_cast<int>(err.error_code));
             }
@@ -105,12 +101,32 @@ void FirmwareManager::queryFirmwareUpgradeProgress(const std::string& device_sn,
             for (const auto& item : response.list) {
                 FirmwareUpgradeProgressItem progress_item;
                 progress_item.sn = item.sn;
+                progress_item.firmware_version = item.firmware_version;
                 progress_item.firmware_status = item.firmware_status;
+                progress_item.device_model_key = item.device_model_key;
+
+                // 新结构: 后端把进度放在 services 中
+                progress_item.services.bid = item.services.bid;
+                progress_item.services.status = item.services.status;
+                progress_item.services.create_time = item.services.create_time;
+                progress_item.services.update_time = item.services.update_time;
+                progress_item.services.device_code = item.services.device_code;
+                progress_item.services.progress.percent = item.services.progress.percent;
+                progress_item.services.progress.current_step = item.services.progress.current_step;
+                for (const auto& device : item.services.data.devices) {
+                    FirmwareServiceDevice service_device;
+                    service_device.sn = device.sn;
+                    service_device.firmware_upgrade_type = device.firmware_upgrade_type;
+                    service_device.product_version = device.product_version;
+                    progress_item.services.data.devices.push_back(service_device);
+                }
+
+                // 兼容旧字段: 后端不再返回 ota/associate_*, 用 services 回填可映射的部分
                 progress_item.working_status = item.working_status;
-                progress_item.device_code = item.device_code;
-                progress_item.ota.status = item.ota.status;
-                progress_item.ota.progress.current_step = item.ota.progress.current_step;
-                progress_item.ota.progress.percent = item.ota.progress.percent;
+                progress_item.device_code = item.services.device_code;
+                progress_item.ota.status = item.services.status;
+                progress_item.ota.progress.current_step = item.services.progress.current_step;
+                progress_item.ota.progress.percent = item.services.progress.percent;
                 progress_item.associate_drone.sn = item.associate_drone.sn;
                 progress_item.associate_drone.firmware_status = item.associate_drone.firmware_status;
                 progress_item.associate_drone.working_status = item.associate_drone.working_status;
@@ -122,7 +138,7 @@ void FirmwareManager::queryFirmwareUpgradeProgress(const std::string& device_sn,
                 callback(err, result);
             }
         });
-    });
+    }, session_id_);
 }
 
 void FirmwareManager::uploadFirmwareFile(const std::string& file_path, std::function<void(FlightHubError err, UploadFileResults results)> callback) {
@@ -140,7 +156,7 @@ void FirmwareManager::uploadFirmwareFile(const std::string& file_path, std::func
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_UPLOAD_FILE, not_found_err, "[FirmwareManager]");
+        report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_UPLOAD_FILE, not_found_err, session_id_, "[FirmwareManager]");
 
         if (callback) {
             callback(not_found_err, UploadFileResults{});
@@ -160,7 +176,7 @@ void FirmwareManager::uploadFirmwareFile(const std::string& file_path, std::func
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_UPLOAD_FILE, too_large_err, "[FirmwareManager]");
+        report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_UPLOAD_FILE, too_large_err, session_id_, "[FirmwareManager]");
 
         if (callback) {
             callback(too_large_err, UploadFileResults{});
@@ -169,7 +185,7 @@ void FirmwareManager::uploadFirmwareFile(const std::string& file_path, std::func
     }
 
     // 先获取 STS token
-    GetFirmwareStsToken([this, weak_ptr, file_path, callback](FlightHubError err, const FirmwareUpgradeStsResponse& sts_response) {
+    GetFirmwareStsToken([this, weak_ptr, file_path, callback, session_id = session_id_](FlightHubError err, const FirmwareUpgradeStsResponse& sts_response) {
         if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
             LOG_ERROR("[FirmwareManager] uploadFirmwareFile: GetFirmwareStsToken failed, err_code: %d", static_cast<int>(err.error_code));
 
@@ -177,7 +193,7 @@ void FirmwareManager::uploadFirmwareFile(const std::string& file_path, std::func
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_UPLOAD_FILE, err, "[FirmwareManager]");
+            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_UPLOAD_FILE, err, session_id_, "[FirmwareManager]");
 
             if (callback) {
                 callback(err, UploadFileResults{});
@@ -205,7 +221,7 @@ void FirmwareManager::uploadFirmwareFile(const std::string& file_path, std::func
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_UPLOAD_FILE, provider_err, "[FirmwareManager]");
+            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_UPLOAD_FILE, provider_err, session_id_, "[FirmwareManager]");
 
             if (callback) {
                 callback(provider_err, UploadFileResults{});
@@ -247,7 +263,7 @@ void FirmwareManager::uploadFirmwareFile(const std::string& file_path, std::func
 
         // 异步上传固件文件；捕获 uploader，保证后台线程跑完前 AwsS3Uploader/DefaultExecutor 不被析构
         uploader->uploadFileAsync(file_path, object_key, sts_info,
-            [weak_ptr, callback, file_path, object_key, uploader](const CloudStorageUploadResult& result) {
+            [weak_ptr, callback, file_path, object_key, uploader, session_id, this](const CloudStorageUploadResult& result) {
                 WeakDummyReturn(weak_ptr);
                 if (result.success) {
                     LOG_INFO("[FirmwareManager] uploadFirmwareFile success: %s -> %s, ETag: %s",
@@ -259,7 +275,7 @@ void FirmwareManager::uploadFirmwareFile(const std::string& file_path, std::func
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_UPLOAD_FILE, success_err, "[FirmwareManager]");
+                    report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_UPLOAD_FILE, success_err, session_id, "[FirmwareManager]");
 
                     if (callback) {
                         UploadFileResults res{};
@@ -278,7 +294,7 @@ void FirmwareManager::uploadFirmwareFile(const std::string& file_path, std::func
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_UPLOAD_FILE, upload_err, "[FirmwareManager]");
+                    report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_UPLOAD_FILE, upload_err, session_id, "[FirmwareManager]");
 
                     if (callback) {
                         callback(upload_err, UploadFileResults{});
@@ -291,9 +307,10 @@ void FirmwareManager::uploadFirmwareFile(const std::string& file_path, std::func
 
 void FirmwareManager::GetFirmwareStsToken(const std::function<void(FlightHubError err, const FirmwareUpgradeStsResponse& sts_response)>& callback) {
     WeakDummy(weak_ptr);
-    post_firmware_upgrade_sts([weak_ptr, callback](const FirmwareUpgradeStsResponse& response, FlightHubError err) {
+    post_firmware_upgrade_sts([weak_ptr, callback, this](const FirmwareUpgradeStsResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_INFO("[FirmwareManager] GetFirmwareStsToken: err_code: %d", static_cast<int>(err.error_code));
             }
@@ -301,7 +318,7 @@ void FirmwareManager::GetFirmwareStsToken(const std::function<void(FlightHubErro
                 callback(err, response);
             }
         });
-    });
+    }, session_id_);
 }
 
 std::shared_ptr<ICloudStorageUploader> FirmwareManager::getCloudStorageUploader(const std::string& provider) {
@@ -313,70 +330,77 @@ void FirmwareManager::releaseFirmware(const std::string& file_id, std::function<
     WeakDummy(weak_ptr);
     put_release_firmware(file_id, [this, weak_ptr, callback](FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 发布固件; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_RELEASE, err, "[FirmwareManager]");
+            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_RELEASE, err, session_id, "[FirmwareManager]");
             LOG_INFO("releaseFirmware: err_code: %d", static_cast<int>(err.error_code));
             if (callback) {
                 callback(err);
             }
         });
-    });
+    }, session_id_);
 }
 
 void FirmwareManager::unReleaseFirmware(const std::string& file_id, std::function<void(FlightHubError err)> callback) {
     WeakDummy(weak_ptr);
     put_unrelease_firmware(file_id, [this, weak_ptr, callback](FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 取消发布固件; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_UNRELEASE, err, "[FirmwareManager]");
+            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_UNRELEASE, err, session_id, "[FirmwareManager]");
             LOG_INFO("unReleaseFirmware: err_code: %d", static_cast<int>(err.error_code));
             if (callback) {
                 callback(err);
             }
         });
-    });
+    }, session_id_);
 }
 
 void FirmwareManager::deleteFirmware(const std::string& file_id, std::function<void(FlightHubError err)> callback) {
     WeakDummy(weak_ptr);
     delete_delete_firmware(file_id, [this, weak_ptr, callback](FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 删除固件; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_DELETE, err, "[FirmwareManager]");
+            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_DELETE, err, session_id, "[FirmwareManager]");
             LOG_INFO("deleteFirmware: err_code: %d", static_cast<int>(err.error_code));
             if (callback) {
                 callback(err);
             }
         });
-    });
+    }, session_id_);
 }
 
 void FirmwareManager::queryFirmwareList(int page, int page_size, std::function<void(FlightHubError err, const FirmwareListResult& firmware_list)> callback) {
     WeakDummy(weak_ptr);
     get_query_firmware_list(page, page_size, [this, weak_ptr, callback](const FirmwareListResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 查询固件列表; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_QUERY_LIST, err, "[FirmwareManager]");
+            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_QUERY_LIST, err, session_id, "[FirmwareManager]");
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_INFO("queryFirmwareList: err_code: %d", static_cast<int>(err.error_code));
             }
             FirmwareListResult result;
+            result.pagination.page = response.pagination.page_num;
+            result.pagination.page_size = response.pagination.page_size;
+            result.pagination.total = response.pagination.total;
             for (const auto& item : response.list) {
                 FirmwareItemResult firmware_item;
                 firmware_item.id = item.id;
@@ -391,19 +415,20 @@ void FirmwareManager::queryFirmwareList(int page, int page_size, std::function<v
                 callback(err, result);
             }
         });
-    });
+    }, session_id_);
 }
 
 void FirmwareManager::queryFirmwareCompatibilityConfig(std::function<void(FlightHubError err, const FirmwareCompatibilityConfigResult& config)> callback) {
     WeakDummy(weak_ptr);
     post_query_firmware_compatibility_config([this, weak_ptr, callback](const FirmwareCompatibilityConfigResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 查询固件兼容性配置; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_QUERY_COMPATIBILITY_CONFIG, err, "[FirmwareManager]");
+            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_QUERY_COMPATIBILITY_CONFIG, err, session_id, "[FirmwareManager]");
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_INFO("queryFirmwareCompatibilityConfig: err_code: %d", static_cast<int>(err.error_code));
             }
@@ -414,25 +439,37 @@ void FirmwareManager::queryFirmwareCompatibilityConfig(std::function<void(Flight
                 config_item.compatible_versions = item.compatible_versions;
                 config_item.rules.min_version = item.rules.min_version;
                 config_item.rules.max_version = item.rules.max_version;
+                config_item.key = item.key;
+                config_item.user_type = item.user_type;
+                config_item.description = item.description;
+                for (const auto& validate : item.validates) {
+                    FirmwareCompatibilityValidateResult validate_result;
+                    validate_result.field = validate.field;
+                    validate_result.description = validate.description;
+                    validate_result.compare = validate.compare;
+                    validate_result.value = validate.value.value;
+                    config_item.validates.push_back(validate_result);
+                }
                 result.data.push_back(config_item);
             }
             if (callback) {
                 callback(err, result);
             }
         });
-    });
+    }, session_id_);
 }
 
 void FirmwareManager::checkFirmwareStatus(const std::vector<std::string>& device_sns, const std::vector<std::string>& status, std::function<void(FlightHubError err, const FirmwareStatusListResult& status_list)> callback) {
     WeakDummy(weak_ptr);
     get_check_firmware_status(device_sns, status, [this, weak_ptr, callback](const FirmwareStatusListResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 检查固件状态; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_CHECK_STATUS, err, "[FirmwareManager]");
+            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_CHECK_STATUS, err, session_id, "[FirmwareManager]");
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_INFO("checkFirmwareStatus: err_code: %d", static_cast<int>(err.error_code));
             }
@@ -463,7 +500,7 @@ void FirmwareManager::checkFirmwareStatus(const std::vector<std::string>& device
                 callback(err, result);
             }
         });
-    });
+    }, session_id_);
 }
 
 void FirmwareManager::submitFirmwareInfo(const FirmwareInfoParam& firmware_info, std::function<void(FlightHubError err)> callback) {
@@ -476,18 +513,19 @@ void FirmwareManager::submitFirmwareInfo(const FirmwareInfoParam& firmware_info,
     request.md5 = firmware_info.md5;
     post_submit_firmware_info(request, [this, weak_ptr, callback](FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, session_id = session_id_, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 提交固件信息; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_SUBMIT_INFO, err, "[FirmwareManager]");
+            report_beacon_event_helper(kBeaconReportEvent_FIRMWARE_SUBMIT_INFO, err, session_id, "[FirmwareManager]");
             LOG_INFO("submitFirmwareInfo: err_code: %d", static_cast<int>(err.error_code));
             if (callback) {
                 callback(err);
             }
         });
-    });
+    }, session_id_);
 }
 
 } // namespace flight_hub_sdk

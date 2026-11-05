@@ -115,23 +115,41 @@ struct FlyToPointRequestPoints {
 };
 
 struct FlyToPointRequest {
+    // === 必选字段 — 始终序列化 ===
     std::string device_sn;
     FlyToPointRequestPoints start_point;
     std::vector<FlyToPointRequestPoints> points;
     int max_speed;
     bool need_verify_flight_control = false;
     AIGC_JSON_HELPER(device_sn, start_point, points, max_speed, need_verify_flight_control);
+
+    // === 可选字段 — nullopt 时跳过 ===
+    std::optional<int> speed_mode;                  // 速度模式：0-低速，1-高速；不传则不改变设备当前模式
+    std::optional<bool> real_height_cap_enabled;    // 高度上限开关；不传则不改变设备当前设置
+    std::optional<int> real_height_cap_limit;       // 高度上限值（米），20-1500
+
+    AIGC_JSON_HELPER_OPTIONAL_SKIP(speed_mode, real_height_cap_enabled, real_height_cap_limit);
 };
 
 /// UpdateFlyToPointsRequest 更新飞向目标点
 /// 对应 PUT /control/api/v1/manual/flight/fly-to-points
 struct UpdateFlyToPointsRequest {
+    // === 必选字段 — 始终序列化 ===
     std::string device_sn;                           // 设备序列号
     std::string fly_to_id;                           // 当前执行中的 FlyTo 任务 ID
     FlyToPointRequestPoints start_point;             // 起始点（当前飞机位置）
     std::vector<FlyToPointRequestPoints> points;     // 目标点数组（至少 1 个）
     int max_speed = 0;                               // 最大飞行速度 m/s
     AIGC_JSON_HELPER(device_sn, fly_to_id, start_point, points, max_speed);
+
+    // === 可选字段 — nullopt 时跳过 ===
+    std::optional<int> speed_mode;                  // 速度模式：0-低速，1-高速；不传则不改变设备当前模式
+    std::optional<bool> real_height_cap_enabled;    // 高度上限开关；不传则不改变设备当前设置
+    std::optional<int> real_height_cap_limit;       // 高度上限值（米），20-1500
+    std::optional<bool> need_verify_flight_control; // 是否需要验证飞行控制权
+
+    AIGC_JSON_HELPER_OPTIONAL_SKIP(speed_mode, real_height_cap_enabled, real_height_cap_limit,
+                                   need_verify_flight_control);
 };
 
 /// CreateInFlightWaylineTaskRequest 创建空中下发航线任务
@@ -253,6 +271,22 @@ struct ReturnHomeRequest : NonRealtimeCmdBaseRequest {
     AIGC_JSON_HELPER_BASE((NonRealtimeCmdBaseRequest *)this)
 };
 
+/// ReturnSpecificHomeRequest
+struct ReturnSpecificHomeRequestData {
+    std::string home_dock_sn;
+    AIGC_JSON_HELPER(home_dock_sn);
+};
+
+struct ReturnSpecificHomeRequest : NonRealtimeCmdBaseRequest {
+    ReturnSpecificHomeRequest() {
+        type = "flight";
+        method = "return_specific_home";
+    }
+    ReturnSpecificHomeRequestData data;
+    AIGC_JSON_HELPER(data);
+    AIGC_JSON_HELPER_BASE((NonRealtimeCmdBaseRequest *)this)
+};
+
 /// ReturnHomeCancelRequest
 struct ReturnHomeCancelRequest : NonRealtimeCmdBaseRequest {
     ReturnHomeCancelRequest() {
@@ -284,7 +318,8 @@ struct LookAtTargetRequest : NonRealtimeCmdBaseRequest {
 /// Psdk
 struct PsdkSpeakerResourceListRequest {
     std::string file_type;  // "audio" or "tts"
-    AIGC_JSON_HELPER(file_type);
+    std::string md5_sum;    // 按 MD5 过滤
+    AIGC_JSON_HELPER(file_type, md5_sum);
 };
 
 struct CreateSpeakerResourceRequest {
@@ -306,7 +341,11 @@ struct EditSpeakerResourceRequest {
     std::string file_type;  // "audio" or "tts"
     bool visible = false;   // required if file_type is "audio"
     std::string content;    // required if file_type is "tts"
-    AIGC_JSON_HELPER(id, name, file_type, visible, content);
+    std::string opus_object_key;
+    int64_t opus_size = 0;
+    std::string opus_md5_sum;
+    AIGC_JSON_HELPER(id, name, file_type, visible, content,
+                     opus_object_key, opus_size, opus_md5_sum);
 };
 
 struct PsdkWidgetResourceRequest {
@@ -333,13 +372,36 @@ struct DroneTakeoffRequest {
 
     // === 可选字段 — nullopt 时跳过 ===
     std::optional<int> rth_mode;                      // 返航模式：0-智能高度，1-设定高度
-    std::optional<int> commander_flight_mode;         // 指点飞行模式：0-平稳，1-运动
+    std::optional<int> commander_flight_mode;         // 指点飞行模式（飞行风格）：0-平稳，1-运动
     std::optional<double> commander_flight_height;    // 指点飞行高度（米），20-1500
     std::optional<std::string> cloud_to_cloud_id;     // 云云对接存储桶 ID
     std::optional<bool> need_verify_flight_control;   // 是否需要验证飞行控制权
+    std::optional<int> speed_mode;                    // 速度模式（速度档位）：0-低速，1-高速；不传则不改变设备当前模式
+    std::optional<bool> real_height_cap_enabled;      // 高度上限开关；不传则不改变设备当前设置
+    std::optional<int> real_height_cap_limit;         // 高度上限值（米），20-1500
 
     AIGC_JSON_HELPER_OPTIONAL_SKIP(rth_mode, commander_flight_mode, commander_flight_height,
-                                   cloud_to_cloud_id, need_verify_flight_control);
+                                   cloud_to_cloud_id, need_verify_flight_control,
+                                   speed_mode, real_height_cap_enabled, real_height_cap_limit);
+};
+
+/// GroundTakeoffRequest — 舱外起飞
+/// HTTP: POST /atc/api/v1/flight-tasks/ground-take-off
+struct GroundTakeoffRequest {
+    std::string device_sn;              // 设备序列号（必填）
+    int auto_takeoff_height = 0;        // 自动起飞高度（米），范围 2-1500（必填）
+    std::string out_of_control_action;  // 失控动作 Hover / ReturnHome / Continue（必填）
+
+    AIGC_JSON_HELPER(device_sn, auto_takeoff_height, out_of_control_action)
+};
+
+/// GroundLandingRequest — 舱外降落
+/// HTTP: POST /atc/api/v1/flight-tasks/ground-landing
+struct GroundLandingRequest {
+    std::string device_sn;  // 设备序列号（机场 SN，必填）
+    int cmd = 0;            // 0=降落至机场，1=取消降落（悬停）
+
+    AIGC_JSON_HELPER(device_sn, cmd)
 };
 
 /// DockSupplementLightRequest
@@ -393,23 +455,15 @@ struct CreateTestFlightTaskRequest {
     std::string name;
     std::string wayline_uuid;
     std::string sn;
-    std::string landing_dock_sn;
-    int task_type = 1;  // 立即任务
-    int out_of_control_action_in_flight = 1;
-    int rth_mode = 1;
-    int repeat_type = 0;
     std::string time_zone;
-    std::string default_name;
+    int out_of_control_action_in_flight = 1;
     int wayline_precision_type = 1;
     double wayline_duration = 0.0;  // 航线预估执行时间，单位秒
-    int rth_altitude = 100;  // 返航高度，单位米
-    std::string resumable_status;
-    std::string media_folder_id_paths;
-    int device_type = 0;
-    
-    AIGC_JSON_HELPER(name, wayline_uuid, sn, landing_dock_sn, task_type, out_of_control_action_in_flight, 
-                     rth_mode, repeat_type, time_zone, default_name, wayline_precision_type, wayline_duration,
-                     rth_altitude, resumable_status, media_folder_id_paths, device_type);
+    std::string cloud_to_cloud_id;
+    std::vector<std::string> tags;
+
+    AIGC_JSON_HELPER(name, wayline_uuid, sn, time_zone, out_of_control_action_in_flight,
+                     wayline_precision_type, wayline_duration, cloud_to_cloud_id, tags);
 };
 
 
@@ -421,60 +475,6 @@ struct GetMediaFileListRequest {
     bool get_sub_file = false;
     std::string sort_by;    // 如 "-create_at"
     AIGC_JSON_HELPER(parent_id, page, size, get_sub_file, sort_by);
-};
-
-/// DroneDownloadEphemerisRequestData 请求的 data 参数;
-struct DroneDownloadEphemerisRequestData {
-    std::string ephemeris_url;          // 星历 url;
-    std::string ephemeris_file_name;    // 星历文件名;
-
-    AIGC_JSON_HELPER(ephemeris_url, ephemeris_file_name);
-};
-
-
-/// DroneDownloadEphemerisRequest 请求参数;
-struct DroneDownloadEphemerisRequest {
-    std::string sn;                              // 网关 SN;
-    std::string type = "flight";                 // 设备类型;
-    std::string method = "ephemeris_download";   // 方法名;
-    DroneDownloadEphemerisRequestData data;
-
-    AIGC_JSON_HELPER(sn, type, method, data);
-};
-
-
-/// DroneInOutWaylineDetectRequest (开始/暂停)进离场任务 请求参数;
-struct DroneInOutWaylineDetectRequestData {
-    std::string task_id;            // 任务id;
-    int task_cmd;                   // 0 开始勘探选址; 1 终止勘探选址; 2 停止离场点视觉勘探; 3 开始离场点视觉勘探;
-    bool is_auto_visual_scout;      // 是否自动勘探;
-    double scout_relative_height;   // 离场点相对起飞高度 自动勘探需填;
-    double patrol_relative_height;  // 方兴航线执行相对起飞高度;
-
-    AIGC_JSON_HELPER(task_id, task_cmd, is_auto_visual_scout, scout_relative_height, patrol_relative_height);
-};
-
-struct DroneInOutWaylineDetectRequest {
-    std::string sn;
-    std::string type = "flight";            // "flight", "payload", "psdk";
-    std::string method = "visual_scout_cmd";
-
-    DroneInOutWaylineDetectRequestData data;
-
-    AIGC_JSON_HELPER(sn, type, method, data);
-};
-
-
-/// DroneInOutWaylineFlightSettingRequest 进离场航线飞行设置;
-struct DroneInOutWaylineFlightSettingRequest {
-    std::string sn;                // [必须参数], 设备序列号;
-    double min_return_home_height;
-    int lost_contact_action;       // 0 悬停; 1 返航; 2 自动降落;
-    double max_height_limit;
-    double max_distance_limit;
-
-
-    AIGC_JSON_HELPER(sn, min_return_home_height, lost_contact_action, max_height_limit, max_distance_limit);
 };
 
 
@@ -690,10 +690,12 @@ struct CreateCustomizedFlightAreasRequest {
 struct UpdateCustomizedFlightAreasRequest {
     std::string         name;            // name, 飞行区名称, 比如 "圆形限飞区", "圆形作业区";
     FlightAreasContents content;         // content, 飞行区内容;
-    std::string         update_by;       // update_by, 更新用户 ID;
+    std::string         status;          // status, 飞行区状态: enable / disable（可选, 空表示不更新）;
+    std::string         type;            // type, 飞行区类型: dfence / nfz / noland（可选, 空表示不更新）;
 
     // register class-members;
-    AIGC_JSON_HELPER(name, content, update_by);
+    // 注意: 不上送 update_by —— 后端 updated_by 以登录态为准, 请求体该字段无效, 故不发送。
+    AIGC_JSON_HELPER(name, content, status, type);
 };
 
 
@@ -999,7 +1001,7 @@ struct EsimOperatorSwitchRequestData {
     int operator_ = 0;
     std::string device_type;
     AIGC_JSON_HELPER(imei, operator_, device_type);
-    AIGC_JSON_HELPER_RENAME("imei", "operator", "device_type");
+    AIGC_JSON_HELPER_RENAME("imei", "esim_operator", "device_type");
 };
 
 struct EsimOperatorSwitchRequest {
@@ -1093,7 +1095,8 @@ struct SubmitWaylineInfoRequest {
     std::string async_request_id;
     int64_t timestamp = 0;
     bool return_paas_data = false;
-    AIGC_JSON_HELPER(kmz_object_key, wayline_name, async_request_id, timestamp, return_paas_data);
+    std::unordered_map<std::string, std::string> transparent;
+    AIGC_JSON_HELPER(kmz_object_key, wayline_name, async_request_id, timestamp, return_paas_data, transparent);
 };
 
 struct BatchDownloadWaylinesRequest {
@@ -1180,7 +1183,7 @@ struct FlightOutOfControlActionRequest {
 
 /// FlightCommanderHeightSettings 飞行作业高度设置
 struct FlightCommanderHeightSettings {
-    int commander_flight_height = 0;   // 飞行作业高度（米），取值[0, 3000]
+    double commander_flight_height = 0;   // 飞行作业高度（米），取值[0, 3000]
     std::string sn;                     // 网关 SN（后端 Body 要求）
     AIGC_JSON_HELPER(commander_flight_height, sn);
 };
@@ -1250,6 +1253,9 @@ struct MaintenanceOrderDeviceItem {
 
     // register class-members;
     AIGC_JSON_HELPER(device_model_key, device_sn, module, nameplate_sn, source_type, source_ref_id);
+    // 后端字段名为 source_reference_id(device-repair/common.go), 成员名保留以兼容公开 API。
+    AIGC_JSON_HELPER_RENAME("device_model_key", "device_sn", "module",
+                            "nameplate_sn", "source_type", "source_reference_id");
 };
 
 // (设备)报修管理模块: 创建报修订单 - 设备拓扑节点;
@@ -1691,8 +1697,18 @@ struct TerraSelectFilter {
     std::optional<int> selected_parent_id;  // 选中范围的父目录 ID（uint32）
     std::vector<int> except_ids;            // 排除的文件 ID 列表
     std::string key;                        // 关键字模糊搜索
-    AIGC_JSON_HELPER(except_ids, key)
-    AIGC_JSON_HELPER_OPTIONAL_SKIP(selected_parent_id)
+    bool get_sub_file = false;              // 是否包含子文件
+    int64_t start_time = 0;                 // 开始时间
+    int64_t end_time = 0;                   // 结束时间
+    std::vector<std::string> file_all_types;    // 文件类型过滤
+    std::vector<std::string> payload_model_key; // 负载型号过滤
+    int parent_id = 0;                      // 父目录 ID
+    std::vector<std::string> file_tags;     // 文件标签过滤
+    std::optional<int> share_state;         // 分享状态
+    std::optional<bool> show_on_map;        // 是否已上图
+    AIGC_JSON_HELPER(except_ids, key, get_sub_file, start_time, end_time,
+                     file_all_types, payload_model_key, parent_id, file_tags)
+    AIGC_JSON_HELPER_OPTIONAL_SKIP(selected_parent_id, share_state, show_on_map)
 };
 
 /// TerraShowOnMapRequest — 批量加载/取消加载模型到地图（PUT /model/api/v1/files）
@@ -1700,9 +1716,14 @@ struct TerraShowOnMapRequest {
     std::vector<int> ids;                       // 指定文件 ID 列表（与 select_filter 二选一）
     std::optional<bool> show_on_map;            // true=加载，false=取消加载
     std::optional<bool> is_distributed;         // 是否已分发
+    bool restore = false;                       // 恢复
+    std::optional<bool> is_displayed;           // 是否显示
+    std::optional<bool> in_uniform_height;      // 等高模式
+    std::optional<int> model_display_mod;       // 显示模式
     std::optional<TerraSelectFilter> select_filter; // 全选过滤条件
-    AIGC_JSON_HELPER(ids)
-    AIGC_JSON_HELPER_OPTIONAL_SKIP(show_on_map, is_distributed, select_filter)
+    AIGC_JSON_HELPER(ids, restore)
+    AIGC_JSON_HELPER_OPTIONAL_SKIP(show_on_map, is_distributed, is_displayed,
+                                   in_uniform_height, model_display_mod, select_filter)
 };
 
 /// TerraSetLasWktRequest — 设置 LAS 坐标系请求（POST /pf-terra/api/v1/models/converters）
@@ -1722,7 +1743,15 @@ struct ElementPropertiesReq {
     bool is_transparent = false;
     int font_size = 0;
     int icon = 0;
-    AIGC_JSON_HELPER(color, clamp_to_ground, is3d, is_transparent, font_size, icon)
+    std::string icon_url;
+    int width = 0;
+    int start_cap = 0;
+    int end_cap = 0;
+    AIGC_JSON_HELPER(color, clamp_to_ground, is3d, is_transparent, font_size, icon,
+                     icon_url, width, start_cap, end_cap)
+    // JSON 键对齐后端驼峰: clamp_to_ground -> clampToGround、icon -> iconId 等。
+    AIGC_JSON_HELPER_RENAME("color", "clampToGround", "is3d", "is_transparent", "font_size",
+                            "iconId", "iconUrl", "width", "startCap", "endCap")
 };
 
 /// ElementGeoPointReq — 地理坐标点 {lng, lat, alt}
@@ -1740,6 +1769,8 @@ struct ElementGeometryReq {
     std::string coordinates;     // raw JSON 透传（AIGC 序列化后需 unquote）
     std::string bread_crumbs;    // raw JSON 透传（AIGC 序列化后需 unquote）
     AIGC_JSON_HELPER(type, radius, coordinates, bread_crumbs)
+    // JSON 键对齐后端驼峰: bread_crumbs -> breadCrumbs
+    AIGC_JSON_HELPER_RENAME("type", "radius", "coordinates", "breadCrumbs")
 };
 
 /// ElementMediaImageReq — 媒体图片
@@ -1859,20 +1890,25 @@ struct GetMediaFilesDownloadUrlListRequest {
 /// UploadCallbackFileExt — 上传回调中的文件扩展信息
 struct UploadCallbackFileExt {
     std::string wayline_id;
+    std::string wayline_action_uuid;        // 航线动作 UUID
     std::string prj_uuid;                   // 关联项目 UUID
     std::string workspace_id;               // 工作空间 ID
     std::string flight_id;                  // 航线任务 ID
     std::string drone_model_key;            // 飞行器型号 Key
     std::string payload_model_key;          // 负载型号 Key
     bool is_original = true;                // 是否原片
-    std::string user_id;                    // 上传用户 ID
+    std::string task_name;                  // 任务名称
+    std::string sn;                         // 设备序列号
     std::string tinny_fingerprint;          // 短指纹
-    int fast_reconstruction_media_type = 0; // 快速重建媒体类型
+    std::string user_id;                    // 上传用户 ID
     int64_t media_index = 0;               // 媒体索引
-    AIGC_JSON_HELPER(wayline_id, prj_uuid, workspace_id, flight_id,
-                     drone_model_key, payload_model_key, is_original,
-                     user_id, tinny_fingerprint,
-                     fast_reconstruction_media_type, media_index);
+    int expected_file_count = 0;           // 预期文件总数
+    int fast_reconstruction_media_type = 0; // 快速重建媒体类型
+    int pano_total_count = 0;               // 全景总数
+    AIGC_JSON_HELPER(wayline_id, wayline_action_uuid, prj_uuid, workspace_id, flight_id,
+                     drone_model_key, payload_model_key, is_original, task_name, sn,
+                     tinny_fingerprint, user_id, media_index, expected_file_count,
+                     fast_reconstruction_media_type, pano_total_count);
 };
 
 /// UploadCallbackFileShootPosition — 拍摄位置
@@ -2018,8 +2054,8 @@ struct SetRelaySearchModeRequest {
 /// 设置中继占用状态请求
 struct SetRelayOccupiedStatusRequest {
     std::string device_sn;
-    int occupied_status = 0;  // 0=禁止抢占, 1=允许抢占
-    AIGC_JSON_HELPER(device_sn, occupied_status);
+    bool allow_occupied = false;  // true=允许抢占, false=禁止抢占 (后端字段名 allow_occupied)
+    AIGC_JSON_HELPER(device_sn, allow_occupied);
 };
 
 /// 中继重启请求（仅含 device_sn）
@@ -2074,6 +2110,8 @@ struct SelfDiagnosisOperationRequest {
     std::string report_cmd_method;   // 操作指令: "cancel" / "delete";
 
     AIGC_JSON_HELPER(report_uuid, report_cmd_method);
+    // 后端 -private 接口字段名为 operation，公开 API 保持 report_cmd_method 不变。
+    AIGC_JSON_HELPER_RENAME("report_uuid", "operation");
 };
 
 // PaaS ai-alert 告警配置 POST Request
@@ -2092,6 +2130,13 @@ struct PostAiAlertAlgorithmSettingRequest {
     AIGC_JSON_HELPER(drone_sn, algorithm_type, algorithm_name, alarm_targets);
 };
 
+/// 删除告警记录（DELETE /drc/api/v2/ai-alert-record，proto 生成路由，字段走 JSON body）
+struct DeleteAiAlertRecordRequest {
+    std::string alert_uuid;
+    std::string flight_id;
+    AIGC_JSON_HELPER(alert_uuid, flight_id);
+};
+
 struct CreateFlashLedConfigRequest {
     std::string name;
     std::vector<FlashLedSegmentHttp> flash_segments;
@@ -2102,6 +2147,27 @@ struct UpdateFlashLedConfigRequest {
     std::string name;
     std::vector<FlashLedSegmentHttp> flash_segments;
     AIGC_JSON_HELPER(name, flash_segments);
+};
+
+/// 自动录制配置项（HTTP POST 入参，对齐 drc.proto PaasAutoRecordItem；recording_strategy 只读不下发）
+struct AutoRecordItemRequest {
+    std::string sn;
+    std::string camera_index;      // 形如 "39-0-7"，drc.proto 中为 string
+    std::string camera_sn;
+    AIGC_JSON_HELPER(sn, camera_index, camera_sn);
+};
+
+/// 保存自动录制配置（HTTP POST 入参，对齐 drc.proto SaveAutoRecordConfigRequest；
+/// recording_items 允许空数组（关闭全部录制场景））
+struct SaveAutoRecordConfigRequest {
+    int32_t auto_cleaning_time = 0;    // binding: min=7,max=90
+    bool disable_dock_recording = false;
+    bool disable_drone_recording = false;
+    bool disable_base_station_recording = false;
+    bool disable_rtmp_recording = false;
+    std::vector<AutoRecordItemRequest> recording_items;
+    AIGC_JSON_HELPER(auto_cleaning_time, disable_dock_recording, disable_drone_recording,
+        disable_base_station_recording, disable_rtmp_recording, recording_items);
 };
 
 // ===================== Live Sync Request Begin =====================
@@ -2246,6 +2312,10 @@ struct BeaconReportRequest {
 
     AIGC_JSON_HELPER(type, event, timestamp, license_id, payload)
 };
+
+
+// === 3X 超清全景拼接请求 ===
+// POST body 均为空（file_id 在 URL path），Impl 层直接传 "{}" 字符串，无需 Request 结构体
 
 
 }  // namespace flight_hub_sdk

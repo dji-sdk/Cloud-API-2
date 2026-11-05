@@ -21,21 +21,21 @@ public final class CameraState {
     private int remainPhotoNum;
     private double intervalPhotoInterval;
     // ── B4 扩展（drc_camera_state_push.camera_state 全量） ──
-    /** 通用视频分辨率 */
+    /** 通用视频分辨率。枚举（VideoResolutionType，Cloud API/Pilot/DRC 统一）：0=640x480, 1=640x512(红外相机), 2=1280x720(720p), 3=1920x960, 4=1920x1080(1080p), 5=2048x1080(2K Cinema), 6=2704x1520(2.7K), 7=2720x1530(2.7K), 8=3840x1572(超宽), 9=3840x2160(4K UHD), 10=4096x2160(4K Cinema C4K), 11=4608x2160, 12=4608x2592, 13=5280x2160(5.2K超宽), 14=5280x2972(5.2K), 15=5760x3240(5.8K), 16=6016x3200(6K), 17=MAX(传感器最大分辨率), 18=NO_SSD_VIDEO(SSD未设置), 0xFFFF=UNKNOWN */
     private int videoResolution;
     /** 联动变焦状态 */
     private int linkageZoomState;
     /** 照片尺寸 */
     private int photoSize;
-    /** 广角视频分辨率 */
+    /** 广角视频分辨率。枚举同 VideoResolutionType（同 video_resolution）：0=640x480, 1=640x512(红外相机), 2=1280x720(720p), 3=1920x960, 4=1920x1080(1080p), 5=2048x1080(2K Cinema), 6=2704x1520(2.7K), 7=2720x1530(2.7K), 8=3840x1572(超宽), 9=3840x2160(4K UHD), 10=4096x2160(4K Cinema C4K), 11=4608x2160, 12=4608x2592, 13=5280x2160(5.2K超宽), 14=5280x2972(5.2K), 15=5760x3240(5.8K), 16=6016x3200(6K), 17=MAX(传感器最大分辨率), 18=NO_SSD_VIDEO(SSD未设置), 0xFFFF=UNKNOWN */
     private int videoResolutionWide;
-    /** 变焦视频分辨率 */
+    /** 变焦视频分辨率。枚举同 VideoResolutionType（同 video_resolution）：0=640x480, 1=640x512(红外相机), 2=1280x720(720p), 3=1920x960, 4=1920x1080(1080p), 5=2048x1080(2K Cinema), 6=2704x1520(2.7K), 7=2720x1530(2.7K), 8=3840x1572(超宽), 9=3840x2160(4K UHD), 10=4096x2160(4K Cinema C4K), 11=4608x2160, 12=4608x2592, 13=5280x2160(5.2K超宽), 14=5280x2972(5.2K), 15=5760x3240(5.8K), 16=6016x3200(6K), 17=MAX(传感器最大分辨率), 18=NO_SSD_VIDEO(SSD未设置), 0xFFFF=UNKNOWN */
     private int videoResolutionZoom;
     /** 广角照片尺寸 */
     private int photoSizeWide;
     /** 变焦照片尺寸 */
     private int photoSizeZoom;
-    /** 照片格式 */
+    /** 照片格式整型码，取值语义同 `flight_hub_sdk::PhotoFormat`（见 `value.h`） */
     private int photoFormat;
     /** 温度超出范围有效性 */
     private boolean thermalTempExceedRangeValid;
@@ -166,9 +166,9 @@ public final class CameraState {
     }
 
     // ── B4 扩展 getter/setter ──
-    /** 通用视频分辨率 */
+    /** 通用视频分辨率。枚举（VideoResolutionType，Cloud API/Pilot/DRC 统一）：0=640x480, 1=640x512(红外相机), 2=1280x720(720p), 3=1920x960, 4=1920x1080(1080p), 5=2048x1080(2K Cinema), 6=2704x1520(2.7K), 7=2720x1530(2.7K), 8=3840x1572(超宽), 9=3840x2160(4K UHD), 10=4096x2160(4K Cinema C4K), 11=4608x2160, 12=4608x2592, 13=5280x2160(5.2K超宽), 14=5280x2972(5.2K), 15=5760x3240(5.8K), 16=6016x3200(6K), 17=MAX(传感器最大分辨率), 18=NO_SSD_VIDEO(SSD未设置), 0xFFFF=UNKNOWN */
     public int getVideoResolution() { return videoResolution; }
-    /** @param videoResolution 通用视频分辨率 */
+    /** @param videoResolution 通用视频分辨率。枚举（VideoResolutionType，Cloud API/Pilot/DRC 统一）：0=640x480, 1=640x512(红外相机), 2=1280x720(720p), 3=1920x960, 4=1920x1080(1080p), 5=2048x1080(2K Cinema), 6=2704x1520(2.7K), 7=2720x1530(2.7K), 8=3840x1572(超宽), 9=3840x2160(4K UHD), 10=4096x2160(4K Cinema C4K), 11=4608x2160, 12=4608x2592, 13=5280x2160(5.2K超宽), 14=5280x2972(5.2K), 15=5760x3240(5.8K), 16=6016x3200(6K), 17=MAX(传感器最大分辨率), 18=NO_SSD_VIDEO(SSD未设置), 0xFFFF=UNKNOWN */
     public void setVideoResolution(int v) { this.videoResolution = v; }
     /** 联动变焦状态 */
     public int getLinkageZoomState() { return linkageZoomState; }
@@ -178,13 +178,13 @@ public final class CameraState {
     public int getPhotoSize() { return photoSize; }
     /** @param photoSize 照片尺寸 */
     public void setPhotoSize(int v) { this.photoSize = v; }
-    /** 广角视频分辨率 */
+    /** 广角视频分辨率。枚举同 VideoResolutionType（同 video_resolution）：0=640x480, 1=640x512(红外相机), 2=1280x720(720p), 3=1920x960, 4=1920x1080(1080p), 5=2048x1080(2K Cinema), 6=2704x1520(2.7K), 7=2720x1530(2.7K), 8=3840x1572(超宽), 9=3840x2160(4K UHD), 10=4096x2160(4K Cinema C4K), 11=4608x2160, 12=4608x2592, 13=5280x2160(5.2K超宽), 14=5280x2972(5.2K), 15=5760x3240(5.8K), 16=6016x3200(6K), 17=MAX(传感器最大分辨率), 18=NO_SSD_VIDEO(SSD未设置), 0xFFFF=UNKNOWN */
     public int getVideoResolutionWide() { return videoResolutionWide; }
-    /** @param videoResolutionWide 广角视频分辨率 */
+    /** @param videoResolutionWide 广角视频分辨率。枚举同 VideoResolutionType（同 video_resolution）：0=640x480, 1=640x512(红外相机), 2=1280x720(720p), 3=1920x960, 4=1920x1080(1080p), 5=2048x1080(2K Cinema), 6=2704x1520(2.7K), 7=2720x1530(2.7K), 8=3840x1572(超宽), 9=3840x2160(4K UHD), 10=4096x2160(4K Cinema C4K), 11=4608x2160, 12=4608x2592, 13=5280x2160(5.2K超宽), 14=5280x2972(5.2K), 15=5760x3240(5.8K), 16=6016x3200(6K), 17=MAX(传感器最大分辨率), 18=NO_SSD_VIDEO(SSD未设置), 0xFFFF=UNKNOWN */
     public void setVideoResolutionWide(int v) { this.videoResolutionWide = v; }
-    /** 变焦视频分辨率 */
+    /** 变焦视频分辨率。枚举同 VideoResolutionType（同 video_resolution）：0=640x480, 1=640x512(红外相机), 2=1280x720(720p), 3=1920x960, 4=1920x1080(1080p), 5=2048x1080(2K Cinema), 6=2704x1520(2.7K), 7=2720x1530(2.7K), 8=3840x1572(超宽), 9=3840x2160(4K UHD), 10=4096x2160(4K Cinema C4K), 11=4608x2160, 12=4608x2592, 13=5280x2160(5.2K超宽), 14=5280x2972(5.2K), 15=5760x3240(5.8K), 16=6016x3200(6K), 17=MAX(传感器最大分辨率), 18=NO_SSD_VIDEO(SSD未设置), 0xFFFF=UNKNOWN */
     public int getVideoResolutionZoom() { return videoResolutionZoom; }
-    /** @param videoResolutionZoom 变焦视频分辨率 */
+    /** @param videoResolutionZoom 变焦视频分辨率。枚举同 VideoResolutionType（同 video_resolution）：0=640x480, 1=640x512(红外相机), 2=1280x720(720p), 3=1920x960, 4=1920x1080(1080p), 5=2048x1080(2K Cinema), 6=2704x1520(2.7K), 7=2720x1530(2.7K), 8=3840x1572(超宽), 9=3840x2160(4K UHD), 10=4096x2160(4K Cinema C4K), 11=4608x2160, 12=4608x2592, 13=5280x2160(5.2K超宽), 14=5280x2972(5.2K), 15=5760x3240(5.8K), 16=6016x3200(6K), 17=MAX(传感器最大分辨率), 18=NO_SSD_VIDEO(SSD未设置), 0xFFFF=UNKNOWN */
     public void setVideoResolutionZoom(int v) { this.videoResolutionZoom = v; }
     /** 广角照片尺寸 */
     public int getPhotoSizeWide() { return photoSizeWide; }
@@ -194,9 +194,9 @@ public final class CameraState {
     public int getPhotoSizeZoom() { return photoSizeZoom; }
     /** @param photoSizeZoom 变焦照片尺寸 */
     public void setPhotoSizeZoom(int v) { this.photoSizeZoom = v; }
-    /** 照片格式 */
+    /** 照片格式整型码，取值语义同 `flight_hub_sdk::PhotoFormat`（见 `value.h`） */
     public int getPhotoFormat() { return photoFormat; }
-    /** @param photoFormat 照片格式 */
+    /** @param photoFormat 照片格式整型码，取值语义同 `flight_hub_sdk::PhotoFormat`（见 `value.h`） */
     public void setPhotoFormat(int v) { this.photoFormat = v; }
     /** 温度超出范围有效性 */
     public boolean isThermalTempExceedRangeValid() { return thermalTempExceedRangeValid; }

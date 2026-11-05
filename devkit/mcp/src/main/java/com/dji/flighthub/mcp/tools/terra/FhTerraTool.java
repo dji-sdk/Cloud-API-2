@@ -22,6 +22,8 @@ import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
+import com.dji.flighthub.mcp.tools.subscription.ListenChannelSupport;
+import com.dji.flighthub.mcp.tools.subscription.SubscriptionBuffer;
 import com.dji.flighthub.mcp.annotation.Generated;
 import com.dji.flighthubsdk.bean.TerraBuildCreatePanoramaResult;
 import com.dji.flighthubsdk.bean.TerraBuildCreateReconstructionParams;
@@ -29,7 +31,12 @@ import com.dji.flighthubsdk.bean.TerraBuildCreateReconstructionResult;
 import com.dji.flighthubsdk.bean.TerraBuildModelFileListResult;
 import com.dji.flighthubsdk.bean.TerraBuildModelFileUrlResult;
 import com.dji.flighthubsdk.bean.TerraBuildQualityReportResult;
+import com.dji.flighthubsdk.bean.TerraBuildReconstructionImagesResult;
+import com.dji.flighthubsdk.bean.TerraBuildReconstructionStatusChanged;
 import com.dji.flighthubsdk.bean.TerraBuildSettingsResult;
+import com.dji.flighthubsdk.bean.TerraBuildSfmResult;
+import com.dji.flighthubsdk.bean.TerraModelStatusChangedMsg;
+import com.dji.flighthubsdk.bean.TerraUnzipProgressMsg;
 import com.dji.flighthubsdk.core.TerraBuildModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +48,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 /**
  * fh_terra — 三维重建与成果管理。
@@ -48,8 +56,9 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>安全等级：混合
  * <ul>
- *   <li>create_reconstruction / create_panorama — L1（需人工确认）</li>
- *   <li>status / model_list / model_url / quality_report — L0（只读查询）</li>
+ *   <li>create_reconstruction / create_panorama / delete_model / retry / stop / batch_delete_model
+ *       — L1（需人工确认）</li>
+ *   <li>status / model_list / model_url / quality_report / get_sfm / get_images — L0（只读查询）</li>
  * </ul>
  *
  * <p>对应 SDK 模块：TerraBuildModule（workspace.getTerraBuildModule()）
@@ -78,6 +87,12 @@ public class FhTerraTool extends AbstractMcpTool {
     private static final String PARAM_PAGE_SIZE = "page_size";
     private static final String PARAM_LANGUAGE = "language";
     private static final String PARAM_CONFIRM = "confirm";
+    private static final String PARAM_FILE_UUID = "file_uuid";
+    private static final String PARAM_FILE_IDS = "file_ids";
+    private static final String PARAM_CHANNEL = "channel";
+    private static final String PARAM_CHANNELS = "channels";
+    private static final String PARAM_SINCE_SEQ = "since_seq";
+    private static final String PARAM_LIMIT = "limit";
 
     // ── 操作常量 ──
 
@@ -89,13 +104,42 @@ public class FhTerraTool extends AbstractMcpTool {
     private static final String ACTION_QUALITY_REPORT = "quality_report";
     private static final String ACTION_DELETE_MODEL = "delete_model";
     private static final String ACTION_RETRY = "retry";
+    private static final String ACTION_STOP = "stop";
+    private static final String ACTION_GET_SFM = "get_sfm";
+    private static final String ACTION_BATCH_DELETE_MODEL = "batch_delete_model";
+    private static final String ACTION_GET_IMAGES = "get_images";
+    private static final String ACTION_LISTEN_STATUS = "listen_status";
+    private static final String ACTION_EVENTS = "events";
+    private static final String ACTION_LISTEN_STOP = "listen_stop";
 
     /** 有效操作列表 */
     private static final List<String> VALID_ACTIONS = List.of(
             ACTION_CREATE_RECONSTRUCTION, ACTION_CREATE_PANORAMA,
             ACTION_STATUS, ACTION_MODEL_LIST, ACTION_MODEL_URL, ACTION_QUALITY_REPORT,
-            ACTION_DELETE_MODEL, ACTION_RETRY
+            ACTION_DELETE_MODEL, ACTION_RETRY,
+            ACTION_STOP, ACTION_GET_SFM, ACTION_BATCH_DELETE_MODEL, ACTION_GET_IMAGES,
+            ACTION_LISTEN_STATUS, ACTION_EVENTS, ACTION_LISTEN_STOP
     );
+
+    // ── 订阅 channel 常量 ──
+
+    private static final String CHANNEL_STATUS_CHANGED = "status_changed";
+    private static final String CHANNEL_UNZIP_PROGRESS = "unzip_progress";
+    private static final String CHANNEL_MODEL_STATUS_CHANGED = "model_status_changed";
+
+    /** 有效订阅 channel 列表 */
+    private static final List<String> VALID_CHANNELS = List.of(
+            CHANNEL_STATUS_CHANGED, CHANNEL_UNZIP_PROGRESS, CHANNEL_MODEL_STATUS_CHANGED
+    );
+
+    /** 订阅注册表命名空间（与 Tool 名对应） */
+    private static final String SUBSCRIBE_NAMESPACE = "terra";
+
+    /** 订阅作用域标识：本工具的订阅是 workspace 级，不区分设备 */
+    private static final String SUBSCRIBE_SCOPE_ID = "workspace";
+
+    /** events 动作默认读取条数 */
+    private static final int DEFAULT_EVENTS_LIMIT = 50;
 
     /** 有效重建类型 */
     private static final List<String> VALID_RECONSTRUCTION_TYPES = List.of(
@@ -116,17 +160,23 @@ public class FhTerraTool extends AbstractMcpTool {
     /** Mock ID 取模基数 */
     private static final int MOCK_ID_MODULUS = 100_000;
 
+    /** batch_delete_model 一次最多删除的文件数量 */
+    private static final int MAX_BATCH_DELETE_SIZE = 100;
+
     private final SdkService sdkService;
+    private final ListenChannelSupport listenSupport;
 
     /**
      * 构造函数。
      *
      * @param sessionManager session 管理器
      * @param sdkService     SDK 服务
+     * @param listenSupport  订阅 channel 通用支持组件
      */
-    public FhTerraTool(SessionManager sessionManager, SdkService sdkService) {
+    public FhTerraTool(SessionManager sessionManager, SdkService sdkService, ListenChannelSupport listenSupport) {
         super(sessionManager);
         this.sdkService = sdkService;
+        this.listenSupport = listenSupport;
     }
 
     /**
@@ -143,6 +193,16 @@ public class FhTerraTool extends AbstractMcpTool {
      *
      * @return MCP 工具定义 Map
      */
+    /**
+     * 声明工具级静态安全等级：REVERSIBLE。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.REVERSIBLE;
+    }
+
     @Override
     public Map<String, Object> getToolDefinition() {
         Map<String, Object> def = new LinkedHashMap<>();
@@ -150,7 +210,10 @@ public class FhTerraTool extends AbstractMcpTool {
         def.put("description",
                 "3D reconstruction and model management: create ortho/3D/point-cloud reconstruction "
                 + "or panorama from flight imagery, check reconstruction status, list model files, "
-                + "get model URLs, retrieve quality reports, delete models, and retry failed tasks.");
+                + "get model URLs, retrieve quality reports, delete models, retry failed tasks, "
+                + "stop a running task, fetch SfM results, batch-delete models, list source images, "
+                + "and subscribe to reconstruction/unzip/model-status change events "
+                + "(listen_status -> events -> listen_stop).");
 
         Map<String, Object> schema = new LinkedHashMap<>();
         schema.put("type", "object");
@@ -166,7 +229,14 @@ public class FhTerraTool extends AbstractMcpTool {
                         + "model_url: get download URL | "
                         + "quality_report: get quality metrics | "
                         + "delete_model: delete a model file by file_id | "
-                        + "retry: retry a failed reconstruction task"
+                        + "retry: retry a failed reconstruction task | "
+                        + "stop: stop a running reconstruction task | "
+                        + "get_sfm: fetch Structure-from-Motion (SfM) result URLs | "
+                        + "batch_delete_model: delete multiple model files by file_ids | "
+                        + "get_images: list source images used in a reconstruction task | "
+                        + "listen_status: subscribe to a workspace-level event channel (channel required) | "
+                        + "events: poll buffered events for one/all active channels since a cursor | "
+                        + "listen_stop: unsubscribe one/all active channels"
         ));
         props.put(PARAM_TASK_ID, Map.of(
                 "type", "string",
@@ -212,7 +282,41 @@ public class FhTerraTool extends AbstractMcpTool {
         ));
         props.put(PARAM_CONFIRM, Map.of(
                 "type", "boolean",
-                "description", "Required for create_reconstruction/create_panorama actions"
+                "description", "Required for create_reconstruction/create_panorama/delete_model/retry/"
+                        + "stop/batch_delete_model actions"
+        ));
+        props.put(PARAM_FILE_UUID, Map.of(
+                "type", "string",
+                "description", "Reconstruction file_uuid (required for stop/get_sfm/get_images)"
+        ));
+        props.put(PARAM_FILE_IDS, Map.of(
+                "type", "array",
+                "items", Map.of("type", "integer"),
+                "description", "Model file IDs to delete in batch (required for batch_delete_model, 1-"
+                        + MAX_BATCH_DELETE_SIZE + " items). Use action=model_list to find IDs."
+        ));
+        props.put(PARAM_CHANNEL, Map.of(
+                "type", "string",
+                "enum", VALID_CHANNELS,
+                "description", "Event channel to subscribe (required for listen_status): "
+                        + "status_changed=reconstruction status changes | "
+                        + "unzip_progress=source archive unzip progress | "
+                        + "model_status_changed=generated model status changes"
+        ));
+        props.put(PARAM_CHANNELS, Map.of(
+                "type", "array",
+                "items", Map.of("type", "string", "enum", VALID_CHANNELS),
+                "description", "Channel names for events/listen_stop (optional; defaults to all "
+                        + "currently active channels when omitted)"
+        ));
+        props.put(PARAM_SINCE_SEQ, Map.of(
+                "type", "integer",
+                "description", "Cursor for events: only return events with _seq greater than this value (default 0)"
+        ));
+        props.put(PARAM_LIMIT, Map.of(
+                "type", "integer",
+                "description", "Max events to return per channel for events action (default "
+                        + DEFAULT_EVENTS_LIMIT + ")"
         ));
         schema.put("properties", props);
         schema.put("required", List.of(PARAM_ACTION));
@@ -247,7 +351,12 @@ public class FhTerraTool extends AbstractMcpTool {
             return validationError;
         }
 
-        // 4. create_* 操作需要安全等级 L1 + 人工确认
+        // 4. 订阅类 action（READ_ONLY，不进入 create 确认流程）单独分发
+        if (isSubscriptionAction(action)) {
+            return dispatchSubscription(action, args);
+        }
+
+        // 5. create_* 操作需要安全等级 L1 + 人工确认
         if (isCreateAction(action)) {
             Map<String, Object> denied = enforceSecurityLevel(SecurityLevel.REVERSIBLE);
             if (denied != null) {
@@ -261,7 +370,7 @@ public class FhTerraTool extends AbstractMcpTool {
             }
         }
 
-        // 5. 分发执行
+        // 6. 分发执行
         return sdkService.isMockMode()
                 ? dispatchMockMode(action, args)
                 : dispatchRealSdk(action, args);
@@ -299,6 +408,13 @@ public class FhTerraTool extends AbstractMcpTool {
             case ACTION_QUALITY_REPORT -> validateQualityReportParams(args);
             case ACTION_DELETE_MODEL -> validateDeleteModelParams(args);
             case ACTION_RETRY -> validateTaskIdRequired(args);
+            case ACTION_STOP -> validateFileUuidRequired(args);
+            case ACTION_GET_SFM -> validateFileUuidRequired(args);
+            case ACTION_BATCH_DELETE_MODEL -> validateBatchDeleteModelParams(args);
+            case ACTION_GET_IMAGES -> validateFileUuidRequired(args);
+            case ACTION_LISTEN_STATUS -> validateChannelRequired(args);
+            case ACTION_EVENTS -> null; // channels/since_seq/limit 均可选
+            case ACTION_LISTEN_STOP -> null; // channels 可选，省略则停止全部
             default -> errorResult("Unknown action: " + action, "");
         };
     }
@@ -403,6 +519,47 @@ public class FhTerraTool extends AbstractMcpTool {
         return null;
     }
 
+    /**
+     * 校验 stop/get_sfm/get_images 参数（需要 file_uuid）。
+     */
+    private Map<String, Object> validateFileUuidRequired(Map<String, Object> args) {
+        String fileUuid = getStringArg(args, PARAM_FILE_UUID, null);
+        if (fileUuid == null) {
+            return errorResult("Missing required parameter: file_uuid",
+                    "Provide the reconstruction file_uuid.");
+        }
+        return null;
+    }
+
+    /**
+     * 校验 batch_delete_model 参数（需要 file_ids 数组，数量在 1 到上限之间）。
+     */
+    private Map<String, Object> validateBatchDeleteModelParams(Map<String, Object> args) {
+        List<Integer> fileIds = parseFileIdsList(args);
+        if (fileIds == null) {
+            return errorResult("Missing or invalid parameter: file_ids",
+                    "Provide an array of integer model file IDs (1-" + MAX_BATCH_DELETE_SIZE
+                            + " items) to delete.");
+        }
+        if (fileIds.size() > MAX_BATCH_DELETE_SIZE) {
+            return errorResult("Too many file_ids: " + fileIds.size(),
+                    "file_ids must contain at most " + MAX_BATCH_DELETE_SIZE + " items.");
+        }
+        return null;
+    }
+
+    /**
+     * 校验 listen_status 参数（需要 channel，取值在 VALID_CHANNELS 范围内）。
+     */
+    private Map<String, Object> validateChannelRequired(Map<String, Object> args) {
+        String channel = getStringArg(args, PARAM_CHANNEL, null);
+        if (channel == null || !VALID_CHANNELS.contains(channel)) {
+            return errorResult("Missing or invalid parameter: channel",
+                    "channel must be one of: " + VALID_CHANNELS);
+        }
+        return null;
+    }
+
     // ── Mock 分发 ──
 
     /**
@@ -418,6 +575,10 @@ public class FhTerraTool extends AbstractMcpTool {
             case ACTION_QUALITY_REPORT -> qualityReportMock(args);
             case ACTION_DELETE_MODEL -> deleteModelMock(args);
             case ACTION_RETRY -> retryMock(args);
+            case ACTION_STOP -> stopMock(args);
+            case ACTION_GET_SFM -> getSfmMock(args);
+            case ACTION_BATCH_DELETE_MODEL -> batchDeleteModelMock(args);
+            case ACTION_GET_IMAGES -> getImagesMock(args);
             default -> errorResult("Unknown action: " + action, "");
         };
     }
@@ -619,6 +780,84 @@ public class FhTerraTool extends AbstractMcpTool {
         return successResult(data, "Reconstruction task " + taskId + " retried, now processing.");
     }
 
+    /**
+     * Mock 模式 — 停止重建任务。
+     */
+    private Map<String, Object> stopMock(Map<String, Object> args) {
+        String fileUuid = getStringArg(args, PARAM_FILE_UUID, "");
+        log.info("[MOCK] Stop reconstruction: file_uuid={}", fileUuid);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_STOP);
+        data.put("file_uuid", fileUuid);
+        data.put("stopped", true);
+        data.put("_mock", true);
+
+        return successResult(data, "Reconstruction task " + fileUuid + " stopped.");
+    }
+
+    /**
+     * Mock 模式 — 获取 SfM（Structure-from-Motion）结果。
+     */
+    private Map<String, Object> getSfmMock(Map<String, Object> args) {
+        String fileUuid = getStringArg(args, PARAM_FILE_UUID, "");
+        log.info("[MOCK] Get SFM result: file_uuid={}", fileUuid);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_GET_SFM);
+        data.put("file_uuid", fileUuid);
+        data.put("sfm_json_url", "https://terra.dji.com/mock/sfm_" + fileUuid + ".json");
+        data.put("sfm_report_json_url", "https://terra.dji.com/mock/sfm_report_" + fileUuid + ".json");
+        data.put("gcp_out_json_url", "https://terra.dji.com/mock/gcp_out_" + fileUuid + ".json");
+        data.put("re_projection_error_pic_url_list",
+                List.of("https://terra.dji.com/mock/reproj_" + fileUuid + "_1.jpg"));
+        data.put("_mock", true);
+
+        return successResult(data, "SFM result retrieved for task " + fileUuid);
+    }
+
+    /**
+     * Mock 模式 — 批量删除重建模型文件。
+     */
+    private Map<String, Object> batchDeleteModelMock(Map<String, Object> args) {
+        List<Integer> fileIds = parseFileIdsList(args);
+        int count = fileIds != null ? fileIds.size() : 0;
+        log.info("[MOCK] Batch delete model files: fileIds={}", fileIds);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_BATCH_DELETE_MODEL);
+        data.put("file_ids", fileIds);
+        data.put("deleted_count", count);
+        data.put("_mock", true);
+
+        return successResult(data, count + " model file(s) deleted.");
+    }
+
+    /**
+     * Mock 模式 — 获取重建任务的源影像列表。
+     */
+    private Map<String, Object> getImagesMock(Map<String, Object> args) {
+        String fileUuid = getStringArg(args, PARAM_FILE_UUID, "");
+        log.info("[MOCK] Get reconstruction images: file_uuid={}", fileUuid);
+
+        List<Map<String, Object>> images = new ArrayList<>();
+        Map<String, Object> image1 = new LinkedHashMap<>();
+        image1.put("image_id", "img_001");
+        image1.put("file_name", "DJI_0001.JPG");
+        image1.put("thumbnail_image_url", "https://terra.dji.com/mock/thumb_001.jpg");
+        image1.put("origin_image_url", "https://terra.dji.com/mock/origin_001.jpg");
+        images.add(image1);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_GET_IMAGES);
+        data.put("file_uuid", fileUuid);
+        data.put("images", images);
+        data.put("total_count", images.size());
+        data.put("_mock", true);
+
+        return successResult(data, "Found " + images.size() + " reconstruction images for task " + fileUuid);
+    }
+
     // ── 真实 SDK 分发 ──
 
     /**
@@ -642,6 +881,10 @@ public class FhTerraTool extends AbstractMcpTool {
                 case ACTION_QUALITY_REPORT -> qualityReportReal(tbm, args);
                 case ACTION_DELETE_MODEL -> deleteModelReal(tbm, args);
                 case ACTION_RETRY -> retryReal(tbm, args);
+                case ACTION_STOP -> stopReal(tbm, args);
+                case ACTION_GET_SFM -> getSfmReal(tbm, args);
+                case ACTION_BATCH_DELETE_MODEL -> batchDeleteModelReal(tbm, args);
+                case ACTION_GET_IMAGES -> getImagesReal(tbm, args);
                 default -> errorResult("Unknown action: " + action, "");
             };
         } catch (SdkCallbackBridge.SdkException e) {
@@ -952,6 +1195,122 @@ public class FhTerraTool extends AbstractMcpTool {
     }
 
     /**
+     * 真实 SDK — 停止重建任务。
+     */
+    @Generated
+    private Map<String, Object> stopReal(TerraBuildModule tbm, Map<String, Object> args) {
+        String fileUuid = getStringArg(args, PARAM_FILE_UUID, null);
+
+        SdkCallbackBridge.awaitVoidRc(cb -> tbm.stopReconstruction(fileUuid, cb));
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_STOP);
+        data.put("file_uuid", fileUuid);
+        data.put("stopped", true);
+
+        return successResult(data, "Reconstruction task " + fileUuid + " stopped.");
+    }
+
+    /**
+     * 真实 SDK — 获取 SfM（Structure-from-Motion）结果。
+     * 通过 TerraBuildModule.getSfmResult 获取稀疏重建相关文件的下载链接。
+     *
+     * @param tbm  TerraBuildModule 实例
+     * @param args 输入参数
+     * @return 包含 sfm_json_url 等字段的结果
+     */
+    private Map<String, Object> getSfmReal(TerraBuildModule tbm, Map<String, Object> args) {
+        String fileUuid = getStringArg(args, PARAM_FILE_UUID, "");
+
+        CompletableFuture<TerraBuildSfmResult> future = new CompletableFuture<>();
+        tbm.getSfmResult(fileUuid, (error, result) -> {
+            if (!error.isSuccess()) {
+                future.completeExceptionally(new SdkCallbackBridge.SdkException(
+                        error.getServerCode(), formatSdkError(error)));
+                return;
+            }
+            future.complete(result);
+        });
+        TerraBuildSfmResult result = SdkCallbackBridge.await(future);
+
+        log.info("[REAL] Terra SFM result: file_uuid={}, sfm_json_url_length={}",
+                fileUuid, result.getSfmJsonUrl() != null ? result.getSfmJsonUrl().length() : 0);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_GET_SFM);
+        data.put("file_uuid", fileUuid);
+        data.put("sfm_json_url", result.getSfmJsonUrl());
+        data.put("sfm_report_json_url", result.getSfmReportJsonUrl());
+        data.put("gcp_out_json_url", result.getGcpOutJsonUrl());
+        data.put("re_projection_error_pic_url_list", result.getReProjectionErrorPicUrlList());
+
+        return successResult(data, "SFM result retrieved for task " + fileUuid);
+    }
+
+    /**
+     * 真实 SDK — 批量删除重建模型文件。
+     */
+    @Generated
+    private Map<String, Object> batchDeleteModelReal(TerraBuildModule tbm, Map<String, Object> args) {
+        List<Integer> fileIds = parseFileIdsList(args);
+        int count = fileIds != null ? fileIds.size() : 0;
+
+        SdkCallbackBridge.awaitVoidRc(cb -> tbm.batchDeleteModelFiles(fileIds, cb));
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_BATCH_DELETE_MODEL);
+        data.put("file_ids", fileIds);
+        data.put("deleted_count", count);
+
+        return successResult(data, count + " model file(s) deleted.");
+    }
+
+    /**
+     * 真实 SDK — 获取重建任务的源影像列表。
+     * 通过 TerraBuildModule.getReconstructionImages 获取影像缩略图与原图链接。
+     *
+     * @param tbm  TerraBuildModule 实例
+     * @param args 输入参数
+     * @return 包含 images 列表的结果
+     */
+    private Map<String, Object> getImagesReal(TerraBuildModule tbm, Map<String, Object> args) {
+        String fileUuid = getStringArg(args, PARAM_FILE_UUID, "");
+
+        CompletableFuture<TerraBuildReconstructionImagesResult> future = new CompletableFuture<>();
+        tbm.getReconstructionImages(fileUuid, (error, result) -> {
+            if (!error.isSuccess()) {
+                future.completeExceptionally(new SdkCallbackBridge.SdkException(
+                        error.getServerCode(), formatSdkError(error)));
+                return;
+            }
+            future.complete(result);
+        });
+        TerraBuildReconstructionImagesResult result = SdkCallbackBridge.await(future);
+
+        log.info("[REAL] Terra reconstruction images: file_uuid={}, total={}", fileUuid, result.getTotal());
+
+        List<Map<String, Object>> images = new ArrayList<>();
+        if (result.getList() != null) {
+            result.getList().forEach(item -> {
+                Map<String, Object> image = new LinkedHashMap<>();
+                image.put("image_id", item.getImageId());
+                image.put("file_name", item.getFileName());
+                image.put("thumbnail_image_url", item.getThumbnailImageUrl());
+                image.put("origin_image_url", item.getOriginImageUrl());
+                images.add(image);
+            });
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_GET_IMAGES);
+        data.put("file_uuid", fileUuid);
+        data.put("images", images);
+        data.put("total_count", result.getTotal());
+
+        return successResult(data, "Found " + result.getTotal() + " reconstruction images for task " + fileUuid);
+    }
+
+    /**
      * 将字符串重建类型映射为 SDK 所需的整数列表。
      * ortho_2d=0, mesh_3d=1, point_cloud=2
      *
@@ -968,7 +1327,274 @@ public class FhTerraTool extends AbstractMcpTool {
         return List.of(type);
     }
 
+    // ── 订阅分发 ──
+
+    /**
+     * 订阅类 action 分发入口。
+     *
+     * @param action 操作名
+     * @param args   输入参数
+     * @return 执行结果
+     */
+    private Map<String, Object> dispatchSubscription(String action, Map<String, Object> args) {
+        SessionContext session = requireSession();
+        return switch (action) {
+            case ACTION_LISTEN_STATUS -> handleListenStatus(session, args);
+            case ACTION_EVENTS -> handleEvents(session, args);
+            case ACTION_LISTEN_STOP -> handleListenStop(session, args);
+            default -> errorResult("Unknown action: " + action, "");
+        };
+    }
+
+    /**
+     * 处理 listen_status：订阅指定 channel，返回 listen_id。
+     */
+    private Map<String, Object> handleListenStatus(SessionContext session, Map<String, Object> args) {
+        String channel = getStringArg(args, PARAM_CHANNEL, null);
+        String registryKey = ListenChannelSupport.registryKey(SUBSCRIBE_NAMESPACE, SUBSCRIBE_SCOPE_ID, channel);
+        String scope = SubscriptionBuffer.scope(session, SUBSCRIBE_SCOPE_ID);
+        boolean mock = sdkService.isMockMode();
+
+        int listenId = listenSupport.startChannel(session, registryKey, channel, scope, channel, mock,
+                mockSupplierFor(channel),
+                onEvent -> startRealListen(channel, onEvent),
+                listenId2 -> cancelRealListen(channel, listenId2));
+
+        if (listenId < 0) {
+            return errorResult("Failed to start listening on channel: " + channel,
+                    "Check SDK connectivity and try again.");
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_LISTEN_STATUS);
+        data.put("channel", channel);
+        data.put("listen_id", listenId);
+        return successResult(data, "Subscribed to channel '" + channel + "'. Poll with action=events.");
+    }
+
+    /**
+     * 处理 events：按游标轮询一个或多个已订阅 channel 的缓冲事件。
+     */
+    private Map<String, Object> handleEvents(SessionContext session, Map<String, Object> args) {
+        List<String> channels = resolveChannels(session, args);
+        long sinceSeq = getLongArg(args, PARAM_SINCE_SEQ, 0L);
+        int limit = getIntArg(args, PARAM_LIMIT, DEFAULT_EVENTS_LIMIT);
+
+        Map<String, Object> streams = new LinkedHashMap<>();
+        for (String channel : channels) {
+            String registryKey = ListenChannelSupport.registryKey(SUBSCRIBE_NAMESPACE, SUBSCRIBE_SCOPE_ID, channel);
+            String scope = SubscriptionBuffer.scope(session, SUBSCRIBE_SCOPE_ID);
+            streams.put(channel, listenSupport.readChannel(session, registryKey, scope, channel, sinceSeq, limit));
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_EVENTS);
+        data.put("streams", streams);
+        return successResult(data, "Polled " + streams.size() + " channel(s).");
+    }
+
+    /**
+     * 处理 listen_stop：停止一个/多个/全部已订阅的 channel。
+     */
+    private Map<String, Object> handleListenStop(SessionContext session, Map<String, Object> args) {
+        List<String> requested = getStringListArg(args, PARAM_CHANNELS);
+        List<String> channels = (requested != null && !requested.isEmpty())
+                ? requested
+                : listenSupport.activeChannels(session, subscribePrefix());
+
+        ListenChannelSupport.StopResult result = listenSupport.stopChannels(session, channels,
+                channel -> ListenChannelSupport.registryKey(SUBSCRIBE_NAMESPACE, SUBSCRIBE_SCOPE_ID, channel), log);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_LISTEN_STOP);
+        data.put("stopped", result.stopped());
+        data.put("not_active", result.notActive());
+        data.put("failed", result.failed());
+        return successResult(data, "Stopped " + result.stopped().size() + " channel(s).");
+    }
+
+    /**
+     * 解析 events 要轮询的 channel 列表：显式传入 channels 则用它，否则取当前全部已激活 channel。
+     */
+    private List<String> resolveChannels(SessionContext session, Map<String, Object> args) {
+        List<String> requested = getStringListArg(args, PARAM_CHANNELS);
+        if (requested != null && !requested.isEmpty()) {
+            return requested;
+        }
+        return listenSupport.activeChannels(session, subscribePrefix());
+    }
+
+    /**
+     * 本工具订阅注册表 key 的前缀（namespace::scopeId::）。
+     */
+    private String subscribePrefix() {
+        return SUBSCRIBE_NAMESPACE + "::" + SUBSCRIBE_SCOPE_ID + "::";
+    }
+
+    /**
+     * 按 channel 选择对应的 mock 事件生成器。
+     */
+    private ListenChannelSupport.MockEventSupplier mockSupplierFor(String channel) {
+        return switch (channel) {
+            case CHANNEL_STATUS_CHANGED -> this::mockStatusChangedEvent;
+            case CHANNEL_UNZIP_PROGRESS -> this::mockUnzipProgressEvent;
+            case CHANNEL_MODEL_STATUS_CHANGED -> this::mockModelStatusChangedEvent;
+            default -> Map::of;
+        };
+    }
+
+    /**
+     * 按 channel 调用真实 SDK 的 listen 方法，返回 listenId；TerraBuildModule 不可用时返回 -1。
+     */
+    private int startRealListen(String channel, Consumer<Map<String, Object>> onEvent) {
+        TerraBuildModule tbm = sdkService.getWorkspace().getTerraBuildModule();
+        if (tbm == null) {
+            return -1;
+        }
+        return switch (channel) {
+            case CHANNEL_STATUS_CHANGED -> tbm.listenReconstructionStatusChanged(
+                    msg -> onEvent.accept(toMap(msg)));
+            case CHANNEL_UNZIP_PROGRESS -> tbm.listenTerraUnzipProgress(
+                    msg -> onEvent.accept(toMap(msg)));
+            case CHANNEL_MODEL_STATUS_CHANGED -> tbm.listenTerraModelStatusChanged(
+                    msg -> onEvent.accept(toMap(msg)));
+            default -> -1;
+        };
+    }
+
+    /**
+     * 按 channel 调用真实 SDK 的 cancelListen 方法。
+     */
+    private void cancelRealListen(String channel, int listenId) {
+        TerraBuildModule tbm = sdkService.getWorkspace().getTerraBuildModule();
+        if (tbm == null) {
+            return;
+        }
+        switch (channel) {
+            case CHANNEL_STATUS_CHANGED -> tbm.cancelListenReconstructionStatusChanged(listenId);
+            case CHANNEL_UNZIP_PROGRESS -> tbm.cancelListenTerraUnzipProgress(listenId);
+            case CHANNEL_MODEL_STATUS_CHANGED -> tbm.cancelListenTerraModelStatusChanged(listenId);
+            default -> { }
+        }
+    }
+
+    /**
+     * Mock — 重建状态变更事件。
+     */
+    private Map<String, Object> mockStatusChangedEvent() {
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("workspace_id", "mock_ws");
+        event.put("id", 1001L);
+        event.put("name", "Reconstruction_mock");
+        event.put("state", 2);
+        event.put("uuid", "recon_mock_uuid");
+        event.put("file_type", 1);
+        event.put("sub_file_type", 0);
+        event.put("code", 0);
+        event.put("size", 1024000L);
+        event.put("_mock", true);
+        return event;
+    }
+
+    /**
+     * Mock — 源文件解压进度事件。
+     */
+    private Map<String, Object> mockUnzipProgressEvent() {
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("file_id", 1001L);
+        event.put("uuid", "unzip_mock_uuid");
+        event.put("name", "mock_archive.zip");
+        event.put("percent", 42.5);
+        event.put("_mock", true);
+        return event;
+    }
+
+    /**
+     * Mock — 模型状态变更事件。
+     */
+    private Map<String, Object> mockModelStatusChangedEvent() {
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("file_id", 1002L);
+        event.put("uuid", "model_mock_uuid");
+        event.put("name", "mock_model");
+        event.put("state", 2);
+        event.put("file_type", 1);
+        event.put("sub_file_type", 0);
+        event.put("error_code", 0);
+        event.put("_mock", true);
+        return event;
+    }
+
+    /**
+     * 将 TerraBuildReconstructionStatusChanged 转换为事件 Map。
+     */
+    private Map<String, Object> toMap(TerraBuildReconstructionStatusChanged msg) {
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("workspace_id", msg.getWorkspaceId());
+        event.put("id", msg.getId());
+        event.put("name", msg.getName());
+        event.put("state", msg.getState());
+        event.put("uuid", msg.getUuid());
+        event.put("file_type", msg.getFileType());
+        event.put("sub_file_type", msg.getSubFileType());
+        event.put("code", msg.getCode());
+        event.put("size", msg.getSize());
+        return event;
+    }
+
+    /**
+     * 将 TerraUnzipProgressMsg 转换为事件 Map。
+     */
+    private Map<String, Object> toMap(TerraUnzipProgressMsg msg) {
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("file_id", msg.getFileId());
+        event.put("uuid", msg.getUuid());
+        event.put("name", msg.getName());
+        event.put("percent", msg.getPercent());
+        return event;
+    }
+
+    /**
+     * 将 TerraModelStatusChangedMsg 转换为事件 Map。
+     */
+    private Map<String, Object> toMap(TerraModelStatusChangedMsg msg) {
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("file_id", msg.getFileId());
+        event.put("uuid", msg.getUuid());
+        event.put("name", msg.getName());
+        event.put("state", msg.getState());
+        event.put("file_type", msg.getFileType());
+        event.put("sub_file_type", msg.getSubFileType());
+        event.put("error_code", msg.getErrorCode());
+        return event;
+    }
+
     // ── 辅助方法 ──
+
+    /**
+     * 解析 file_ids 参数为整数列表，元素非法或列表为空时返回 null。
+     *
+     * @param args 输入参数
+     * @return 解析得到的整数列表；参数缺失、为空或含非法元素时返回 null
+     */
+    private List<Integer> parseFileIdsList(Map<String, Object> args) {
+        Object value = args != null ? args.get(PARAM_FILE_IDS) : null;
+        if (!(value instanceof List<?> rawList) || rawList.isEmpty()) {
+            return null;
+        }
+        List<Integer> result = new ArrayList<>(rawList.size());
+        for (Object item : rawList) {
+            if (item == null) {
+                continue;
+            }
+            try {
+                result.add(Integer.parseInt(item.toString().trim()));
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return result.isEmpty() ? null : result;
+    }
 
     /**
      * 判断是否为写操作（需要人工确认）。
@@ -977,7 +1603,18 @@ public class FhTerraTool extends AbstractMcpTool {
         return ACTION_CREATE_RECONSTRUCTION.equals(action)
                 || ACTION_CREATE_PANORAMA.equals(action)
                 || ACTION_DELETE_MODEL.equals(action)
-                || ACTION_RETRY.equals(action);
+                || ACTION_RETRY.equals(action)
+                || ACTION_STOP.equals(action)
+                || ACTION_BATCH_DELETE_MODEL.equals(action);
+    }
+
+    /**
+     * 判断是否为订阅类 action（listen_status/events/listen_stop）。
+     */
+    private boolean isSubscriptionAction(String action) {
+        return ACTION_LISTEN_STATUS.equals(action)
+                || ACTION_EVENTS.equals(action)
+                || ACTION_LISTEN_STOP.equals(action);
     }
 
     /**
@@ -995,6 +1632,11 @@ public class FhTerraTool extends AbstractMcpTool {
             List<String> mediaIds = parseStringList(args, PARAM_MEDIA_IDS);
             int count = mediaIds != null ? mediaIds.size() : 0;
             return String.format("即将创建全景任务「%s」，包含 %d 个媒体文件夹，确认？", name, count);
+        }
+        if (ACTION_BATCH_DELETE_MODEL.equals(action)) {
+            List<Integer> fileIds = parseFileIdsList(args);
+            int count = fileIds != null ? fileIds.size() : 0;
+            return String.format("即将批量删除 %d 个模型文件，确认？", count);
         }
         return "确认执行三维重建操作？";
     }

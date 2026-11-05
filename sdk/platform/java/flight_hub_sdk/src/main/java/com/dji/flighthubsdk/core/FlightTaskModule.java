@@ -33,6 +33,7 @@ public class FlightTaskModule {
 
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> getCommandTaskListCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> getFlightTaskTrackCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> getFlightRisksCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> getFlightTaskListCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> createFlightTaskCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> getFlightTaskDetailCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
@@ -158,6 +159,41 @@ public class FlightTaskModule {
             try {
                 nativeParams = FlightHubSdkConvert.toNativeGetFlightTaskTrackParams(params);
                 module.getFlightTaskTrackWrapper(nativeParams, swigCb);
+            } finally {
+                if (nativeParams != null) {
+                    nativeParams.delete();
+                }
+            }
+        }
+
+    }
+
+    /**
+     * 查询航线任务执行过程中出现过的飞行安全风险
+     * @param params 查询参数（任务UUID）
+     * @param callback 结果回调，成功时返回风险列表；任务未完成飞行时列表为空
+     * @implNote 链路: HTTP | GET /atc/api/v1/flight-tasks/{task_uuid}/flight-risks
+     */
+    public void getFlightRisks(com.dji.flighthubsdk.bean.GetFlightRisksParams params, FlightHubCallback.GetFlightRisksCallback callback) {
+        int id = generateId();
+        GetFlightRisksCallback swigCb = new GetFlightRisksCallback() {
+            @Override
+            public void onGetFlightRisks(com.dji.flighthubsdk.generated.FlightHubError err, com.dji.flighthubsdk.generated.GetFlightRisksResults results) {
+                try {
+                    if (callback != null) {
+                        callback.onResult(FlightHubSdkConvert.toFlightHubError(err), FlightHubSdkConvert.toGetFlightRisksResults(results));
+                    }
+                } finally {
+                    getFlightRisksCallbackRef.remove(id);
+                }
+            }
+        };
+        synchronized (getFlightRisksCallbackRef) {
+            getFlightRisksCallbackRef.put(id, new CallbackRefContainer(swigCb, callback));
+            com.dji.flighthubsdk.generated.GetFlightRisksParams nativeParams = null;
+            try {
+                nativeParams = FlightHubSdkConvert.toNativeGetFlightRisksParams(params);
+                module.getFlightRisksWrapper(nativeParams, swigCb);
             } finally {
                 if (nativeParams != null) {
                     nativeParams.delete();

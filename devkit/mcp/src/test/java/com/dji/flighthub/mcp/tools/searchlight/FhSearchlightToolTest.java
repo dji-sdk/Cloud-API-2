@@ -292,6 +292,54 @@ class FhSearchlightToolTest {
         assertEquals(1, data.get("wide_field_mode"));
     }
 
+    @Test
+    void execute_shouldReturnError_whenMissingBrightness() {
+        createSessionWithControl();
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "brightness_set",
+                "confirm", true
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Invalid brightness"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenBrightnessOutOfRange() {
+        createSessionWithControl();
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "brightness_set",
+                "confirm", true,
+                "brightness", 150
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Invalid brightness"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldSucceed_brightnessSet() {
+        createSessionWithControl();
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "action", "brightness_set",
+                "confirm", true,
+                "brightness", 50
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals(DRONE_SN, data.get("drone_sn"));
+        assertEquals("brightness_set", data.get("action"));
+        assertEquals(50, data.get("brightness"));
+    }
+
     // ==================== 辅助方法 ====================
 
     private void createSessionWithControl() {

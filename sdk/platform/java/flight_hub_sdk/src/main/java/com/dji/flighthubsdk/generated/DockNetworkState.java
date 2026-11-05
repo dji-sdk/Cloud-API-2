@@ -67,11 +67,11 @@ public class DockNetworkState {
     return flighthubsdkmoduleJNI.DockNetworkState_quality_get(swigCPtr, this);
   }
 
-  public void setRate(int value) {
+  public void setRate(double value) {
     flighthubsdkmoduleJNI.DockNetworkState_rate_set(swigCPtr, this, value);
   }
 
-  public int getRate() {
+  public double getRate() {
     return flighthubsdkmoduleJNI.DockNetworkState_rate_get(swigCPtr, this);
   }
 

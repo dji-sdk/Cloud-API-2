@@ -16,7 +16,10 @@
 #include "workspace.h"
 #include "message.h"
 #include "stream.h"
+#include "cascade_module.h"
 #include "value.h"
+#include "session.h"
+#include "session_manager.h"
 #include "bridge/i_rtc_channel_manager_bridge.h"
 #include "bridge/i_mqtt_client_manager_bridge.h"
 
@@ -85,38 +88,75 @@ public:
 
     // ---- 设备实例获取 ----
 
-    /// @brief 获取 Workspace 实例（全局单例）
+    /// @brief 获取 Workspace（session 0 / 主平台）
     /// @return Workspace 实例
     static std::shared_ptr<IWorkspace> getWorkspaceInstance();
+    /// @brief 按 session_id 获取 Workspace
+    /// @param session_id 注册时返回的会话 ID
+    /// @return Workspace 实例
+    static std::shared_ptr<IWorkspace> getWorkspaceInstance(int session_id);
 
-    /// @brief 通过设备 SN 获取 Drone 实例
+    /// @brief 通过设备 SN 获取 Drone 实例（session 0）
     /// @param sn 飞行器序列号
     /// @return Drone 实例
     static std::shared_ptr<IDrone> getDroneInstance(const std::string& sn);
+    /// @brief 通过 session_id 和设备 SN 获取 Drone 实例
+    /// @param session_id 注册时返回的会话 ID
+    /// @param sn 飞行器序列号
+    /// @return Drone 实例
+    static std::shared_ptr<IDrone> getDroneInstance(int session_id, const std::string& sn);
 
-    /// @brief 通过设备 SN 获取 Dock 实例
+    /// @brief 通过设备 SN 获取 Dock 实例（session 0）
     /// @param sn 机场序列号
     /// @return Dock 实例
     static std::shared_ptr<IDock> getDockInstance(const std::string& sn);
+    /// @brief 通过 session_id 和设备 SN 获取 Dock 实例
+    /// @param session_id 注册时返回的会话 ID
+    /// @param sn 机场序列号
+    /// @return Dock 实例
+    static std::shared_ptr<IDock> getDockInstance(int session_id, const std::string& sn);
 
-    /// @brief 通过设备 SN 获取 RemoteController 实例
+    /// @brief 通过设备 SN 获取 RemoteController 实例（session 0）
     /// @param sn 遥控器序列号
     /// @return RemoteController 实例
     static std::shared_ptr<IRemoteController> getRemoteControllerInstance(const std::string& sn);
+    /// @brief 通过 session_id 和设备 SN 获取 RemoteController 实例
+    /// @param session_id 注册时返回的会话 ID
+    /// @param sn 遥控器序列号
+    /// @return RemoteController 实例
+    static std::shared_ptr<IRemoteController> getRemoteControllerInstance(int session_id, const std::string& sn);
 
-    /// @brief 通过设备 SN 获取 BaseStation 实例
+    /// @brief 通过设备 SN 获取 BaseStation 实例（session 0）
     /// @param sn 基站序列号
     /// @return BaseStation 实例
     static std::shared_ptr<IBaseStation> getBaseStationInstance(const std::string& sn);
+    /// @brief 通过 session_id 和设备 SN 获取 BaseStation 实例
+    /// @param session_id 注册时返回的会话 ID
+    /// @param sn 基站序列号
+    /// @return BaseStation 实例
+    static std::shared_ptr<IBaseStation> getBaseStationInstance(int session_id, const std::string& sn);
 
-    /// @brief 通过设备 SN 获取 Relay 实例
-    /// @param sn 中继序列号
+    /// @brief 通过设备 SN 获取 Relay 实例（session 0）
+    /// @param sn 中继器序列号
     /// @return Relay 实例
     static std::shared_ptr<IRelay> getRelayInstance(const std::string& sn);
+    /// @brief 通过 session_id 和设备 SN 获取 Relay 实例
+    /// @param session_id 注册时返回的会话 ID
+    /// @param sn 中继器序列号
+    /// @return Relay 实例
+    static std::shared_ptr<IRelay> getRelayInstance(int session_id, const std::string& sn);
 
     /// @brief 获取 Stream 实例（全局单例，用于获取直播和 CustomSEI 模块）
     /// @return Stream 实例
     static std::shared_ptr<IStream> getStream();
+
+    /// @brief 获取司空 Mesh 级联模块（全局单例）
+    /// @return Cascade 模块实例
+    static std::shared_ptr<ICascadeModule> getCascadeModule();
+
+    /// @brief 获取 SessionManager（唯一 Session CRUD 入口）
+    /// @return SessionManager 实例
+    static std::shared_ptr<ISessionManager> getSessionManager();
 
     /// @brief 注入 RTC 频道管理器（第三方 SDK 注入）
     /// @param rtc_channel_manager RTC 频道管理器实例

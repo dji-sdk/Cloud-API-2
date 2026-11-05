@@ -5,12 +5,14 @@
 
 #include <BusinessManager.h>
 #include <base/common/logger.h>
+#include "common/executors/executors.h"
 #include "http_interface/http_interface.h"
+#include "session/session_bm.h"
 
 using namespace flight_hub_sdk;
 
-PsdkControlModuleImpl::PsdkControlModuleImpl(std::shared_ptr<PsdkCtrlMgr> psdk_ctrl_mgr)
-    : psdk_ctrl_mgr_(std::move(psdk_ctrl_mgr)) {
+PsdkControlModuleImpl::PsdkControlModuleImpl(std::shared_ptr<PsdkCtrlMgr> psdk_ctrl_mgr, int session_id)
+    : psdk_ctrl_mgr_(std::move(psdk_ctrl_mgr)), session_id_(session_id) {
     LOG_INFO("[PsdkControlModuleImpl] constructor");
 }
 
@@ -94,7 +96,7 @@ void PsdkControlModuleImpl::DrcSearchlightModeSet(int psdk_index, int mode, cons
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_MODE_SET, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_MODE_SET, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -110,7 +112,7 @@ void PsdkControlModuleImpl::DrcSearchlightBrightnessSet(int psdk_index, int brig
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_BRIGHTNESS_SET, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_BRIGHTNESS_SET, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -126,7 +128,7 @@ void PsdkControlModuleImpl::DrcSearchlightCalibration(int psdk_index, const std:
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_CALIBRATION, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_CALIBRATION, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -142,7 +144,7 @@ void PsdkControlModuleImpl::DrcSearchlightFineTuningSet(int psdk_index, int posi
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_FINE_TUNING_SET, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_FINE_TUNING_SET, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -158,7 +160,7 @@ void PsdkControlModuleImpl::DrcSearchlightWideFieldModeSet(int psdk_index, int w
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_WIDE_FIELD_MODE_SET, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_WIDE_FIELD_MODE_SET, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -174,7 +176,7 @@ void PsdkControlModuleImpl::DrcSearchlightLightGimbalControlSet(int psdk_index, 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_LIGHT_GIMBAL_CONTROL_SET, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_LIGHT_GIMBAL_CONTROL_SET, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -190,7 +192,7 @@ void PsdkControlModuleImpl::DrcSearchlightTypeSet(int psdk_index, int type, cons
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_TYPE_SET, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SEARCHLIGHT_TYPE_SET, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -242,7 +244,7 @@ void PsdkControlModuleImpl::DrcSpeakerAudioPlayStart(int psdk_index, const PsdkS
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_AUDIO_PLAY_START, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_AUDIO_PLAY_START, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -258,7 +260,7 @@ void PsdkControlModuleImpl::DrcSpeakerTTSPlayStart(int psdk_index, const PsdkSpe
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_PLAY_START, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_PLAY_START, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -274,7 +276,7 @@ void PsdkControlModuleImpl::DrcSpeakerRealTimeStart(int psdk_index, const std::f
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REAL_TIME_START, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REAL_TIME_START, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -290,7 +292,7 @@ void PsdkControlModuleImpl::DrcSpeakerRealTimeStop(int psdk_index, const std::fu
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REAL_TIME_STOP, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REAL_TIME_STOP, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -306,7 +308,7 @@ void PsdkControlModuleImpl::DrcSpeakerReplay(int psdk_index, const std::function
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REPLAY, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_REPLAY, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -322,7 +324,7 @@ void PsdkControlModuleImpl::DrcSpeakerPlayStop(int psdk_index, const std::functi
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_STOP, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_STOP, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -338,7 +340,7 @@ void PsdkControlModuleImpl::DrcSpeakerPlayVolumeSet(int psdk_index, int volume, 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_VOLUME_SET, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_VOLUME_SET, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -354,7 +356,7 @@ void PsdkControlModuleImpl::DrcSpeakerPlayModeSet(int psdk_index, int play_mode,
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_MODE_SET, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_PLAY_MODE_SET, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -370,7 +372,7 @@ void PsdkControlModuleImpl::DrcSpeakerTTSSet(int psdk_index, const PsdkSpeakerTT
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_SET, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_SET, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -386,7 +388,7 @@ void PsdkControlModuleImpl::DrcWidgetValueSet(int psdk_index, int index, int val
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_WIDGET_VALUE_SET, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_WIDGET_VALUE_SET, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -402,7 +404,7 @@ void PsdkControlModuleImpl::DrcWidgetInputBoxTextSet(int psdk_index, const std::
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_WIDGET_INPUT_BOX_TEXT_SET, state_err, "[PsdkControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_PSDK_CTRL_DRC_WIDGET_INPUT_BOX_TEXT_SET, state_err, session_id_, "[PsdkControlModuleImpl]");
         callback(state_err);
         return;
     }
@@ -411,14 +413,21 @@ void PsdkControlModuleImpl::DrcWidgetInputBoxTextSet(int psdk_index, const std::
 
 
 int PsdkControlModuleImpl::listenPsdkSpeakerAudioPlayStartProgress(const std::function<void(const PsdkSpeakerPlayStartProgress& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     if (!psdk_ctrl_mgr_) {
         LOG_ERROR("PsdkControlModuleImpl: psdk_ctrl_mgr_ is not initialized");
         return -1;
     }
     WeakDummy(weak_ptr);
-    int user_listen_id = psdk_audio_play_progress_next_id_++;
+    int user_listen_id;
+    {
+        std::lock_guard<std::mutex> lock(listen_mutex_);
+        user_listen_id = psdk_audio_play_progress_next_id_++;
+    }
 
-    auto nc_listen_id = NotificationCenter::getInstance()->getBusinessManager()->ListenPsdkSpeakerAudioPlayProgress(
+    auto nc_listen_id = -1;
+    if (bm) {
+        nc_listen_id = bm->ListenPsdkSpeakerAudioPlayProgress(
         [this, weak_ptr, callback](const notification_center::PsdkSpeakerPlayProgress& msg) -> void {
             WeakDummyReturn(weak_ptr);
             PsdkSpeakerPlayStartProgress res{};
@@ -443,31 +452,53 @@ int PsdkControlModuleImpl::listenPsdkSpeakerAudioPlayStartProgress(const std::fu
                 LOG_ERROR("[PsdkControlModuleImpl] ListenPsdkSpeakerAudioPlayProgress error: %d", error_code);
             }
         }, psdk_ctrl_mgr_->getDroneSn(), notification_center::NotificationFrequency_Any);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
-    psdk_audio_play_progress_nc_listen_ids_[user_listen_id] = nc_listen_id;
+    {
+        std::lock_guard<std::mutex> lock(listen_mutex_);
+        psdk_audio_play_progress_nc_listen_ids_[user_listen_id] = nc_listen_id;
+    }
     LOG_INFO("[PsdkControlModuleImpl] listenPsdkSpeakerAudioPlayStartProgress user_listen_id: %d, nc_listen_id: %lld",
         user_listen_id, (long long)nc_listen_id);
     return user_listen_id;
 }
 
 void PsdkControlModuleImpl::cancelListenPsdkSpeakerAudioPlayStartProgress(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("[PsdkControlModuleImpl] cancelListenPsdkSpeakerAudioPlayStartProgress listen_id: %d", listen_id);
-    auto it = psdk_audio_play_progress_nc_listen_ids_.find(listen_id);
-    if (it != psdk_audio_play_progress_nc_listen_ids_.end()) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(it->second);
+    int64_t nc_listen_id = 0;
+    {
+        std::lock_guard<std::mutex> lock(listen_mutex_);
+        auto it = psdk_audio_play_progress_nc_listen_ids_.find(listen_id);
+        if (it == psdk_audio_play_progress_nc_listen_ids_.end()) {
+            return;
+        }
+        nc_listen_id = it->second;
         psdk_audio_play_progress_nc_listen_ids_.erase(it);
+    }
+    if (bm) {
+        bm->CancelObserve(nc_listen_id);
     }
 }
 
 int PsdkControlModuleImpl::listenPsdkSpeakerTtsPlayStartProgress(const std::function<void(const PsdkSpeakerPlayStartProgress& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     if (!psdk_ctrl_mgr_) {
         LOG_ERROR("PsdkControlModuleImpl: psdk_ctrl_mgr_ is not initialized");
         return -1;
     }
     WeakDummy(weak_ptr);
-    int user_listen_id = psdk_tts_play_progress_next_id_++;
+    int user_listen_id;
+    {
+        std::lock_guard<std::mutex> lock(listen_mutex_);
+        user_listen_id = psdk_tts_play_progress_next_id_++;
+    }
 
-    auto nc_listen_id = NotificationCenter::getInstance()->getBusinessManager()->ListenPsdkSpeakerTtsPlayProgress(
+    auto nc_listen_id = -1;
+    if (bm) {
+        nc_listen_id = bm->ListenPsdkSpeakerTtsPlayProgress(
         [this, weak_ptr, callback](const notification_center::PsdkSpeakerPlayProgress& msg) -> void {
             WeakDummyReturn(weak_ptr);
             PsdkSpeakerPlayStartProgress res{};
@@ -492,31 +523,53 @@ int PsdkControlModuleImpl::listenPsdkSpeakerTtsPlayStartProgress(const std::func
                 LOG_ERROR("[PsdkControlModuleImpl] ListenPsdkSpeakerTtsPlayProgress error: %d", error_code);
             }
         }, psdk_ctrl_mgr_->getDroneSn(), notification_center::NotificationFrequency_Any);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
-    psdk_tts_play_progress_nc_listen_ids_[user_listen_id] = nc_listen_id;
+    {
+        std::lock_guard<std::mutex> lock(listen_mutex_);
+        psdk_tts_play_progress_nc_listen_ids_[user_listen_id] = nc_listen_id;
+    }
     LOG_INFO("[PsdkControlModuleImpl] listenPsdkSpeakerTtsPlayStartProgress user_listen_id: %d, nc_listen_id: %lld",
         user_listen_id, (long long)nc_listen_id);
     return user_listen_id;
 }
 
 void PsdkControlModuleImpl::cancelListenPsdkSpeakerTtsPlayStartProgress(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("[PsdkControlModuleImpl] cancelListenPsdkSpeakerTtsPlayStartProgress listen_id: %d", listen_id);
-    auto it = psdk_tts_play_progress_nc_listen_ids_.find(listen_id);
-    if (it != psdk_tts_play_progress_nc_listen_ids_.end()) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(it->second);
+    int64_t nc_listen_id = 0;
+    {
+        std::lock_guard<std::mutex> lock(listen_mutex_);
+        auto it = psdk_tts_play_progress_nc_listen_ids_.find(listen_id);
+        if (it == psdk_tts_play_progress_nc_listen_ids_.end()) {
+            return;
+        }
+        nc_listen_id = it->second;
         psdk_tts_play_progress_nc_listen_ids_.erase(it);
+    }
+    if (bm) {
+        bm->CancelObserve(nc_listen_id);
     }
 }
 
 int PsdkControlModuleImpl::listenDronePsdkUiResource(const std::function<void(const DronePsdkUiResource& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     if (!psdk_ctrl_mgr_) {
         LOG_ERROR("PsdkControlModuleImpl: psdk_ctrl_mgr_ is not initialized");
         return -1;
     }
     WeakDummy(weak_ptr);
-    int user_listen_id = psdk_ui_resource_next_id_++;
+    int user_listen_id;
+    {
+        std::lock_guard<std::mutex> lock(listen_mutex_);
+        user_listen_id = psdk_ui_resource_next_id_++;
+    }
 
-    auto nc_listen_id = NotificationCenter::getInstance()->getBusinessManager()->ListenDronePsdkUiResource(
+    auto nc_listen_id = -1;
+    if (bm) {
+        nc_listen_id = bm->ListenDronePsdkUiResource(
         [this, weak_ptr, callback](const notification_center::DronePsdkUiResource& msg) -> void {
             WeakDummyReturn(weak_ptr);
             DronePsdkUiResource res{};
@@ -540,20 +593,121 @@ int PsdkControlModuleImpl::listenDronePsdkUiResource(const std::function<void(co
                 LOG_ERROR("[PsdkControlModuleImpl] ListenDronePsdkUiResource error: %d", error_code);
             }
         }, psdk_ctrl_mgr_->getDroneSn(), notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
-    psdk_ui_resource_nc_listen_ids_[user_listen_id] = nc_listen_id;
+    {
+        std::lock_guard<std::mutex> lock(listen_mutex_);
+        psdk_ui_resource_nc_listen_ids_[user_listen_id] = nc_listen_id;
+    }
     LOG_INFO("[PsdkControlModuleImpl] listenDronePsdkUiResource user_listen_id: %d, nc_listen_id: %lld",
         user_listen_id, (long long)nc_listen_id);
     return user_listen_id;
 }
 
 void PsdkControlModuleImpl::cancelListenDronePsdkUiResource(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("[PsdkControlModuleImpl] cancelListenDronePsdkUiResource listen_id: %d", listen_id);
-    auto it = psdk_ui_resource_nc_listen_ids_.find(listen_id);
-    if (it != psdk_ui_resource_nc_listen_ids_.end()) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(it->second);
+    int64_t nc_listen_id = 0;
+    {
+        std::lock_guard<std::mutex> lock(listen_mutex_);
+        auto it = psdk_ui_resource_nc_listen_ids_.find(listen_id);
+        if (it == psdk_ui_resource_nc_listen_ids_.end()) {
+            return;
+        }
+        nc_listen_id = it->second;
         psdk_ui_resource_nc_listen_ids_.erase(it);
     }
+    if (bm) {
+        bm->CancelObserve(nc_listen_id);
+    }
+}
+
+int PsdkControlModuleImpl::listenPsdkCustomDataTransmissionFromPsdk(const std::function<void(const PsdkCustomDataTransmission& msg)>& callback) {
+    if (!psdk_ctrl_mgr_) {
+        LOG_ERROR("PsdkControlModuleImpl: psdk_ctrl_mgr_ is not initialized");
+        return -1;
+    }
+    auto bm = ResolveBusinessManager(session_id_);
+    if (!bm) {
+        LOG_ERROR("[PsdkControlModuleImpl] listenPsdkCustomDataTransmissionFromPsdk: BusinessManager not found, session_id=%d", session_id_);
+        return -1;
+    }
+    // 该 topic 由 dock/gateway 上行推送(device_sn=gateway_sn), SDK 须按 gateway_sn 订阅才能收到;
+    // 早期实现误用 drone_sn 订阅, 与服务端推送 SN 不匹配导致收不到消息。
+    const std::string& subscribe_sn = !psdk_ctrl_mgr_->getGatewaySn().empty()
+        ? psdk_ctrl_mgr_->getGatewaySn()
+        : psdk_ctrl_mgr_->getDroneSn();
+    if (subscribe_sn.empty()) {
+        LOG_ERROR("PsdkControlModuleImpl: subscribe_sn is empty (drone_sn=%s, gateway_sn=%s)",
+            psdk_ctrl_mgr_->getDroneSn().c_str(), psdk_ctrl_mgr_->getGatewaySn().c_str());
+        return -1;
+    }
+    WeakDummy(weak_ptr);
+    int user_listen_id;
+    {
+        std::lock_guard<std::mutex> lock(listen_mutex_);
+        user_listen_id = psdk_custom_data_from_psdk_next_id_++;
+    }
+
+    auto nc_listen_id = bm->ListenPsdkCustomDataTransmissionFromPsdk(
+        [this, weak_ptr, callback](const notification_center::PsdkCustomDataTransmission& msg) -> void {
+            WeakDummyReturn(weak_ptr);
+            PsdkCustomDataTransmission res{};
+            res.value = msg.value;
+
+            LOG_INFO("[PsdkControlModuleImpl] ListenPsdkCustomDataTransmissionFromPsdk: value size: %d",
+                (int)res.value.size());
+
+            if (callback) {
+                callback(res);
+            }
+        }, [this, weak_ptr](const notification_center::NotificationCenterErrorCode& error_code) -> void {
+            WeakDummyReturn(weak_ptr);
+            if (error_code != notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
+                LOG_ERROR("[PsdkControlModuleImpl] ListenPsdkCustomDataTransmissionFromPsdk error: %d", error_code);
+            }
+        }, subscribe_sn, notification_center::NotificationFrequency_Any);
+
+    {
+        std::lock_guard<std::mutex> lock(listen_mutex_);
+        psdk_custom_data_from_psdk_nc_listen_ids_[user_listen_id] = nc_listen_id;
+    }
+    LOG_INFO("[PsdkControlModuleImpl] listenPsdkCustomDataTransmissionFromPsdk user_listen_id: %d, nc_listen_id: %lld",
+        user_listen_id, (long long)nc_listen_id);
+    return user_listen_id;
+}
+
+void PsdkControlModuleImpl::cancelListenPsdkCustomDataTransmissionFromPsdk(int listen_id) {
+    LOG_INFO("[PsdkControlModuleImpl] cancelListenPsdkCustomDataTransmissionFromPsdk listen_id: %d", listen_id);
+    int64_t nc_listen_id = 0;
+    {
+        std::lock_guard<std::mutex> lock(listen_mutex_);
+        auto it = psdk_custom_data_from_psdk_nc_listen_ids_.find(listen_id);
+        if (it == psdk_custom_data_from_psdk_nc_listen_ids_.end()) {
+            return;
+        }
+        nc_listen_id = it->second;
+        psdk_custom_data_from_psdk_nc_listen_ids_.erase(it);
+    }
+    auto bm = ResolveBusinessManager(session_id_);
+    if (bm) {
+        bm->CancelObserve(nc_listen_id);
+    }
+}
+
+void PsdkControlModuleImpl::sendPsdkCustomDataTransmissionToPsdk(
+    const std::string& value, const std::function<void(FlightHubError err)>& callback) {
+    if (!psdk_ctrl_mgr_) {
+        LOG_ERROR("PsdkControlModuleImpl: psdk_ctrl_mgr_ is not initialized");
+        auto state_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_STATE);
+        if (callback) {
+            drc_sdk::common::Executors::Main()->Post([callback, state_err]() -> void { callback(state_err); });
+        }
+        return;
+    }
+    psdk_ctrl_mgr_->sendPsdkCustomDataTransmissionToPsdk(value, callback);
 }
 
 

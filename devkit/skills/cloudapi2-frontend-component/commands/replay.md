@@ -1,5 +1,5 @@
 ---
-description: 生成DJI 上云API 2 飞行记录回放（FlyDataReplay）的最小可运行 HTML
+description: 生成DJI Cloud API 2 飞行记录回放（FlyDataReplay）的最小可运行 HTML
 argument-hint: [serverUrl] [taskId]
 ---
 
@@ -71,5 +71,5 @@ $ARGUMENTS
 - 不要写 React/Vue 包装 —— vanilla JS / SDK 模式
 - 不要把 `features` / `sidebarItems` / `renderTaskInfo` / `theme` 全塞进最小模板，除非用户明确要
 - **不要跳过 `loadMap()`** —— FlyDataReplay 始终必需
-- **不要在同一页面挂多个 FlyDataReplay 实例** —— `mapAppState` 是全局单例
-- **不要用 `hostUrl`** —— 已废弃，使用 `runtimeDepsBasePath` + `map.env.cesiumBaseUrl`
+- **推荐单实例**：不要在同一页面挂多个 FlyDataReplay 实例 —— 它们向同一批页面级固定挂载点重复投递，UI 互相覆盖；切 `taskId` 用 `destroy()` 后重建
+- **不要删除 `hostUrl`** —— 它是必填字段，不是废弃字段；`map.env.cesiumBaseUrl` 是额外新增配置，与 `hostUrl` 同时传入

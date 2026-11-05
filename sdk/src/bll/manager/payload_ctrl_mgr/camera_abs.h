@@ -9,17 +9,20 @@
 #include "api/message.h"
 #include <string>
 #include "tool/callback_container.h"
+#include <memory>
 #include <BusinessManager.h>
 
 namespace flight_hub_sdk {
 
 class CameraAbs : public drc_sdk::common::AsyncCaptureProtect {
 public:
-    CameraAbs(const std::string& payload_index, const std::string& drone_sn, const std::string& gateway_sn, const std::shared_ptr<message_engine::IMessageEngine>& message_engine, int drone_instance_id);
+    CameraAbs(const std::string& payload_index, const std::string& drone_sn, const std::string& gateway_sn, const std::shared_ptr<message_engine::IMessageEngine>& message_engine, int drone_instance_id, int session_id);
     ~CameraAbs() override;
 
     void acquirePayloadControlAuthority(const std::function<void(FlightHubError)>& callback);
     void releasePayloadControlAuthority(const std::function<void(FlightHubError)>& callback);
+    void acquirePayloadControlAuthorityWithResult(const std::function<void(FlightHubError, const ControlAuthResult&)>& callback);
+    void releasePayloadControlAuthorityWithResult(const std::function<void(FlightHubError, const ControlAuthResult&)>& callback);
     int listenPayloadControlAuthority(const std::function<void(bool)>& callback);
     void cancelListenPayloadControlAuthority(int listen_id);
 
@@ -218,6 +221,7 @@ private:
     /// params
     std::string drone_sn_;
     std::string gateway_sn_;
+    int session_id_;
 
     /// state & data cache
     message_engine::DrcDrcCameraOsdInfoPushNorthbound drc_camera_osd_msg_;

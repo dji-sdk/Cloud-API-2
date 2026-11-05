@@ -4,6 +4,7 @@
 package com.dji.flighthubsdk.bean;
 
 import com.dji.flighthubsdk.value.OutOfControlAction;
+import com.dji.flighthubsdk.value.SpeedMode;
 import com.dji.flighthubsdk.value.TakeoffMode;
 
 import java.util.Objects;
@@ -36,7 +37,11 @@ public class TakeoffParams {
     private double targetLongitude;
 
     // --- 可选（未设置则不传）---
-    /** 指点飞行模式：0-平稳模式，1-运动模式。-1 表示未设置 */
+    /**
+     * 指点飞行模式（飞行风格）：0-平稳模式，1-运动模式。-1 表示未设置。
+     *
+     * <p>注意与 {@link #speedMode}（速度档位）是两个独立字段，互不相关。
+     */
     private int commanderFlightMode = -1;
     /** 指点飞行高度（米），范围 20-1500。-1 表示未设置 */
     private double commanderFlightHeight = -1;
@@ -46,6 +51,16 @@ public class TakeoffParams {
     private String cloudToCloudId = "";
     /** 是否需要验证飞行控制权。-1 未设置；0=false；1=true */
     private int needVerifyFlightControl = -1;
+    /**
+     * 速度模式（速度档位）。{@link SpeedMode#UNKNOWN} 表示未设置，此时不下发该字段、设备保持当前模式。
+     *
+     * <p>注意与 {@link #commanderFlightMode}（飞行风格）是两个独立字段，互不相关。
+     */
+    private SpeedMode speedMode = SpeedMode.UNKNOWN;
+    /** 高度上限开关。-1 未设置（设备保持当前设置）；0=false；1=true */
+    private int realHeightCapEnabled = -1;
+    /** 高度上限值（米），范围 20-1500。-1 表示未设置 */
+    private int realHeightCapLimit = -1;
 
     public TakeoffParams() {
     }
@@ -129,6 +144,27 @@ public class TakeoffParams {
         this.needVerifyFlightControl = needVerifyFlightControl;
     }
 
+    /** 速度模式（速度档位）。UNKNOWN 表示未设置，不下发该字段 */
+    public SpeedMode getSpeedMode() { return speedMode; }
+    /** @param speedMode 速度模式；传 null 或 UNKNOWN 表示不设置 */
+    public void setSpeedMode(SpeedMode speedMode) {
+        this.speedMode = speedMode != null ? speedMode : SpeedMode.UNKNOWN;
+    }
+
+    /** 高度上限开关。-1 未设置；0=false；1=true */
+    public int getRealHeightCapEnabled() { return realHeightCapEnabled; }
+    /** @param realHeightCapEnabled -1 未设置；0=false；1=true */
+    public void setRealHeightCapEnabled(int realHeightCapEnabled) {
+        this.realHeightCapEnabled = realHeightCapEnabled;
+    }
+
+    /** 高度上限值（米），范围 20-1500。-1 表示未设置 */
+    public int getRealHeightCapLimit() { return realHeightCapLimit; }
+    /** @param realHeightCapLimit 高度上限值（米），20-1500；传 -1 表示不设置 */
+    public void setRealHeightCapLimit(int realHeightCapLimit) {
+        this.realHeightCapLimit = realHeightCapLimit;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -150,7 +186,10 @@ public class TakeoffParams {
                 && Double.compare(that.commanderFlightHeight, commanderFlightHeight) == 0
                 && rthMode == that.rthMode
                 && Objects.equals(cloudToCloudId, that.cloudToCloudId)
-                && needVerifyFlightControl == that.needVerifyFlightControl;
+                && needVerifyFlightControl == that.needVerifyFlightControl
+                && Objects.equals(speedMode, that.speedMode)
+                && realHeightCapEnabled == that.realHeightCapEnabled
+                && realHeightCapLimit == that.realHeightCapLimit;
     }
 
     @Override
@@ -168,7 +207,10 @@ public class TakeoffParams {
                 commanderFlightHeight,
                 rthMode,
                 cloudToCloudId,
-                needVerifyFlightControl);
+                needVerifyFlightControl,
+                speedMode,
+                realHeightCapEnabled,
+                realHeightCapLimit);
     }
 
     @Override
@@ -187,6 +229,9 @@ public class TakeoffParams {
                 + ", rthMode=" + rthMode
                 + ", cloudToCloudId='" + cloudToCloudId + '\''
                 + ", needVerifyFlightControl=" + needVerifyFlightControl
+                + ", speedMode=" + speedMode
+                + ", realHeightCapEnabled=" + realHeightCapEnabled
+                + ", realHeightCapLimit=" + realHeightCapLimit
                 + '}';
     }
 }

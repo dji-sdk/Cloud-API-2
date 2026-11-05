@@ -5,20 +5,23 @@
 #include <base/common/logger.h>
 #include "notification_center/notification_center.h"
 #include <BusinessManager.h>
+#include "session/session_bm.h"
 
 using namespace flight_hub_sdk;
 using namespace notification_center;
 
-DockOsdModuleImpl::DockOsdModuleImpl(const std::string& dock_sn)
-    : dock_sn_(dock_sn) {
+DockOsdModuleImpl::DockOsdModuleImpl(const std::string& dock_sn, int session_id)
+    : dock_sn_(dock_sn), session_id_(session_id) {
     WeakDummy(p);
     registerNotificationCenterListeners();
 }
 
 void DockOsdModuleImpl::registerNotificationCenterListeners() {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(p);
     // 初始化机场位置监听
-    dock_location_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockLocation(
+    if (bm) {
+        dock_location_listen_id_ = bm->ListenDockLocation(
         [this, p](const notification_center::DockLocation& msg)-> void {
             WeakDummyReturn(p);
             DockLocation dock_location;
@@ -37,11 +40,15 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DockOsdModuleImpl] listenDockLocation, error: %d", error_code);
             }
         }, dock_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     if (dock_location_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockOsdModuleImpl] ListenDockLocation, error: %d", dock_location_listen_id_);
     }
     // 初始化机场中的无人机监听
-    drone_in_dock_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDroneInDock(
+    if (bm) {
+        drone_in_dock_listen_id_ = bm->ListenDroneInDock(
         [this, p](const notification_center::DroneInDock& msg)-> void {
             WeakDummyReturn(p);
             DroneInDock drone_in_dock;
@@ -56,12 +63,16 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DockOsdModuleImpl] listenDroneInDock, error: %d", error_code);
             }
         }, dock_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     if (drone_in_dock_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockOsdModuleImpl] ListenDroneInDock, error: %d", drone_in_dock_listen_id_);
     }
 
     // 初始化: 监听机场舱盖状态;
-    dock_cover_state_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockCoverState(
+    if (bm) {
+        dock_cover_state_listen_id_ = bm->ListenDockCoverState(
         [this, p](const notification_center::DockCoverState& msg)-> void {
             WeakDummyReturn(p);
             // 数据转换;
@@ -77,13 +88,17 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DockOsdModuleImpl] listenDockCoverState, error: %d", error_code);
             }
         }, dock_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_cover_state_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockOsdModuleImpl] listenDockCoverState, error dock_cover_state_listen_id: %d", dock_cover_state_listen_id_);
     }
 
     // 初始化: 监听机场飞机充电状态;
-    dock_drone_charge_state_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockDroneChargeState(
+    if (bm) {
+        dock_drone_charge_state_listen_id_ = bm->ListenDockDroneChargeState(
         [this, p](const notification_center::DockDroneChargeState& msg)-> void {
             WeakDummyReturn(p);
             // 数据转换;
@@ -102,13 +117,17 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DockOsdModuleImpl] listenDockDroneChargeState, error: %d", error_code);
             }
         }, dock_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_drone_charge_state_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockOsdModuleImpl] listenDockDroneChargeState, error dock_drone_charge_state_listen_id: %d", dock_drone_charge_state_listen_id_);
     }
 
     // 初始化监听: 机场气象信息;
-    dock_meteorological_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockMeteorologicalInfo(
+    if (bm) {
+        dock_meteorological_info_listen_id_ = bm->ListenDockMeteorologicalInfo(
         [this, p](const notification_center::DockMeteorologicalInfo& msg)-> void {
              WeakDummyReturn(p);
             // 数据转换;
@@ -134,6 +153,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DockOsdModuleImpl] listenDockMeteorologicalInfo, error: %d", error_code);
             }
         }, dock_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_meteorological_info_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
             LOG_ERROR("[DockOsdModuleImpl] listenDockMeteorologicalInfo, error dock_meteorological_info_listen_id: %d", dock_meteorological_info_listen_id_);
@@ -141,7 +163,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
 
     // 初始化监听: 机场备用电池;
-    dock_backup_battery_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockBackupBatteryInfo(
+    if (bm) {
+        dock_backup_battery_info_listen_id_ = bm->ListenDockBackupBatteryInfo(
         [this, p](const notification_center::DockBackupBatteryInfo& msg)-> void {
             WeakDummyReturn(p);
             // 数据转换;
@@ -163,6 +186,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DockOsdModuleImpl] ListenDockBackupBatteryInfo, error: %d", error_code);
             }
         }, dock_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_backup_battery_info_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockOsdModuleImpl] ListenDockBackupBatteryInfo, error dock_backup_battery_info_listen_id: %d", dock_backup_battery_info_listen_id_);
@@ -170,7 +196,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
 
     // 初始化监听: 机场保养维护信息;
-    dock_maintain_status_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockMaintainStatusInfo(
+    if (bm) {
+        dock_maintain_status_info_listen_id_ = bm->ListenDockMaintainStatusInfo(
         [this, p](const notification_center::DockMaintainStatusInfo& msg)-> void {
             WeakDummyReturn(p);
             // 数据转换;
@@ -205,12 +232,16 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DockOsdModuleImpl] listenDockMaintainStatusInfo, error: %d", error_code);
             }
         }, dock_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_maintain_status_info_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockOsdModuleImpl] listenDockMaintainStatusInfo, error dock_maintain_status_info_listen_id: %d", dock_maintain_status_info_listen_id_);
     }
     // 监听机场 mode code;
-    dock_mode_code_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockModeCode(
+    if (bm) {
+        dock_mode_code_listen_id_ = bm->ListenDockModeCode(
         [this, p](const notification_center::DockModeCode& msg)-> void {
             WeakDummyReturn(p);
 
@@ -232,13 +263,17 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_mode_code_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockModeCode] ListenDockModeCode, error dock_mode_code_listen_id: %d", dock_mode_code_listen_id_);
     }
 
     // 监听飞行任务 step code;
-    flight_task_step_code_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenFlightTaskStepCode(
+    if (bm) {
+        flight_task_step_code_listen_id_ = bm->ListenFlightTaskStepCode(
         [this, p](const notification_center::FlightTaskStepCode& msg)-> void {
             WeakDummyReturn(p);
 
@@ -259,6 +294,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (flight_task_step_code_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockOsdModuleImpl FlightTaskStepCode] ListenFlightTaskStepCode, error flight_task_step_code_listen_id: %d",
@@ -266,7 +304,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
     }
 
     // 机场: 监听子设备信息列表(sub_device);
-    dock_sub_device_info_list_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockSubDevice(
+    if (bm) {
+        dock_sub_device_info_list_listen_id_ = bm->ListenDockSubDevice(
         [this, p](const notification_center::DockSubDeviceInfoList& msg)-> void {
             WeakDummyReturn(p);
 
@@ -297,13 +336,17 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_sub_device_info_list_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockSubDevice] ListenDockSubDevice, error dock_sub_device_info_list_listen_id: %d", dock_sub_device_info_list_listen_id_);
     }
 
     // 机场: 网络状态(network_state);
-    dock_network_state_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockNetworkState(
+    if (bm) {
+        dock_network_state_listen_id_ = bm->ListenDockNetworkState(
         [this, p](const notification_center::DockNetworkState& msg)-> void {
             WeakDummyReturn(p);
 
@@ -314,7 +357,7 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
             dock_network_state.quality = msg.quality;
             dock_network_state.rate = msg.rate;
 
-            LOG_DEBUG("[DockImpl DockNetworkState] ListenDockNetworkState(), {type: %d, quality: %d, rate: %d}",
+            LOG_DEBUG("[DockImpl DockNetworkState] ListenDockNetworkState(), {type: %d, quality: %d, rate: %f}",
                 dock_network_state.type, dock_network_state.quality, dock_network_state.rate);
 
             // Notify data;
@@ -329,6 +372,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_network_state_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockNetworkState] ListenDockNetworkState, error dock_network_state_listen_id: %d", dock_network_state_listen_id_);
@@ -336,7 +382,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
 
     // 机场: 媒体文件数量(media_file_detail);
-    dock_media_file_detail_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockMediaFileDetail(
+    if (bm) {
+        dock_media_file_detail_listen_id_ = bm->ListenDockMediaFileDetail(
         [this, p](const notification_center::DockMediaFileDetail& msg)-> void {
             WeakDummyReturn(p);
 
@@ -359,6 +406,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_media_file_detail_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockMediaFileDetail] ListenDockMediaFileDetail, error dock_media_file_detail_listen_id: %d", dock_media_file_detail_listen_id_);
@@ -366,7 +416,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
 
      // 机场: wireless_link(wireless_link);
-    dock_wireless_link_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockWirelessLink(
+    if (bm) {
+        dock_wireless_link_listen_id_ = bm->ListenDockWirelessLink(
         [this, p](const notification_center::DockWirelessLink& msg)-> void {
             WeakDummyReturn(p);
 
@@ -424,6 +475,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_wireless_link_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockWirelessLink] ListenDockWirelessLink(), error dock_wireless_link_listen_id: %d", dock_wireless_link_listen_id_);
@@ -431,7 +485,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
 
     // 机场: 机场作业次数(job_number);
-    dock_job_number_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockJobNumber(
+    if (bm) {
+        dock_job_number_listen_id_ = bm->ListenDockJobNumber(
         [this, p](const notification_center::DockJobNumber& msg)-> void {
             WeakDummyReturn(p);
 
@@ -454,6 +509,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_job_number_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockJobNumber] ListenDockJobNumber(), error dock_job_number_listen_id: %d", dock_job_number_listen_id_);
@@ -461,7 +519,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
 
     // 机场：DockPowerState；
-    dock_power_state_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockPowerState(
+    if (bm) {
+        dock_power_state_listen_id_ = bm->ListenDockPowerState(
         [this, p](const notification_center::DockPowerState& msg)-> void {
             WeakDummyReturn(p);
 
@@ -493,6 +552,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_power_state_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockPowerState] ListenDockPowerState(), error dock_power_state_listen_id: %d", dock_power_state_listen_id_);
@@ -500,7 +562,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
 
     // 机场: 存储容量(storage);
-    dock_storage_state_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockStorageState(
+    if (bm) {
+        dock_storage_state_listen_id_ = bm->ListenDockStorageState(
         [this, p](const notification_center::DockStorageState &msg)-> void {
             WeakDummyReturn(p);
 
@@ -528,13 +591,17 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_storage_state_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockStorageState] ListenDockStorageState(), error dock_storage_state_listen_id: %d", dock_storage_state_listen_id_);
     }
 
     // 机场首次上电时间(first_power_on);
-    dock_first_power_on_time_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockFirstPowerOnTime(
+    if (bm) {
+        dock_first_power_on_time_listen_id_ = bm->ListenDockFirstPowerOnTime(
         [this, p](const notification_center::DockFirstPowerOnTime& msg)-> void {
             WeakDummyReturn(p);
 
@@ -559,13 +626,17 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_first_power_on_time_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockFirstPowerOnTime] ListenDockFirstPowerOnTime(), error dock_first_power_on_time_listen_id: %d", dock_first_power_on_time_listen_id_);
     }
 
     // 机场累计运行时长(acc_time);
-    dock_acc_time_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockAccumulatedRunningTime(
+    if (bm) {
+        dock_acc_time_listen_id_ = bm->ListenDockAccumulatedRunningTime(
         [this, p](const notification_center::DockAccTime& msg)-> void {
             WeakDummyReturn(p);
 
@@ -589,13 +660,17 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_acc_time_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockAccTime] ListenDockAccumulatedRunningTime(), error dock_acc_time_listen_id: %d", dock_acc_time_listen_id_);
     }
 
     // 备降点(alternate_land_point);
-    dock_alternate_land_point_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockAlternateLandPoint(
+    if (bm) {
+        dock_alternate_land_point_listen_id_ = bm->ListenDockAlternateLandPoint(
         [this, p](const notification_center::DockAlternateLandPoint& msg)-> void {
             WeakDummyReturn(p);
 
@@ -629,13 +704,17 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_alternate_land_point_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockAccTime] ListenDockAccumulatedRunningTime(), error dock_alternate_land_point_listen_id: %d", dock_alternate_land_point_listen_id_);
     }
 
     // 搜星状态(position_state);
-    dock_position_state_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockPositionState(
+    if (bm) {
+        dock_position_state_listen_id_ = bm->ListenDockPositionState(
         [this, p](const notification_center::DockPositionState& msg)-> void {
             WeakDummyReturn(p);
 
@@ -670,6 +749,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_position_state_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockPositionState] ListenDockPositionState(), error dock_position_state_listen_id: %d", dock_position_state_listen_id_);
@@ -677,7 +759,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
 
     // 机场激活时间(activation_time, unix时间戳 s);
-    dock_activation_time_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockActivationTime(
+    if (bm) {
+        dock_activation_time_listen_id_ = bm->ListenDockActivationTime(
         [this, p](const notification_center::DockActivationTime& msg)-> void {
             WeakDummyReturn(p);
 
@@ -700,13 +783,17 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_activation_time_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockActivationTime] ListenDockActivationTime(), error dock_activation_time_listen_id: %d", dock_activation_time_listen_id_);
     }
 
      // 电池(存储)模式(battery_store_mode);
-     dock_battery_store_mode_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockBatteryStoreMode(
+     if (bm) {
+         dock_battery_store_mode_listen_id_ = bm->ListenDockBatteryStoreMode(
         [this, p](const notification_center::DockBatteryStoreMode& msg)-> void {
             WeakDummyReturn(p);
 
@@ -729,13 +816,17 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
      );
+     } else {
+         LOG_ERROR("[session_bm] null, skip Listen for session");
+     }
 
      if (dock_battery_store_mode_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
          LOG_ERROR("[DockImpl DockBatteryStoreMode] ListenDockBatteryStoreMode(), error dock_battery_store_mode_listen_id: %d", dock_battery_store_mode_listen_id_);
      }
 
     // 机场声光报警状态(alarm_state);
-    dock_alarm_state_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockAlarmState(
+    if (bm) {
+        dock_alarm_state_listen_id_ = bm->ListenDockAlarmState(
         [this, p](const notification_center::DockAlarmState& msg)-> void {
             WeakDummyReturn(p);
 
@@ -758,6 +849,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_alarm_state_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockAlarmState] ListenDockAlarmState(), error dock_alarm_state_listen_id: %d", dock_alarm_state_listen_id_);
@@ -766,7 +860,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
     // 机场: 飞行器电池保养信息(drone_battery_maintenance_info);
     // DockDroneBatteryMaintenanceInfo;
-    dock_drone_battery_maintenance_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockDroneBatteryMaintenanceInfo(
+    if (bm) {
+        dock_drone_battery_maintenance_info_listen_id_ = bm->ListenDockDroneBatteryMaintenanceInfo(
         [this, p](const notification_center::DockDroneBatteryMaintenanceInfo& msg)-> void {
             WeakDummyReturn(p);
 
@@ -809,6 +904,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_drone_battery_maintenance_info_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockDroneBatteryMaintenanceInfo] ListenDockDroneBatteryMaintenanceInfo(), error dock_drone_battery_maintenance_info_listen_id: %d",
@@ -818,7 +916,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
     // 机场: 紧急停止按钮状态(emergency_stop_state);
     // DockEmergencyStopState;
-    dock_emergency_stop_state_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockEmergencyStopState(
+    if (bm) {
+        dock_emergency_stop_state_listen_id_ = bm->ListenDockEmergencyStopState(
         [this, p](const notification_center::DockEmergencyStopState& msg)-> void {
             WeakDummyReturn(p);
             
@@ -841,6 +940,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_emergency_stop_state_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockEmergencyStopState] ListenDockEmergencyStopState(), error dock_emergency_stop_state_listen_id: %d",
@@ -850,7 +952,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
     // 机场静音模式(silent_mode);
     // DockSilentMode;
-    dock_silent_mode_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockSilentMode(
+    if (bm) {
+        dock_silent_mode_listen_id_ = bm->ListenDockSilentMode(
         [this, p](const notification_center::DockSilentMode& msg)-> void {
             WeakDummyReturn(p);
 
@@ -875,6 +978,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_silent_mode_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockSilentMode] ListenDockSilentMode(), error dock_silent_mode_listen_id: %d",
@@ -883,7 +989,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
     // 机场: 用户体验改善计划(user_experience_improvement);
     // DockUserExperienceImprovement;
-    dock_user_experience_improvement_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockUserExperienceImprovement(
+    if (bm) {
+        dock_user_experience_improvement_listen_id_ = bm->ListenDockUserExperienceImprovement(
         [this, p](const notification_center::DockUserExperienceImprovement& msg)-> void {
             WeakDummyReturn(p);
 
@@ -908,6 +1015,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_user_experience_improvement_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockUserExperienceImprovement] ListenDockUserExperienceImprovement(), error dock_user_experience_improvement_listen_id: %d",
@@ -917,7 +1027,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
     // DRC 链路的状态(drc_state);
     // DockDrcState;
-    dock_drc_state_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockDrcState(
+    if (bm) {
+        dock_drc_state_listen_id_ = bm->ListenDockDrcState(
         [this, p](const notification_center::DockDrcState& msg)-> void {
             WeakDummyReturn(p);
 
@@ -940,6 +1051,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_drc_state_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockDrcState] ListenDockDrcState(), error dock_drc_state_listen_id: %d",
@@ -948,7 +1062,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
     // 推杆状态(putter_state);
     // DockPutterState;
-    dock_putter_state_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockPutterState(
+    if (bm) {
+        dock_putter_state_listen_id_ = bm->ListenDockPutterState(
         [this, p](const notification_center::DockPutterState& msg)-> void {
             WeakDummyReturn(p);
 
@@ -971,6 +1086,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_putter_state_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockPutterState] ListenDockPutterState(), error dock_putter_state_listen_id: %d",
@@ -979,7 +1097,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
     // 相对备降点(relative_alternate_land_point);
     // DockRelativeAlternateLandPoint;
-    dock_relative_alternate_land_point_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockRelativeAlternateLandPoint(
+    if (bm) {
+        dock_relative_alternate_land_point_listen_id_ = bm->ListenDockRelativeAlternateLandPoint(
         [this, p](const notification_center::DockRelativeAlternateLandPoint& msg)-> void {
             WeakDummyReturn(p);
 
@@ -1009,6 +1128,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_relative_alternate_land_point_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockRelativeAlternateLandPoint] ListenDockRelativeAlternateLandPoint(), error dock_relative_alternate_land_point_listen_id: %d",
@@ -1018,7 +1140,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
     // 自收敛坐标(self_converge_coordinate);
     // DockSelfConvergeCoordinate;
-    dock_self_converge_coordinate_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockSelfConvergeCoordinate(
+    if (bm) {
+        dock_self_converge_coordinate_listen_id_ = bm->ListenDockSelfConvergeCoordinate(
         [this, p](const notification_center::DockSelfConvergeCoordinate& msg)-> void {
             WeakDummyReturn(p);
 
@@ -1047,6 +1170,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_self_converge_coordinate_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockSelfConvergeCoordinate] ListenDockSelfConvergeCoordinate(), error dock_self_converge_coordinate_listen_id: %d",
@@ -1056,7 +1182,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
     // 机场固件信息;
     // DockFirmwareInfo
-    dock_firmware_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockFirmwareInfo(
+    if (bm) {
+        dock_firmware_info_listen_id_ = bm->ListenDockFirmwareInfo(
         [this, p](const notification_center::DockFirmwareInfo& msg)-> void {
             WeakDummyReturn(p);
 
@@ -1087,6 +1214,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_firmware_info_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockFirmwareInfo] ListenDockFirmwareInfo(), error dock_firmware_info_listen_id: %d",
@@ -1095,7 +1225,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
     // 机场4G Dongle信息(dongle_infos);
     // DockDongleInfos;
-    dock_dongle_infos_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockDongleInfos(
+    if (bm) {
+        dock_dongle_infos_listen_id_ = bm->ListenDockDongleInfos(
         [this, p](const notification_center::DockDongleInfos& msg)-> void {
             WeakDummyReturn(p);
 
@@ -1137,6 +1268,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_dongle_infos_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockDongleInfos] ListenDockDongleInfos(), error dock_dongle_infos_listen_id: %d",
@@ -1145,7 +1279,8 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 
     // 机场空调工作模式(air_conditioner_mode);
     // DockAirConditionerMode;
-    dock_air_conditioner_mode_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockAirConditionerMode(
+    if (bm) {
+        dock_air_conditioner_mode_listen_id_ = bm->ListenDockAirConditionerMode(
         [this, p](const notification_center::DockAirConditionerMode& msg)-> void {
             WeakDummyReturn(p);
 
@@ -1168,6 +1303,9 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
         dock_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     if (dock_air_conditioner_mode_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl DockAirConditionerMode] ListenDockAirConditionerMode(), error dock_air_conditioner_mode_listen_id: %d",
@@ -1176,174 +1314,243 @@ void DockOsdModuleImpl::registerNotificationCenterListeners() {
 }
 
 DockOsdModuleImpl::~DockOsdModuleImpl() {
+    auto bm = ResolveBusinessManager(session_id_);
     if (dock_location_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_location_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_location_listen_id_);
+        }
     }
 
     if (drone_in_dock_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(drone_in_dock_listen_id_);
+        if (bm) {
+            bm->CancelObserve(drone_in_dock_listen_id_);
+        }
     }
 
     if (dock_cover_state_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_cover_state_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_cover_state_listen_id_);
+        }
         dock_cover_state_listen_id_ = -1;
     }
 
     if (dock_drone_charge_state_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_drone_charge_state_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_drone_charge_state_listen_id_);
+        }
         dock_drone_charge_state_listen_id_ = -1;
     }
 
     if (dock_meteorological_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_meteorological_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_meteorological_info_listen_id_);
+        }
         dock_meteorological_info_listen_id_ = -1;
     }
 
     if (dock_backup_battery_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_backup_battery_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_backup_battery_info_listen_id_);
+        }
         dock_backup_battery_info_listen_id_ = -1;
     }
 
     if (dock_maintain_status_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_maintain_status_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_maintain_status_info_listen_id_);
+        }
         dock_maintain_status_info_listen_id_ = -1;
     }
     if (dock_mode_code_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_mode_code_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_mode_code_listen_id_);
+        }
         dock_mode_code_listen_id_ = -1;
     }
 
     if (flight_task_step_code_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(flight_task_step_code_listen_id_);
+        if (bm) {
+            bm->CancelObserve(flight_task_step_code_listen_id_);
+        }
         flight_task_step_code_listen_id_ = -1;
     }
 
     if (dock_sub_device_info_list_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_sub_device_info_list_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_sub_device_info_list_listen_id_);
+        }
         dock_sub_device_info_list_listen_id_ = -1;
     }
 
     if (dock_network_state_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_network_state_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_network_state_listen_id_);
+        }
         dock_network_state_listen_id_ = -1;
     }
 
     if (dock_media_file_detail_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_media_file_detail_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_media_file_detail_listen_id_);
+        }
         dock_media_file_detail_listen_id_ = -1;
     }
 
     if (dock_wireless_link_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_wireless_link_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_wireless_link_listen_id_);
+        }
         dock_wireless_link_listen_id_ = -1;
     }
 
     if (dock_job_number_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_job_number_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_job_number_listen_id_);
+        }
         dock_job_number_listen_id_ = -1;
     }
 
     if (dock_power_state_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_power_state_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_power_state_listen_id_);
+        }
         dock_power_state_listen_id_ = -1;
     }
 
     if (dock_storage_state_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_storage_state_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_storage_state_listen_id_);
+        }
         dock_storage_state_listen_id_ = -1;
     }
     
     if (dock_first_power_on_time_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_first_power_on_time_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_first_power_on_time_listen_id_);
+        }
         dock_first_power_on_time_listen_id_ = -1;
     }
 
     if (dock_acc_time_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_acc_time_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_acc_time_listen_id_);
+        }
         dock_acc_time_listen_id_ = -1;
     }
 
     if (dock_alternate_land_point_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_alternate_land_point_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_alternate_land_point_listen_id_);
+        }
         dock_alternate_land_point_listen_id_ = -1;
     }
 
     if (dock_position_state_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_position_state_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_position_state_listen_id_);
+        }
         dock_position_state_listen_id_ = -1;
     }
 
     if (dock_activation_time_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_activation_time_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_activation_time_listen_id_);
+        }
         dock_activation_time_listen_id_ = -1;
     }
 
     if (dock_battery_store_mode_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_battery_store_mode_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_battery_store_mode_listen_id_);
+        }
         dock_battery_store_mode_listen_id_ = -1;
     }
 
     if (dock_alarm_state_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_alarm_state_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_alarm_state_listen_id_);
+        }
         dock_alarm_state_listen_id_ = -1;
     }
 
     if (dock_drone_battery_maintenance_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_drone_battery_maintenance_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_drone_battery_maintenance_info_listen_id_);
+        }
         dock_drone_battery_maintenance_info_listen_id_ = -1;
     }
 
     if (dock_emergency_stop_state_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_emergency_stop_state_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_emergency_stop_state_listen_id_);
+        }
         dock_emergency_stop_state_listen_id_ = -1;
     }
 
     if (dock_silent_mode_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_silent_mode_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_silent_mode_listen_id_);
+        }
         dock_silent_mode_listen_id_ = -1;
     }
     
     if (dock_user_experience_improvement_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_user_experience_improvement_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_user_experience_improvement_listen_id_);
+        }
         dock_user_experience_improvement_listen_id_ = -1;
     }
 
     if (dock_drc_state_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_drc_state_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_drc_state_listen_id_);
+        }
         dock_drc_state_listen_id_ = -1;
     }
     
     if (dock_putter_state_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_putter_state_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_putter_state_listen_id_);
+        }
         dock_putter_state_listen_id_ = -1;
     }
 
     if (dock_relative_alternate_land_point_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_relative_alternate_land_point_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_relative_alternate_land_point_listen_id_);
+        }
         dock_relative_alternate_land_point_listen_id_ = -1;
     }
 
     if (dock_self_converge_coordinate_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_self_converge_coordinate_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_self_converge_coordinate_listen_id_);
+        }
         dock_self_converge_coordinate_listen_id_ = -1;
     }
 
     // 机场固件信息;
     // DockFirmwareInfo
     if (dock_firmware_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_firmware_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_firmware_info_listen_id_);
+        }
         dock_firmware_info_listen_id_ = -1;
     }
 
     // 机场4G Dongle信息;
     if (dock_dongle_infos_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_dongle_infos_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_dongle_infos_listen_id_);
+        }
         dock_dongle_infos_listen_id_ = -1;
     }
 
     // 机场空调工作模式;
     if (dock_air_conditioner_mode_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_air_conditioner_mode_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_air_conditioner_mode_listen_id_);
+        }
         dock_air_conditioner_mode_listen_id_ = -1;
     }
 }

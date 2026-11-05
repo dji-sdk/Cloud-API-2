@@ -147,6 +147,30 @@ class FhMediaListToolTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldAcceptPageSizeAtUpperBound() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = listTool.execute(Map.of("page_size", 200));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals(200, data.get("page_size"), "上限值本身应被接受");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldFallbackPageSize_whenJustAboveUpperBound() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = listTool.execute(Map.of("page_size", 201));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals(50, data.get("page_size"), "超过上限应回退默认值");
+    }
+
+    @Test
     void execute_shouldReturnError_whenStartTimeInvalid() {
         sessionManager.createSession("uuid", "ws");
 

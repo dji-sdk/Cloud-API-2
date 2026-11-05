@@ -4,7 +4,7 @@
 #pragma once
 
 // ---------------------------------------------------------------------------
-// FH36-P2-02 修复: 请求/响应体日志安全化工具(共享实现)。
+// 请求/响应体日志安全化工具(共享实现)。
 // 使用方: src/bll/http_interface/http_interface.cpp(C++ 主网络路径)、
 //         deps/base/common/network/impl/network_emsdk.cc(WASM 路径)。
 //
@@ -19,8 +19,7 @@
 // thread_local 复用, 消除每次调用的堆分配(实测较每次分配方案快 3 倍);
 // ④ 词表按命中概率排序, 命中即提前返回。
 //
-// 配套 CI 门禁: scripts/make_source_package.sh 的 FH36-P2-02 规则——
-// 任意级别日志出现未包裹的内容实参即拒绝打包。
+// 配套打包门禁(内部工具): 任意级别日志出现未包裹的内容实参即拒绝出包。
 // ---------------------------------------------------------------------------
 
 #include <cctype>
@@ -32,7 +31,7 @@ namespace common {
 // 敏感词表: 覆盖 SDK 全部凭据面(直播 token / STS access_key / relay 密码 /
 // RTMP stream_key / 鉴权头 / 预签名 URL signature / Set-Cookie / 证书 license)。
 // 命中任一即整条内容不打印; 词表为本仓可扩充的唯一清单, 新增凭据面须同步维护,
-// 并同步更新 scripts/make_source_package.sh 门禁与单元测试。
+// 并同步更新打包门禁与单元测试。
 inline bool contains_sensitive_field(const std::string &content) {
     static const char *kSensitiveWords[] = {
         "token", "password", "passwd", "secret", "credential",

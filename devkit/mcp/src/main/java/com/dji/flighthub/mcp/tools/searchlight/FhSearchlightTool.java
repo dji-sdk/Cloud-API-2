@@ -63,6 +63,7 @@ public class FhSearchlightTool extends AbstractMcpTool {
     private static final String PARAM_GIMBAL_CONTROL = "gimbal_control";
     private static final String PARAM_TYPE = "type";
     private static final String PARAM_WIDE_FIELD_MODE = "wide_field_mode";
+    private static final String PARAM_BRIGHTNESS = "brightness";
 
     // ==================== Action 常量 ====================
     private static final String ACTION_MODE_SET = "mode_set";
@@ -71,11 +72,13 @@ public class FhSearchlightTool extends AbstractMcpTool {
     private static final String ACTION_GIMBAL_CONTROL = "gimbal_control";
     private static final String ACTION_TYPE_SET = "type_set";
     private static final String ACTION_WIDE_FIELD_MODE = "wide_field_mode";
+    private static final String ACTION_BRIGHTNESS_SET = "brightness_set";
 
     /** 有效 action 集合 */
     private static final Set<String> VALID_ACTIONS = Set.of(
             ACTION_MODE_SET, ACTION_CALIBRATION, ACTION_FINE_TUNING,
-            ACTION_GIMBAL_CONTROL, ACTION_TYPE_SET, ACTION_WIDE_FIELD_MODE
+            ACTION_GIMBAL_CONTROL, ACTION_TYPE_SET, ACTION_WIDE_FIELD_MODE,
+            ACTION_BRIGHTNESS_SET
     );
 
     /** 有效 action 排序列表 */
@@ -92,6 +95,10 @@ public class FhSearchlightTool extends AbstractMcpTool {
     /** payload_index 解析失败哨兵 */
     private static final int INVALID_PAYLOAD_INDEX = -1;
     private static final int PAYLOAD_INDEX_MIN_SEGMENTS = 2;
+
+    /** 探照灯亮度百分比有效范围 */
+    private static final int MIN_BRIGHTNESS = 0;
+    private static final int MAX_BRIGHTNESS = 100;
 
     private final SdkService sdkService;
 
@@ -125,8 +132,9 @@ public class FhSearchlightTool extends AbstractMcpTool {
         def.put("name", TOOL_NAME);
         def.put("description",
                 "Advanced searchlight control: mode switching (off/constant/strobe/flash/alternate), "
-                        + "calibration, fine-tuning, gimbal control, type and wide-field mode. "
+                        + "calibration, fine-tuning, gimbal control, type, wide-field mode and brightness. "
                         + "Use mode_set(mode=0) for off, mode_set(mode=1) for constant on. "
+                        + "Use brightness_set(brightness=0-100) to adjust brightness percentage. "
                         + "Requires flight control authority.");
 
         Map<String, Object> schema = new LinkedHashMap<>();
@@ -177,6 +185,10 @@ public class FhSearchlightTool extends AbstractMcpTool {
         props.put(PARAM_WIDE_FIELD_MODE, Map.of(
                 "type", "integer",
                 "description", "Wide-field mode value (for wide_field_mode)"
+        ));
+        props.put(PARAM_BRIGHTNESS, Map.of(
+                "type", "integer",
+                "description", "Searchlight brightness percentage, 0~100 (for brightness_set)"
         ));
 
         schema.put("properties", props);
@@ -304,6 +316,16 @@ public class FhSearchlightTool extends AbstractMcpTool {
                         Map.of("drone_sn", sn, "action", action, "wide_field_mode", wfm),
                         "Wide-field mode set to " + wfm);
             }
+            case ACTION_BRIGHTNESS_SET -> {
+                int brightness = getIntArg(args, PARAM_BRIGHTNESS, -1);
+                if (brightness < MIN_BRIGHTNESS || brightness > MAX_BRIGHTNESS) {
+                    yield errorResult("Invalid brightness: " + brightness,
+                            "Must be " + MIN_BRIGHTNESS + "~" + MAX_BRIGHTNESS + ".");
+                }
+                yield successResult(
+                        Map.of("drone_sn", sn, "action", action, "brightness", brightness, "payload_index", idx),
+                        "Searchlight brightness set to " + brightness);
+            }
             default -> errorResult("Unhandled action: " + action, "Report this bug.");
         };
     }
@@ -392,6 +414,18 @@ public class FhSearchlightTool extends AbstractMcpTool {
                     yield successResult(
                             Map.of("drone_sn", droneSn, "action", action, "wide_field_mode", wfm),
                             "Wide-field mode set");
+                }
+                case ACTION_BRIGHTNESS_SET -> {
+                    int brightness = getIntArg(args, PARAM_BRIGHTNESS, -1);
+                    if (brightness < MIN_BRIGHTNESS || brightness > MAX_BRIGHTNESS) {
+                        yield errorResult("Invalid brightness: " + brightness,
+                                "Must be " + MIN_BRIGHTNESS + "~" + MAX_BRIGHTNESS + ".");
+                    }
+                    SdkCallbackBridge.awaitVoid(
+                            cb -> drone.getPsdkControlModule().searchlightBrightnessSet(intIdx, brightness, cb));
+                    yield successResult(
+                            Map.of("drone_sn", droneSn, "action", action, "brightness", brightness),
+                            "Searchlight brightness set to " + brightness);
                 }
                 default -> errorResult("Unhandled action: " + action, "Report this bug.");
             };

@@ -90,10 +90,11 @@ class BackwardCompatibilityTest {
     }
 
     @Test
-    void legacyTool_getSecurityLevel_shouldReturnReadOnly() {
-        // 无注解的 legacy tool，getSecurityLevel 应返回 READ_ONLY（默认值）
+    void legacyTool_getSecurityLevel_shouldReturnCritical_whenNoAnnotation() {
+        // 无注解/未覆写的 legacy tool，getSecurityLevel 应返回 CRITICAL（fail-closed）
+        // 原因：未标注的工具按最高等级处理，避免漏配导致越权
         LegacyTool tool = new LegacyTool();
-        assertEquals(com.dji.flighthub.mcp.security.SecurityLevel.READ_ONLY,
+        assertEquals(com.dji.flighthub.mcp.security.SecurityLevel.CRITICAL,
                 tool.getSecurityLevel());
     }
 }

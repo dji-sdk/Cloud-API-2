@@ -118,15 +118,33 @@ task executableJar(type: Jar) {
 }
 
 // 配置文件不进 fat jar（需可编辑）；打到 jar 同级目录供运行时读取
-task copyDemoConfigs(type: Copy) {
+// 避免把旧日志等无关文件带进去；仅下列 include
+def demoConfigFiles = fileTree(projectDir) {
+    include 'config.json'
+    include 'config_*.json'
+    include 'drtc_config_node*.json'
+}
+
+// 这里刻意不用 type: Copy —— Copy 会把 destinationDir(build/libs) 整个目录登记成本任务的输出，
+// 而 build/libs 同时是 jar/executableJar 的产物目录、又是 distZip/distTar/startScripts 的输入
+// 目录。Gradle 8 的任务校验据此判定「消费者读了本任务的输出却未声明依赖」，`./gradlew build`
+// 直接失败（Gradle 9 起该校验更严）。改为普通任务 + 精确到文件的 outputs：输出路径只覆盖那几个
+// JSON，与 jar 不重叠，校验通过，同时保留增量判断。
+task copyDemoConfigs {
     description = 'Copy config*.json and drtc_config_node*.json next to the executable jar'
-    from('.') {
-        include 'config.json'
-        include 'config_*.json'
-        include 'drtc_config_node*.json'
+
+    def destDir = file("$buildDir/libs")
+
+    inputs.files(demoConfigFiles).withPropertyName('demoConfigs')
+    outputs.files({ demoConfigFiles.collect { new File(destDir, it.name) } })
+            .withPropertyName('copiedDemoConfigs')
+
+    doLast {
+        copy {
+            from demoConfigFiles
+            into destDir
+        }
     }
-    into "$buildDir/libs"
-    // 避免把旧日志等无关文件带进去；仅上述 include
 }
 
 executableJar.finalizedBy copyDemoConfigs

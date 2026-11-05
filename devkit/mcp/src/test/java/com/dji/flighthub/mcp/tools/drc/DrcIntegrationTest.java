@@ -22,6 +22,8 @@ import com.dji.flighthub.mcp.sdk.StickControlExecutor;
 import com.dji.flighthub.mcp.session.FlightPhase;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.tools.camera.FhCameraTool;
+import com.dji.flighthub.mcp.tools.subscription.ListenChannelSupport;
+import com.dji.flighthub.mcp.tools.subscription.SubscriptionBuffer;
 import com.dji.flighthub.mcp.session.SessionManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -83,11 +85,11 @@ class DrcIntegrationTest {
         takeoffTool    = new FhTakeoffTool(sessionManager, sdkService, props);
         rthTool        = new FhReturnHomeTool(sessionManager, sdkService);
         flytoTool      = new FhFlytoTool(sessionManager, sdkService);
-        poiTool        = new FhPoiTool(sessionManager, sdkService);
+        poiTool        = new FhPoiTool(sessionManager, sdkService, new ListenChannelSupport(new SubscriptionBuffer()));
         emergencyTool  = new FhEmergencyStopTool(sessionManager, sdkService,
                 new com.dji.flighthub.mcp.security.OperatorTokenAuthenticator(props));
         cameraTool     = new FhCameraTool(sessionManager, sdkService);
-        liveTool       = new FhLiveStartTool(sessionManager, sdkService);
+        liveTool       = new FhLiveStartTool(sessionManager, sdkService, new ListenChannelSupport(new SubscriptionBuffer()));
         osdTool        = new FhOsdSnapshotTool(sessionManager, sdkService);
         stickTool      = new FhStickMoveTool(sessionManager, sdkService, stickExecutor);
 
@@ -180,14 +182,16 @@ class DrcIntegrationTest {
         assertEquals(FlightPhase.IDLE, session.getFlightPhase(), "release 后 phase 应为 IDLE");
     }
 
-    // ==================== Test 2: 无 DRC 链路时紧急停机 ====================
+    // ==================== Test 2: 无 DRC 链路时紧急停机不被本地拦截 ====================
 
     /**
-     * 验证 fh_emergency_stop 仅需飞行控制权（无需 DRC 链路）。
+     * 验证 fh_emergency_stop 在缺少 DRC 链路时不会被本地前置条件拦截。
+     * 紧急指令实际经 DRC 链路下发，链路缺失由 SDK 返回错误；
+     * 此处 mock 模式不触发 SDK 错误，用于确认工具本身不做 DRC 前置校验。
      * 场景：有控制权，无 DRC 链路，phase=FLYING_TO → 执行后 phase=EMERGENCY。
      */
     @Test
-    void emergencyStop_shouldWorkWithoutDrc() {
+    void emergencyStop_shouldNotBeBlockedLocallyWithoutDrc() {
         SessionContext session = sessionManager.getActiveSession();
         assertNotNull(session);
 
@@ -204,7 +208,8 @@ class DrcIntegrationTest {
                 "reason", "obstacle detected"
         ));
 
-        assertEquals(true, result.get("success"), "无 DRC 链路时紧急停机应成功，实际: " + result.get("error_message"));
+        assertEquals(true, result.get("success"),
+                "紧急指令不应被本地 DRC 前置校验拦截，实际: " + result.get("error_message"));
         assertEquals(FlightPhase.EMERGENCY, session.getFlightPhase(), "执行后 phase 应为 EMERGENCY");
         Map<String, Object> data = (Map<String, Object>) result.get("data");
         assertEquals("emergency", data.get("status"), "状态应为 emergency");
@@ -285,10 +290,10 @@ class DrcIntegrationTest {
         assertNotNull(data, "结果 data 不应为 null");
     }
 
-    // ==================== Test 5: payload 和 live 仅需控制权（无需 DRC） ====================
+    // ==================== Test 5: payload 和 live 不依赖 DRC 链路 ====================
 
     /**
-     * 验证 fh_camera（相机类）和 fh_live_start 在有控制权时正常工作。
+     * 验证 fh_camera（相机类，需控制权）和 fh_live_start（无需控制权）在已建立 DRC 链路时正常工作。
      */
     @Test
     void cameraAndLive_shouldWorkWithControlAuthority() {

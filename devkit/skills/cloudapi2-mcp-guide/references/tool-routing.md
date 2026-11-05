@@ -31,8 +31,21 @@ If the prerequisite is not met → find the tool that produces it first.
 
 | User intent | Start with |
 |---|---|
-| "查看/列出/有哪些..." (query) | `fh_workspace(list)`, `fh_flight_task(list)`, `fh_device(list)` |
+| "查看/列出/有哪些..." (query) | `fh_workspace(list)`, `fh_flight_task(list)`, `fh_device_list` |
 | "创建/新建/飞一下..." (create) | See workflow-specific decision tree |
 | "执行/开始飞..." (execute) | `fh_flight_task(execute)` or `fh_wayline_execute` |
 | "停/暂停/取消..." (abort) | `fh_wayline_control(action=pause/cancel)` |
 | "状态/进度..." (monitor) | `fh_flight_task(detail)` or `fh_wayline_status` |
+| "no-fly zone/geofence/offline map/sync to device..." | See `references/workflows/safety-service.md` decision tree |
+| "3D reconstruction/panorama/model build progress..." | See `references/workflows/terra-reconstruction.md` decision tree |
+| "device list/dock control/telemetry snapshot..." | See `references/workflows/device-query-control.md` decision tree |
+| "format/reboot/RTK calibration/relay/network test..." | See `references/workflows/device-debug.md` decision tree |
+| "firmware upgrade/release/publish..." | See `references/workflows/firmware.md` decision tree |
+| "maintenance order/HMS alert/log report/shutdown server..." | See `references/workflows/ops-maintenance.md` decision tree |
+| "takeoff/return home/orbit flight/emergency stop/stick move/gimbal authority/device recommend/wayline recommend..." | See `references/workflows/device-control.md` decision tree |
+| "pause/resume/cancel wayline/wayline progress/export flight record..." | See `references/workflows/flight-task.md` "航线执行生命周期" section |
+| "airspace unlock license/TCAS/flysafe database upgrade..." | See `references/workflows/safety-service.md` "空域合规" section |
+| "device self-diagnosis/diagnosis report..." | See `references/workflows/ops-maintenance.md` decision tree |
+| "no active session/call fh_connect first..." | See `references/workflows/ops-maintenance.md` decision tree |
+| "media list/download media/delete media/livestream recording..." | See `references/workflows/media-management.md` decision tree |
+| "take photo/record video/zoom/gimbal rotate/PSDK/speaker/searchlight..." | See `references/workflows/payload-control.md` decision tree |

@@ -23,6 +23,7 @@ import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
 import com.dji.flighthub.mcp.annotation.Generated;
+import com.dji.flighthubsdk.bean.ImportWaylineEventResult;
 import com.dji.flighthubsdk.bean.SubmitWaylineInfoParam;
 import com.dji.flighthubsdk.core.WaylineManageModule;
 import com.dji.flighthubsdk.core.Workspace;
@@ -33,6 +34,7 @@ import org.springframework.stereotype.Component;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -64,6 +66,17 @@ public class FhWaylineUploadTool extends AbstractMcpTool {
 
     /** 默认失控动作 */
     private static final String DEFAULT_OOC_ACTION = "return_home";
+
+    /** 导入结果事件等待超时（秒）：服务端异步解析 KMZ，需要比普通回调更长时间 */
+    private static final int IMPORT_EVENT_TIMEOUT_SECONDS = 30;
+
+    /** 导入结果事件成功码 */
+    private static final int IMPORT_CODE_SUCCESS = 0;
+
+    /** 响应中的导入状态值 */
+    private static final String STATUS_SUBMITTED = "submitted";
+    private static final String STATUS_IMPORTED = "imported";
+    private static final String STATUS_IMPORT_FAILED = "import_failed";
 
     private final SdkService sdkService;
 
@@ -98,11 +111,13 @@ public class FhWaylineUploadTool extends AbstractMcpTool {
         Map<String, Object> def = new LinkedHashMap<>();
         def.put("name", TOOL_NAME);
         def.put("description",
-                "Upload a wayline from a public URL and create a flight task in one step. "
+                "Import a wayline from a public URL into the workspace. "
                 + "WHEN TO USE: You have a KMZ file accessible via public URL (https://...). "
                 + "DO NOT USE WHEN: You have a local file path (use fh_workspace action=submit first), "
                 + "or wayline already in workspace (use fh_flight_task action=create directly). "
-                + "NOTE: This tool takes drone_sn (NOT dock_sn), unlike fh_flight_task.");
+                + "NOTE: This tool takes drone_sn (NOT dock_sn), unlike fh_flight_task. "
+                + "Returns the imported wayline_uuid (or async_request_id when the import event times out); "
+                + "create the flight task afterwards with fh_flight_task action=create.");
 
         Map<String, Object> schema = new LinkedHashMap<>();
         schema.put("type", "object");
@@ -260,6 +275,9 @@ public class FhWaylineUploadTool extends AbstractMcpTool {
     /**
      * 真实 SDK 模式下创建航线任务。
      * 通过 WaylineManageModule.submitWaylineInfo 提交航线文件到云端。
+     *
+     * <p>提交请求需携带 asyncRequestId（服务端 {@code ImportRequest.AsyncRequestId} 必填），
+     * wayline_uuid 由 listenImportWaylineEvent 异步事件下发，通过 asyncRequestId 配对获取。
      */
     @Generated
     private Map<String, Object> uploadWithRealSdk(
@@ -272,46 +290,33 @@ public class FhWaylineUploadTool extends AbstractMcpTool {
             String resolvedName = (taskName != null) ? taskName
                     : "Wayline-" + droneSn + "-" + System.currentTimeMillis();
 
-            // 构建提交参数
-            SubmitWaylineInfoParam param = new SubmitWaylineInfoParam();
-            param.setKmzObjectKey(waylineUrl);
-            param.setWaylineName(resolvedName);
-            param.setTimestamp(System.currentTimeMillis() / 1000);
+            // 异步请求标识：服务端 ImportRequest.AsyncRequestId 必填，用于配对导入结果事件
+            String asyncRequestId = UUID.randomUUID().toString();
 
-            // submitWaylineInfo 使用 SubmitWaylineInfoCallback（void 回调）
-            CompletableFuture<Void> future = new CompletableFuture<>();
-            wmm.submitWaylineInfo(param, error -> {
-                if (error.isSuccess()) {
-                    future.complete(null);
-                } else {
-                    String message = (error.getServerMessage() != null && !error.getServerMessage().isBlank())
-                            ? error.getServerMessage()
-                            : "errorCode=" + error.getErrorCode() + ", server=" + error.getServerCode();
-                    future.completeExceptionally(
-                            new SdkCallbackBridge.SdkException(error.getServerCode(), message));
+            // 先注册导入事件监听，再提交，避免事件先于监听到达而丢失
+            CompletableFuture<ImportWaylineEventResult> importFuture = new CompletableFuture<>();
+            int listenerId = wmm.listenImportWaylineEvent(event -> {
+                if (asyncRequestId.equals(event.getAsyncRequestId())) {
+                    importFuture.complete(event);
                 }
             });
-            SdkCallbackBridge.await(future);
-
-            log.info("Wayline info submitted: drone={}, url={}, name={}", droneSn, waylineUrl, resolvedName);
-
-            Map<String, Object> data = new LinkedHashMap<>();
-            data.put("task_name", resolvedName);
-            data.put("drone_sn", droneSn);
-            data.put("wayline_url", waylineUrl);
-            data.put("out_of_control_action", oocAction);
-            data.put("status", "CREATED");
-            data.put("task_uuid", null); // SDK void 回调不返回 UUID，需通过 fh_flight_task 查询
-
-            List<Map<String, Object>> nextSteps = List.of(
-                    Map.of("action", "List flight tasks to find the task_uuid, then execute",
-                           "tool", "fh_flight_task",
-                           "params_hint", Map.of("action", "list"))
-            );
-            return successResultWithNextSteps(data,
-                    "Wayline info submitted. Call fh_flight_task(action=list) to get the task_uuid, "
-                    + "then fh_wayline_execute to start the mission.", nextSteps);
-
+            // 监听注册失败时回调永远不会触发：不能提交（否则调用方无法拿到导入结果），
+            // 也不能进入 30 秒的无谓等待，应直接返回可诊断的错误
+            if (listenerId < 0) {
+                log.error("listenImportWaylineEvent failed: drone={}, listenerId={}", droneSn, listenerId);
+                return errorResult("Failed to register wayline import event listener",
+                        "SDK returned listener id " + listenerId
+                                + ". Retry the call; if it persists, check SDK native library state.");
+            }
+            try {
+                submitWaylineInfo(wmm, waylineUrl, resolvedName, asyncRequestId);
+                log.info("Wayline info submitted: drone={}, url={}, name={}, asyncRequestId={}",
+                        droneSn, waylineUrl, resolvedName, asyncRequestId);
+                return buildUploadResult(droneSn, waylineUrl, resolvedName, oocAction,
+                        asyncRequestId, importFuture);
+            } finally {
+                wmm.cancelListenImportWaylineEvent(listenerId);
+            }
         } catch (SdkCallbackBridge.SdkTimeoutException e) {
             log.error("fh_wayline_upload timeout for drone {}: {}", droneSn, e.getMessage());
             return errorResult("SDK timeout: " + e.getMessage(),
@@ -325,6 +330,120 @@ public class FhWaylineUploadTool extends AbstractMcpTool {
             return errorResult("SDK error: " + e.getMessage(),
                     "Check drone connectivity and try again.");
         }
+    }
+
+    /**
+     * 提交航线导入请求（服务端异步受理）。
+     *
+     * @param wmm            航线管理模块
+     * @param waylineUrl     KMZ 对象键 / URL
+     * @param waylineName    航线名称
+     * @param asyncRequestId 异步请求标识
+     */
+    private void submitWaylineInfo(WaylineManageModule wmm, String waylineUrl,
+                                   String waylineName, String asyncRequestId) {
+        SubmitWaylineInfoParam param = new SubmitWaylineInfoParam();
+        param.setKmzObjectKey(waylineUrl);
+        param.setWaylineName(waylineName);
+        param.setAsyncRequestId(asyncRequestId);
+        param.setTimestamp(System.currentTimeMillis() / 1000);
+
+        // submitWaylineInfo 使用 SubmitWaylineInfoCallback（void 回调）
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        wmm.submitWaylineInfo(param, error -> {
+            if (error.isSuccess()) {
+                future.complete(null);
+            } else {
+                String message = (error.getServerMessage() != null && !error.getServerMessage().isBlank())
+                        ? error.getServerMessage()
+                        : "errorCode=" + error.getErrorCode() + ", server=" + error.getServerCode();
+                future.completeExceptionally(
+                        new SdkCallbackBridge.SdkException(error.getServerCode(), message));
+            }
+        });
+        SdkCallbackBridge.await(future);
+    }
+
+    /**
+     * 组装提交结果，并等待导入事件回填 wayline_uuid。
+     *
+     * <p>提交已被受理但事件未在超时内到达时不视为失败，仅标记 {@code import_event_timeout}，
+     * 调用方可通过 {@code fh_workspace(action=list)} 复查。
+     *
+     * @param droneSn        无人机序列号
+     * @param waylineUrl     航线文件来源
+     * @param resolvedName   航线名称
+     * @param oocAction      失控动作
+     * @param asyncRequestId 异步请求标识
+     * @param importFuture   导入结果事件
+     * @return 工具返回结果
+     */
+    private Map<String, Object> buildUploadResult(String droneSn, String waylineUrl, String resolvedName,
+                                                  String oocAction, String asyncRequestId,
+                                                  CompletableFuture<ImportWaylineEventResult> importFuture) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("task_name", resolvedName);
+        data.put("drone_sn", droneSn);
+        data.put("wayline_url", waylineUrl);
+        data.put("out_of_control_action", oocAction);
+        data.put("status", STATUS_SUBMITTED);
+        data.put("async_request_id", asyncRequestId);
+        data.put("wayline_uuid", null);
+
+        try {
+            ImportWaylineEventResult event =
+                    SdkCallbackBridge.await(importFuture, IMPORT_EVENT_TIMEOUT_SECONDS);
+            data.put("wayline_uuid", event.getWaylineUuid());
+            if (event.getCode() != IMPORT_CODE_SUCCESS) {
+                // 服务端导入失败（如 KMZ 格式非法），透出错误码与信息
+                data.put("status", STATUS_IMPORT_FAILED);
+                data.put("import_code", event.getCode());
+                data.put("import_message", event.getMessage());
+                return buildFailureResult(
+                        "Import failed (code=" + event.getCode() + "): " + event.getMessage(),
+                        "Check the KMZ file content, or retry with a valid wayline file.",
+                        data);
+            }
+            data.put("status", STATUS_IMPORTED);
+        } catch (SdkCallbackBridge.SdkTimeoutException e) {
+            log.warn("Import event not received in {}s for asyncRequestId={}",
+                    IMPORT_EVENT_TIMEOUT_SECONDS, asyncRequestId);
+            data.put("import_event_timeout", true);
+        }
+
+        List<Map<String, Object>> nextSteps = List.of(
+                Map.of("action", "Create a flight task using this wayline",
+                       "tool", "fh_flight_task",
+                       "params_hint", Map.of("action", "create", "wayline_uuid",
+                               data.get("wayline_uuid") != null
+                                       ? data.get("wayline_uuid") : "<QUERY_VIA_fh_workspace_list>"))
+        );
+        return successResultWithNextSteps(data,
+                "Wayline info submitted. wayline_uuid is returned from the import event "
+                + "(or query via fh_workspace(action=list) if the event timed out).", nextSteps);
+    }
+
+    /**
+     * 构建携带诊断数据的失败响应。
+     *
+     * <p>基类 {@code errorResult(error, suggestion)} 只返回三字段信封（不含 {@code data}），
+     * 但导入失败时调用方需要拿到 {@code async_request_id}、{@code import_code} 等定位信息，
+     * 因此本工具在本地组装失败信封。字段顺序与基类保持一致：{@code success} → {@code error_message}
+     * → {@code suggestion} → {@code data}，调用方可按同一套逻辑解析。
+     *
+     * @param error      错误信息
+     * @param suggestion 修复建议
+     * @param data       诊断数据（已包含导入状态、错误码等）
+     * @return 失败响应
+     */
+    private Map<String, Object> buildFailureResult(String error, String suggestion,
+                                                   Map<String, Object> data) {
+        Map<String, Object> failure = new LinkedHashMap<>(4);
+        failure.put("success", false);
+        failure.put("error_message", error);
+        failure.put("suggestion", suggestion);
+        failure.put("data", data);
+        return failure;
     }
 
     /**

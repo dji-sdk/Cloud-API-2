@@ -8,7 +8,7 @@
 
 namespace flight_hub_sdk {
 
-FlashLedModuleImpl::FlashLedModuleImpl() {
+FlashLedModuleImpl::FlashLedModuleImpl(int session_id) : session_id_(session_id) {
     LOG_INFO("[FlashLedModuleImpl] constructor");
 }
 
@@ -22,7 +22,7 @@ void FlashLedModuleImpl::getFlashLedConfigList(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLASH_LED_GET_CONFIG_LIST, err, "[FlashLedModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_FLASH_LED_GET_CONFIG_LIST, err, session_id_, "[FlashLedModuleImpl]");
         if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
             callback(err, {});
             return;
@@ -45,7 +45,7 @@ void FlashLedModuleImpl::getFlashLedConfigList(
         }
         LOG_INFO("[FlashLedModuleImpl] getFlashLedConfigList size=%zu", list.configs.size());
         callback(FlightHubError::success(), list);
-    });
+    }, session_id_);
 }
 
 void FlashLedModuleImpl::createFlashLedConfig(
@@ -70,7 +70,7 @@ void FlashLedModuleImpl::createFlashLedConfig(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLASH_LED_CREATE_CONFIG, err, "[FlashLedModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_FLASH_LED_CREATE_CONFIG, err, session_id_, "[FlashLedModuleImpl]");
         if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
             callback(err, {});
             return;
@@ -81,7 +81,7 @@ void FlashLedModuleImpl::createFlashLedConfig(
         cfg.flash_segments = params.flash_segments;
         LOG_INFO("[FlashLedModuleImpl] createFlashLedConfig ok id=%s", cfg.id.c_str());
         callback(FlightHubError::success(), cfg);
-    });
+    }, session_id_);
 }
 
 void FlashLedModuleImpl::updateFlashLedConfig(
@@ -107,7 +107,7 @@ void FlashLedModuleImpl::updateFlashLedConfig(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLASH_LED_UPDATE_CONFIG, err, "[FlashLedModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_FLASH_LED_UPDATE_CONFIG, err, session_id_, "[FlashLedModuleImpl]");
         if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
             callback(err, {});
             return;
@@ -126,7 +126,7 @@ void FlashLedModuleImpl::updateFlashLedConfig(
         }
         LOG_INFO("[FlashLedModuleImpl] updateFlashLedConfig ok id=%s", cfg.id.c_str());
         callback(FlightHubError::success(), cfg);
-    });
+    }, session_id_);
 }
 
 void FlashLedModuleImpl::deleteFlashLedConfig(
@@ -140,9 +140,9 @@ void FlashLedModuleImpl::deleteFlashLedConfig(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_FLASH_LED_DELETE_CONFIG, err, "[FlashLedModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_FLASH_LED_DELETE_CONFIG, err, session_id_, "[FlashLedModuleImpl]");
         callback(err);
-    });
+    }, session_id_);
 }
 
 }  // namespace flight_hub_sdk

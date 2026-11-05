@@ -12,7 +12,7 @@ namespace notification_center {
     public:
         int type = -1;     // int, "网络类型", { 1: 4G, 2: 以太网 };  默认无效值: -1;
         int quality = -1;  // int, "网络质量(当网络类型为4G时才具有网络质量信息)", { 0: 差, 1: 中, 2: 好 }; 默认无效值: -1;
-        int rate = 0;      // int, "网络速率(单位KB/秒)"; 默认值: 0;
+        double rate = 0.0;  // double, "网络速率(单位KB/秒)"; 默认值: 0.0;
 
         AIGC_JSON_HELPER(type, quality, rate);
 

@@ -28,6 +28,15 @@ void Network::Init(std::shared_ptr<injector::Network> network) {
     }
 }
 
+void Network::AddQuietUrlPattern(const std::string &pattern) const {
+#ifndef __EMSCRIPTEN__
+    drc_sdk::common::network::HttpSyncRequest::AddQuietUrlPattern(pattern);
+#else
+    // wasm 走 fetch，没有 libcurl 抓包可关
+    (void)pattern;
+#endif
+}
+
 void Network::SetTlsConfig(bool verify_ssl, const std::string &ca_path) {
 #ifndef __EMSCRIPTEN__
     // 经 HttpSyncRequest 构造函数统一应用, 覆盖网络层全部实例化点

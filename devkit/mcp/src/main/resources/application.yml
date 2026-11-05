@@ -16,6 +16,12 @@ flighthub:
     # FlightHub 服务器地址。默认 http://localhost（同机部署场景）；连接失败时通过 elicitation 引导用户输入
     address: ${FH_SERVER_ADDRESS:http://localhost}
     port: ${FH_SERVER_PORT:30812}
+    # WSS 通知通道的 TLS 证书校验开关（默认 true，安全默认）。
+    # 私有化 FH2 常用自签名证书，SDK 的 libwebsockets 通道会因证书不受信而拒绝连接；
+    # 内网自签名部署二选一：设为 false 跳过校验，或保持 true 并配置下方 ssl-ca-path。
+    verify-ssl: ${FH_VERIFY_SSL:true}
+    # WSS 通知通道的自签 CA 证书文件路径（留空则使用 SDK 默认信任库），仅 verify-ssl=true 时生效
+    ssl-ca-path: ${FH_SSL_CA_PATH:}
   auth:
     access-token: ${FH_ACCESS_TOKEN:}
     workspace-uuid: ${FH_WORKSPACE_UUID:}
@@ -39,6 +45,31 @@ flighthub:
     enabled: ${FH_IDEMPOTENCY_ENABLED:true}
     ttl-seconds: ${FH_IDEMPOTENCY_TTL:300}
     max-size: ${FH_IDEMPOTENCY_MAX_SIZE:10000}
+  rate-limit:
+    # 工具级限流（按 SecurityLevel 分层的拒绝式漏桶）；与下面的 SSE IP 级限流相互独立
+    # 计数键：sessionId|toolName[|设备序列号][|action]，多设备隔离配额，详见 ToolRateLimiter 类注释
+    enabled: ${FH_TOOL_RATE_LIMIT_ENABLED:true}
+    read-only-rpm: ${FH_TOOL_RATE_LIMIT_L0_RPM:300}
+    reversible-rpm: ${FH_TOOL_RATE_LIMIT_L1_RPM:30}
+    flight-rpm: ${FH_TOOL_RATE_LIMIT_L2_RPM:6}
+    # L3 紧急工具默认不限流（紧急停止必须永远可执行，保持 0）
+    critical-rpm: ${FH_TOOL_RATE_LIMIT_L3_RPM:0}
+    # 单工具覆盖：toolName -> rpm，YAML map 形式，0 表示不限流
+    # 高物理成本工具按「一次到位」原则收紧（见设计文档 §3.3）：
+    #   fh_stick_move  内部每 50ms 下发一次摇杆指令，连续调用会让飞行器持续响应过载
+    #   fh_takeoff/fh_flyto/fh_return_home  物理位移，需等待状态稳定
+    #   fh_live_start  流建立成本高；start/switch_source 受该配额约束，
+    #                  stop/quality 属中止/查询类 action，自动跳过覆盖、只走 L1 档位并独占计数桶
+    #   fh_wayline_execute  任务下发应一次到位
+    per-tool-rpm:
+      fh_stick_move: 2
+      fh_takeoff: 3
+      fh_flyto: 3
+      fh_return_home: 2
+      fh_live_start: 5
+      fh_wayline_execute: 2
+    # 键空间上限；配成非正值会回落 10000 并告警（否则容量保护恒成立、限流整体失效）
+    max-keys: ${FH_TOOL_RATE_LIMIT_MAX_KEYS:10000}
   transport:
     mode: ${FH_TRANSPORT:stdio}
     sse-port: ${FH_SSE_PORT:8080}
@@ -51,6 +82,12 @@ flighthub:
   cockpit:
     # 可选：留空时不返回 cockpit 链接（不再硬编码内网地址）
     url: ${FH_COCKPIT_URL:}
+  output:
+    # 输出体积预算：超阈值时截断列表/字符串并注入 output_truncated 元信息
+    enabled: ${FH_OUTPUT_BUDGET_ENABLED:true}
+    max-bytes: ${FH_OUTPUT_MAX_BYTES:262144}
+    max-array-items: ${FH_OUTPUT_MAX_ARRAY_ITEMS:500}
+    max-string-chars: ${FH_OUTPUT_MAX_STRING_CHARS:8192}
 
 # pf-device-simulator-service Configuration (Sim* tools, 独立于 flighthub.* 鉴权体系)
 sim:

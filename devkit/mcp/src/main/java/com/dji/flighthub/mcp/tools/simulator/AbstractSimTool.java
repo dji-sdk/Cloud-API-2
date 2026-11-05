@@ -63,7 +63,19 @@ public abstract class AbstractSimTool extends AbstractMcpTool {
     }
 
     /**
-     * 禁止 Sim* Tool 调用基类的 session 版安全等级检查——Sim* Tool 没有 session，
+     * Sim* Tool 统一按 REVERSIBLE 声明：所有写操作都通过
+     * {@link #enforceSimSecurityLevel(SecurityLevel)} 按 REVERSIBLE 自检，静态声明与其一致。
+     * 不继承基类的 CRITICAL 兜底——CRITICAL 会映射到不限流的 critical-rpm，
+     * 让 sim 工具失去限流保护。
+     *
+     * @return 此 Sim 工具的安全等级（REVERSIBLE，限流档位由原来的 300 rpm 收紧为 30 rpm）
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.REVERSIBLE;
+    }
+
+    /**
      * 调用此方法必定是误用。应使用 {@link #enforceSimSecurityLevel(SecurityLevel)}。
      *
      * @param required 安全等级

@@ -7,12 +7,13 @@
 #include "tool/callback_container.h"
 #include "i_message_engine.h"
 #include "common/util/async_capture_protect.h"
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class PoiModuleImpl : public IPoiModule, public drc_sdk::common::AsyncCaptureProtect{
 public:
-    explicit PoiModuleImpl(std::shared_ptr<message_engine::IMessageEngine> message_engine, std::string drone_sn, const std::string& gateway_sn, const std::string& drone_model_key);
+    explicit PoiModuleImpl(std::shared_ptr<message_engine::IMessageEngine> message_engine, std::string drone_sn, const std::string& gateway_sn, const std::string& drone_model_key, int session_id);
     ~PoiModuleImpl() override;
 
     void enter(const POIEnterParams& params, const std::function<void(FlightHubError err, const std::string& task_uuid)>& callback) override;
@@ -25,6 +26,7 @@ public:
     void cancelListenFlightPoiProgress(int listen_id) override;
 
 private:
+    int session_id_;
     std::shared_ptr<message_engine::IMessageEngine> message_engine_;
     std::string drone_sn_;
     std::string gateway_sn_;

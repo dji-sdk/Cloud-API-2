@@ -15,7 +15,7 @@ namespace flight_hub_sdk {
 
 class FirmwareManager: public drc_sdk::common::AsyncCaptureProtect {
 public:
-    FirmwareManager();
+    explicit FirmwareManager(int session_id);
     virtual ~FirmwareManager();
     void getLatestFirmwareReleaseNote(const std::vector<std::string>& device_model_keys, const std::string& language, std::function<void(FlightHubError err, const FirmwareReleaseNoteListResult& release_note_list)> callback);
     void invokeFirmwareUpgrade(const FirmwareUpgradeParam& params, std::function<void(FlightHubError err, const FirmwareUpgradeResult& result)> callback);
@@ -32,6 +32,7 @@ private:
     void GetFirmwareStsToken(const std::function<void(FlightHubError err, const FirmwareUpgradeStsResponse& sts_response)>& callback);
     std::shared_ptr<ICloudStorageUploader> getCloudStorageUploader(const std::string& provider);
 
+    int session_id_;
 };
 
 }  // namespace flight_hub_sdk

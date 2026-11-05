@@ -76,10 +76,65 @@ public class StickControlExecutor {
      */
     public int execute(StickSender stickSender, StickDirection direction,
                        int speedPercent, int durationMs) {
-        int clampedDuration = Math.min(Math.max(durationMs, 100), MAX_DURATION_MS);
         int clampedSpeed = Math.min(Math.max(speedPercent, 10), 100);
-
+        int clampedDuration = clampDuration(durationMs);
         int[] stickData = buildStickData(direction, clampedSpeed);
+
+        int ticks = runTicks(stickSender, stickData, clampedDuration);
+
+        log.debug("Stick move completed: direction={}, speed={}%, duration={}ms, ticks={}",
+                direction, clampedSpeed, clampedDuration, ticks);
+        return ticks;
+    }
+
+    /**
+     * 执行原始轴摇杆控制（AI 直接指定 roll/pitch/throttle/yaw/gimbalPitch 绝对值）。
+     * 比 {@link #execute} 更底层——不做方向语义转换，仅做范围裁剪与安全停止。
+     *
+     * @param stickSender 发送函数
+     * @param roll        横滚通道绝对值，自动裁剪到 [{@link #STICK_MIN}, {@link #STICK_MAX}]
+     * @param pitch       俯仰通道绝对值，范围同上
+     * @param throttle    油门通道绝对值，范围同上
+     * @param yaw         偏航通道绝对值，范围同上
+     * @param gimbalPitch 云台俯仰通道绝对值，范围同上
+     * @param durationMs  持续时间 100~5000ms
+     * @return 实际发送的 tick 次数
+     */
+    public int executeRaw(StickSender stickSender, int roll, int pitch, int throttle,
+                          int yaw, int gimbalPitch, int durationMs) {
+        int clampedDuration = clampDuration(durationMs);
+        int[] stickData = {
+                clampStick(roll), clampStick(pitch), clampStick(throttle),
+                clampStick(yaw), clampStick(gimbalPitch)
+        };
+
+        int ticks = runTicks(stickSender, stickData, clampedDuration);
+
+        log.debug("Raw stick control completed: roll={}, pitch={}, throttle={}, yaw={}, gimbal={}, duration={}ms, ticks={}",
+                stickData[0], stickData[1], stickData[2], stickData[3], stickData[4], clampedDuration, ticks);
+        return ticks;
+    }
+
+    /**
+     * 裁剪持续时间到安全范围。
+     *
+     * @param durationMs 原始持续时间
+     * @return 裁剪到 [100, {@link #MAX_DURATION_MS}] 的持续时间
+     */
+    private static int clampDuration(int durationMs) {
+        return Math.min(Math.max(durationMs, 100), MAX_DURATION_MS);
+    }
+
+    /**
+     * 按固定间隔发送同一帧摇杆数据，执行完毕或超时后自动发送中位值停止。
+     *
+     * @param stickSender 发送函数
+     * @param stickData   长度为 5 的 [roll, pitch, throttle, yaw, gimbal] 数组
+     * @param durationMs  持续时间，调用方需已通过 {@link #clampDuration} 裁剪
+     * @return 实际发送的 tick 次数
+     */
+    private int runTicks(StickSender stickSender, int[] stickData, int durationMs) {
+        int clampedDuration = clampDuration(durationMs);
         int totalTicks = clampedDuration / INTERVAL_MS;
         int[] tickCount = {0};
 
@@ -111,9 +166,17 @@ public class StickControlExecutor {
             stickSender.send(STICK_CENTER, STICK_CENTER, STICK_CENTER, STICK_CENTER, STICK_CENTER);
         }
 
-        log.debug("Stick move completed: direction={}, speed={}%, duration={}ms, ticks={}",
-                direction, clampedSpeed, clampedDuration, tickCount[0]);
         return tickCount[0];
+    }
+
+    /**
+     * 将摇杆通道值裁剪到合法范围 [{@link #STICK_MIN}, {@link #STICK_MAX}]。
+     *
+     * @param value 原始值
+     * @return 裁剪后的值
+     */
+    private static int clampStick(int value) {
+        return Math.min(Math.max(value, STICK_MIN), STICK_MAX);
     }
 
     /**

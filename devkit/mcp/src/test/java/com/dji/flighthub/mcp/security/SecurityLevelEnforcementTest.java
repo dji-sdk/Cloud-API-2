@@ -17,6 +17,7 @@
 package com.dji.flighthub.mcp.security;
 
 import com.dji.flighthub.mcp.config.FlightHubProperties;
+import com.dji.flighthub.mcp.config.McpToolRegistry;
 import com.dji.flighthub.mcp.sdk.SdkService;
 import com.dji.flighthub.mcp.security.OperatorTokenAuthenticator;
 import com.dji.flighthub.mcp.session.SessionManager;
@@ -50,45 +51,66 @@ class SecurityLevelEnforcementTest {
 
     private static final String DRONE_SN = "DRONE-TEST-001";
 
-    // ==================== 工具级拦截（统一等级工具） ====================
+    // ==================== 派发层拦截（统一等级工具） ====================
 
+    /**
+     * 通过 {@link McpToolRegistry} 验证派发层门控。
+     *
+     * <p>直接调用 {@code tool.execute(args)} 会绕过 {@code enforceSecurityGate}，
+     * 因此这里必须经由 registry 走完整派发路径。
+     */
     @Nested
-    @DisplayName("工具级拦截 - FhDrcConnectTool (L0)")
-    class DrcConnectL0Test {
+    @DisplayName("派发层拦截 - FhDrcConnectTool (L2)")
+    class DrcConnectL2Test {
 
         @Test
-        @DisplayName("maxLevel=3: L0 工具允许执行（后续因缺控制权而失败，但不被安全等级拦截）")
+        @DisplayName("maxLevel=3: L2 工具放行，不返回安全等级拒绝")
         void execute_shouldPassSecurityCheck_whenMaxLevelSufficient() {
-            FhDrcConnectTool tool = createDrcConnectTool(3);
+            Map<String, Object> result = executeThroughGate(3,
+                    Map.of("drone_sn", DRONE_SN));
 
-            Map<String, Object> args = new HashMap<>();
-            args.put("drone_sn", DRONE_SN);
-
-            Map<String, Object> result = tool.execute(args);
-
-            // 不应被安全等级拦截（可能因其他原因失败，如缺控制权）
-            if (result.get("success").equals(false)) {
-                String error = result.get("error_message").toString();
-                assertFalse(error.contains("insufficient security level"),
-                        "Should NOT be rejected by security level when maxLevel=3");
-            }
+            assertNotSecurityDenied(result);
         }
 
         @Test
-        @DisplayName("maxLevel=0: L0 工具允许执行（READ_ONLY 等级无限制）")
-        void execute_shouldPassSecurityCheck_whenMaxLevelZero() {
-            FhDrcConnectTool tool = createDrcConnectTool(0);
+        @DisplayName("maxLevel=0: L2 工具被派发层硬拒绝")
+        void execute_shouldDenySecurityGate_whenMaxLevelZero() {
+            Map<String, Object> result = executeThroughGate(0,
+                    Map.of("drone_sn", DRONE_SN));
 
-            Map<String, Object> args = new HashMap<>();
-            args.put("drone_sn", DRONE_SN);
+            assertEquals(false, result.get("success"));
+            assertEquals(McpToolRegistry.ERROR_CODE_SECURITY_LEVEL, result.get("error_code"));
+            assertEquals(true, result.get("security_denied"));
+        }
 
-            Map<String, Object> result = tool.execute(args);
+        @Test
+        @DisplayName("maxLevel=1: L2 工具被派发层硬拒绝")
+        void execute_shouldDenySecurityGate_whenMaxLevelOne() {
+            Map<String, Object> result = executeThroughGate(1,
+                    Map.of("drone_sn", DRONE_SN));
 
-            // L0 工具不应被安全等级拦截
-            if (result.get("success").equals(false)) {
-                String error = result.get("error_message").toString();
+            assertEquals(false, result.get("success"));
+            assertEquals(McpToolRegistry.ERROR_CODE_SECURITY_LEVEL, result.get("error_code"));
+            assertEquals(true, result.get("security_denied"));
+        }
+
+        private Map<String, Object> executeThroughGate(int maxLevel, Map<String, Object> args) {
+            SessionManager sm = createSessionManager(maxLevel);
+            sm.createSession("uuid", "ws");
+
+            McpToolRegistry registry = new McpToolRegistry();
+            registry.setSessionManager(sm);
+            FhDrcConnectTool tool = new FhDrcConnectTool(sm, new SdkService());
+            registry.register(tool.getToolDefinition(), tool::execute, false, tool.getSecurityLevel());
+
+            return registry.executeTool("fh_drc_connect", args);
+        }
+
+        private void assertNotSecurityDenied(Map<String, Object> result) {
+            if (Boolean.FALSE.equals(result.get("success"))) {
+                String error = String.valueOf(result.get("error_message"));
                 assertFalse(error.contains("insufficient security level"),
-                        "L0 tool should NOT be rejected by security level even when maxLevel=0");
+                        "Should NOT be rejected by security level when maxLevel suffices");
             }
         }
     }
@@ -233,7 +255,7 @@ class SecurityLevelEnforcementTest {
         }
 
         @Test
-        @DisplayName("maxLevel=0: L1 upgrade 操作硬拒绝")
+        @DisplayName("maxLevel=0: L2 upgrade 写操作硬拒绝")
         void executeUpgrade_shouldDeny_whenMaxLevel0() {
             FhFirmwareTool tool = createFirmwareTool(0);
 
@@ -246,24 +268,24 @@ class SecurityLevelEnforcementTest {
 
             assertEquals(false, result.get("success"));
             assertTrue(result.get("error_message").toString().contains("insufficient security level"));
-            assertTrue(result.get("suggestion").toString().contains("L1"));
+            assertTrue(result.get("suggestion").toString().contains("L2"));
         }
 
         @Test
-        @DisplayName("maxLevel=1: L1 upgrade 操作允许（需 confirm）")
-        void executeUpgrade_shouldPassSecurityCheck_whenMaxLevel1() {
+        @DisplayName("maxLevel=1: L2 upgrade 写操作硬拒绝")
+        void executeUpgrade_shouldDeny_whenMaxLevel1() {
             FhFirmwareTool tool = createFirmwareTool(1);
 
             Map<String, Object> args = new HashMap<>();
             args.put("action", "upgrade");
             args.put("device_sns", List.of(DRONE_SN));
-            // 不传 confirm，验证通过安全等级但被 confirm 门控拦截
+            args.put("confirm", true);
+
             Map<String, Object> result = tool.execute(args);
 
             assertEquals(false, result.get("success"));
-            // 应该是 confirm 拦截，不是安全等级拦截
-            assertTrue(result.get("error_message").toString().contains("Confirmation required"),
-                    "Should be blocked by confirm gate, not security level");
+            assertTrue(result.get("error_message").toString().contains("insufficient security level"));
+            assertTrue(result.get("suggestion").toString().contains("L2"));
         }
 
         @Test
@@ -382,9 +404,10 @@ class SecurityLevelEnforcementTest {
     class SecurityLevelDeclarationTest {
 
         @Test
-        void getSecurityLevel_shouldReturnReadOnly_whenDrcConnectTool() {
+        void getSecurityLevel_shouldReturnFlight_whenDrcConnectTool() {
+            // JAVA-06：FhDrcConnectTool 升级为 FLIGHT（L2，接管级通道），不再继承 L1
             FhDrcConnectTool tool = createDrcConnectTool(3);
-            assertEquals(SecurityLevel.READ_ONLY, tool.getSecurityLevel());
+            assertEquals(SecurityLevel.FLIGHT, tool.getSecurityLevel());
         }
 
         @Test
@@ -400,15 +423,28 @@ class SecurityLevelEnforcementTest {
         }
 
         @Test
-        void getSecurityLevel_shouldReturnReadOnly_whenFirmwareToolMixed() {
+        void getSecurityLevel_shouldReturnReversible_whenFirmwareToolMixed() {
+            // JAVA-01c：mixed-level 工具在工具级声明 REVERSIBLE 作为门控基线，
+            // 写操作（upgrade/upload/submit/release/unrelease）与 delete 由 ACTION_SECURITY_LEVELS 抬升至 L2
             FhFirmwareTool tool = createFirmwareTool(3);
-            assertEquals(SecurityLevel.READ_ONLY, tool.getSecurityLevel());
+            assertEquals(SecurityLevel.REVERSIBLE, tool.getSecurityLevel());
         }
 
         @Test
         void getSecurityLevel_shouldReturnReadOnly_whenLogToolMixed() {
+            // 混合等级工具在工具级声明最低等级 READ_ONLY 作为门控基线，
+            // create_report/upload 的 L1 由 ACTION_SECURITY_LEVELS 抬高
             FhLogTool tool = createLogTool(3);
             assertEquals(SecurityLevel.READ_ONLY, tool.getSecurityLevel());
+        }
+
+        @Test
+        void getSecurityLevel_shouldReturnReversible_whenSimTool() {
+            // AbstractSimTool 覆写 getSecurityLevel() = REVERSIBLE，恢复 30 rpm 限流
+            // （否则继承基类 CRITICAL 会映射到不限流的 critical-rpm）
+            com.dji.flighthub.mcp.tools.simulator.SimDeviceTool simTool =
+                    createSimDeviceTool();
+            assertEquals(SecurityLevel.REVERSIBLE, simTool.getSecurityLevel());
         }
     }
 
@@ -501,6 +537,16 @@ class SecurityLevelEnforcementTest {
         SessionManager sm = createSessionManager(maxLevel);
         sm.createSession("uuid", "ws");
         return new FhLogTool(sm, new SdkService());
+    }
+
+    private com.dji.flighthub.mcp.tools.simulator.SimDeviceTool createSimDeviceTool() {
+        SessionManager sm = new SessionManager(new FlightHubProperties());
+        com.dji.flighthub.mcp.simulator.SimulatorClient mockClient =
+                org.mockito.Mockito.mock(com.dji.flighthub.mcp.simulator.SimulatorClient.class);
+        FlightHubProperties props = new FlightHubProperties();
+        com.dji.flighthub.mcp.simulator.SimulatorProperties simProps =
+                new com.dji.flighthub.mcp.simulator.SimulatorProperties();
+        return new com.dji.flighthub.mcp.tools.simulator.SimDeviceTool(sm, mockClient, props, simProps);
     }
 
     private SessionManager createSessionManager(int maxLevel) {

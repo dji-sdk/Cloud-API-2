@@ -85,6 +85,38 @@ public class FlyToUpdateTargetPointsParams {
     return flighthubsdkmoduleJNI.FlyToUpdateTargetPointsParams_max_speed_get(swigCPtr, this);
   }
 
+  public void setSpeed_mode(int value) {
+    flighthubsdkmoduleJNI.FlyToUpdateTargetPointsParams_speed_mode_set(swigCPtr, this, value);
+  }
+
+  public int getSpeed_mode() {
+    return flighthubsdkmoduleJNI.FlyToUpdateTargetPointsParams_speed_mode_get(swigCPtr, this);
+  }
+
+  public void setReal_height_cap_enabled(int value) {
+    flighthubsdkmoduleJNI.FlyToUpdateTargetPointsParams_real_height_cap_enabled_set(swigCPtr, this, value);
+  }
+
+  public int getReal_height_cap_enabled() {
+    return flighthubsdkmoduleJNI.FlyToUpdateTargetPointsParams_real_height_cap_enabled_get(swigCPtr, this);
+  }
+
+  public void setReal_height_cap_limit(int value) {
+    flighthubsdkmoduleJNI.FlyToUpdateTargetPointsParams_real_height_cap_limit_set(swigCPtr, this, value);
+  }
+
+  public int getReal_height_cap_limit() {
+    return flighthubsdkmoduleJNI.FlyToUpdateTargetPointsParams_real_height_cap_limit_get(swigCPtr, this);
+  }
+
+  public void setNeed_verify_flight_control(int value) {
+    flighthubsdkmoduleJNI.FlyToUpdateTargetPointsParams_need_verify_flight_control_set(swigCPtr, this, value);
+  }
+
+  public int getNeed_verify_flight_control() {
+    return flighthubsdkmoduleJNI.FlyToUpdateTargetPointsParams_need_verify_flight_control_get(swigCPtr, this);
+  }
+
   public FlyToUpdateTargetPointsParams() {
     this(flighthubsdkmoduleJNI.new_FlyToUpdateTargetPointsParams(), true);
   }

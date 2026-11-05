@@ -291,8 +291,8 @@ run_session() {
             fi
             if [ "$key" = "problem_scope" ]; then
               case "$val" in
-                "上云 API 2 底座"|SDK|"前端组件") ;;
-                *) echo "错误: problem_scope '$val' 不是表单选项（可选: 上云 API 2 底座 / SDK / 前端组件）" >&2; bad=1; continue ;;
+                "DJI Cloud API 2 底座"|SDK|"前端组件") ;;
+                *) echo "错误: problem_scope '$val' 不是表单选项（可选: DJI Cloud API 2 底座 / SDK / 前端组件）" >&2; bad=1; continue ;;
               esac
             fi
             if [ "$key" = "log_since_minutes" ]; then
@@ -489,7 +489,7 @@ run_session() {
       local meta="$sdir/session.meta"
       [ -f "$meta" ] || { echo "错误: session '$sid' 不存在" >&2; return 1; }
       session_require "$meta" "confirmed" || return 1
-      # E5: per-ISV 提单配额检查 + 相似单检测
+      # E5: 集成商提单配额检查 + 相似单检测
       local cur_company=""
       cur_company=$(session_get "$meta" "company")
       if [ -n "$cur_company" ]; then
@@ -606,7 +606,7 @@ ${severity:-一般}
 
 ${frequency:-unable_to_reproduce}
 
-### 上云 API 2 版本
+### DJI Cloud API 2 版本
 
 ${cloud_version:-（未填写）}
 

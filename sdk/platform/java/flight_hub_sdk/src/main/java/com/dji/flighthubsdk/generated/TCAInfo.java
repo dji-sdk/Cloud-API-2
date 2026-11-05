@@ -59,6 +59,31 @@ public class TCAInfo {
     return flighthubsdkmoduleJNI.TCAInfo_center_sn_get(swigCPtr, this);
   }
 
+  public void setTca(TCAZoneStatusVector value) {
+    flighthubsdkmoduleJNI.TCAInfo_tca_set(swigCPtr, this, TCAZoneStatusVector.getCPtr(value), value);
+  }
+
+  public TCAZoneStatusVector getTca() {
+    long cPtr = flighthubsdkmoduleJNI.TCAInfo_tca_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new TCAZoneStatusVector(cPtr, false);
+  }
+
+  public void setTca_status(String value) {
+    flighthubsdkmoduleJNI.TCAInfo_tca_status_set(swigCPtr, this, value);
+  }
+
+  public String getTca_status() {
+    return flighthubsdkmoduleJNI.TCAInfo_tca_status_get(swigCPtr, this);
+  }
+
+  public void setVersion(long value) {
+    flighthubsdkmoduleJNI.TCAInfo_version_set(swigCPtr, this, value);
+  }
+
+  public long getVersion() {
+    return flighthubsdkmoduleJNI.TCAInfo_version_get(swigCPtr, this);
+  }
+
   public void setData_json(String value) {
     flighthubsdkmoduleJNI.TCAInfo_data_json_set(swigCPtr, this, value);
   }

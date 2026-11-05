@@ -53,7 +53,7 @@ class OsdAggregatorTest {
     private final RealSdkProperties props = new RealSdkProperties(
             "t", "h", "p", "wss://x", "info",
             Duration.ofSeconds(10), 1000L, Duration.ofSeconds(5),
-            Duration.ofSeconds(20), 3, null, null, null);
+            Duration.ofSeconds(20), 3, null, null, null, null, null);
 
     @Test
     void tick_shouldPublishOsdUpdateEvent_whenLocationAndBatteryUpdated() {

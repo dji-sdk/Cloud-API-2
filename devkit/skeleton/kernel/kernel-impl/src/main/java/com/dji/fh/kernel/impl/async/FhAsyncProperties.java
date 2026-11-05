@@ -24,7 +24,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 /**
  * Kernel 事件异步派发线程池的可调配置。
  *
- * <p>对应配置前缀 {@code fh.skeleton.async.*}。ISV 可在 application.yml / application.properties
+ * <p>对应配置前缀 {@code fh.skeleton.async.*}。集成商 可在 application.yml / application.properties
  * 通过该前缀覆盖任意字段。
  *
  * <p>默认值面向中小规模 SDK + 中等吞吐事件场景；高频/低频场景请按需调优。

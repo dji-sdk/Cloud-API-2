@@ -9,7 +9,6 @@
 #include "bll/module/device_state_module/device_state_module_impl.h"
 #include "bll/module/device_hms_module/device_hms_module_impl.h"
 #include "bll/module/live_device_module/live_device_module_impl.h"
-#include "bll/module/deploy_module/deploy_module_impl.h"
 #include "bll/module/dock_control_module/dock_control_module_impl.h"
 #include "bll/module/dock_osd_module/dock_osd_module_impl.h"
 #include "message_engine_factory.h"
@@ -20,16 +19,20 @@
 #include "bll/manager/topo_registry/topo_registry.h"
 #include "notification_center/notification_center.h"
 #include <BusinessManager.h>
+#include "session/session_bm.h"
 using namespace flight_hub_sdk;
 using namespace notification_center;
 
 DockImpl::DockImpl(
     const std::string& sn,
+    int session_id,
     const std::shared_ptr<message_engine::IRtcChannelManagerBridge>& rtc_channel_manager_bridge,
     const std::shared_ptr<message_engine::IMqttClientManagerBridge>& mqtt_client_manager_bridge)
     : sn_(sn),
+      session_id_(session_id),
       rtc_channel_manager_bridge_(rtc_channel_manager_bridge),
       mqtt_client_manager_bridge_(mqtt_client_manager_bridge) {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("DockImpl: sn=%s", sn.c_str());
     // TODO: 初始化
     message_engine_ = message_engine::MessageEngineFactory::createMessageEngine(drc_sdk::common::Executors::Main());
@@ -47,22 +50,20 @@ DockImpl::DockImpl(
     }
     message_engine_->initialize();
 
-    device_state_module_ = std::make_shared<DeviceStateModuleImpl>(DeviceKind::Dock, sn_);
-    device_hms_module_ = std::make_shared<DeviceHMSModuleImpl>(DeviceKind::Dock, sn_);
+    device_state_module_ = std::make_shared<DeviceStateModuleImpl>(DeviceKind::Dock, sn_, session_id_);
+    device_hms_module_ = std::make_shared<DeviceHMSModuleImpl>(DeviceKind::Dock, sn_, session_id_);
 
-    dock_osd_module_ = std::make_shared<DockOsdModuleImpl>(sn_);
+    dock_osd_module_ = std::make_shared<DockOsdModuleImpl>(sn_, session_id_);
 
     WeakDummy(p);
 
 
-    // eager 创建 DeployModule（含 6 路 NC 注册）
-    deploy_module_ = std::make_shared<DeployModuleImpl>(sn_);
-
     // eager 创建 DockControlModule（含环控 NC 注册）
-    dock_control_module_ = std::make_shared<DockControlModuleImpl>(sn_);
+    dock_control_module_ = std::make_shared<DockControlModuleImpl>(sn_, session_id_);
 
     // 监听直播录制状态（topic_live_record_info）
-    dock_live_record_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenLiveRecordInfo(
+    if (bm) {
+        dock_live_record_info_listen_id_ = bm->ListenLiveRecordInfo(
         [this, p](const notification_center::LiveRecordInfo& msg) {
             WeakDummyReturn(p);
             LiveRecordStateInfo info;
@@ -97,6 +98,9 @@ DockImpl::DockImpl(
                 LOG_ERROR("[DockImpl] ListenLiveRecordInfo, error: %d", error_code);
             }
         }, sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     if (dock_live_record_info_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockImpl] ListenLiveRecordInfo, error: %d", dock_live_record_info_listen_id_);
     }
@@ -105,6 +109,7 @@ DockImpl::DockImpl(
 }
 
 DockImpl::~DockImpl() {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("DockImpl: ~DockImpl");
 
     for (const auto& [payload_index, live_module] : live_module_map_) {
@@ -114,7 +119,9 @@ DockImpl::~DockImpl() {
     live_record_module_map_.clear();
 
     if (dock_live_record_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_live_record_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_live_record_info_listen_id_);
+        }
         dock_live_record_info_listen_id_ = -1;
     }
 
@@ -134,7 +141,7 @@ std::shared_ptr<ILiveModule> DockImpl::getLiveStream(const LiveInfo& params) {
     }
     const auto gateway_sn = TopoRegistry::getInstance().resolveGatewaySn(sn_).value_or(sn_);
     auto live_module = std::make_shared<LiveModuleImpl>(
-        params, message_engine_->getRtcChannelManager(), gateway_sn);
+        params, message_engine_->getRtcChannelManager(), session_id_, gateway_sn);
     live_module_map_[key] = live_module;
     return live_module;
 }
@@ -146,22 +153,17 @@ std::shared_ptr<ILiveRecordModule> DockImpl::getLiveRecord(const LiveInfo& param
     if (it != live_record_module_map_.end()) {
         return it->second;
     }
-    auto module = std::make_shared<LiveRecordModuleImpl>(params);
+    auto module = std::make_shared<LiveRecordModuleImpl>(params, session_id_);
     live_record_module_map_[key] = module;
     return module;
 }
 
 std::shared_ptr<ILiveDeviceModule> DockImpl::getLiveDeviceModule() {
     if (!live_device_module_) {
-        live_device_module_ = std::make_shared<LiveDeviceModuleImpl>(DeviceKind::Dock, sn_);
+        live_device_module_ = std::make_shared<LiveDeviceModuleImpl>(DeviceKind::Dock, sn_, session_id_);
     }
     return live_device_module_;
 }
-
-std::shared_ptr<IDeployModule> DockImpl::getDeployModule() {
-    return deploy_module_;
-}
-
 
 std::shared_ptr<IDockOsdModule> DockImpl::getDockOsdModule() {
     return dock_osd_module_;
@@ -173,21 +175,21 @@ std::shared_ptr<IDockControlModule> DockImpl::getDockControlModule() {
 
 std::shared_ptr<IRtkCalibrationModule> DockImpl::getRtkCalibrationModule() {
     if (!rtk_calibration_module_) {
-        rtk_calibration_module_ = std::make_shared<RtkCalibrationModuleImpl>(sn_, "3");
+        rtk_calibration_module_ = std::make_shared<RtkCalibrationModuleImpl>(sn_, "3", session_id_);
     }
     return rtk_calibration_module_;
 }
 
 std::shared_ptr<INetworkTestModule> DockImpl::getNetworkTestModule() {
     if (!network_test_module_) {
-        network_test_module_ = std::make_shared<NetworkTestModuleImpl>(sn_);
+        network_test_module_ = std::make_shared<NetworkTestModuleImpl>(sn_, session_id_);
     }
     return network_test_module_;
 }
 
 std::shared_ptr<IDeviceDebugModule> DockImpl::getDeviceDebugModule() {
     if (!device_debug_module_) {
-        device_debug_module_ = std::make_shared<DeviceDebugModuleImpl>();
+        device_debug_module_ = std::make_shared<DeviceDebugModuleImpl>(session_id_);
     }
     return device_debug_module_;
 }

@@ -12,6 +12,9 @@
 #include "bridge/i_rtc_channel_manager_bridge.h"
 #include "bridge/i_mqtt_client_manager_bridge.h"
 #include "workspace/workspace_impl.h"
+#include "module/cascade_module/cascade_module_impl.h"
+#include "session/session_manager.h"
+#include "api/cascade_module.h"
 #if defined(__unix__) || defined(__APPLE__)
 #include "blocking_detector_adapter.h"
 #endif
@@ -45,13 +48,22 @@ public:
 
     // ---- 设备实例获取 ----
     std::shared_ptr<IWorkspace> getWorkspaceInstance();
+    std::shared_ptr<IWorkspace> getWorkspaceInstance(int session_id);
     std::shared_ptr<IDrone> getDroneInstance(const std::string& sn);
+    std::shared_ptr<IDrone> getDroneInstance(int session_id, const std::string& sn);
     std::shared_ptr<IDock> getDockInstance(const std::string& sn);
+    std::shared_ptr<IDock> getDockInstance(int session_id, const std::string& sn);
     std::shared_ptr<IRemoteController> getRemoteControllerInstance(const std::string& sn);
+    std::shared_ptr<IRemoteController> getRemoteControllerInstance(int session_id, const std::string& sn);
     std::shared_ptr<IBaseStation> getBaseStationInstance(const std::string& sn);
+    std::shared_ptr<IBaseStation> getBaseStationInstance(int session_id, const std::string& sn);
     std::shared_ptr<IRelay> getRelayInstance(const std::string& sn);
+    std::shared_ptr<IRelay> getRelayInstance(int session_id, const std::string& sn);
 
     std::shared_ptr<IStream> getStream();
+    std::shared_ptr<ICascadeModule> getCascadeModule();
+
+    std::shared_ptr<ISessionManager> getSessionManager();
 
     FlightHubSdkErrorCode injectRtcChannelManager(std::shared_ptr<message_engine::IRtcChannelManagerBridge> rtc_channel_manager);
 
@@ -73,15 +85,11 @@ private:
     std::vector<HeaderKeyValue> websocket_auth_headers_;
     std::vector<HeaderKeyValue> http_headers_;
 
-    // 全局单例 Workspace
-    std::shared_ptr<WorkspaceImpl> workspace_instance_;
-    // sn -> Device 实例
-    std::map<std::string, std::shared_ptr<IDrone>> drone_instances_;
-    std::map<std::string, std::shared_ptr<IDock>> dock_instances_;
-    std::map<std::string, std::shared_ptr<IRemoteController>> remote_controller_instances_;
-    std::map<std::string, std::shared_ptr<IBaseStation>> base_station_instances_;
-    std::map<std::string, std::shared_ptr<IRelay>> relay_instances_;
+    // Session 管理器（成员构造即存在；initialize 时挂上 session 0）
+    std::shared_ptr<SessionManager> session_manager_ = std::make_shared<SessionManager>();
+
     std::shared_ptr<IStream> stream_instance_;
+    std::shared_ptr<ICascadeModule> cascade_module_;
 
 #if defined(__unix__) || defined(__APPLE__)
     std::unique_ptr<MainExecutorBlockingDetectorAdapter> blocking_detector_adapter_;

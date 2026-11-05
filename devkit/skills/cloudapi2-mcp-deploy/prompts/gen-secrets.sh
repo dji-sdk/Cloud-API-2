@@ -1,5 +1,5 @@
 #!/bin/bash
-# FlightHub MCP Server 密钥生成脚本
+# DJI Cloud API 2 MCP Server 密钥生成脚本
 # 生成部署所需的强随机密钥
 #
 # 用法：bash gen-secrets.sh
@@ -9,7 +9,7 @@
 
 set -uo pipefail
 
-echo "===== FlightHub MCP Server 密钥生成 ====="
+echo "===== DJI Cloud API 2 MCP Server 密钥生成 ====="
 echo ""
 
 echo "--- SSE Auth Token（必填，留空拒绝启动） ---"

@@ -17,6 +17,12 @@ public class EditPsdkSpeakerResourceParams {
     private boolean visible = false;
     /** required if file_type is "tts" */
     private String content = "";
+    /** Opus 对象 key */
+    private String opusObjectKey = "";
+    /** Opus 文件大小 */
+    private long opusSize = 0;
+    /** Opus 文件 MD5 */
+    private String opusMd5Sum = "";
 
     public EditPsdkSpeakerResourceParams() {
     }
@@ -47,6 +53,21 @@ public class EditPsdkSpeakerResourceParams {
     /** @param content required if file_type is "tts" */
     public void setContent(String content) { this.content = content != null ? content : ""; }
 
+    /** Opus 对象 key */
+    public String getOpusObjectKey() { return opusObjectKey; }
+    /** @param opusObjectKey Opus 对象 key */
+    public void setOpusObjectKey(String opusObjectKey) { this.opusObjectKey = opusObjectKey != null ? opusObjectKey : ""; }
+
+    /** Opus 文件大小 */
+    public long getOpusSize() { return opusSize; }
+    /** @param opusSize Opus 文件大小 */
+    public void setOpusSize(long opusSize) { this.opusSize = opusSize; }
+
+    /** Opus 文件 MD5 */
+    public String getOpusMd5Sum() { return opusMd5Sum; }
+    /** @param opusMd5Sum Opus 文件 MD5 */
+    public void setOpusMd5Sum(String opusMd5Sum) { this.opusMd5Sum = opusMd5Sum != null ? opusMd5Sum : ""; }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -60,7 +81,10 @@ public class EditPsdkSpeakerResourceParams {
                 && Objects.equals(name, that.name)
                 && Objects.equals(fileType, that.fileType)
                 && visible == that.visible
-                && Objects.equals(content, that.content);
+                && Objects.equals(content, that.content)
+                && Objects.equals(opusObjectKey, that.opusObjectKey)
+                && opusSize == that.opusSize
+                && Objects.equals(opusMd5Sum, that.opusMd5Sum);
     }
 
     @Override
@@ -70,7 +94,10 @@ public class EditPsdkSpeakerResourceParams {
                 name,
                 fileType,
                 visible,
-                content);
+                content,
+                opusObjectKey,
+                opusSize,
+                opusMd5Sum);
     }
 
     @Override
@@ -81,6 +108,9 @@ public class EditPsdkSpeakerResourceParams {
                 + ", fileType='" + fileType + '\''
                 + ", visible=" + visible
                 + ", content='" + content + '\''
+                + ", opusObjectKey='" + opusObjectKey + '\''
+                + ", opusSize=" + opusSize
+                + ", opusMd5Sum='" + opusMd5Sum + '\''
                 + '}';
     }
 }

@@ -9,6 +9,12 @@
 
 namespace flight_hub_sdk {
 
+/// S3 直传通道 TLS 配置（与 WSS/HTTPS 通道共用 FlightHubSdkConfig 的 verify_ssl/ssl_ca_path）
+struct CloudStorageTlsConfig {
+    bool verify_ssl = true;
+    std::string ca_path;
+};
+
 /**
  * @brief 云存储上传结果
  */

@@ -14,11 +14,18 @@ WORKDIR /app
 COPY app.jar app.jar
 
 # 提取 SDK native .so
+# sdk.jar 由构建上下文外部提供，必须是与 SDK_ARCH 对应的那一份包
+ARG SDK_ARCH
 COPY sdk.jar /tmp/sdk.jar
-RUN apt-get update && \
+RUN case "${SDK_ARCH}" in \
+      amd64) SDK_LIB_DIR=linux-x86_64 ;; \
+      arm64) SDK_LIB_DIR=linux-aarch64 ;; \
+      *) echo "不支持的 SDK_ARCH: ${SDK_ARCH}（只支持 amd64/arm64）" >&2; exit 1 ;; \
+    esac && \
+    apt-get update && \
     apt-get install -y --no-install-recommends curl unzip && \
     mkdir -p /opt/sdk-libs && \
-    unzip -j -o /tmp/sdk.jar 'lib/linux-x86_64/*' -d /opt/sdk-libs && \
+    unzip -j -o /tmp/sdk.jar "lib/${SDK_LIB_DIR}/*" -d /opt/sdk-libs && \
     chmod 755 /opt/sdk-libs/*.so* && \
     rm /tmp/sdk.jar && \
     apt-get purge -y unzip && apt-get autoremove -y && \

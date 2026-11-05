@@ -229,4 +229,52 @@ class FhMaintenanceToolTest {
     void requiresHumanConfirmation_shouldReturnFalse() {
         assertFalse(tool.requiresHumanConfirmation());
     }
+
+    // ==================== 混合等级 per-action 门控 ====================
+
+    @Test
+    void execute_shouldDenyCreateOrder_whenSessionLevelIsL0() {
+        FhMaintenanceTool l0Tool = createToolWithMaxLevel(0);
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "create_order");
+        args.put("fault_time", "2025-06-15T10:30:00Z");
+        args.put("device_list", List.of("DOCK-001"));
+        args.put("fault_desc", "Motor abnormal vibration");
+
+        Map<String, Object> result = l0Tool.execute(args);
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("insufficient security level"));
+    }
+
+    @Test
+    void execute_shouldAllowGetConfigs_whenSessionLevelIsL0() {
+        FhMaintenanceTool l0Tool = createToolWithMaxLevel(0);
+
+        Map<String, Object> result = l0Tool.execute(Map.of("action", "get_configs"));
+
+        assertEquals(true, result.get("success"));
+    }
+
+    /**
+     * 构造指定 maxSecurityLevel 且已建立 session 的工具实例。
+     *
+     * @param maxLevel session 允许的最高安全等级
+     * @return 使用该 session 的工具实例
+     */
+    private static FhMaintenanceTool createToolWithMaxLevel(int maxLevel) {
+        FlightHubProperties properties = new FlightHubProperties();
+        properties.getSecurity().setMaxLevel(maxLevel);
+        SessionManager sessions = new SessionManager(properties);
+        sessions.createSession("uuid", "ws");
+
+        SdkService sdkService = new SdkService() {
+            @Override
+            public boolean isMockMode() {
+                return true;
+            }
+        };
+        return new FhMaintenanceTool(sessions, sdkService);
+    }
 }

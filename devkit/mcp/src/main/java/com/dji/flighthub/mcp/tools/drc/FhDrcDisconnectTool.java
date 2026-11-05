@@ -65,7 +65,7 @@ public class FhDrcDisconnectTool extends AbstractMcpTool {
         this.sdkService = sdkService;
     }
 
-@Override
+    @Override
     public SecurityLevel getSecurityLevel() {
         return SecurityLevel.REVERSIBLE;
     }
@@ -99,8 +99,10 @@ public class FhDrcDisconnectTool extends AbstractMcpTool {
     }
 
     /**
-     * 执行断开 DRC 链路操作。
-     * 前置条件：DRC 链路已建立。安全等级 L2。
+     * 执行断开 DRC 链路操作。安全等级 L1（可逆操作，无需 confirm）。
+     *
+     * <p>该操作是幂等的：本地已无 DRC 链路时同样返回成功，并照样记录
+     * 「用户显式断开」标记，避免后续飞行指令静默重建链路。
      *
      * @param args 输入参数
      * @return 执行结果
@@ -120,10 +122,9 @@ public class FhDrcDisconnectTool extends AbstractMcpTool {
                     "Provide drone_sn of the drone to disconnect DRC link from.");
         }
 
-        // 3. 校验 DRC 链路是否存在
+        // 3. 本地已无该设备的 DRC 链路：幂等成功，但仍需留下显式断开标记
         if (!session.hasDrcLinkTo(droneSn)) {
-            return errorResult("No DRC link to " + droneSn,
-                    "No DRC link to " + droneSn + ", nothing to disconnect.");
+            return disconnectWithoutLocalLink(session, droneSn);
         }
 
         // 4. Mock 模式：直接断开链路
@@ -136,6 +137,39 @@ public class FhDrcDisconnectTool extends AbstractMcpTool {
     }
 
     /**
+     * 本地无该设备 DRC 链路时的幂等处理。
+     *
+     * <p>不能简单报错返回：用户显式调用 {@code fh_drc_disconnect} 的意图是
+     * 「不要再自动连回来」。若此处只在有链路时才打标记，链路已在 SDK 侧掉线的场景
+     * 下用户断不开，后续 {@code fh_stick_move} 等指令会被 {@code ensureDrcLink}
+     * 静默重新建链。因此这里照样调用
+     * {@link SessionContext#markDrcExplicitlyDisconnected(String)} 并返回成功。
+     *
+     * @param session 当前 session
+     * @param droneSn 目标无人机 SN
+     * @return 成功响应（带说明性 warning）
+     */
+    private Map<String, Object> disconnectWithoutLocalLink(SessionContext session, String droneSn) {
+        session.markDrcExplicitlyDisconnected(droneSn);
+        log.info("[{}] no local DRC link for {}, marked as explicitly disconnected", TOOL_NAME, droneSn);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("drone_sn", droneSn);
+        data.put("drc_active", false);
+        data.put("already_disconnected", true);
+        data.put("_warning", "No local DRC link was held for " + droneSn
+                + "; marked as explicitly disconnected so later flight commands will not "
+                + "silently re-establish the link.");
+
+        Map<String, Object> result = successResult(data,
+                "DRC link to " + droneSn + " is already disconnected.");
+        result.put("next_steps", List.of(
+                "Call fh_control_release(drone_sn='" + droneSn + "') to release flight control authority"
+        ));
+        return result;
+    }
+
+    /**
      * Mock 模式下断开 DRC 链路。
      *
      * @param session  当前 session
@@ -143,7 +177,7 @@ public class FhDrcDisconnectTool extends AbstractMcpTool {
      * @return 成功响应
      */
     private Map<String, Object> disconnectInMockMode(SessionContext session, String droneSn) {
-        session.clearDrcDevice();
+        session.markDrcExplicitlyDisconnected(droneSn);
         log.info("[MOCK] DRC link disconnected for drone: {}", droneSn);
 
         Map<String, Object> data = new LinkedHashMap<>();
@@ -187,7 +221,7 @@ public class FhDrcDisconnectTool extends AbstractMcpTool {
                 SdkCallbackBridge.await(future);
             }
 
-            session.clearDrcDevice();
+            session.markDrcExplicitlyDisconnected(droneSn);
 
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("drone_sn", droneSn);
@@ -208,7 +242,7 @@ public class FhDrcDisconnectTool extends AbstractMcpTool {
             // 即使 SDK 调用失败，也必须清理本地 session 状态，避免链路状态泄露
             log.error("fh_drc_disconnect SDK error for drone {}: {}, clearing local state anyway",
                     droneSn, e.getMessage(), e);
-            session.clearDrcDevice();
+            session.markDrcExplicitlyDisconnected(droneSn);
             return errorResult("SDK error during disconnect: " + e.getMessage(),
                     "Local DRC state cleared. Verify drone status before next operation.");
         }

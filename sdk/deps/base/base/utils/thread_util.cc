@@ -12,6 +12,7 @@
 #else
 #include <pthread.h>
 #include <unistd.h>
+#include <sys/syscall.h>
 #endif
 
 #include <cstdint>
@@ -31,7 +32,7 @@ uint64_t ThreadUtil::GetThreadId() {
 #ifdef __ANDROID__
   return gettid();
 #elif __linux__
-  return gettid();
+  return static_cast<uint64_t>(syscall(SYS_gettid));
 #elif defined(__APPLE__)
   uint64_t tid = 0;
   pthread_threadid_np(nullptr, &tid);

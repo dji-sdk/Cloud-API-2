@@ -7,9 +7,11 @@ package com.dji.flighthubsdk.bean;
 public class ImportKmzItem {
     /** KMZ 文件在对象存储中的路径，格式：wayline/import/<filename>.kmz */
     private String kmzObjectKey;
+    /** 导入成功后生成的航线 UUID */
+    private String waylineUuid;
     /** 航线名称（默认为文件名去掉 .kmz 扩展名） */
     private String waylineName;
-    /** 异步请求 ID（UUID 格式），可用于后续查询导入状态 */
+    /** 异步请求 ID；后端当前不返回，恒为空，保留兼容 */
     private String asyncRequestId;
 
     public ImportKmzItem() {}
@@ -19,6 +21,12 @@ public class ImportKmzItem {
 
     /** @param kmzObjectKey KMZ 文件在对象存储中的路径，格式：wayline/import/<filename>.kmz */
     public void setKmzObjectKey(String kmzObjectKey) { this.kmzObjectKey = kmzObjectKey; }
+
+    /** 导入成功后生成的航线 UUID */
+    public String getWaylineUuid() { return waylineUuid; }
+
+    /** @param waylineUuid 导入成功后生成的航线 UUID */
+    public void setWaylineUuid(String waylineUuid) { this.waylineUuid = waylineUuid; }
 
     /** 航线名称（默认为文件名去掉 .kmz 扩展名） */
     public String getWaylineName() { return waylineName; }
@@ -35,6 +43,7 @@ public class ImportKmzItem {
     @Override
     public String toString() {
         return "ImportKmzItem{kmzObjectKey='" + kmzObjectKey +
+               "', waylineUuid='" + waylineUuid +
                "', waylineName='" + waylineName +
                "', asyncRequestId='" + asyncRequestId + "'}";
     }

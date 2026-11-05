@@ -29,6 +29,13 @@ public:
     void SetHeader(const RequestHeader &header);
     void SetSslVerify(bool enable, const std::string& ca_path = "");
     void OpenDebugLog();
+    void CloseDebugLog();
+
+    // 注册「不打印 libcurl verbose 抓包」的 URL 片段。
+    // 基础网络层不认识具体业务接口，由业务层在初始化时注册需要静音的接口
+    // （例如高频的后台上报类接口），SetURL() 时命中任一片段的请求不开 verbose。
+    // 线程约定：只在初始化阶段注册，之后由各 IO 线程只读并发访问。
+    static void AddQuietUrlPattern(const std::string &pattern);
 
     // 设置全局 TLS 证书验证配置(进程级, 与 Network 单例语义一致)。
     // 每个 HttpSyncRequest 构造时自动应用 —— 网络层 9 处实例化点及未来新增点零遗漏。

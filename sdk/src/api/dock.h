@@ -17,12 +17,11 @@ class INetworkTestModule;
 class IDeviceDebugModule;
 class IDeviceStateModule;
 class IDeviceHMSModule;
-class IDeployModule;
 class IDockControlModule;
 class IDockOsdModule;
 class ILiveDeviceModule;
 
-/// 机场模块接口，提供直播、录制、设备状态监听、设备控制、进离场航线等功能。
+/// 机场模块接口，提供直播、录制、设备状态监听、设备控制等功能。
 class IDock {
 public:
     virtual ~IDock() = default;
@@ -42,9 +41,6 @@ public:
 
     /// @brief 获取机场 OSD 数据订阅模块
     virtual std::shared_ptr<IDockOsdModule> getDockOsdModule() = 0;
-
-    /// @brief 获取部署/踏勘模块
-    virtual std::shared_ptr<IDeployModule> getDeployModule() = 0;
 
     /// @brief 获取机场控制模块（环控：空调/补光灯/充电/舱盖等）
     virtual std::shared_ptr<IDockControlModule> getDockControlModule() = 0;

@@ -6,7 +6,7 @@
 #
 # 与远端 deploy-compose.yml 的区别：
 # - 内置 MySQL 8.0（本地骨架栈自带，不断连远端数据库）
-# - 前端映射到宿主机 8082（覆盖原 80 端口，避免与系统 nginx 冲突）
+# - 前端映射到宿主机 8082（容器内为 nginx-unprivileged 的 8080，避免与系统 nginx 冲突）
 # - 后端映射到宿主机 8081（8080 留给本机已有 flighthub-mcp-sse）
 # - mock profile 健康检查不依赖 SDK 初始化
 # - 前端 VITE_* 变量同时通过 build args 注入（构建期生效）
@@ -50,7 +50,7 @@ services:
   fh-ui:
     container_name: pf-devkit-skeleton-web-local
     ports:
-      - "8082:80"
+      - "8082:8080"
     build:
       args:
         VITE_FH2_ADDRESS: ${VITE_FH2_ADDRESS:-}

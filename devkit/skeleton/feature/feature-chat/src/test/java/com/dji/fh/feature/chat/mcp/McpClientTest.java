@@ -53,6 +53,8 @@ class McpClientTest {
         props.setReconnectInitialDelay(Duration.ofMillis(100));
         props.setReconnectMaxDelay(Duration.ofMillis(500));
         props.setReconnectMaxAttempts(3);
+        // 关闭抖动，保证断言基于确定性延迟
+        props.setReconnectJitterRatio(0);
         return props;
     }
 
@@ -90,7 +92,7 @@ class McpClientTest {
 
     @Test
     void constructor_shouldStripMcpBasePath_whenUrlAlreadyPrefixed() throws Exception {
-        // ISV 误把 base-path 写进 url：http://localhost:19999/pf-devkit/ai-plugin/mcp
+        // 集成商 误把 base-path 写进 url：http://localhost:19999/pf-devkit/ai-plugin/mcp
         McpClientProperties props = defaultProps();
         props.setUrl("http://localhost:19999/pf-devkit/ai-plugin/mcp");
 

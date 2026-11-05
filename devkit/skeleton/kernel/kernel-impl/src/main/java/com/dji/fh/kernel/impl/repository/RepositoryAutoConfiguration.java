@@ -35,15 +35,15 @@ import javax.sql.DataSource;
  *   <li>{@link KeyValueStore} — {@link InMemoryKeyValueStore} 默认实例</li>
  * </ul>
  *
- * <p>不提供 {@code Repository<T,ID>} bean —— 该接口带泛型参数，ISV 应继承
+ * <p>不提供 {@code Repository<T,ID>} bean —— 该接口带泛型参数，集成商 应继承
  * {@link JpaRepositoryAdapter} 在自家 module 中声明实例（详见基类 Javadoc）。
  *
- * <p>所有默认 bean 都 {@code @ConditionalOnMissingBean}，ISV 可单独覆盖任一。
+ * <p>所有默认 bean 都 {@code @ConditionalOnMissingBean}，集成商 可单独覆盖任一。
  *
  * <p><b>Schema 管理</b>：H2 文件模式 URL（{@code jdbc:h2:file:...}）默认不被 Spring Boot
  * 识别为 embedded DB，而 {@link com.dji.fh.kernel.impl.KernelDefaultsEnvironmentPostProcessor}
  * 注入的缺省为 {@code spring.jpa.hibernate.ddl-auto=none}（安全基线：生产不得默认自动改表）。
- * ISV 在使用 JPA 时，本地试用可显式设 {@code update}；生产应设
+ * 集成商 在使用 JPA 时，本地试用可显式设 {@code update}；生产应设
  * {@code spring.jpa.hibernate.ddl-auto=validate} + Flyway / Liquibase 管理 schema。
  *
  * @author DJI DevKit Team

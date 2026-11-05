@@ -35,7 +35,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 /**
  * 空域安全管理 feature 的 AutoConfiguration。
  *
- * <p>默认启用；ISV 设 {@code fh.skeleton.feature.flight-area.enabled=false} 可完全禁用。
+ * <p>默认启用；集成商 设 {@code fh.skeleton.feature.flight-area.enabled=false} 可完全禁用。
  */
 @AutoConfiguration
 @ConditionalOnProperty(name = "fh.skeleton.feature.flight-area.enabled", havingValue = "true", matchIfMissing = true)

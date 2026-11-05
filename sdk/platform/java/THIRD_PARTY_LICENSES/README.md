@@ -37,8 +37,8 @@ Additional notes
   paho-mqtt-c-LICENSE for the upstream notice plus both full texts; you may
   pick either.
 - Volc RTC (VolcEngineRTC / ByteRTC series) and Agora RTC — **removed from
-  this build** (C-01, ES320 v3.6 second-round audit). FHSDK realtime paths
-  converged to WebRTC and DRTC. Related native libraries (`libVolcEngineRTC`,
+  this build**. FHSDK realtime paths converged to WebRTC and DRTC. Related
+  native libraries (`libVolcEngineRTC`,
   `libbytertc_*`, `libbytenn`, `libagora_rtc_sdk`, `libagora-fdkaac`,
   `libaosl`, and the transitively bundled `libRTCFFmpeg`) are no longer
   packaged. The `LGPL-2.1-LICENSE` file is the FSF LGPL 2.1 text. Shipped

@@ -17,7 +17,7 @@ public final class FlightRecordExportProgressItemData {
     private String createdAt;
     /** 导出类型, 比如 "details"; */
     private String contentType;
-    /** 导出状态; */
+    /** 导出状态; 0=正在导出, 1=导出完成, 2=导出失败, 3=已取消 */
     private int status;
     /** 导出进度; */
     private int progress;
@@ -45,7 +45,7 @@ public final class FlightRecordExportProgressItemData {
      * @param exportId 导出任务 ID
      * @param createdAt 创建时间
      * @param contentType 内容类型
-     * @param status 状态
+     * @param status 导出状态; 0=正在导出, 1=导出完成, 2=导出失败, 3=已取消
      * @param progress 进度
      * @param failedReasonCode 失败原因码
      * @param objectKey 对象存储 Key
@@ -92,7 +92,7 @@ public final class FlightRecordExportProgressItemData {
     public String getCreatedAt() { return createdAt; }
     /** 导出类型, 比如 "details"; */
     public String getContentType() { return contentType; }
-    /** 导出状态; */
+    /** 导出状态; 0=正在导出, 1=导出完成, 2=导出失败, 3=已取消 */
     public int getStatus() { return status; }
     /** 导出进度; */
     public int getProgress() { return progress; }
@@ -131,7 +131,7 @@ public final class FlightRecordExportProgressItemData {
         this.contentType = contentType;
     }
 
-    /** @param status 导出状态; */
+    /** @param status 导出状态; 0=正在导出, 1=导出完成, 2=导出失败, 3=已取消 */
     public void setStatus(int status) {
         this.status = status;
     }

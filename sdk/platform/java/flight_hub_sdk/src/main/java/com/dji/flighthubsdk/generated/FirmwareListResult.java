@@ -60,6 +60,15 @@ public class FirmwareListResult {
     return (cPtr == 0) ? null : new FirmwareItemResultVector(cPtr, false);
   }
 
+  public void setPagination(CommonPaginationData value) {
+    flighthubsdkmoduleJNI.FirmwareListResult_pagination_set(swigCPtr, this, CommonPaginationData.getCPtr(value), value);
+  }
+
+  public CommonPaginationData getPagination() {
+    long cPtr = flighthubsdkmoduleJNI.FirmwareListResult_pagination_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new CommonPaginationData(cPtr, false);
+  }
+
   public FirmwareListResult() {
     this(flighthubsdkmoduleJNI.new_FirmwareListResult(), true);
   }

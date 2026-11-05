@@ -4,6 +4,8 @@
 
 **与 WaylineEditor 的区别**：WaylineView 是**只读预览**（只渲染、不编辑）；WaylineEditor 用于航线**编辑**。
 
+> ⚠️ **存疑待确认**：目前唯一可核查的真实前端项目（skeleton/web）里，`fh2.d.ts` 类型定义与 `WaylineView.vue` 实际代码均未出现独立的 `window.WaylineView` SDK 或 `wayline-view-sdk` 资源加载——该项目的"航线预览"是复用同一个 `WaylineEditor` 实例调 `editor.render('edit', ...)` 实现的。本文档描述的独立 SDK 可能只在未被该项目使用的其他部署环境里提供。生成代码前建议先向平台方确认 `window.WaylineView` 是否真实存在于目标环境，避免运行时报 `undefined`。
+
 ## 一、核心特性
 
 - **完全自包含**：内置 Cesium 地图（`internal` 模式），不依赖 `paas.js`，不依赖 `FH2`

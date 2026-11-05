@@ -27,10 +27,10 @@ import org.springframework.context.annotation.Bean;
 /**
  * 设备状态管理 feature 的 AutoConfiguration。
  *
- * <p>默认启用（{@code matchIfMissing = true}）；ISV 设
+ * <p>默认启用（{@code matchIfMissing = true}）；集成商 设
  * {@code fh.skeleton.feature.device.enabled=false} 可完全禁用。
  *
- * <p>Service 和 Controller 都通过 {@code @ConditionalOnMissingBean} 允许 ISV 覆盖。
+ * <p>Service 和 Controller 都通过 {@code @ConditionalOnMissingBean} 允许集成商覆盖。
  *
  * @author DJI DevKit Team
  */

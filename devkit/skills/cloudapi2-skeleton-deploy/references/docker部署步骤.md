@@ -1,7 +1,7 @@
 # Docker Compose 部署步骤
 
 > 来源：`skeleton/docs/部署指南.md` §4。AI 按此推进。
-> 适用：单机容器化，推荐多数 ISV 首选。支持两种镜像来源：**从 Registry 拉取**或**从源码构建**。
+> 适用：单机容器化，推荐多数集成商首选。支持两种镜像来源：**从 Registry 拉取**或**从源码构建**。
 
 ## 选择镜像来源
 
@@ -28,7 +28,7 @@ cp deploy.env.example deploy.env
 
 ```bash
 cd <repo-root>
-docker build --platform linux/amd64 -f skeleton/docker/Dockerfile -t <REGISTRY>/paas-sdk-devkit/skeleton:<TAG> .
+docker build --build-arg SDK_ARCH=amd64 -f skeleton/docker/Dockerfile -t <REGISTRY>/paas-sdk-devkit/skeleton:<TAG> .
 docker build -f skeleton/web/Dockerfile -t <REGISTRY>/paas-sdk-devkit/skeleton-ui:<TAG> skeleton/web/
 docker push <REGISTRY>/paas-sdk-devkit/skeleton:<TAG>
 docker push <REGISTRY>/paas-sdk-devkit/skeleton-ui:<TAG>
@@ -40,7 +40,7 @@ docker compose -f skeleton/docker/docker-compose.yml --env-file skeleton/deploy.
 docker compose -f skeleton/docker/docker-compose.yml --env-file skeleton/deploy.env up -d
 ```
 
-> 平台：后端镜像构建/运行需 `--platform linux/amd64`（Apple Silicon 加 `DOCKER_DEFAULT_PLATFORM=linux/amd64`）。
+> 平台：`--platform` 与 `--build-arg SDK_ARCH` 必须指向同一架构。Apple Silicon 上构建 amd64 镜像用 `--platform linux/amd64 --build-arg SDK_ARCH=amd64`；构建 aarch64 镜像用 `--build-arg SDK_ARCH=arm64`（无需 `--platform`）。
 
 ### 2B. 方式 B：从源码构建部署（无 Registry）
 
@@ -53,7 +53,7 @@ docker compose -f skeleton/docker/docker-compose.yml --env-file skeleton/deploy.
 
 > docker-compose.yml 已配置 `build:` 段，`--build` 触发本地 multi-stage 构建（Maven 编译 + JRE 运行时 + 前端 Vite 构建 + Nginx）。
 > 首次构建约 5-10 分钟（下载 Maven 依赖），后续重建利用 Docker layer 缓存会快很多。
-> Apple Silicon 用户需设置：`DOCKER_DEFAULT_PLATFORM=linux/amd64`
+> Apple Silicon 用户构建 amd64 镜像需设置：`DOCKER_DEFAULT_PLATFORM=linux/amd64` 且 `SDK_ARCH=amd64`
 
 ### 3. 验证
 
@@ -93,7 +93,7 @@ docker compose down
 
 | 坑 | 检查/处理 |
 |---|---|
-| Apple Silicon 构建 platform 报错 | `DOCKER_DEFAULT_PLATFORM=linux/amd64` |
+| Apple Silicon 构建 platform 报错 | 目标 amd64 用 `DOCKER_DEFAULT_PLATFORM=linux/amd64` + `SDK_ARCH=amd64`；目标 arm64 两者都不用 |
 | 镜像 ~700MB | SDK native lib 404MB，正常 |
 | 容器内 SDK initialize 失败 | `.env` 6 个 SDK 凭据是否正确（4 个连接参数 + 2 个鉴权 header）；`docker compose logs` |
 | 前端地图不显示 | `VITE_MAP_PROVIDER` 与 key 匹配（bing/tianditu 需 key） |

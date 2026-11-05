@@ -12,8 +12,8 @@ namespace flight_hub_sdk {
 class AIAlertModuleImpl : public IAIAlertModule,
                           public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit AIAlertModuleImpl();
-    ~AIAlertModuleImpl() override = default;
+    explicit AIAlertModuleImpl(int session_id);
+    ~AIAlertModuleImpl() override;
 
     void postDeviceSetting(
         const PostAiAlertDeviceSettingParam& param,
@@ -38,6 +38,19 @@ public:
     void getAiAlertRecords(
         const GetAiAlertRecordsParam& param,
         std::function<void(FlightHubError err, GetAiAlertRecordsResult result)> callback) override;
+
+    int listenAiAlertRecords(
+        const std::string& device_sn,
+        std::function<void(AiAlertRecordsNotifyResult result)> callback) override;
+
+    void cancelListenAiAlertRecords(int listen_id) override;
+
+    void deleteAiAlertRecord(
+        const DeleteAiAlertRecordParam& param,
+        std::function<void(FlightHubError err)> callback) override;
+
+private:
+    int session_id_;
 };
 
 }  // namespace flight_hub_sdk

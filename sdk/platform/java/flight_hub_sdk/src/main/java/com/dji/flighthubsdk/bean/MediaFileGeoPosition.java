@@ -14,6 +14,8 @@ public final class MediaFileGeoPosition {
     private double lng;
     /** 绝对高度（米） */
     private double absAlt;
+    /** 相对高度（米） */
+    private double relAlt;
 
     public MediaFileGeoPosition() {
     }
@@ -26,9 +28,22 @@ public final class MediaFileGeoPosition {
      * @param absAlt 绝对高度（米）
      */
     public MediaFileGeoPosition(double lat, double lng, double absAlt) {
+        this(lat, lng, absAlt, 0.0);
+    }
+
+    /**
+     * 构造 MediaFileGeoPosition。
+     *
+     * @param lat    纬度
+     * @param lng    经度
+     * @param absAlt 绝对高度（米）
+     * @param relAlt 相对高度（米）
+     */
+    public MediaFileGeoPosition(double lat, double lng, double absAlt, double relAlt) {
         this.lat = lat;
         this.lng = lng;
         this.absAlt = absAlt;
+        this.relAlt = relAlt;
     }
 
     /** 纬度 */
@@ -55,6 +70,14 @@ public final class MediaFileGeoPosition {
         this.absAlt = absAlt;
     }
 
+    /** 相对高度（米） */
+    public double getRelAlt() { return relAlt; }
+
+    /** 相对高度（米） */
+    public void setRelAlt(double relAlt) {
+        this.relAlt = relAlt;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -66,16 +89,18 @@ public final class MediaFileGeoPosition {
         MediaFileGeoPosition that = (MediaFileGeoPosition) o;
         return Double.compare(that.lat, lat) == 0
                 && Double.compare(that.lng, lng) == 0
-                && Double.compare(that.absAlt, absAlt) == 0;
+                && Double.compare(that.absAlt, absAlt) == 0
+                && Double.compare(that.relAlt, relAlt) == 0;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(lat, lng, absAlt);
+        return Objects.hash(lat, lng, absAlt, relAlt);
     }
 
     @Override
     public String toString() {
-        return "MediaFileGeoPosition{lat=" + lat + ", lng=" + lng + ", absAlt=" + absAlt + '}';
+        return "MediaFileGeoPosition{lat=" + lat + ", lng=" + lng
+                + ", absAlt=" + absAlt + ", relAlt=" + relAlt + '}';
     }
 }

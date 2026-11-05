@@ -8,11 +8,12 @@
 #include "notification_center/notification_center.h"
 #include <BusinessManager.h>
 #include <base/common/logger.h>
+#include "session/session_bm.h"
 
 namespace flight_hub_sdk {
 
-RtkCalibrationModuleImpl::RtkCalibrationModuleImpl(const std::string& sn, std::string device_module)
-    : sn_(sn), device_module_(std::move(device_module)) {
+RtkCalibrationModuleImpl::RtkCalibrationModuleImpl(const std::string& sn, std::string device_module, int session_id)
+    : sn_(sn), device_module_(std::move(device_module)), session_id_(session_id) {
     LOG_INFO("[RtkCalibrationModuleImpl] constructor, sn: %s, device_module: %s",
              sn_.c_str(), device_module_.c_str());
 }
@@ -35,12 +36,13 @@ void RtkCalibrationModuleImpl::calibrationByNetwork(
     request.custom_calibration_data.version = params.version;
     post_rtk_calibration_by_network(request, [this, weak_ptr, callback](const RtkCalibrationResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: RTK 标定（网络模式）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_RTK_CALIB_BY_NETWORK, err, "[RtkCalibrationModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_RTK_CALIB_BY_NETWORK, err, session_id_, "[RtkCalibrationModuleImpl]");
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_INFO("calibrationByNetwork: err: %d, message: %s", (int)err.error_code, response.status.c_str());
             }
@@ -51,7 +53,7 @@ void RtkCalibrationModuleImpl::calibrationByNetwork(
                 callback(err, result);
             }
         });
-    });
+    }, session_id_);
 }
 
 void RtkCalibrationModuleImpl::calibrationByManual(
@@ -67,12 +69,13 @@ void RtkCalibrationModuleImpl::calibrationByManual(
     request.manual_calibration_data.height = params.height;
     post_rtk_calibration_by_manual(request, [this, weak_ptr, callback](const RtkCalibrationResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: RTK 标定（手动模式）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_RTK_CALIB_BY_MANUAL, err, "[RtkCalibrationModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_RTK_CALIB_BY_MANUAL, err, session_id_, "[RtkCalibrationModuleImpl]");
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_INFO("calibrationByManual: err: %d, message: %s", (int)err.error_code, response.status.c_str());
             }
@@ -83,13 +86,16 @@ void RtkCalibrationModuleImpl::calibrationByManual(
                 callback(err, result);
             }
         });
-    });
+    }, session_id_);
 }
 
 int RtkCalibrationModuleImpl::subscribeCalibrationProgress(
     const std::function<void(RtkCalibrationResult result)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
-    auto listen_id = NotificationCenter::getInstance()->getBusinessManager()->ListenDeviceRtkCalibration(
+    auto listen_id = -1;
+    if (bm) {
+        listen_id = bm->ListenDeviceRtkCalibration(
         [this, weak_ptr, callback](const notification_center::DeviceRtkCalibration& msg) -> void {
             WeakDummyReturn(weak_ptr);
             if (!callback) {
@@ -109,11 +115,17 @@ int RtkCalibrationModuleImpl::subscribeCalibrationProgress(
             }
         },
         sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     return listen_id;
 }
 
 void RtkCalibrationModuleImpl::unsubscribeCalibrationProgress(int listen_id) {
-    NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(listen_id);
+    auto bm = ResolveBusinessManager(session_id_);
+    if (bm) {
+        bm->CancelObserve(listen_id);
+    }
 }
 
 } // namespace flight_hub_sdk

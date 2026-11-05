@@ -74,6 +74,10 @@ public class IFlightControlModule {
     flighthubsdkmoduleJNI.IFlightControlModule_returnHomeWrapper(swigCPtr, this, ResultCallbackWithError.getCPtr(callback), callback);
   }
 
+  public void returnHomeToDockWrapper(String target_dock_sn, ResultCallbackWithError callback) {
+    flighthubsdkmoduleJNI.IFlightControlModule_returnHomeToDockWrapper(swigCPtr, this, target_dock_sn, ResultCallbackWithError.getCPtr(callback), callback);
+  }
+
   public void returnHomeCancelWrapper(ResultCallbackWithError callback) {
     flighthubsdkmoduleJNI.IFlightControlModule_returnHomeCancelWrapper(swigCPtr, this, ResultCallbackWithError.getCPtr(callback), callback);
   }
@@ -88,6 +92,10 @@ public class IFlightControlModule {
 
   public void drcSetFollowMouseParameterWrapper(int speed, ResultCallbackWithError callback) {
     flighthubsdkmoduleJNI.IFlightControlModule_drcSetFollowMouseParameterWrapper(swigCPtr, this, speed, ResultCallbackWithError.getCPtr(callback), callback);
+  }
+
+  public void drcSetFlyingMaxSpeedWrapper(double speed, ResultCallbackWithError callback) {
+    flighthubsdkmoduleJNI.IFlightControlModule_drcSetFlyingMaxSpeedWrapper(swigCPtr, this, speed, ResultCallbackWithError.getCPtr(callback), callback);
   }
 
   public void drcSetNightLightsStateWrapper(int night_lights_state, ResultCallbackWithError callback) {
@@ -140,6 +148,14 @@ public class IFlightControlModule {
 
   public void cancelListenDrcFlashLedWrapper(int listen_id) {
     flighthubsdkmoduleJNI.IFlightControlModule_cancelListenDrcFlashLedWrapper(swigCPtr, this, listen_id);
+  }
+
+  public int listenDrcLandingMissionStateWrapper(DrcLandingMissionStateCallback callback) {
+    return flighthubsdkmoduleJNI.IFlightControlModule_listenDrcLandingMissionStateWrapper(swigCPtr, this, DrcLandingMissionStateCallback.getCPtr(callback), callback);
+  }
+
+  public void cancelListenDrcLandingMissionStateWrapper(int listen_id) {
+    flighthubsdkmoduleJNI.IFlightControlModule_cancelListenDrcLandingMissionStateWrapper(swigCPtr, this, listen_id);
   }
 
   public IFlightControlModule() {

@@ -22,7 +22,9 @@ import com.dji.flighthub.mcp.session.SessionManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -149,5 +151,146 @@ class FhMediaDownloadToolTest {
         assertEquals(true, result.get("success"));
         Map<String, Object> data = (Map<String, Object>) result.get("data");
         assertEquals(99999999L, data.get("file_id"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenActionInvalid() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = downloadTool.execute(Map.of(
+                "action", "not_a_real_action"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Invalid action"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenGetUrlActionMissingFileId() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = downloadTool.execute(Map.of(
+                "action", "get_url"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Missing or invalid file_id"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenBatchUrlMissingObjectKeys() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = downloadTool.execute(Map.of(
+                "action", "batch_url"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Missing or empty object_keys"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenBatchUrlObjectKeysEmpty() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = downloadTool.execute(Map.of(
+                "action", "batch_url",
+                "object_keys", List.of()
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Missing or empty object_keys"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenBatchUrlExceedsMaxSize() {
+        sessionManager.createSession("uuid", "ws");
+
+        List<String> tooMany = new ArrayList<>();
+        for (int i = 0; i < 101; i++) {
+            tooMany.add("object_key_" + i);
+        }
+
+        Map<String, Object> result = downloadTool.execute(Map.of(
+                "action", "batch_url",
+                "object_keys", tooMany
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Too many object_keys"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldReturnBatchUrls_whenValidObjectKeys() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = downloadTool.execute(Map.of(
+                "action", "batch_url",
+                "object_keys", List.of("media/2026/08/a.jpeg", "media/2026/08/b.jpeg")
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertNotNull(data);
+        assertEquals("batch_url", data.get("action"));
+        assertEquals(2, data.get("count"));
+        assertEquals(true, data.get("_mock"));
+
+        List<Map<String, Object>> files = (List<Map<String, Object>>) data.get("files");
+        assertNotNull(files);
+        assertEquals(2, files.size());
+        assertEquals("media/2026/08/a.jpeg", files.get(0).get("object_key"));
+        assertNotNull(files.get(0).get("download_url"));
+        assertNotNull(files.get(0).get("suggested_filename"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldAcceptExactlyMaxBatchSize() {
+        sessionManager.createSession("uuid", "ws");
+
+        List<String> maxKeys = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            maxKeys.add("object_key_" + i);
+        }
+
+        Map<String, Object> result = downloadTool.execute(Map.of(
+                "action", "batch_url",
+                "object_keys", maxKeys
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals(100, data.get("count"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenNoSession_forBatchUrl() {
+        Map<String, Object> result = downloadTool.execute(Map.of(
+                "action", "batch_url",
+                "object_keys", List.of("media/2026/08/a.jpeg")
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("No active session"));
+    }
+
+    @Test
+    void getToolDefinition_shouldExposeActionAndObjectKeysSchema() {
+        Map<String, Object> def = downloadTool.getToolDefinition();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> schema = (Map<String, Object>) def.get("inputSchema");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> props = (Map<String, Object>) schema.get("properties");
+
+        assertTrue(props.containsKey("action"));
+        assertTrue(props.containsKey("object_keys"));
+        assertTrue(props.containsKey("file_id"));
+
+        @SuppressWarnings("unchecked")
+        List<String> required = (List<String>) schema.get("required");
+        assertFalse(required.contains("file_id"));
     }
 }

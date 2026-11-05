@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 # Java 进程资源监控脚本
 # 用法: ./monitor_java_process.sh <PID>
 

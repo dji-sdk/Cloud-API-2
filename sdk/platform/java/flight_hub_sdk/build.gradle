@@ -31,7 +31,7 @@ jar {
     archiveBaseName = 'flight-hub-sdk'
     archiveVersion = gradle.ext.sdkVersion
 
-    // BIN-P1-04: 不打包 SWIG 生成的 .java 源文件, 避免源码泄露 (只保留 .class) 。
+    // 二进制发布物只保留 .class; SWIG 生成的 .java 源文件不进 JAR(源码随仓库开源提供)。
     exclude '**/*.java'
 
     // 包含native库文件到JAR的lib目录
@@ -42,7 +42,7 @@ jar {
         into 'lib'  // 放到JAR包的lib目录下
     }
 
-    // LIC-P2-01: 附带第三方开源库 LICENSE / NOTICE 文本, 满足 LGPL/EPL/Apache 分发合规。
+    // 附带第三方开源库 LICENSE / NOTICE 文本, 满足 LGPL/EPL/Apache 分发合规。
     from('../THIRD_PARTY_LICENSES') {
         into 'THIRD_PARTY_LICENSES'
     }

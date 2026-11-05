@@ -4,8 +4,8 @@ import com.example.dji.sdk.modules.${ModuleName}Adapter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import java.util.Map;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;

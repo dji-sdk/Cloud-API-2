@@ -23,11 +23,19 @@ WORKDIR /app
 COPY skeleton/app/fh-skeleton-app/target/fh-skeleton-app-*.jar app.jar
 
 # 复制 SDK jar 并提取 native .so
-COPY libs/flight-hub-sdk-3.3.7.jar /tmp/sdk.jar
-RUN apt-get update && \
+# SDK 按架构分两个包（jar 内 lib/linux-x86_64 与 lib/linux-aarch64 各缺一半），
+# 故必须显式指定 SDK_ARCH，且该架构要与本地 mvn 编译时安装的 jar 保持一致
+ARG SDK_ARCH
+COPY libs/${SDK_ARCH}/flight-hub-sdk-3.3.7.jar /tmp/sdk.jar
+RUN case "${SDK_ARCH}" in \
+      amd64) SDK_LIB_DIR=linux-x86_64 ;; \
+      arm64) SDK_LIB_DIR=linux-aarch64 ;; \
+      *) echo "不支持的 SDK_ARCH: ${SDK_ARCH}（只支持 amd64/arm64）" >&2; exit 1 ;; \
+    esac && \
+    apt-get update && \
     apt-get install -y --no-install-recommends curl unzip && \
     mkdir -p /opt/sdk-libs && \
-    unzip -j -o /tmp/sdk.jar 'lib/linux-x86_64/*' -d /opt/sdk-libs && \
+    unzip -j -o /tmp/sdk.jar "lib/${SDK_LIB_DIR}/*" -d /opt/sdk-libs && \
     chmod 755 /opt/sdk-libs/*.so* && \
     rm /tmp/sdk.jar && \
     apt-get purge -y unzip && apt-get autoremove -y && \

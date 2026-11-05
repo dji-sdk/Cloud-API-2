@@ -37,7 +37,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 /**
  * 用户模块自动装配。
  *
- * <p>默认启用。ISV 设 {@code fh.user.enabled=false} 可完全禁用。
+ * <p>默认启用。集成商 设 {@code fh.user.enabled=false} 可完全禁用。
  * 通过 {@code @AutoConfigureOrder} 确保在 kernel AuthAutoConfiguration 之前加载，
  * 使 JwtAuthenticationProvider 优先于 NoOpAuthenticationProvider 注册。
  *

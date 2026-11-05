@@ -109,6 +109,7 @@ import com.dji.flighthubsdk.core.DockControlModule;
 import com.dji.flighthubsdk.core.DockOsdModule;
 import com.dji.flighthubsdk.core.Drone;
 import com.dji.flighthubsdk.core.DroneOsdModule;
+import com.dji.flighthubsdk.core.Workspace;
 import com.dji.flighthubsdk.demo.base.ModuleDemo;
 import com.dji.flighthubsdk.demo.runtime.DemoLog;
 import com.dji.flighthubsdk.demo.runtime.Subscription;
@@ -121,9 +122,9 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * 设备状态 / OSD 模块 Demo: 订阅无人机 OSD 与在线状态推送, 机场 OSD, HMS 消息等。
  *
- * <p>覆盖无人机在线状态(DeviceStateModule)与无人机 OSD 模块(DroneOsdModule)下的多种 OSD 推送:
+ * <p>覆盖无人机在线状态 (DeviceStateModule)与无人机 OSD 模块 (DroneOsdModule)下的多种 OSD 推送:
  * 负载 OSD 明细、电池、姿态、位置、模式码、风速、控制码、速度、负载相机实时画面世界区域、
- * 负载云台姿态、负载列表。为完整演示推送内容, 本 demo <b>每帧都打印</b>完整明细(不节流);
+ * 负载云台姿态、负载列表。为完整演示推送内容, 本 demo <b>每帧都打印</b>完整明细 (不节流);
  * 订阅全部登记进 registry, 运行固定时长后自动退订。
  *
  * <p><b>设计意图 / 生产提醒</b>: OSD 多为高频推送, demo 逐帧打印仅为让使用者看清每一帧字段;
@@ -131,19 +132,22 @@ import java.util.concurrent.atomic.AtomicLong;
  * 聚合统计, 或仅在关注字段发生变化时才落日志。
  *
  * <p><b>安全性</b>: SDK 回调在 native 线程触发且已被 SDK 内部 try/catch 包裹; 本 demo 仍对每个
- * 回调下发的对象与列表逐层判空(顶层对象、子列表、列表元素), 缺失只打印占位说明, 绝不裸抛 NPE。
+ * 回调下发的对象与列表逐层判空 (顶层对象、子列表、列表元素), 缺失只打印占位说明, 绝不裸抛 NPE。
  *
  * <p><b>枚举取值说明</b>: 本 demo 日志<b>只打印字段原始值与中文语义标签, 不内联枚举取值图例</b>
  * (如 {@code 0=关闭 1=开启} 之类)。原因: 枚举集合可能随固件/协议演进而增删, 把图例硬编码进日志
  * 极易与真实取值漂移, 反被误读为「bug」; 字段取值的权威含义请以 SDK bean 的 Javadoc / 上云协议为准。
  */
 public class DeviceOsdDemo extends ModuleDemo {
-    /** 默认观察时长(ms): 未输入分钟数 / 无交互输入时的回退值(2 分钟)。 */
+    /** 默认观察时长 (ms): 未输入分钟数 / 无交互输入时的回退值 (2 分钟)。 */
     private static final long DEFAULT_OBSERVE_MS = 1000 * 60 * 2;
-    /** 交互输入观察时长的下限(分钟)。 */
+    /** 交互输入观察时长的下限 (分钟)。 */
     private static final int MIN_OBSERVE_MINUTES = 1;
-    /** 交互输入观察时长的上限(分钟): 防手误(如多打一位)导致 demo 卡死过久。 */
+    /** 交互输入观察时长的上限 (分钟): 防手误 (如多打一位)导致 demo 卡死过久。 */
     private static final int MAX_OBSERVE_MINUTES = 120;
+
+    /** 本轮 run() 建立的全部订阅句柄; finally 中统一关闭, 不只依赖基类 session.close() 兜底。 */
+    private final List<Subscription> monitorSubs = new ArrayList<Subscription>();
 
     @Override
     public String name() {
@@ -152,6 +156,8 @@ public class DeviceOsdDemo extends ModuleDemo {
 
     @Override
     protected void run() throws Exception {
+        monitorSubs.clear();
+        try {
         Drone drone = null;
         if (session.hasDrone()) {
             try {
@@ -164,23 +170,23 @@ public class DeviceOsdDemo extends ModuleDemo {
         }
 
         // OSD/State 监听项很多且会持续增加, 建立订阅后需观察若干分钟才能收全各路推送。
-        // 故在订阅前先交互询问一次观察时长(直接回车用默认), 便于按需拉长/缩短观察窗口、逐项排查。
+        // 故在订阅前先交互询问一次观察时长 (直接回车用默认), 便于按需拉长/缩短观察窗口、逐项排查。
         final long observeMs = askObserveMinutesMs();
 
-        // 控制台明示预计运行时长：DemoLog 只落日志文件, 这里直接给屏幕一句直观提示, 让人知道要等多久。
-        System.out.println("\n>>> 订阅建立后将持续观察约 " + observeMs / 60000 + " 分钟(" + observeMs / 1000
+        // 控制台明示预计运行时长: DemoLog 只落日志文件, 这里直接给屏幕一句直观提示, 让人知道要等多久。
+        console("\n>>> 订阅建立后将持续观察约 " + observeMs / 60000 + " 分钟(" + observeMs / 1000
             + "s), 期间持续打印 OSD/State 推送, 请耐心等待 ...");
 
-        // 无人机 OSD 模块(DroneOsdModule)。
+        // 无人机 OSD 模块 (DroneOsdModule)。
         DroneOsdModule droneOsdModule = drone != null ? drone.getDroneOsdModule() : null;
-        final AtomicLong osdStateCount = new AtomicLong();       // 所有 OSD/State 推送总数(末尾统计)
+        final AtomicLong osdStateCount = new AtomicLong();       // 所有 OSD/State 推送总数 (末尾统计)
         final AtomicLong payloadFrame = new AtomicLong();        // 负载 OSD 独立帧号
-        final AtomicLong onlineStatusFrame = new AtomicLong();   // 在线状态独立帧号(避免与总数混用致 #n 跳变)
+        final AtomicLong onlineStatusFrame = new AtomicLong();   // 在线状态独立帧号 (避免与总数混用致 #n 跳变)
 
-        // 无人机设备状态模块(DeviceStateModule)。
+        // 无人机设备状态模块 (DeviceStateModule)。
         DeviceStateModule droneDeviceStateModule = drone != null ? drone.getDeviceStateModule() : null;
 
-        // (一) 无人机设备状态模块(drone DeviceStateModule)。
+        // (一) 无人机设备状态模块 (drone DeviceStateModule)。
         if (droneDeviceStateModule == null) {
             DemoLog.warn(name(), "droneDeviceStateModule is null, 跳过 DeviceStateModule 订阅。");
         } else {
@@ -203,7 +209,7 @@ public class DeviceOsdDemo extends ModuleDemo {
             );
         }
 
-        // (二) 无人机 OSD 模块(drone DroneOsdModule)。
+        // (二) 无人机 OSD 模块 (drone DroneOsdModule)。
         if (droneOsdModule == null) {
             DemoLog.warn(name(), "droneOsdModule is null, 跳过 OSD 订阅。");
         } else {
@@ -218,8 +224,8 @@ public class DeviceOsdDemo extends ModuleDemo {
                     public void onResult(AircraftPayloadsOsdInfoList list) {
                         osdStateCount.incrementAndGet();
                         long n = payloadFrame.incrementAndGet();     // 负载 OSD 帧号
-                        // 说明: 该 topic 当前后端暂不支持(见上), 正常收不到本回调; 下方为「若后端支持」时的演示写法。
-                        // 设计意图: 负载 OSD 属高频推送, demo 逐帧打印完整明细仅为演示(不节流);
+                        // 说明: 该 topic 当前后端暂不支持 (见上), 正常收不到本回调; 下方为「若后端支持」时的演示写法。
+                        // 设计意图: 负载 OSD 属高频推送, demo 逐帧打印完整明细仅为演示 (不节流);
                         // 生产提醒: 实际业务代码不应逐帧打印此类高频 log, 应按需节流/聚合, 避免刷屏与日志膨胀。
                         DemoLog.info(name(), "listenAircraftPayloadsOsdInfo() #AircraftPayloadsOsdInfoList, 帧 #" + n);
                         printPayloadsOsd(n, list);
@@ -229,7 +235,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 droneOsdModule::cancelListenAircraftPayloadsOsdInfo
             );
 
-            // 2) 飞机电池信息(整机电量/降落电量/剩余飞行时间/返航电量 + 各电池明细)。
+            // 2) 飞机电池信息 (整机电量/降落电量/剩余飞行时间/返航电量 + 各电池明细)。
             safeSubscribe(
                 "AircraftBatteryInfo",
                 droneOsdModule.listenAircraftBatteryInfo(new FlightHubCallback.AircraftBatteryInfoCallback() {
@@ -243,7 +249,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 droneOsdModule::cancelListenAircraftBatteryInfo
             );
 
-            // 3) 飞机姿态(机头朝向/俯仰/横滚, 单位: 度)。
+            // 3) 飞机姿态 (机头朝向/俯仰/横滚, 单位: 度)。
             safeSubscribe(
                 "AircraftAttitude",
                 droneOsdModule.listenAircraftAttitude(new FlightHubCallback.AircraftAttitudeCallback() {
@@ -264,7 +270,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 droneOsdModule::cancelListenAircraftAttitude
             );
 
-            // 4) 飞机位置(经纬度 + 椭球高度/相对起飞点高度, 单位: m)。
+            // 4) 飞机位置 (经纬度 + 椭球高度/相对起飞点高度, 单位: m)。
             safeSubscribe(
                 "AircraftLocation",
                 droneOsdModule.listenAircraftLocation(new FlightHubCallback.AircraftLocationCallback() {
@@ -276,7 +282,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                             return;
                         }
                         // 打印数据; height/elevation 语义以 bean 为准:
-                        // getHeight()=椭球高度(WGS84), getElevation()=相对起飞点高度。
+                        // getHeight()=椭球高度 (WGS84), getElevation()=相对起飞点高度。
                         printBlock("listenAircraftLocation() #AircraftLocation, 飞机位置",
                             "latitude=" + loc.getLatitude() + " (纬度, [-90,90]度)",
                             "longitude=" + loc.getLongitude() + " (经度, [-180,180]度)",
@@ -287,7 +293,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 droneOsdModule::cancelListenAircraftLocation
             );
 
-            // 5) 飞机模式码(当前飞行模式, 见 DroneModeCode)。
+            // 5) 飞机模式码 (当前飞行模式, 见 DroneModeCode)。
             safeSubscribe(
                 "AircraftModeCode",
                 droneOsdModule.listenAircraftModeCode(new FlightHubCallback.AircraftModeCodeCallback() {
@@ -309,7 +315,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 droneOsdModule::cancelListenAircraftModeCode
             );
 
-            // 6) 风速/风向(风速为姿态推测的估计值, 仅供参考; 风向为档位枚举, 非角度)。
+            // 6) 风速/风向 (风速为姿态推测的估计值, 仅供参考; 风向为档位枚举, 非角度)。
             safeSubscribe(
                 "AircraftWindSpeed",
                 droneOsdModule.listenAircraftWindSpeed(new FlightHubCallback.AircraftWindSpeedCallback() {
@@ -320,7 +326,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                             DemoLog.info(name(), "listenAircraftWindSpeed() #AircraftWindSpeed, 风速 AircraftWindSpeed: null(本帧无数据)");
                             return;
                         }
-                        // 打印数据; wind_direction 是档位枚举(非角度), 语义以 bean 为准。
+                        // 打印数据; wind_direction 是档位枚举 (非角度), 语义以 bean 为准。
                         printBlock("listenAircraftWindSpeed() #AircraftWindSpeed, 风速/风向",
                             "wind_speed=" + ws.getWindSpeed() + " (风速估计值, 由飞机姿态推测仅供参考)",
                             "wind_direction=" + ws.getWindDirection() + " (风向档位)");
@@ -329,7 +335,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 droneOsdModule::cancelListenAircraftWindSpeed
             );
 
-            // 7) 飞机控制码(当前控制模式/控制源)。
+            // 7) 飞机控制码 (当前控制模式/控制源)。
             safeSubscribe(
                 "AircraftControlCode",
                 droneOsdModule.listenAircraftControlCode(new FlightHubCallback.AircraftControlCodeCallback() {
@@ -351,7 +357,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 droneOsdModule::cancelListenAircraftControlCode
             );
 
-            // 8) 飞机速度(水平/垂直, 单位: m/s)。
+            // 8) 飞机速度 (水平/垂直, 单位: m/s)。
             safeSubscribe(
                 "AircraftSpeed",
                 droneOsdModule.listenAircraftSpeed(new FlightHubCallback.AircraftSpeedCallback() {
@@ -371,7 +377,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 droneOsdModule::cancelListenAircraftSpeed
             );
 
-            // 9) 各负载相机实时画面对应的世界地理区域(画面四边对应的经纬边界)。
+            // 9) 各负载相机实时画面对应的世界地理区域 (画面四边对应的经纬边界)。
             safeSubscribe(
                 "AircraftPayloadsCameraLiveviewWorldRegion",
                 droneOsdModule.listenAircraftPayloadsCameraLiveviewWorldRegion(new FlightHubCallback.AircraftPayloadsCameraLiveviewWorldRegionCallback() {
@@ -385,7 +391,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 droneOsdModule::cancelListenAircraftPayloadsCameraLiveviewWorldRegion
             );
 
-            // 10) 各负载云台姿态(payload_index + pitch/roll/yaw)。
+            // 10) 各负载云台姿态 (payload_index + pitch/roll/yaw)。
             safeSubscribe(
                 "AircraftPayloadsGimbalAttitude",
                 droneOsdModule.listenAircraftPayloadsGimbalAttitude(new FlightHubCallback.AircraftPayloadsGimbalAttitudeCallback() {
@@ -399,7 +405,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 droneOsdModule::cancelListenAircraftPayloadsGimbalAttitude
             );
 
-            // 11) 负载列表(当前挂载的负载 payload_index 集合)。
+            // 11) 负载列表 (当前挂载的负载 payload_index 集合)。
             safeSubscribe(
                 "AircraftPayloadsList",
                 droneOsdModule.listenAircraftPayloadsList(new FlightHubCallback.AircraftPayloadsListCallback() {
@@ -460,7 +466,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 droneOsdModule::cancelListenAircraftPositionState
             );
 
-            // 14) 飞机档位(飞行档位/模式)。
+            // 14) 飞机档位 (飞行档位/模式)。
             safeSubscribe(
                 "AircraftGear",
                 droneOsdModule.listenAircraftGear(new FlightHubCallback.AircraftGearCallback() {
@@ -762,7 +768,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                             DemoLog.info(name(), "listenAircraftMaintainStatusInfo() #AircraftMaintainStatusInfo, 维护保养状态 AircraftMaintainStatusInfo: null(本帧无数据)");
                             return;
                         }
-                        // 打印数据; 列表逐项(null-safe)。
+                        // 打印数据; 列表逐项 (null-safe)。
                         List<AircraftMaintainStatus> items = v.getMaintainStatuses();
                         if (items == null || items.isEmpty()) {
                             DemoLog.info(name(), "listenAircraftMaintainStatusInfo() #AircraftMaintainStatusInfo, 维护保养状态: 空或无数据");
@@ -833,7 +839,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                             DemoLog.info(name(), "listenAircraftPayloadsCamerasList() #AircraftPayloadsCamerasList, 负载相机列表 AircraftPayloadsCamerasList: null(本帧无数据)");
                             return;
                         }
-                        // 打印数据; 列表逐项(null-safe)。
+                        // 打印数据; 列表逐项 (null-safe)。
                         List<AircraftPayloadCameraInfo> items = v.getCamerasList();
                         if (items == null || items.isEmpty()) {
                             DemoLog.info(name(), "listenAircraftPayloadsCamerasList() #AircraftPayloadsCamerasList, 负载相机列表: 空或无数据");
@@ -869,10 +875,10 @@ public class DeviceOsdDemo extends ModuleDemo {
                             DemoLog.info(name(), "listenControlRightsCloudControlStatus() #ControlRightsCloudControlStatus, 云端控制权状态 ControlRightsCloudControlStatus: null(本帧无数据)");
                             return;
                         }
-                        // 打印数据; 列表逐项(null-safe)。
+                        // 打印数据; 列表逐项 (null-safe)。
                         List<ControlRightsCloudControlStatusItem> items = v.getControls();
                         if (items == null || items.isEmpty()) {
-                            DemoLog.info(
+                            DemoLog.debug(
                                 name(),
                                 "listenControlRightsCloudControlStatus() #ControlRightsCloudControlStatus, 云端控制权状态: 空或无数据 (sn=" + v.getSn() + " (设备序列号SN), reason=" + v.getReason() + " (原因))"
                             );
@@ -888,7 +894,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                             printItem(i,
                                 "type=" + it.getType() + " (类型)",
                                 "key=" + it.getKey() + " (控制权 key)",
-                                "userId=" + it.getUserId() + " (用户 ID)",
+                                "userId=" + Utils.maskUserId(it.getUserId()) + " (用户 ID)",
                                 "locked=" + it.isLocked() + " (是否锁定)",
                                 "version=" + it.getVersion() + " (版本号)");
                         }
@@ -913,7 +919,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                             "sn=" + v.getSn() + " (设备序列号)",
                             "reason=" + v.getReason() + " (原因)");
 
-                        // 打印数据; 列表逐项(null-safe)。
+                        // 打印数据; 列表逐项 (null-safe)。
                         List<ControlRightsDeviceControlStatusItem> items = v.getControls();
                         if (items == null || items.isEmpty()) {
                             DemoLog.info(name(), "listenControlRightsDeviceControlStatus() #ControlRightsDeviceControlStatus, 设备端控制权状态: 空或无数据");
@@ -963,7 +969,7 @@ public class DeviceOsdDemo extends ModuleDemo {
             );
         }
 
-        // (三) 无人机设备 HMS 模块(drone DeviceHMSModule)。
+        // (三) 无人机设备 HMS 模块 (drone DeviceHMSModule)。
         DeviceHMSModule droneHmsModule = drone != null ? drone.getDeviceHMSModule() : null;
         if (droneHmsModule == null) {
             DemoLog.warn(name(), "droneHmsModule is null, 跳过 HMS 订阅。");
@@ -982,7 +988,7 @@ public class DeviceOsdDemo extends ModuleDemo {
             );
         }
 
-        // ---- 机场(dock)相关订阅(机场为可选设备: 无人机可无机场)----
+        // ---- 机场 (dock)相关订阅 (机场为可选设备: 无人机可无机场)----
         // 安全解析机场及其各模块: 无机场时 session.dock() 会抛异常, 故先判 hasDock 并用 try/catch 兜底;
         // 任一环节失败都只记录并跳过机场订阅, 不影响上面无人机侧订阅与本轮观察。
         Dock dock = null;
@@ -996,7 +1002,7 @@ public class DeviceOsdDemo extends ModuleDemo {
             try {
                 dock = session.dock();
                 if (dock == null) {
-                    DemoLog.warn(name(), "解析机场(dock)实例失败, dock is null !");
+                    DemoLog.warn(name(), "解析机场(dock)实例失败, dock is null");
                 } else {
                     dockStateModule = dock.getDeviceStateModule();
                     dockControlModule = dock.getDockControlModule();
@@ -1008,7 +1014,7 @@ public class DeviceOsdDemo extends ModuleDemo {
             }
         }
 
-        // (四) 机场设备状态模块(dock DeviceStateModule)。
+        // (四) 机场设备状态模块 (dock DeviceStateModule)。
         if (dockStateModule == null) {
             if (dock != null) {
                 DemoLog.warn(name(), "dockStateModule is null, 跳过机场设备状态订阅。");
@@ -1033,7 +1039,7 @@ public class DeviceOsdDemo extends ModuleDemo {
             );
         }
 
-        // (五) 机场控制模块(dock DockControlModule)。
+        // (五) 机场控制模块 (dock DockControlModule)。
         if (dockControlModule == null) {
             if (dock != null) {
                 DemoLog.warn(name(), "dockControlModule is null, 跳过机场控制订阅。");
@@ -1078,7 +1084,7 @@ public class DeviceOsdDemo extends ModuleDemo {
             );
         }
 
-        // (六) 机场 OSD 模块(dock DockOsdModule)。
+        // (六) 机场 OSD 模块 (dock DockOsdModule)。
         if (dockOsdModule == null) {
             if (dock != null) {
                 DemoLog.warn(name(), "dockOsdModule is null, 跳过机场 OSD 订阅。");
@@ -1250,7 +1256,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 dockOsdModule::cancelListenDockDrcState
             );
 
-            // 9) 机场飞行器电池保养信息(保养状态/剩余保养时间/加热保温状态 + 各电池基础信息)。
+            // 9) 机场飞行器电池保养信息 (保养状态/剩余保养时间/加热保温状态 + 各电池基础信息)。
             safeSubscribe(
                 "DockDroneBatteryMaintenanceInfo",
                 dockOsdModule.listenDockDroneBatteryMaintenanceInfo(new FlightHubCallback.DockDroneBatteryMaintenanceInfoCallback() {
@@ -1267,7 +1273,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                             "maintenanceTimeLeft=" + v.getMaintenanceTimeLeft() + " (电池保养剩余时间, 单位:小时)",
                             "heatState=" + v.getHeatState() + " (电池加热保温状态)");
 
-                        // 打印数据; 列表逐项(null-safe)。
+                        // 打印数据; 列表逐项 (null-safe)。
                         List<BatteryBasicInfo> items = v.getBatteries();
                         if (items == null || items.isEmpty()) {
                             DemoLog.info(name(), "listenDockDroneBatteryMaintenanceInfo() #DockDroneBatteryMaintenanceInfo, 机场飞行器电池保养信息: 电池列表空或无数据");
@@ -1430,9 +1436,12 @@ public class DeviceOsdDemo extends ModuleDemo {
                             return;
                         }
 
-                        // 打印数据; 列表逐项(null-safe)。
+                        // 打印数据; 列表逐项 (null-safe)。
                         List<DockMaintainStatus> items = v.getMaintainStatusInfos();
-                        if (items == null || items.isEmpty()) { DemoLog.info(name(), "listenDockMaintainStatusInfo() #DockMaintainStatusInfo, 机场保养维护信息: 空或无数据"); return; }
+                        if (items == null || items.isEmpty()) {
+                            DemoLog.info(name(), "listenDockMaintainStatusInfo() #DockMaintainStatusInfo, 机场保养维护信息: 空或无数据");
+                            return;
+                        }
                         DemoLog.info(name(), "listenDockMaintainStatusInfo() #DockMaintainStatusInfo, 机场保养维护信息: size=" + items.size());
                         for (int i = 0; i < items.size(); i++) {
                             DockMaintainStatus it = items.get(i);
@@ -1453,7 +1462,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 dockOsdModule::cancelListenDockMaintainStatusInfo
             );
 
-            // 17) 机场媒体文件详情(机场媒体文件数量): 剩余待上传的媒体文件数量。
+            // 17) 机场媒体文件详情 (机场媒体文件数量): 剩余待上传的媒体文件数量。
             safeSubscribe(
                 "DockMediaFileDetail",
                 dockOsdModule.listenDockMediaFileDetail(new FlightHubCallback.DockMediaFileDetailCallback() {
@@ -1500,7 +1509,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 dockOsdModule::cancelListenDockMeteorologicalInfo
             );
 
-            // 19) 机场模式码(ModeCode)。
+            // 19) 机场模式码 (ModeCode)。
             safeSubscribe(
                 "DockModeCode",
                 dockOsdModule.listenDockModeCode(new FlightHubCallback.DockModeCodeCallback() {
@@ -1519,7 +1528,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 dockOsdModule::cancelListenDockModeCode
             );
 
-            // 19.1) 飞行任务步骤码(FlightTaskStepCode)。
+            // 19.1) 飞行任务步骤码 (FlightTaskStepCode)。
             safeSubscribe(
                 "FlightTaskStepCode",
                 dockOsdModule.listenFlightTaskStepCode(new FlightHubCallback.FlightTaskStepCodeCallback() {
@@ -1532,7 +1541,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                         }
 
                         DemoLog.info(name(), "listenFlightTaskStepCode() #FlightTaskStepCode, flighttaskStepCode="
-                            + v.getFlighttaskStepCode() + " (0准备/1飞行/2恢复/3自定义飞行区/4地形障碍物/5空闲/256未知)");
+                            + v.getFlighttaskStepCode());
                     }
                 }),
                 dockOsdModule::cancelListenFlightTaskStepCode
@@ -1624,7 +1633,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 dockOsdModule::cancelListenDockPutterState
             );
 
-            // 24) 机场相对备降点(相对备降点的坐标与状态)。
+            // 24) 机场相对备降点 (相对备降点的坐标与状态)。
             safeSubscribe(
                 "DockRelativeAlternateLandPoint",
                 dockOsdModule.listenDockRelativeAlternateLandPoint(new FlightHubCallback.DockRelativeAlternateLandPointCallback() {
@@ -1647,7 +1656,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 dockOsdModule::cancelListenDockRelativeAlternateLandPoint
             );
 
-            // 25) 机场自收敛坐标(self_converge_coordinate)。
+            // 25) 机场自收敛坐标 (self_converge_coordinate)。
             safeSubscribe(
                 "DockSelfConvergeCoordinate",
                 dockOsdModule.listenDockSelfConvergeCoordinate(new FlightHubCallback.DockSelfConvergeCoordinateCallback() {
@@ -1724,7 +1733,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                             return;
                         }
 
-                        // 打印数据; 列表逐项(null-safe)。
+                        // 打印数据; 列表逐项 (null-safe)。
                         List<DockSubDeviceInfo> items = v.getSubDeviceInfos();
                         if (items == null || items.isEmpty()) {
                             DemoLog.info(name(), "listenDockSubDevice() #DockSubDeviceInfoList, 机场子设备信息列表: 空或无数据");
@@ -1822,13 +1831,13 @@ public class DeviceOsdDemo extends ModuleDemo {
             );
         }
 
-        // (七) 机场 HMS 模块(dock DeviceHMSModule)。
+        // (七) 机场 HMS 模块 (dock DeviceHMSModule)。
         if (dockHmsModule == null) {
             if (dock != null) {
                 DemoLog.warn(name(), "dockHmsModule is null, 跳过机场 HMS 订阅。");
             }
         } else {
-            // 1) 机场设备 HMS(健康管理/故障告警)数据推送(结构同无人机 HMS, 复用 printHmsData)。
+            // 1) 机场设备 HMS(健康管理/故障告警)数据推送 (结构同无人机 HMS, 复用 printHmsData)。
             safeSubscribe(
                 "DockDeviceHMS",
                 dockHmsModule.listenDeviceHMS(new FlightHubCallback.DeviceHmsCallback() {
@@ -1842,7 +1851,7 @@ public class DeviceOsdDemo extends ModuleDemo {
             );
         }
 
-        // (八) 相机状态监听(CameraControlModule drone.getCameraControlModule())。
+        // (八) 相机状态监听 (CameraControlModule drone.getCameraControlModule())。
         // 注意: 这 6 路走 DRC Northbound 链路推送, DRC 链路未建立时订阅本身成功但不会收到回调;
         // 需先通过 PayloadControlDemo [4] 建立 DRC 链路, 再运行本 demo 方可收到数据。
         final CameraControlModule camModule = drone != null ? drone.getCameraControlModule() : null;
@@ -1852,7 +1861,7 @@ public class DeviceOsdDemo extends ModuleDemo {
             final String camPayloadIndex = payloadIndex();
             DemoLog.info(name(), "相机状态订阅 payloadIndex=" + camPayloadIndex);
 
-            // 1) DRC 相机状态(相机模式/录像/拍照/剩余时间等)。
+            // 1) DRC 相机状态 (相机模式/录像/拍照/剩余时间等)。
             safeSubscribe(
                 "DrcCameraState",
                 camModule.listenDrcCameraState(camPayloadIndex, new FlightHubCallback.CameraStateCallback() {
@@ -1877,7 +1886,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 id -> camModule.cancelListenDrcCameraState(camPayloadIndex, id)
             );
 
-            // 2) DRC 直播范围(画面四角对应的地理经纬边界)。
+            // 2) DRC 直播范围 (画面四角对应的地理经纬边界)。
             safeSubscribe(
                 "DrcLiveviewWorldRegion",
                 camModule.listenDrcLiveviewWorldRegion(camPayloadIndex, new FlightHubCallback.LiveviewWorldRegionCallback() {
@@ -1938,7 +1947,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 id -> camModule.cancelListenDrcCameraZoomLensState(camPayloadIndex, id)
             );
 
-            // 5) DRC 测量目标(激光测距目标点信息)。
+            // 5) DRC 测量目标 (激光测距目标点信息)。
             safeSubscribe(
                 "DrcCameraMeasureTarget",
                 camModule.listenDrcCameraMeasureTarget(camPayloadIndex, new FlightHubCallback.CameraMeasureTargetCallback() {
@@ -1961,7 +1970,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 id -> camModule.cancelListenDrcCameraMeasureTarget(camPayloadIndex, id)
             );
 
-            // 6) DRC 云台状态(yaw/pitch/roll)。
+            // 6) DRC 云台状态 (yaw/pitch/roll)。
             safeSubscribe(
                 "DrcGimbalState",
                 camModule.listenDrcGimbalState(camPayloadIndex, new FlightHubCallback.GimbalStateCallback() {
@@ -1983,10 +1992,11 @@ public class DeviceOsdDemo extends ModuleDemo {
             );
         }
 
-        // (九) 工作空间设备变更 & 拓扑变更监听(DeviceManageModule)。
-        // 包含工作空间设备变更、设备拓扑变更(Drone/Dock)。
-        // 注意: 设备拓扑变更(Drone)与(Dock)底层是同一 API(listenDeviceTopoChanged), 合并为一路订阅不重复。
-        final DeviceManageModule deviceMgr = session.workspace().getDeviceManageModule();
+        // (九) 工作空间设备变更 & 拓扑变更监听 (DeviceManageModule)。
+        // 包含工作空间设备变更、设备拓扑变更 (Drone/Dock)。
+        // 注意: 设备拓扑变更 (Drone)与 (Dock)底层是同一 API(listenDeviceTopoChanged), 合并为一路订阅不重复。
+        Workspace ws = session.workspace();
+        final DeviceManageModule deviceMgr = ws != null ? ws.getDeviceManageModule() : null;
         if (deviceMgr == null) {
             DemoLog.warn(name(), "DeviceManageModule is null, 跳过工作空间设备变更与拓扑变更监听");
         } else {
@@ -2047,15 +2057,28 @@ public class DeviceOsdDemo extends ModuleDemo {
         // sleep 等待 OSD 推送;
         sleep(observeMs);
         DemoLog.info(name(), "共收到 OSD/State 推送 " + osdStateCount.get() + " 次。");
+        } finally {
+            // 显式取消全部监听 (与全工程其他 demo 同口径): run() 中途异常时 ~60 路订阅会持续推送
+            // 直到会话关闭; Subscription.close 幂等, 与基类 session.close() 双保险无害。
+            if (!monitorSubs.isEmpty()) {
+                int n = monitorSubs.size();
+                for (Subscription sub : monitorSubs) {
+                    sub.close();
+                    registry().remove(sub);
+                }
+                DemoLog.info(name(), "已取消 OSD/State 监听 " + n + " 路");
+                monitorSubs.clear();
+            }
+        }
     }
 
     /**
-     * 交互询问本次 OSD/State 监听的观察时长(分钟), 返回对应毫秒数。
+     * 交互询问本次 OSD/State 监听的观察时长 (分钟), 返回对应毫秒数。
      *
-     * <p>健壮兜底, 任何输入问题都不中断 demo：
+     * <p>健壮兜底, 任何输入问题都不中断 demo:
      * <ul>
-     *   <li>无交互输入({@code input==null}) 或直接回车 → 用默认 {@link #DEFAULT_OBSERVE_MS};</li>
-     *   <li>非数字 → 告警并回退默认;</li>
+     *   <li>无交互输入 ({@code input==null}) 或直接回车 → 用默认 {@link #DEFAULT_OBSERVE_MS}; </li>
+     *   <li>非数字 → 告警并回退默认; </li>
      *   <li>越界 → 夹到 [{@link #MIN_OBSERVE_MINUTES}, {@link #MAX_OBSERVE_MINUTES}] 分钟。</li>
      * </ul>
      * 复用入口注入的<b>共享</b> {@code input} reader(经 {@link Utils#readLine}), 不另建 reader 以免吞字节。
@@ -2097,10 +2120,10 @@ public class DeviceOsdDemo extends ModuleDemo {
     /**
      * 打印一帧「负载 OSD 信息」的完整明细。
      * 顶层对象、payload 列表、每个 payload 的 smart_track 子列表都做空判断,
-     * 任一环节缺失只打印占位说明, 不抛异常(回调线程内出错会中断推送)。
+     * 任一环节缺失只打印占位说明, 不抛异常 (回调线程内出错会中断推送)。
      *
-     * @param frameNo 负载 OSD 帧序号(payloadFrame 计数)
-     * @param list    SDK 回调下发的负载 OSD 列表(可能为 null)
+     * @param frameNo 负载 OSD 帧序号 (payloadFrame 计数)
+     * @param list    SDK 回调下发的负载 OSD 列表 (可能为 null)
      */
     private void printPayloadsOsd(long frameNo, AircraftPayloadsOsdInfoList list) {
         String tag = name();
@@ -2125,7 +2148,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 DemoLog.info(tag, "  [" + i + "] payload: null, 跳过");
                 continue;
             }
-            // 单个 payload 的全部标量字段汇成一个 { } 块(云台姿态 / 激光测距 / 变焦热成像 / 控制权固件SN)。
+            // 单个 payload 的全部标量字段汇成一个 { } 块 (云台姿态 / 激光测距 / 变焦热成像 / 控制权固件SN)。
             List<Integer> palettes = p.getThermalSupportedPaletteStyles();
             printItem(i,
                 "payload_index=" + p.getPayloadIndex(),
@@ -2154,7 +2177,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 "firmware_version=" + p.getFirmwareVersion() + " (负载固件版本)",
                 "sn=" + p.getSn() + " (负载 SN)");
 
-            // 智能跟踪点(子列表, 可能为空): 逐点一个 { } 块, 缩进比 payload 更深。
+            // 智能跟踪点 (子列表, 可能为空): 逐点一个 { } 块, 缩进比 payload 更深。
             List<SmartTrackPointInfo> tracks = p.getSmartTrackPoints();
             if (tracks == null || tracks.isEmpty()) {
                 DemoLog.info(tag, "      smart_track_points: 空或无数据");
@@ -2178,10 +2201,10 @@ public class DeviceOsdDemo extends ModuleDemo {
     }
 
     /**
-     * 打印飞机电池信息: 整机汇总(容量/降落电量/剩余飞行时间/返航电量) + 各电池明细。
+     * 打印飞机电池信息: 整机汇总 (容量/降落电量/剩余飞行时间/返航电量) + 各电池明细。
      * 顶层对象、电池子列表、每个电池元素都判空, 缺失只打印占位说明。
      *
-     * @param info SDK 回调下发的电池信息(可能为 null)
+     * @param info SDK 回调下发的电池信息 (可能为 null)
      */
     private void printBatteryInfo(AircraftBatteryInfo info) {
         String tag = name();
@@ -2225,10 +2248,10 @@ public class DeviceOsdDemo extends ModuleDemo {
     }
 
     /**
-     * 打印各负载云台姿态(payload_index + pitch/roll/yaw, 单位: 度)。
+     * 打印各负载云台姿态 (payload_index + pitch/roll/yaw, 单位: 度)。
      * 顶层对象、列表、列表元素都判空。
      *
-     * @param attitude SDK 回调下发的负载云台姿态(可能为 null)
+     * @param attitude SDK 回调下发的负载云台姿态 (可能为 null)
      */
     private void printPayloadsGimbalAttitude(AircraftPayloadsGimbalAttitude attitude) {
         String tag = name();
@@ -2260,10 +2283,10 @@ public class DeviceOsdDemo extends ModuleDemo {
     }
 
     /**
-     * 打印各负载相机实时画面对应的世界地理区域(画面四边 top/bottom/left/right 对应的经纬边界)。
+     * 打印各负载相机实时画面对应的世界地理区域 (画面四边 top/bottom/left/right 对应的经纬边界)。
      * 顶层对象、列表、列表元素、每个元素的 region 子对象都判空。
      *
-     * @param region SDK 回调下发的负载相机实时画面世界区域(可能为 null)
+     * @param region SDK 回调下发的负载相机实时画面世界区域 (可能为 null)
      */
     private void printLiveviewWorldRegion(AircraftPayloadsCameraLiveviewWorldRegion region) {
         String tag = name();
@@ -2308,11 +2331,11 @@ public class DeviceOsdDemo extends ModuleDemo {
      * 占位说明, 绝不裸抛 NPE(回调在 native 线程触发, 抛异常会中断后续推送)。
      *
      * <p>字段中文说明严格取自 bean 的 Javadoc(level=告警级别、module_id=模块 ID、
-     * imminent=是否紧急、ignore=是否忽略 等);bean 未文档化具体枚举取值含义,
-     * 故此处不臆造 {0:...} 之类的枚举图例, 实际语义以协议/bean 为准。
+     * imminent=是否紧急、ignore=是否忽略 等); bean 未文档化具体枚举取值含义,
+     * 故此处不臆造 {0: ...} 之类的枚举图例, 实际语义以协议/bean 为准。
      *
-     * @param source  数据来源标识(如「无人机」/「机场」), 用于日志区分同一份 HMS 结构来自哪个设备
-     * @param hmsData SDK 回调下发的设备 HMS 数据(可能为 null)
+     * @param source  数据来源标识 (如「无人机」/「机场」), 用于日志区分同一份 HMS 结构来自哪个设备
+     * @param hmsData SDK 回调下发的设备 HMS 数据 (可能为 null)
      */
     private void printHmsData(String source, HmsData hmsData) {
         String tag = name();
@@ -2357,7 +2380,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 fs.add("id=" + basics.getId() + " (ID)");
                 fs.add("parent_id=" + basics.getParentId() + " (父级 ID)");
 
-                // args 参数块(可能为 null)。
+                // args 参数块 (可能为 null)。
                 HmsArgs args = basics.getArgs();
                 if (args == null) {
                     fs.add("args=null(本条无参数)");
@@ -2374,7 +2397,7 @@ public class DeviceOsdDemo extends ModuleDemo {
                 printItem(i, fs.toArray(new String[0]));
             }
 
-            // 子 HMS 列表(subHmsData, 可能为空)。
+            // 子 HMS 列表 (subHmsData, 可能为空)。
             List<HmsDataBasics> subs = item.getSubHmsData();
             if (subs == null || subs.isEmpty()) {
                 DemoLog.info(tag, "      subHmsData: 空或无数据");
@@ -2421,10 +2444,10 @@ public class DeviceOsdDemo extends ModuleDemo {
     }
 
     /**
-     * 把「标题 + 若干字段」格式化为多行 { } 块并打印(单条日志内嵌换行, 提升可读性)。
+     * 把「标题 + 若干字段」格式化为多行 { } 块并打印 (单条日志内嵌换行, 提升可读性)。
      * 字段数 <= 1 时退化为一行「标题: 字段」, 不为单字段占用多行。
      *
-     * @param header 段标题(不带冒号), 如「机场网络状态」
+     * @param header 段标题 (不带冒号), 如「机场网络状态」
      * @param fields 已拼好的「字段名=值 (中文说明)」串, 如 "type=" + v.getType() + " (类型)"
      */
     private void printBlock(String header, String... fields) {
@@ -2432,7 +2455,7 @@ public class DeviceOsdDemo extends ModuleDemo {
     }
 
     /**
-     * 打印列表元素块: 「  [i]」标号行 + 缩进的 { } 字段块(单条日志), 与 {@link #printBlock} 风格一致。
+     * 打印列表元素块: 「  [i]」标号行 + 缩进的 { } 字段块 (单条日志), 与 {@link #printBlock} 风格一致。
      *
      * @param index  列表下标
      * @param fields 已拼好的「字段名=值 (中文说明)」串
@@ -2451,8 +2474,8 @@ public class DeviceOsdDemo extends ModuleDemo {
     }
 
     /**
-     * 打印子列表元素块: 「        <j>」标号行 + 更深缩进的 { } 字段块(单条日志),
-     * 供二级列表(如智能跟踪点、子 HMS)逐项打印, 与 {@link #printItem} 风格一致但缩进更深。
+     * 打印子列表元素块: 「        <j>」标号行 + 更深缩进的 { } 字段块 (单条日志),
+     * 供二级列表 (如智能跟踪点、子 HMS)逐项打印, 与 {@link #printItem} 风格一致但缩进更深。
      */
     private void printSubItem(int index, String... fields) {
         if (fields == null || fields.length == 0) {
@@ -2468,8 +2491,8 @@ public class DeviceOsdDemo extends ModuleDemo {
     }
 
     /**
-     * 组装多行 { } 块字符串: 「[indent]header:换行[indent]{换行[indent]  f1,换行 ... 换行[indent]}」。
-     * 字段数 0 时只返回「[indent]header:」; 字段数 1 时返回「[indent]header: f1」(不成块)。
+     * 组装多行 { } 块字符串: 「[indent]header: 换行[indent]{换行[indent]  f1, 换行 ... 换行[indent]}」。
+     * 字段数 0 时只返回「[indent]header: 」; 字段数 1 时返回「[indent]header: f1」(不成块)。
      */
     private static String formatBlock(String header, String indent, String... fields) {
         if (fields == null || fields.length == 0) {
@@ -2495,7 +2518,8 @@ public class DeviceOsdDemo extends ModuleDemo {
      */
     private void safeSubscribe(String label, int listenId, Subscription.Canceller canceller) {
         try {
-            subscribe(label, listenId, canceller);
+            Subscription sub = subscribe(label, listenId, canceller);
+            monitorSubs.add(sub);
         } catch (Exception e) {
             DemoLog.warn(name(), label + " 订阅失败(忽略, 不影响其它订阅): " + Utils.describe(e));
         }

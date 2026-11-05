@@ -31,6 +31,8 @@ public:
 
     /// @brief 获取网络测速进度
     ///
+    /// 注意: 结果不含 bid(后端 GET 结果不返回该字段), NetworkTestProgressResult.bid 恒为空。
+    ///
     /// @internal
     /// 链路: HTTP | GET /device/api/v1/service/network/speed-tests
     /// @endinternal

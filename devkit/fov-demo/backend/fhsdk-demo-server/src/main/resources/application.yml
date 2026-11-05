@@ -17,6 +17,11 @@ fhsdk:
   drtc-config-path: ${FHSDK_DRTC_CONFIG_PATH:}
   auth-header-key: ${FHSDK_AUTH_HEADER_KEY:user_id}
   auth-header-value: ${FHSDK_AUTH_HEADER_VALUE:}
+  # WSS 通知通道 TLS 证书校验（默认 true，安全默认）。私有化自签名部署二选一：
+  #   设为 false 跳过校验（仅限受控内网），或保持 true 并配置 ssl-ca-path
+  verify-ssl: ${FHSDK_VERIFY_SSL:true}
+  # 自签 CA 证书路径，仅 verify-ssl=true 时生效；留空则使用 SDK 默认信任库
+  ssl-ca-path: ${FHSDK_SSL_CA_PATH:}
 
 oryx:
   whip-url-template: ${ORYX_WHIP_URL_TEMPLATE:http://127.0.0.1:2022/rtc/v1/whip/?app=live&stream={streamKey}}

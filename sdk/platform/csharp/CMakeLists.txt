@@ -22,3 +22,7 @@ set_target_properties(flight_hub_sdk_native PROPERTIES
     BUILD_WITH_INSTALL_RPATH TRUE INSTALL_RPATH "$ORIGIN"
     INSTALL_RPATH_USE_LINK_PATH FALSE)
 target_link_options(flight_hub_sdk_native PRIVATE "-Wl,--no-undefined")
+
+add_executable(cloud_api2_csharp_shutdown_smoke "${CMAKE_CURRENT_SOURCE_DIR}/smoke/shutdown_order.cpp")
+target_link_libraries(cloud_api2_csharp_shutdown_smoke PRIVATE cloud_api2::base Threads::Threads)
+set_target_properties(cloud_api2_csharp_shutdown_smoke PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")

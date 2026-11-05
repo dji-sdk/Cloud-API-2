@@ -88,8 +88,12 @@ public class TestFlightModule {
 
     /**
      * 创建试飞任务
+     *
+     * <p>注意：task_type、rth_altitude、rth_mode、resumable_status、landing_dock_sn
+     * 由后端固定，SDK 不会上送；试飞任务仅支持单航线。</p>
+     *
      * @param projectId 项目 ID
-     * @param params 创建参数
+     * @param params 创建参数；wayline_duration 应传入大于 0 的值
      * @param callback 回调
      */
     public void createTestFlightTask(String projectId, CreateTestFlightTaskParams params, FlightHubCallback.CreateTestFlightTaskCallback callback) {

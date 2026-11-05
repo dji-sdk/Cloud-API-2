@@ -86,4 +86,56 @@ class StickControlExecutorTest {
         assertEquals(StickControlExecutor.STICK_CENTER, lastSent[0][1]);
         assertEquals(StickControlExecutor.STICK_CENTER, lastSent[0][2]);
     }
+
+    @Test
+    void executeRaw_shouldSendSpecifiedAxisValues() {
+        int[][] firstSent = {null};
+        boolean[] first = {true};
+        StickControlExecutor.StickSender mockSender = (r, p, t, y, g) -> {
+            if (first[0]) {
+                firstSent[0] = new int[]{r, p, t, y, g};
+                first[0] = false;
+            }
+        };
+
+        executor.executeRaw(mockSender, 1200, 900, 1100, 1000, 1024, 100);
+
+        assertNotNull(firstSent[0]);
+        assertEquals(1200, firstSent[0][0]);
+        assertEquals(900, firstSent[0][1]);
+        assertEquals(1100, firstSent[0][2]);
+        assertEquals(1000, firstSent[0][3]);
+        assertEquals(1024, firstSent[0][4]);
+    }
+
+    @Test
+    void executeRaw_shouldClampOutOfRangeValues() {
+        int[][] firstSent = {null};
+        boolean[] first = {true};
+        StickControlExecutor.StickSender mockSender = (r, p, t, y, g) -> {
+            if (first[0]) {
+                firstSent[0] = new int[]{r, p, t, y, g};
+                first[0] = false;
+            }
+        };
+
+        executor.executeRaw(mockSender, 9999, -9999, StickControlExecutor.STICK_CENTER,
+                StickControlExecutor.STICK_CENTER, StickControlExecutor.STICK_CENTER, 100);
+
+        assertEquals(StickControlExecutor.STICK_MAX, firstSent[0][0]);
+        assertEquals(StickControlExecutor.STICK_MIN, firstSent[0][1]);
+    }
+
+    @Test
+    void executeRaw_shouldSendCenterOnCompletion() {
+        int[][] lastSent = {null};
+        StickControlExecutor.StickSender mockSender = (r, p, t, y, g) ->
+                lastSent[0] = new int[]{r, p, t, y, g};
+
+        executor.executeRaw(mockSender, 1200, 900, 1100, 1000, 1024, 100);
+
+        assertEquals(StickControlExecutor.STICK_CENTER, lastSent[0][0]);
+        assertEquals(StickControlExecutor.STICK_CENTER, lastSent[0][1]);
+        assertEquals(StickControlExecutor.STICK_CENTER, lastSent[0][2]);
+    }
 }

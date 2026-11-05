@@ -206,9 +206,20 @@ export interface CreateFlightTaskRequest {
   begin_at?: number
   end_at?: number
   interval?: number
+  /**
+   * 续飞策略：1=自动续飞（auto），0=手动续飞（manual）。
+   *
+   * 仅在创建时下发：SDK 3.3.7 的 EditTaskReq 无该字段承载位，编辑态回传会被后端
+   * 丢弃并记 WARN（见 useFlightTaskForm.buildRequest）。与 isBreakPointResume
+   * （任务是否为「断点续飞任务」）不是同一个概念，且详情接口不回显本字段。
+   */
   resumable_status?: number
   rth_mode?: number
   rth_altitude?: number
+  /**
+   * 多模态识别开关。SDK 3.3.7 的创建 / 编辑请求均无承载位，提交 true 只会被后端
+   * 记 WARN 后丢弃，不会下发到设备。
+   */
   vlm_enabled?: boolean
   min_battery_capacity?: number
   continuous_task_periods?: [number, number][]
@@ -217,7 +228,8 @@ export interface CreateFlightTaskRequest {
 /** 飞行任务详情（对齐后端 FlightTaskDetailDto，编辑预填用）。
  *
  * 注意：后端详情接口不返回 planType / repeatType / repeatInterval / vlmEnabled /
- * continuousPeriods，编辑预填时以表单默认值兜底（见 useFlightTaskForm.applyDetail）。
+ * continuousPeriods / resumableStatus，编辑预填时以表单默认值兜底
+ * （见 useFlightTaskForm.applyDetail）。
  * 策略由 taskType 判定，不以 beginAt/endAt 是否相等去猜。
  */
 export interface FlightTaskDetail {
@@ -246,6 +258,11 @@ export interface FlightTaskDetail {
   waylinePrecisionType: number
   /** 最低电量（百分比） */
   minBatteryCapacity: number
-  /** 是否断点续飞 */
+  /**
+   * 本任务是否为「断点续飞任务」（任务类型标识，此类任务不可编辑）。
+   *
+   * 不能反推续飞策略 resumable_status：SDK 3.3.7 的详情 / 列表接口只返回本字段，
+   * false 不代表自动续飞已关闭。前端不得用它回填「自动断点续飞」开关。
+   */
   isBreakPointResume: boolean
 }

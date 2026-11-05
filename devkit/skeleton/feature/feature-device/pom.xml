@@ -12,7 +12,7 @@
     <artifactId>feature-device</artifactId>
 
     <name>FH Skeleton Feature Device</name>
-    <description>设备状态管理 feature module — 消费 KernelEvent，维护设备表 + OSD 快照 + HMS 告警，暴露 REST API。ISV 可参考的 feature 开发模板。</description>
+    <description>设备状态管理 feature module — 消费 KernelEvent，维护设备表 + OSD 快照 + HMS 告警，暴露 REST API。集成商可参考的 feature 开发模板。</description>
 
     <dependencies>
         <!-- 自家 SPI（拿 event 类定义） -->

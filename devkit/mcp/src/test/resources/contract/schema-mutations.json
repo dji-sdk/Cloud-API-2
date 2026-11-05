@@ -1,0 +1,33 @@
+[
+  {
+    "case": "bad-type-value",
+    "expectedKeyword": "type",
+    "expectedLocation": "/type",
+    "schema": {
+      "type": "objectject"
+    }
+  },
+  {
+    "case": "properties-not-object",
+    "expectedKeyword": "type",
+    "expectedLocation": "/properties",
+    "schema": {
+      "type": "object",
+      "properties": []
+    }
+  },
+  {
+    "case": "required-references-missing-property",
+    "expectedKeyword": "required",
+    "expectedLocation": "/required",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "string"
+        }
+      },
+      "required": ["nope"]
+    }
+  }
+]

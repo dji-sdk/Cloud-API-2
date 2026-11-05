@@ -159,7 +159,7 @@ private:
     void DrtcOnStats(const char *msg, uint32_t len) override;
     void DrtcOnClientKickoutNotify(const DrtcClientKickoutNotify &notify) override;
     void DrtcOnNetworkQualityNotify(const DrtcNetworkQualityNotify &notify) override;
-    void DrtcOnClientBandwidthNotify(const DrtcClient &peer_client, uint32_t bw_kbps) override;
+    void DrtcOnClientBandwidthNotify(const std::vector<DrtcPeerBandwidthNotify> &peer_bws) override;
 
 private:
     int GenerateListenerId();
@@ -172,7 +172,7 @@ private:
     std::string config_path_;
     std::string provider_url_;
     std::shared_ptr<drc_sdk::Executor> executor_;
-    drtc::DrtcDeviceSdk *drtc_sdk_ = nullptr;
+    std::shared_ptr<drtc::DrtcDeviceSdk> drtc_sdk_;
 
     std::mutex init_mutex_;
     std::atomic<bool> is_inited_{false};

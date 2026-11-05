@@ -1,4 +1,4 @@
-# SOP 模板 — ISV 接入全流程骨架
+# SOP 模板 — 集成商接入全流程骨架
 
 > 本文件定义所有业务 Skill 共享的 **7 章节 SOP** 和 **3 档执行深度**。
 > 各 Skill 的 SKILL.md 通过 `参考 skills/_shared/sop-template.md` 引用本文件，无需重复描述流程。

@@ -8,7 +8,7 @@
 ### 1. 准备镜像推送私有仓库
 
 ```bash
-docker build --platform linux/amd64 -f skeleton/docker/Dockerfile -t <REGISTRY>/paas-sdk-devkit/skeleton:<TAG> .
+docker build --build-arg SDK_ARCH=amd64 -f skeleton/docker/Dockerfile -t <REGISTRY>/paas-sdk-devkit/skeleton:<TAG> .
 docker build -f skeleton/web/Dockerfile -t <REGISTRY>/paas-sdk-devkit/skeleton-ui:<TAG> skeleton/web/
 docker push <REGISTRY>/paas-sdk-devkit/skeleton:<TAG>
 docker push <REGISTRY>/paas-sdk-devkit/skeleton-ui:<TAG>

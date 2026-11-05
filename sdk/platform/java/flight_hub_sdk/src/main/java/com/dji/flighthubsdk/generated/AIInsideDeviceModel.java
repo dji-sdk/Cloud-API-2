@@ -67,12 +67,44 @@ public class AIInsideDeviceModel {
     return flighthubsdkmoduleJNI.AIInsideDeviceModel_domain_get(swigCPtr, this);
   }
 
+  public void setType(String value) {
+    flighthubsdkmoduleJNI.AIInsideDeviceModel_type_set(swigCPtr, this, value);
+  }
+
+  public String getType() {
+    return flighthubsdkmoduleJNI.AIInsideDeviceModel_type_get(swigCPtr, this);
+  }
+
+  public void setSub_type(String value) {
+    flighthubsdkmoduleJNI.AIInsideDeviceModel_sub_type_set(swigCPtr, this, value);
+  }
+
+  public String getSub_type() {
+    return flighthubsdkmoduleJNI.AIInsideDeviceModel_sub_type_get(swigCPtr, this);
+  }
+
   public void setName(String value) {
     flighthubsdkmoduleJNI.AIInsideDeviceModel_name_set(swigCPtr, this, value);
   }
 
   public String getName() {
     return flighthubsdkmoduleJNI.AIInsideDeviceModel_name_get(swigCPtr, this);
+  }
+
+  public void setDevice_model_class(String value) {
+    flighthubsdkmoduleJNI.AIInsideDeviceModel_device_model_class_set(swigCPtr, this, value);
+  }
+
+  public String getDevice_model_class() {
+    return flighthubsdkmoduleJNI.AIInsideDeviceModel_device_model_class_get(swigCPtr, this);
+  }
+
+  public void setDevelop_code(String value) {
+    flighthubsdkmoduleJNI.AIInsideDeviceModel_develop_code_set(swigCPtr, this, value);
+  }
+
+  public String getDevelop_code() {
+    return flighthubsdkmoduleJNI.AIInsideDeviceModel_develop_code_get(swigCPtr, this);
   }
 
   public AIInsideDeviceModel() {

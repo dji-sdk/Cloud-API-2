@@ -45,6 +45,7 @@ public:
     virtual MeErrorCode SetUp() override;
     virtual MeErrorCode CleanUp() override;
     virtual MeErrorCode ConnectParamsConfig(const std::string& host, const std::string& username, const std::string& password, const std::string& client_id, const std::string& sn) override;
+    void SetGatewaySn(const std::string& gateway_sn) override;
     virtual uint32_t AddConnectStateCallback(const MqttConnectStateCallback& callback) override;
     virtual void RemoveConnectStateCallback(uint32_t listen_id) override;
 
@@ -62,6 +63,7 @@ public:
     void SetObserveCallbackManager(const std::shared_ptr<ObserveCallbackManager>& observe_callback_manager);
 public:
     std::string product_sn_;
+    std::string gateway_sn_;  // 网关(机场)SN, 用于 topic 中 {gateway_sn} 占位符替换
     std::string user_name_;
     std::string password_;
     std::string client_id_;

@@ -27,7 +27,7 @@ import java.util.Set;
  * <ul>
  *   <li>{@code fh-skeleton-bridge-mqtt} — KernelEvent → MQTT</li>
  *   <li>{@code fh-skeleton-bridge-kafka} — KernelEvent → Kafka</li>
- *   <li>ISV 自家实现 — 对接公司事件平台</li>
+ *   <li>集成商 自家实现 — 对接公司事件平台</li>
  * </ul>
  *
  * @author DJI DevKit Team

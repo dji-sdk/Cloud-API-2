@@ -9,6 +9,7 @@ import com.dji.flighthubsdk.generated.FlightHubSdkErrorCode;
 import com.dji.flighthubsdk.bean.FlightHubError;
 import com.dji.flighthubsdk.generated.IDeviceStateModule;
 import com.dji.flighthubsdk.generated.IDeviceHMSModule;
+import com.dji.flighthubsdk.generated.IAirsenseWarningModule;
 import com.dji.flighthubsdk.generated.IDeviceDebugModule;
 import com.dji.flighthubsdk.generated.IAIBoxModule;
 import com.dji.flighthubsdk.generated.ILiveDeviceModule;
@@ -32,10 +33,12 @@ public class Drone {
     private String sn; // 设备序列号
     private DeviceStateModule deviceStateModule;
     private DeviceHMSModule deviceHmsModule;
+    private AirsenseWarningModule airsenseWarningModule;
     private DeviceDebugModule deviceDebugModule;
     private AIBoxModule aiBoxModule;
     private LiveDeviceModule liveDeviceModule;
     private TakeoffModule takeoffModuleRef = null;
+    private GroundFlightModule groundFlightModuleRef = null;
     private FlightControlModule flightControlModuleRef = null;
     private ControlAuthModule controlAuthModuleRef = null;
     private DrcModule drcModuleRef = null;
@@ -44,6 +47,8 @@ public class Drone {
     private OnboardAiModule onboardAiModuleRef = null;
     private DroneOsdModule droneOsdModuleRef = null;
     private PsdkControlModule psdkControlModuleRef = null;
+    private EsdkControlModule esdkControlModuleRef = null;
+    private FlightTaskMediaUploadModule flightTaskMediaUploadModuleRef = null;
     private CameraControlModule cameraControlModuleRef = null;
 
     // 回调引用容器,防止回调被GC
@@ -102,7 +107,7 @@ public class Drone {
 
 
     /**
-     * 获取直播流模块
+     * 获取直播流模块（按 payload_index + video_id 区分不同摄像头/视频流）
      * @param params 直播信息参数
      * @return 直播流模块实例
      */
@@ -114,13 +119,14 @@ public class Drone {
         com.dji.flighthubsdk.generated.LiveInfo nativeInfo = null;
         try {
             nativeInfo = FlightHubSdkConvert.toNativeLiveInfo(params);
-            if (liveModuleRef.containsKey(params.getPayloadIndex())) {
-                return liveModuleRef.get(params.getPayloadIndex());
+            String cacheKey = LiveCacheKey.of(params);
+            if (liveModuleRef.containsKey(cacheKey)) {
+                return liveModuleRef.get(cacheKey);
             }
             LiveModule liveModule = new LiveModule(this.drone.getLiveStream(nativeInfo), this.sn);
             if (liveModule != null) {
-                Logger.info("Drone", "[" + sn + "] GetLiveStream: live module created, payload_index: " + params.getPayloadIndex());
-                liveModuleRef.put(params.getPayloadIndex(), liveModule);
+                Logger.info("Drone", "[" + sn + "] GetLiveStream: live module created, key: " + cacheKey);
+                liveModuleRef.put(cacheKey, liveModule);
                 return liveModule;
             }
             Logger.error("Drone", "[" + sn + "] GetLiveStream error: live module not found");
@@ -133,7 +139,7 @@ public class Drone {
     }
 
     /**
-     * 获取直播录制模块
+     * 获取直播录制模块（按 payload_index + video_id 区分不同摄像头/视频流）
      * @param params 直播信息参数
      * @return 直播录制模块实例
      */
@@ -145,17 +151,18 @@ public class Drone {
         com.dji.flighthubsdk.generated.LiveInfo nativeInfo = null;
         try {
             nativeInfo = FlightHubSdkConvert.toNativeLiveInfo(params);
-            if (liveRecordModuleRef.containsKey(params.getPayloadIndex())) {
-                return liveRecordModuleRef.get(params.getPayloadIndex());
+            String cacheKey = LiveCacheKey.of(params);
+            if (liveRecordModuleRef.containsKey(cacheKey)) {
+                return liveRecordModuleRef.get(cacheKey);
             }
             com.dji.flighthubsdk.generated.ILiveRecordModule raw = this.drone.getLiveRecord(nativeInfo);
             if (raw == null) {
-                Logger.warn("Drone", "getLiveRecord: module is null, payload_index: " + params.getPayloadIndex());
+                Logger.warn("Drone", "getLiveRecord: module is null, key: " + cacheKey);
                 return null;
             }
             LiveRecordModule liveRecordModule = new LiveRecordModule(raw, this.sn);
-            liveRecordModuleRef.put(params.getPayloadIndex(), liveRecordModule);
-            Logger.info("Drone", "[" + sn + "] getLiveRecord: live record module created, payload_index: " + params.getPayloadIndex());
+            liveRecordModuleRef.put(cacheKey, liveRecordModule);
+            Logger.info("Drone", "[" + sn + "] getLiveRecord: live record module created, key: " + cacheKey);
             return liveRecordModule;
         } finally {
             if (nativeInfo != null) {
@@ -190,6 +197,26 @@ public class Drone {
             return takeoffModuleRef;
         } catch (Exception e) {
             Logger.error("Drone", "[" + sn + "] GetTakeoffModule error: " + e.getMessage(), e);
+        }
+        return null;
+    }
+
+    /**
+     * 获取舱外起降模块（舱外起飞 / 降落回机场）
+     *
+     * <p><b>注意：</b>[舱外起飞降落机场] 该功能目前机场3(EA230)高版本固件支持, 如需此功能请升级固件版本.
+     * 特别注意: 官方固件未承诺支持前, 本模块接口不作为正式接口使用。
+     */
+    public synchronized GroundFlightModule getGroundFlightModule() {
+        if (groundFlightModuleRef != null) {
+            return groundFlightModuleRef;
+        }
+        try {
+            groundFlightModuleRef = new GroundFlightModule(this.drone.getGroundFlightModule());
+            Logger.info("Drone", "[" + sn + "] GetGroundFlightModule: GroundFlightModule created");
+            return groundFlightModuleRef;
+        } catch (Exception e) {
+            Logger.error("Drone", "[" + sn + "] GetGroundFlightModule error: " + e.getMessage(), e);
         }
         return null;
     }
@@ -316,6 +343,26 @@ public class Drone {
             psdkControlModuleRef = new PsdkControlModule(this.drone.getPsdkControlModule(), sn);
         }
         return psdkControlModuleRef;
+    }
+
+    /**
+     * 获取 ESDK 控制模块（ESDK 自定义数据透传）
+     */
+    public synchronized EsdkControlModule getEsdkControlModule() {
+        if (esdkControlModuleRef == null) {
+            esdkControlModuleRef = new EsdkControlModule(this.drone.getEsdkControlModule(), sn);
+        }
+        return esdkControlModuleRef;
+    }
+
+    /**
+     * 获取飞行任务媒体上传模块（媒体优先上传/最高优先级上传监听）
+     */
+    public synchronized FlightTaskMediaUploadModule getFlightTaskMediaUploadModule() {
+        if (flightTaskMediaUploadModuleRef == null) {
+            flightTaskMediaUploadModuleRef = new FlightTaskMediaUploadModule(this.drone.getFlightTaskMediaUploadModule(), sn);
+        }
+        return flightTaskMediaUploadModuleRef;
     }
 
     /**
@@ -485,6 +532,19 @@ public class Drone {
             }
         }
         return deviceHmsModule;
+    }
+
+    /**
+     * 获取 AirSense 民航飞机告警实时推送模块
+     */
+    public synchronized AirsenseWarningModule getAirsenseWarningModule() {
+        if (airsenseWarningModule == null) {
+            IAirsenseWarningModule module = drone.getAirsenseWarningModule();
+            if (module != null) {
+                airsenseWarningModule = new AirsenseWarningModule(module, "Drone[" + sn + "]");
+            }
+        }
+        return airsenseWarningModule;
     }
 
     /**

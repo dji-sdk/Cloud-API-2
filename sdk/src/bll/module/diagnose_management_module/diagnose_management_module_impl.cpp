@@ -12,8 +12,7 @@
 namespace flight_hub_sdk {
 
 
-DiagnosisManagementModuleImpl::DiagnosisManagementModuleImpl()
-    {
+DiagnosisManagementModuleImpl::DiagnosisManagementModuleImpl(int session_id) : session_id_(session_id){
     LOG_INFO("[DiagnosisManagementModuleImpl] constructor");
 }
 
@@ -35,7 +34,7 @@ void DiagnosisManagementModuleImpl::createSelfDiagnosis(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DIAGNOSE_CREATE_SELF_DIAGNOSIS, param_err, "[DiagnosisManagementModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_DIAGNOSE_CREATE_SELF_DIAGNOSIS, param_err, session_id_, "[DiagnosisManagementModuleImpl]");
         callback(param_err);
         return;
     }
@@ -71,17 +70,18 @@ void DiagnosisManagementModuleImpl::createSelfDiagnosis(
     copy_topo_nodes(params.device_topo.docks, request.device_topo.docks);
 
     // Send HTTP request;
-    post_self_diagnosis(request, [weak_ptr, callback](FlightHubError err) {
+    post_self_diagnosis(request, [weak_ptr, callback, this](FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
             // 埋点: 下发设备自检定损指令; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DIAGNOSE_CREATE_SELF_DIAGNOSIS, err, "[DiagnosisManagementModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_DIAGNOSE_CREATE_SELF_DIAGNOSIS, err, session_id_, "[DiagnosisManagementModuleImpl]");
             callback(err);
         });
-    });
+    }, session_id_);
 }
 
 // 定损操作(取消/删除);
@@ -100,7 +100,7 @@ void DiagnosisManagementModuleImpl::operateSelfDiagnosis(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DIAGNOSE_OPERATE_SELF_DIAGNOSIS, param_err, "[DiagnosisManagementModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_DIAGNOSE_OPERATE_SELF_DIAGNOSIS, param_err, session_id_, "[DiagnosisManagementModuleImpl]");
         callback(param_err);
         return;
     }
@@ -111,17 +111,18 @@ void DiagnosisManagementModuleImpl::operateSelfDiagnosis(
     request.report_uuid = params.report_uuid;
     request.report_cmd_method = params.report_cmd_method;
 
-    post_self_diagnosis_operation(request, [weak_ptr, callback](FlightHubError err) {
+    post_self_diagnosis_operation(request, [weak_ptr, callback, this](FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
             // 埋点: 定损操作（取消/删除）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DIAGNOSE_OPERATE_SELF_DIAGNOSIS, err, "[DiagnosisManagementModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_DIAGNOSE_OPERATE_SELF_DIAGNOSIS, err, session_id_, "[DiagnosisManagementModuleImpl]");
             callback(err);
         });
-    });
+    }, session_id_);
 }
 
 
@@ -180,6 +181,16 @@ static GetSelfDiagnosisReportResults convertReportResponse(const GetSelfDiagnosi
     results.origin = resp.origin;
     results.qr_code_content = resp.qr_code_content;
     results.qr_guide_text = resp.qr_guide_text;
+    results.cloud_submit_status = resp.cloud_submit_status;
+    results.qr_code_url = resp.qr_code_url;
+    results.qr_code_sign = resp.qr_code_sign;
+    results.qr_code_nonce = resp.qr_code_nonce;
+    results.device_callback_updated_at = resp.device_callback_updated_at.value_or("");
+    results.created_at = resp.created_at;
+    results.updated_at = resp.updated_at;
+    results.organization_uuid = resp.organization_uuid;
+    results.project_uuid = resp.project_uuid;
+    results.device_type = resp.device_type;
 
     // self_diagnostic_result;
     results.self_diagnostic_result.high = convertMaterialList(resp.self_diagnostic_result.high);
@@ -220,21 +231,22 @@ void DiagnosisManagementModuleImpl::getSelfDiagnosisReport(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DIAGNOSE_GET_SELF_DIAGNOSIS_REPORT, param_err, "[DiagnosisManagementModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_DIAGNOSE_GET_SELF_DIAGNOSIS_REPORT, param_err, session_id_, "[DiagnosisManagementModuleImpl]");
         callback({}, param_err);
         return;
     }
 
     WeakDummy(weak_ptr);
 
-    get_self_diagnosis_report(report_uuid, [weak_ptr, callback](const GetSelfDiagnosisReportResponse& response, FlightHubError err) {
+    get_self_diagnosis_report(report_uuid, [weak_ptr, callback, this](const GetSelfDiagnosisReportResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
             // 埋点: 查询单条定损报告详情; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DIAGNOSE_GET_SELF_DIAGNOSIS_REPORT, err, "[DiagnosisManagementModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_DIAGNOSE_GET_SELF_DIAGNOSIS_REPORT, err, session_id_, "[DiagnosisManagementModuleImpl]");
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_ERROR("getSelfDiagnosisReport(): err: %d", (int)err.error_code);
                 callback({}, err);
@@ -243,7 +255,7 @@ void DiagnosisManagementModuleImpl::getSelfDiagnosisReport(
 
             callback(convertReportResponse(response), err);
         });
-    });
+    }, session_id_);
 }
 
 // 设备定损: 查询定损报告列表;
@@ -257,14 +269,15 @@ void DiagnosisManagementModuleImpl::getSelfDiagnosisReportList(
 
     WeakDummy(weak_ptr);
 
-    get_self_diagnosis_report_lists(params, [weak_ptr, callback](const GetSelfDiagnosisReportListResponse& response, FlightHubError err) {
+    get_self_diagnosis_report_lists(params, [weak_ptr, callback, this](const GetSelfDiagnosisReportListResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
             // 埋点: 查询定损报告列表; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DIAGNOSE_GET_SELF_DIAGNOSIS_REPORT_LIST, err, "[DiagnosisManagementModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_DIAGNOSE_GET_SELF_DIAGNOSIS_REPORT_LIST, err, session_id_, "[DiagnosisManagementModuleImpl]");
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_ERROR("getSelfDiagnosisReportList(): err: %d", (int)err.error_code);
                 callback({}, err);
@@ -283,7 +296,7 @@ void DiagnosisManagementModuleImpl::getSelfDiagnosisReportList(
 
             callback(results, err);
         });
-    });
+    }, session_id_);
 }
 
 

@@ -6,9 +6,9 @@
 
 namespace flight_hub_sdk {
 
-RemoteControllerImpl::RemoteControllerImpl(const std::string& sn)
-    : sn_(sn) {
-    LOG_INFO("RemoteControllerImpl: sn=%s", sn_.c_str());
+RemoteControllerImpl::RemoteControllerImpl(const std::string& sn, int session_id)
+    : sn_(sn), session_id_(session_id) {
+    LOG_INFO("RemoteControllerImpl: sn=%s, session_id=%d", sn_.c_str(), session_id_);
 }
 
 } // namespace flight_hub_sdk

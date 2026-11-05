@@ -83,6 +83,14 @@ withDefaults(defineProps<SDKLoadingMaskProps>(), {
 .sdk-error-panel {
   padding: 40px;
   color: var(--app-danger, #ff4d4f);
+  /* 错误文案是「缺什么 + 当前配置 + 怎么补」多行结构，必须保留换行，
+     否则会被折叠成一大段难以阅读的文字；长 URL 由 break-all 兜底。 */
+  white-space: pre-line;
+  line-height: 1.7;
   word-break: break-all;
+}
+
+.sdk-error-panel p {
+  margin: 0;
 }
 </style>

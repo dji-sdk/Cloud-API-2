@@ -43,6 +43,15 @@ public:
     /// @endinternal
     virtual void getFlightTaskTrack(const GetFlightTaskTrackParams& params, std::function<void(FlightHubError err, const GetFlightTaskTrackResults& results)> callback) = 0;
 
+    /// @brief 查询航线任务执行过程中出现过的飞行安全风险
+    /// @param params 查询参数（task_uuid 必填）
+    /// @param callback 结果回调，成功时返回风险列表；任务未完成飞行时列表为空
+    ///
+    /// @internal
+    /// 链路: HTTP | GET /atc/api/v1/flight-tasks/{task_uuid}/flight-risks
+    /// @endinternal
+    virtual void getFlightRisks(const GetFlightRisksParams& params, std::function<void(FlightHubError err, const GetFlightRisksResults& results)> callback) = 0;
+
     /// @brief 创建航线任务
     /// @param req 创建任务请求（名称、SN、航线、起止时间等）
     /// @param callback 结果回调，成功时返回任务 UUID

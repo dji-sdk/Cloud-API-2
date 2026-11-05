@@ -25,7 +25,10 @@ public:
     /// @param listen_id 监听 ID
     virtual void cancelListenAIDataInfo(int listen_id) = 0;
 
-    /// @brief 设置 AI 识别开关
+    /// @brief 设置 AI 识别开关（仅 AI 识别 1.0 机型有效）
+    /// @deprecated AI 识别 2.0 机型（EA340/M5TD、PM355 等）已废弃本接口，识别开关统一由
+    ///             @ref DrcAIModelsConfig 承载（开=下发广角+官方模型 index:0；关=下发空配置）。
+    ///             在 2.0 机型上调用将返回 ERROR_INVALID_STATE，请改用 DrcAIModelsConfig。
     ///
     /// @internal
     /// 链路: DRC | method: drc_ai_identify_set
@@ -130,8 +133,9 @@ public:
     /// @endinternal
     virtual void DrcAIAlarmStop(const std::function<void(FlightHubError)>& callback) = 0;
 
-    /// @brief 配置 AI 模型
-    /// @param params AI 模型配置参数
+    /// @brief 配置 AI 模型（EA340 起 AI 识别 2.0 机型识别开关的正式入口）
+    /// @param params AI 模型配置参数；每路码流绑定一组模型。
+    ///               开启识别=下发对应码流+模型（如广角+官方模型 index:0）；关闭识别=下发空配置。
     /// @param callback 结果回调
     ///
     /// @internal

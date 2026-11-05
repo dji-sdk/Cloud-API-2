@@ -38,7 +38,7 @@ dji_flight_hub_sdk/platform/java/
 
 - **操作系统**: Linux x86_64（官方支持平台，见仓根 [`README.md`](../../README.md)）
 - **Java**: JDK 1.8 或以上版本
-- **CMake**: 3.16 或以上版本
+- **CMake**: 3.20 或以上版本
 - **SWIG**: 4.0 或以上版本
 - **C++编译器**: 支持C++17的编译器
 - **Gradle**: 8.5 或以上版本（使用Gradle Wrapper）
@@ -278,7 +278,7 @@ IDock getDockInstance(String sn)
 - **SDK版本**: 3.1.0
 - **Java版本**: 1.8+
 - **SWIG版本**: 4.3.1
-- **CMake版本**: 3.16+
+- **CMake版本**: 3.20+
 - **Gradle版本**: 8.5
 
 ## 许可证

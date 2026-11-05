@@ -116,6 +116,30 @@ public class GetMediaFileDetailByIdResult {
     return (cPtr == 0) ? null : new MediaFileDetailExt(cPtr, false);
   }
 
+  public void setPano_stitch_state(int value) {
+    flighthubsdkmoduleJNI.GetMediaFileDetailByIdResult_pano_stitch_state_set(swigCPtr, this, value);
+  }
+
+  public int getPano_stitch_state() {
+    return flighthubsdkmoduleJNI.GetMediaFileDetailByIdResult_pano_stitch_state_get(swigCPtr, this);
+  }
+
+  public void setPano_stitch_progress(int value) {
+    flighthubsdkmoduleJNI.GetMediaFileDetailByIdResult_pano_stitch_progress_set(swigCPtr, this, value);
+  }
+
+  public int getPano_stitch_progress() {
+    return flighthubsdkmoduleJNI.GetMediaFileDetailByIdResult_pano_stitch_progress_get(swigCPtr, this);
+  }
+
+  public void setPano_error_code(int value) {
+    flighthubsdkmoduleJNI.GetMediaFileDetailByIdResult_pano_error_code_set(swigCPtr, this, value);
+  }
+
+  public int getPano_error_code() {
+    return flighthubsdkmoduleJNI.GetMediaFileDetailByIdResult_pano_error_code_get(swigCPtr, this);
+  }
+
   public GetMediaFileDetailByIdResult() {
     this(flighthubsdkmoduleJNI.new_GetMediaFileDetailByIdResult(), true);
   }

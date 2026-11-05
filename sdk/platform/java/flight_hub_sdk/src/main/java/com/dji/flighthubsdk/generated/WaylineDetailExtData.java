@@ -92,6 +92,32 @@ public class WaylineDetailExtData {
     return (cPtr == 0) ? null : new StringVector(cPtr, false);
   }
 
+  public void setElevation_file_object_keys(StringVector value) {
+    flighthubsdkmoduleJNI.WaylineDetailExtData_elevation_file_object_keys_set(swigCPtr, this, StringVector.getCPtr(value), value);
+  }
+
+  public StringVector getElevation_file_object_keys() {
+    long cPtr = flighthubsdkmoduleJNI.WaylineDetailExtData_elevation_file_object_keys_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new StringVector(cPtr, false);
+  }
+
+  public void setContent_length(long value) {
+    flighthubsdkmoduleJNI.WaylineDetailExtData_content_length_set(swigCPtr, this, value);
+  }
+
+  public long getContent_length() {
+    return flighthubsdkmoduleJNI.WaylineDetailExtData_content_length_get(swigCPtr, this);
+  }
+
+  public void setModels(ConcatWaylineExtDataModelVector value) {
+    flighthubsdkmoduleJNI.WaylineDetailExtData_models_set(swigCPtr, this, ConcatWaylineExtDataModelVector.getCPtr(value), value);
+  }
+
+  public ConcatWaylineExtDataModelVector getModels() {
+    long cPtr = flighthubsdkmoduleJNI.WaylineDetailExtData_models_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new ConcatWaylineExtDataModelVector(cPtr, false);
+  }
+
   public WaylineDetailExtData() {
     this(flighthubsdkmoduleJNI.new_WaylineDetailExtData(), true);
   }

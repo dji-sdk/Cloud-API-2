@@ -23,8 +23,9 @@ public:
         const std::function<void(const GenerateTryFlightWaylineResponse& response, FlightHubError err)>& callback) = 0;
 
     /// @brief 创建试飞任务
+    /// @note task_type、rth_altitude、rth_mode、resumable_status、landing_dock_sn 由后端固定，SDK 不上送；试飞任务仅支持单航线。
     /// @param project_id 项目 ID
-    /// @param params 创建参数
+    /// @param params 创建参数；wayline_duration 应大于 0
     virtual void createTestFlightTask(
         const std::string& project_id,
         const CreateTestFlightTaskParams& params,

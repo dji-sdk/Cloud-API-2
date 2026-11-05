@@ -1,5 +1,5 @@
 ---
-description: 生成DJI 上云API 2 设备小窗（FH2.loadDeviceWindow）的最小可运行 HTML
+description: 生成DJI Cloud API 2 设备小窗（FH2.loadDeviceWindow）的最小可运行 HTML
 argument-hint: [frontHost] [sn1,sn2,...]
 ---
 

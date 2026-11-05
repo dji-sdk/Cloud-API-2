@@ -1,3 +1,6 @@
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 set(_lws_root "${CLOUD_API2_THIRD_PARTY}/websockets")
 if(CLOUD_API2_OS STREQUAL "macosx")
     set(_lws_lib "${_lws_root}/lib/${CLOUD_API2_PLAT}/libwebsockets.12.dylib")

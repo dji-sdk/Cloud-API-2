@@ -22,12 +22,28 @@ public final class GetMediaFileDetailByIdResult {
     private long size;
     /** 创建时间（ISO 字符串） */
     private String createAt;
+    /** 扩展信息（完整字段） */
+    private MediaFileDetailExt ext;
+    /** 全景拼接状态：0=未处理 1=等待资源 2=处理中 3=成功 4=失败 5=取消 6=余额不足 */
+    private int panoStitchState;
+    /** 全景拼接进度 [0, 100] */
+    private int panoStitchProgress;
+    /** 全景拼接错误码（成功时为 0） */
+    private int panoErrorCode;
+
+    /** @deprecated 请使用 {@link #getExt()} 的 width */
+    @Deprecated
     private int extWidth;
+    /** @deprecated 请使用 {@link #getExt()} 的 height */
+    @Deprecated
     private int extHeight;
+    /** @deprecated 请使用 {@link #getExt()} 的 photoPosition */
+    @Deprecated
     private MediaFileGeoPosition photoPosition;
 
     public GetMediaFileDetailByIdResult() {
         this.photoPosition = new MediaFileGeoPosition();
+        this.ext = new MediaFileDetailExt();
     }
 
     /**
@@ -50,7 +66,34 @@ public final class GetMediaFileDetailByIdResult {
         this.size = size;
         this.createAt = createAt != null ? createAt : "";
         this.photoPosition = new MediaFileGeoPosition();
+        this.ext = new MediaFileDetailExt();
     }
+
+    /** 扩展信息（完整字段） */
+    public MediaFileDetailExt getExt() { return ext; }
+
+    /** 扩展信息（完整字段） */
+    public void setExt(MediaFileDetailExt ext) {
+        this.ext = ext != null ? ext : new MediaFileDetailExt();
+    }
+
+    /** 全景拼接状态：0=未处理 1=等待资源 2=处理中 3=成功 4=失败 5=取消 6=余额不足 */
+    public int getPanoStitchState() { return panoStitchState; }
+
+    /** 全景拼接状态：0=未处理 1=等待资源 2=处理中 3=成功 4=失败 5=取消 6=余额不足 */
+    public void setPanoStitchState(int panoStitchState) { this.panoStitchState = panoStitchState; }
+
+    /** 全景拼接进度 [0, 100] */
+    public int getPanoStitchProgress() { return panoStitchProgress; }
+
+    /** 全景拼接进度 [0, 100] */
+    public void setPanoStitchProgress(int panoStitchProgress) { this.panoStitchProgress = panoStitchProgress; }
+
+    /** 全景拼接错误码（成功时为 0） */
+    public int getPanoErrorCode() { return panoErrorCode; }
+
+    /** 全景拼接错误码（成功时为 0） */
+    public void setPanoErrorCode(int panoErrorCode) { this.panoErrorCode = panoErrorCode; }
 
     /** 原始文件下载 URL */
     public String getUrl() { return url; }
@@ -108,26 +151,38 @@ public final class GetMediaFileDetailByIdResult {
         this.createAt = createAt;
     }
 
-    /** 图片宽度（像素） */
+    /** 图片宽度（像素）
+     * @deprecated 请使用 {@link #getExt()}.getWidth() */
+    @Deprecated
     public int getExtWidth() { return extWidth; }
 
-    /** 图片宽度（像素） */
+    /** 图片宽度（像素）
+     * @deprecated 请使用 {@link #getExt()}.setWidth(int) */
+    @Deprecated
     public void setExtWidth(int extWidth) {
         this.extWidth = extWidth;
     }
 
-    /** 图片高度（像素） */
+    /** 图片高度（像素）
+     * @deprecated 请使用 {@link #getExt()}.getHeight() */
+    @Deprecated
     public int getExtHeight() { return extHeight; }
 
-    /** 图片高度（像素） */
+    /** 图片高度（像素）
+     * @deprecated 请使用 {@link #getExt()}.setHeight(int) */
+    @Deprecated
     public void setExtHeight(int extHeight) {
         this.extHeight = extHeight;
     }
 
-    /** 照片 GPS 位置 */
+    /** 照片 GPS 位置
+     * @deprecated 请使用 {@link #getExt()}.getPhotoPosition() */
+    @Deprecated
     public MediaFileGeoPosition getPhotoPosition() { return photoPosition; }
 
-    /** 照片 GPS 位置 */
+    /** 照片 GPS 位置
+     * @deprecated 请使用 {@link #getExt()}.setPhotoPosition(MediaFileGeoPosition) */
+    @Deprecated
     public void setPhotoPosition(MediaFileGeoPosition photoPosition) {
         this.photoPosition = photoPosition != null ? photoPosition : new MediaFileGeoPosition();
     }

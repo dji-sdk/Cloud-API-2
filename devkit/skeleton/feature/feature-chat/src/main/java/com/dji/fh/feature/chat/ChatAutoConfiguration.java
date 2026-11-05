@@ -58,7 +58,7 @@ import org.springframework.lang.Nullable;
 /**
  * Chat Bot feature 的 AutoConfiguration。
  *
- * <p>条件：{@code fh.chat.enabled=true}（默认关闭，ISV 主动开启）。
+ * <p>条件：{@code fh.chat.enabled=true}（默认关闭，集成商 主动开启）。
  *
  * <p>Tool 注册策略：通过 MCP 透传模式，从 MCP Server 动态获取 Tool schema，
  * 按 {@link #TOOL_MAPPINGS} 过滤后生成 {@link McpProxyChatTool} 实例，
@@ -192,7 +192,7 @@ public class ChatAutoConfiguration {
      * 为每个 Tool 创建 {@link McpProxyChatTool}，包装安全等级后注册。
      *
      * @param mcpClient  MCP Client
-     * @param extraTools ISV 注入的额外 ToolCallback（可选）
+     * @param extraTools 集成商 注入的额外 ToolCallback（可选）
      * @return ChatToolRegistry 实例
      */
     @Bean
@@ -240,7 +240,7 @@ public class ChatAutoConfiguration {
             LOG.info("请确保 MCP Server 已启动且 fh.chat.mcp.url 配置正确");
         }
 
-        // ISV 注入的额外 Tool
+        // 集成商 注入的额外 Tool
         if (extraTools != null) {
             tools.addAll(extraTools);
         }
@@ -365,7 +365,7 @@ public class ChatAutoConfiguration {
      * 注册默认内容审核器（关键词正则匹配）。
      *
      * <p>条件：{@code fh.chat.guard.enabled=true} 且 {@code fh.chat.guard.moderation.enabled=true}。
-     * ISV 可通过注册自己的 {@code ContentModerator} Bean 覆盖。
+     * 集成商 可通过注册自己的 {@code ContentModerator} Bean 覆盖。
      *
      * @param properties Chat 配置属性
      * @return ContentModerator 实例

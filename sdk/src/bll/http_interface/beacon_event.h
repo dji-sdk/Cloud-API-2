@@ -18,6 +18,10 @@ inline constexpr std::string_view kBeaconReportType_SDK_API = "sdk_api";
 
 inline constexpr std::string_view kBeaconReportEvent_TAKE_OFF = "take_off";
 
+inline constexpr std::string_view kBeaconReportEvent_GROUND_TAKE_OFF = "ground_take_off";
+
+inline constexpr std::string_view kBeaconReportEvent_GROUND_LANDING = "ground_landing";
+
 inline constexpr std::string_view kBeaconReportEvent_RETURN_HOME = "return_home";
 
 inline constexpr std::string_view kBeaconReportEvent_RETURN_HOME_CANCEL = "return_home_cancel";
@@ -51,6 +55,8 @@ inline constexpr std::string_view kBeaconReportEvent_FLIGHT_TASK_GET_LIST = "fli
 inline constexpr std::string_view kBeaconReportEvent_COMMAND_TASK_GET_LIST = "command_task_get_list";
 
 inline constexpr std::string_view kBeaconReportEvent_FLIGHT_TASK_GET_TRACK = "flight_task_get_track";
+
+inline constexpr std::string_view kBeaconReportEvent_FLIGHT_TASK_GET_FLIGHT_RISKS = "flight_task_get_flight_risks";
 
 inline constexpr std::string_view kBeaconReportEvent_FLIGHT_TASK_GET_DETAIL = "flight_task_get_detail";
 
@@ -278,16 +284,6 @@ inline constexpr std::string_view kBeaconReportEvent_TEST_FLIGHT_GENERATE_TRY_FL
 /// 创建试飞任务
 inline constexpr std::string_view kBeaconReportEvent_TEST_FLIGHT_CREATE_TASK = "test_flight_create_task";
 
-// ── 部署/进离场 (IDeployModule) ──
-/// 下载星历数据
-inline constexpr std::string_view kBeaconReportEvent_DEPLOY_DOWNLOAD_EPHEMERIS = "deploy_download_ephemeris";
-/// 执行进离场航线侦察任务（开始/暂停）
-inline constexpr std::string_view kBeaconReportEvent_DEPLOY_EXECUTE_IN_OUT_WAYLINE_DETECT = "deploy_execute_in_out_wayline_detect";
-/// 设置进离场航线飞行参数
-inline constexpr std::string_view kBeaconReportEvent_DEPLOY_SET_IN_OUT_WAYLINE_FLIGHT = "deploy_set_in_out_wayline_flight";
-/// 获取进离场航线飞行设置
-inline constexpr std::string_view kBeaconReportEvent_DEPLOY_GET_IN_OUT_WAYLINE_FLIGHT_SETTING = "deploy_get_in_out_wayline_flight_setting";
-
 // ── RTK 标定 (IRtkCalibrationModule) ──
 /// RTK 标定（网络模式）
 inline constexpr std::string_view kBeaconReportEvent_RTK_CALIB_BY_NETWORK = "rtk_calib_by_network";
@@ -355,6 +351,18 @@ inline constexpr std::string_view kBeaconReportEvent_PSDK_CTRL_DRC_SPEAKER_TTS_S
 inline constexpr std::string_view kBeaconReportEvent_PSDK_CTRL_DRC_WIDGET_VALUE_SET = "psdk_ctrl_drc_widget_value_set";
 /// 设置 Widget 输入框文本
 inline constexpr std::string_view kBeaconReportEvent_PSDK_CTRL_DRC_WIDGET_INPUT_BOX_TEXT_SET = "psdk_ctrl_drc_widget_input_box_text_set";
+
+// ── ESDK 控制 (IEsdkControlModule) ──
+/// 下发 ESDK 自定义数据透传
+inline constexpr std::string_view kBeaconReportEvent_ESDK_CTRL_SEND_CUSTOM_DATA_TO_ESDK = "esdk_ctrl_send_custom_data_to_esdk";
+
+// ── 飞行任务媒体上传 (IFlightTaskMediaUploadModule) ──
+/// 下发飞行任务媒体优先上传
+inline constexpr std::string_view kBeaconReportEvent_FLIGHTTASK_MEDIA_PRIORITIZE_UPLOAD = "flighttask_media_prioritize_upload";
+
+// ── PSDK 控制 (IPsdkControlModule) ──
+/// 下发 PSDK 自定义数据透传
+inline constexpr std::string_view kBeaconReportEvent_PSDK_CTRL_SEND_CUSTOM_DATA_TO_PSDK = "psdk_ctrl_send_custom_data_to_psdk";
 
 // ── PSDK 资源 (IPsdkResourceModule) ──
 /// 获取 PSDK 喊话器资源列表
@@ -535,6 +543,8 @@ inline constexpr std::string_view kBeaconReportEvent_AI_ALERT_GET_ALGORITHM_SETT
 inline constexpr std::string_view kBeaconReportEvent_AI_ALERT_GET_FLIGHTS = "ai_alert_get_flights";
 /// 查询告警明细列表（按 flight_id 分组，含 thumbnail_url）
 inline constexpr std::string_view kBeaconReportEvent_AI_ALERT_GET_RECORDS = "ai_alert_get_records";
+/// 删除告警记录（alert_uuid 单条优先，否则按 flight_id 批量）
+inline constexpr std::string_view kBeaconReportEvent_AI_ALERT_DELETE_RECORD = "ai_alert_delete_record";
 
 // ── 机载算法管理 (IAIInsideManageModule) ──
 /// 获取组织下机载算法列表
@@ -711,6 +721,8 @@ inline constexpr std::string_view kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ALGORIT
 inline constexpr std::string_view kBeaconReportEvent_DRC_SET_DRONE_HOVER = "drc_set_drone_hover";
 /// 设置指哪打哪参数
 inline constexpr std::string_view kBeaconReportEvent_DRC_SET_FOLLOW_MOUSE_PARAMETER = "drc_set_follow_mouse_parameter";
+/// 设置飞行速度
+inline constexpr std::string_view kBeaconReportEvent_DRC_SET_FLYING_MAX_SPEED = "drc_set_flying_max_speed";
 /// 设置夜航灯状态
 inline constexpr std::string_view kBeaconReportEvent_DRC_SET_NIGHT_LIGHTS_STATE = "drc_set_night_lights_state";
 /// 设置隐身模式

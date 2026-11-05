@@ -10,11 +10,12 @@
 #include "BusinessManager.h"
 
 #include <cstdint>
+#include "session/session_bm.h"
 
 
 namespace flight_hub_sdk {
 
-MediaServiceModuleImpl::MediaServiceModuleImpl() {
+MediaServiceModuleImpl::MediaServiceModuleImpl(int session_id) : session_id_(session_id) {
     LOG_INFO("[MediaServiceModuleImpl] constructor");
 }
 
@@ -40,14 +41,15 @@ void MediaServiceModuleImpl::getMediaFilesList(
     // Send request;
     get_media_files_list(
         request_params,
-        [weak_ptr, callback](const GetMediaFilesListResponse& response, FlightHubError err) {
+        [weak_ptr, callback, this](const GetMediaFilesListResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 获取媒体文件列表; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_FILES_LIST, err, "[MediaServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_FILES_LIST, err, session_id_, "[MediaServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("getMediaFilesList(): err_code: %d", (int)err.error_code);
@@ -72,6 +74,7 @@ void MediaServiceModuleImpl::getMediaFilesList(
 
                     item_data.file_id = static_cast<long long>(item.file_id);
                     item_data.flight_id = item.flight_id;
+                    item_data.wayline_uuid = item.wayline_uuid;
                     item_data.wayline_action_uuid = item.wayline_action_uuid;
                     item_data.size = static_cast<long long>(item.size);
                     item_data.object_key = item.object_key;
@@ -81,6 +84,10 @@ void MediaServiceModuleImpl::getMediaFilesList(
                     item_data.file_path = item.file_path;
                     item_data.device_sn = item.device_sn;
                     item_data.payload_type = item.payload_type;
+                    item_data.preview_key = item.preview_key;
+                    item_data.pano_total_count     = item.pano_total_count;
+                    item_data.pano_stitch_state    = item.pano_stitch_state;
+                    item_data.pano_stitch_progress = item.pano_stitch_progress;
                     item_data.type = item.type;
 
                     // ext object;
@@ -114,7 +121,7 @@ void MediaServiceModuleImpl::getMediaFilesList(
                 callback(err, results);
             });
         }
-    );
+    , session_id_);
 }
 
 
@@ -137,7 +144,7 @@ void MediaServiceModuleImpl::getMediaFilesDownloadURL(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_FILES_DOWNLOAD_URL_BY_FILE_ID, param_err, "[MediaServiceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_FILES_DOWNLOAD_URL_BY_FILE_ID, param_err, session_id_, "[MediaServiceModuleImpl]");
         callback(param_err, {});
         return;
     }
@@ -148,14 +155,15 @@ void MediaServiceModuleImpl::getMediaFilesDownloadURL(
     // Send request;
     get_media_files_download_url(
         file_id,
-        [weak_ptr, callback](const GetMediaFilesDownloadUrlResponse& response, FlightHubError err) {
+        [weak_ptr, callback, this](const GetMediaFilesDownloadUrlResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 获取媒体文件下载地址（按 file_id）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_FILES_DOWNLOAD_URL_BY_FILE_ID, err, "[MediaServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_FILES_DOWNLOAD_URL_BY_FILE_ID, err, session_id_, "[MediaServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("getMediaFilesDownloadURL(): err_code: %d", (int)err.error_code);
@@ -172,7 +180,7 @@ void MediaServiceModuleImpl::getMediaFilesDownloadURL(
                 callback(err, results);
             });
         }
-    );
+    , session_id_);
 }
 
 
@@ -195,7 +203,7 @@ void  MediaServiceModuleImpl::getMediaFilesDownloadURL(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_FILES_DOWNLOAD_URL_BY_OBJECT_KEYS, param_err, "[MediaServiceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_FILES_DOWNLOAD_URL_BY_OBJECT_KEYS, param_err, session_id_, "[MediaServiceModuleImpl]");
         callback(param_err, {});
         return;
     }
@@ -206,14 +214,15 @@ void  MediaServiceModuleImpl::getMediaFilesDownloadURL(
     // Send request;
     get_media_files_download_url(
         object_keys,
-        [weak_ptr, callback](const GetMediaFilesDownloadUrlListResponse& response, FlightHubError err) {
+        [weak_ptr, callback, this](const GetMediaFilesDownloadUrlListResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 获取媒体文件下载地址（按 object_keys）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_FILES_DOWNLOAD_URL_BY_OBJECT_KEYS, err, "[MediaServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_FILES_DOWNLOAD_URL_BY_OBJECT_KEYS, err, session_id_, "[MediaServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("getMediaFilesDownloadURL(): err_code: %d", (int)err.error_code);
@@ -234,7 +243,7 @@ void  MediaServiceModuleImpl::getMediaFilesDownloadURL(
                 callback(err, results);
             });
         }
-    );
+    , session_id_);
 }
 
 
@@ -258,7 +267,7 @@ void MediaServiceModuleImpl::deleteMediaFiles(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_MEDIA_DELETE_FILES, param_err, "[MediaServiceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_MEDIA_DELETE_FILES, param_err, session_id_, "[MediaServiceModuleImpl]");
         callback(param_err);
         return;
     }
@@ -269,14 +278,15 @@ void MediaServiceModuleImpl::deleteMediaFiles(
     // Send request;
     delete_media_files(
         file_ids,  // 文件 id 列表;
-        [weak_ptr, callback](FlightHubError err) {
+        [weak_ptr, callback, this](FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 批量删除媒体文件; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_MEDIA_DELETE_FILES, err, "[MediaServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_MEDIA_DELETE_FILES, err, session_id_, "[MediaServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("deleteMediaFiles(): err_code: %d", (int)err.error_code);
@@ -286,7 +296,7 @@ void MediaServiceModuleImpl::deleteMediaFiles(
                 callback(err);
             });
         }
-    );
+    , session_id_);
 }
 
 
@@ -294,6 +304,7 @@ void MediaServiceModuleImpl::deleteMediaFiles(
 // "topic_media_file_post_process";
 // 设备媒体后处理完成通知;
 int MediaServiceModuleImpl::listenMediaFilePostProcessMessage(const std::string &device_sn, const std::function<void(const MediaFilePostProcess& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     // callback 检查;
     if (!callback) {
         LOG_ERROR("listenMediaFilePostProcessMessage(): callback is NULL !");
@@ -304,8 +315,10 @@ int MediaServiceModuleImpl::listenMediaFilePostProcessMessage(const std::string 
     WeakDummy(wk_ptr);
 
     // init listen id;
-    int listen_id = NotificationCenter::getInstance()->getBusinessManager()->ListenMediaFilePostProcessMessage(
-        [wk_ptr, callback](const notification_center::MediaFilePostProcess& msg)-> void {
+    auto listen_id = -1;
+    if (bm) {
+        listen_id = bm->ListenMediaFilePostProcessMessage(
+        [wk_ptr, callback, session_id_ = session_id_](const notification_center::MediaFilePostProcess& msg)-> void {
             WeakDummyReturn(wk_ptr);
 
             // 将 NC SDK 消息转换成 FH SDK 消息; 
@@ -419,6 +432,9 @@ int MediaServiceModuleImpl::listenMediaFilePostProcessMessage(const std::string 
         device_sn,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 打印监听 id;
     LOG_INFO("[MediaServiceModuleImpl] ListenMediaFilePostProcessMessage(), listen_id: %d", listen_id);
@@ -428,10 +444,13 @@ int MediaServiceModuleImpl::listenMediaFilePostProcessMessage(const std::string 
 
 
 void MediaServiceModuleImpl::cancelListenMediaFilePostProcessMessage(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("MediaServiceModuleImpl::cancelListenMediaFilePostProcessMessage() with param: listen_id: %d", listen_id);
 
     if (listen_id >= 0) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(listen_id);
+        if (bm) {
+            bm->CancelObserve(listen_id);
+        }
         LOG_INFO("MediaServiceModuleImpl::cancelListenMediaFilePostProcessMessage(), BusinessManager CancelObserve() invoked with param: listen_id: %d", listen_id);
     }
 }
@@ -441,6 +460,7 @@ void MediaServiceModuleImpl::cancelListenMediaFilePostProcessMessage(int listen_
 // "topic_media_file_device_upload";
 // 设备媒体回传通知;
 int MediaServiceModuleImpl::listenMediaFileDeviceUploadMessage(const std::string &device_sn, const std::function<void(const MediaFileDeviceUpload& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     // callback 检查;
     if (!callback) {
         LOG_ERROR("listenMediaFileDeviceUploadMessage(): callback is NULL !");
@@ -451,8 +471,10 @@ int MediaServiceModuleImpl::listenMediaFileDeviceUploadMessage(const std::string
     WeakDummy(wk_ptr);
 
     // init listen id;
-    int listen_id = NotificationCenter::getInstance()->getBusinessManager()->ListenMediaFileDeviceUploadMessage(
-        [wk_ptr, callback](const notification_center::MediaFileDeviceUpload& msg)-> void {
+    auto listen_id = -1;
+    if (bm) {
+        listen_id = bm->ListenMediaFileDeviceUploadMessage(
+        [wk_ptr, callback, session_id_ = session_id_](const notification_center::MediaFileDeviceUpload& msg)-> void {
             WeakDummyReturn(wk_ptr);
 
             // 将 NC SDK 消息转换成 FH SDK 消息;
@@ -492,6 +514,9 @@ int MediaServiceModuleImpl::listenMediaFileDeviceUploadMessage(const std::string
         device_sn,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 打印监听 id;
     LOG_INFO("[MediaServiceModuleImpl] ListenMediaFileDeviceUploadMessage(), listen_id: %d", listen_id);
@@ -501,10 +526,13 @@ int MediaServiceModuleImpl::listenMediaFileDeviceUploadMessage(const std::string
 
 
 void MediaServiceModuleImpl::cancelListenMediaFileDeviceUploadMessage(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("MediaServiceModuleImpl::cancelListenMediaFileDeviceUploadMessage() with param: listen_id: %d", listen_id);
 
     if (listen_id >= 0) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(listen_id);
+        if (bm) {
+            bm->CancelObserve(listen_id);
+        }
         LOG_INFO("MediaServiceModuleImpl::cancelListenMediaFileDeviceUploadMessage(), BusinessManager CancelObserve() invoked with param: listen_id: %d", listen_id);
     }
 }
@@ -521,7 +549,7 @@ void MediaServiceModuleImpl::getMediaUploadSts(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_UPLOAD_STS, param_err, "[MediaServiceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_UPLOAD_STS, param_err, session_id_, "[MediaServiceModuleImpl]");
         callback(param_err, {});
         return;
     }
@@ -536,14 +564,15 @@ void MediaServiceModuleImpl::getMediaUploadSts(
     drc_sdk::common::Executors::IO()->Post([this, weak_ptr, request, callback]() {
         WeakDummyReturn(weak_ptr);
         get_media_upload_sts(request,
-            [weak_ptr, callback](const GetMediaUploadStsResponseData& data, FlightHubError err) {
+            [weak_ptr, callback, this](const GetMediaUploadStsResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                     // 埋点: 获取 OSS STS 临时上传凭证; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_UPLOAD_STS, err, "[MediaServiceModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_UPLOAD_STS, err, session_id_, "[MediaServiceModuleImpl]");
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         LOG_ERROR("getMediaUploadSts(): err_code: %d", static_cast<int>(err.error_code));
                         callback(err, {});
@@ -554,14 +583,17 @@ void MediaServiceModuleImpl::getMediaUploadSts(
                     result.credentials.access_key_id = data.credentials.access_key_id;
                     result.credentials.access_key_secret = data.credentials.access_key_secret;
                     result.credentials.expire = data.credentials.expire;
+                    result.credentials.expiration = data.credentials.expiration;
+                    result.credentials.platform = data.credentials.platform;
                     result.credentials.security_token = data.credentials.security_token;
                     result.object_key_prefix = data.object_key_prefix;
                     result.endpoint = data.endpoint;
                     result.provider = data.provider;
                     result.region = data.region;
+                    result.ext = data.ext;
                     callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -577,7 +609,7 @@ void MediaServiceModuleImpl::mediaUploadCallback(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_MEDIA_UPLOAD_CALLBACK, param_err, "[MediaServiceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_MEDIA_UPLOAD_CALLBACK, param_err, session_id_, "[MediaServiceModuleImpl]");
         callback(param_err, {});
         return;
     }
@@ -599,16 +631,21 @@ void MediaServiceModuleImpl::mediaUploadCallback(
     request.data.file.source = params.file.source;
     // file.ext
     request.data.file.ext.wayline_id = params.file.ext.wayline_id;
+    request.data.file.ext.wayline_action_uuid = params.file.ext.wayline_action_uuid;
     request.data.file.ext.prj_uuid = params.file.ext.prj_uuid;
     request.data.file.ext.workspace_id = params.file.ext.workspace_id;
     request.data.file.ext.flight_id = params.file.ext.flight_id;
     request.data.file.ext.drone_model_key = params.file.ext.drone_model_key;
     request.data.file.ext.payload_model_key = params.file.ext.payload_model_key;
     request.data.file.ext.is_original = params.file.ext.is_original;
+    request.data.file.ext.task_name = params.file.ext.task_name;
+    request.data.file.ext.sn = params.file.ext.sn;
     request.data.file.ext.user_id = params.file.ext.user_id;
     request.data.file.ext.tinny_fingerprint = params.file.ext.tinny_fingerprint;
     request.data.file.ext.fast_reconstruction_media_type = params.file.ext.fast_reconstruction_media_type;
     request.data.file.ext.media_index = params.file.ext.media_index;
+    request.data.file.ext.expected_file_count = params.file.ext.expected_file_count;
+    request.data.file.ext.pano_total_count = params.file.ext.pano_total_count;
     // file.metadata
     request.data.file.metadata.absolute_altitude = params.file.metadata.absolute_altitude;
     request.data.file.metadata.relative_altitude = params.file.metadata.relative_altitude;
@@ -624,14 +661,15 @@ void MediaServiceModuleImpl::mediaUploadCallback(
     drc_sdk::common::Executors::IO()->Post([this, weak_ptr, request, callback]() {
         WeakDummyReturn(weak_ptr);
         media_upload_callback(request,
-            [weak_ptr, callback](const MediaUploadCallbackResponseData& data, FlightHubError err) {
+            [weak_ptr, callback, this](const MediaUploadCallbackResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                     // 埋点: 媒体文件上传完成后通知服务端; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_MEDIA_UPLOAD_CALLBACK, err, "[MediaServiceModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_MEDIA_UPLOAD_CALLBACK, err, session_id_, "[MediaServiceModuleImpl]");
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         LOG_ERROR("mediaUploadCallback(): err_code: %d", static_cast<int>(err.error_code));
                         callback(err, {});
@@ -646,7 +684,7 @@ void MediaServiceModuleImpl::mediaUploadCallback(
                     result.media_id = data.media_id;
                     callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -662,7 +700,7 @@ void MediaServiceModuleImpl::uploadGeoMediaFile(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_MEDIA_UPLOAD_GEO_FILE, param_err, "[MediaServiceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_MEDIA_UPLOAD_GEO_FILE, param_err, session_id_, "[MediaServiceModuleImpl]");
         callback(param_err, {});
         return;
     }
@@ -677,14 +715,15 @@ void MediaServiceModuleImpl::uploadGeoMediaFile(
     drc_sdk::common::Executors::IO()->Post([this, weak_ptr, request, callback]() {
         WeakDummyReturn(weak_ptr);
         upload_geo_media_file(request,
-            [weak_ptr, callback](const UploadGeoMediaFileResponseData& data, FlightHubError err) {
+            [weak_ptr, callback, this](const UploadGeoMediaFileResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                     // 埋点: 上传地理标注媒体资源（图片备注上传回调）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_MEDIA_UPLOAD_GEO_FILE, err, "[MediaServiceModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_MEDIA_UPLOAD_GEO_FILE, err, session_id_, "[MediaServiceModuleImpl]");
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         LOG_ERROR("uploadGeoMediaFile(): err_code: %d", static_cast<int>(err.error_code));
                         callback(err, {});
@@ -696,7 +735,7 @@ void MediaServiceModuleImpl::uploadGeoMediaFile(
                     result.media_file_id = data.media_file_id;
                     callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 
@@ -712,7 +751,7 @@ void MediaServiceModuleImpl::getMediaFileDetailById(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_FILE_DETAIL_BY_ID, param_err, "[MediaServiceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_FILE_DETAIL_BY_ID, param_err, session_id_, "[MediaServiceModuleImpl]");
         callback(param_err, {});
         return;
     }
@@ -721,14 +760,15 @@ void MediaServiceModuleImpl::getMediaFileDetailById(
     drc_sdk::common::Executors::IO()->Post([this, weak_ptr, file_id, callback]() {
         WeakDummyReturn(weak_ptr);
         get_media_file_detail_by_id(file_id,
-            [weak_ptr, callback](const GetMediaFileDetailByIdResponseData& data, FlightHubError err) {
+            [weak_ptr, callback, this](const GetMediaFileDetailByIdResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                     // 埋点: 根据文件 ID 获取媒体文件详情（轮询文件 URL）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_FILE_DETAIL_BY_ID, err, "[MediaServiceModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_MEDIA_GET_FILE_DETAIL_BY_ID, err, session_id_, "[MediaServiceModuleImpl]");
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         LOG_ERROR("getMediaFileDetailById(): err_code: %d", static_cast<int>(err.error_code));
                         callback(err, {});
@@ -747,10 +787,168 @@ void MediaServiceModuleImpl::getMediaFileDetailById(
                     result.ext.photo_position.lat     = data.ext.photo_position.lat;
                     result.ext.photo_position.lng     = data.ext.photo_position.lng;
                     result.ext.photo_position.abs_alt = data.ext.photo_position.abs_alt;
+                    result.ext.photo_position.rel_alt = data.ext.photo_position.rel_alt;
+                    result.ext.resolution = data.ext.resolution;
+                    result.ext.photographer = data.ext.photographer;
+                    result.ext.task_name = data.ext.task_name;
+                    result.ext.line_name = data.ext.line_name;
+                    result.ext.wayline_uuid = data.ext.wayline_uuid;
+                    result.ext.origin_wayline_uuid = data.ext.origin_wayline_uuid;
+                    result.ext.wayline_action_uuid = data.ext.wayline_action_uuid;
+                    result.ext.payload_model_key = data.ext.payload_model_key;
+                    result.ext.drone_model_key = data.ext.drone_model_key;
+                    result.ext.is_original = data.ext.is_original;
+                    result.ext.digital_zoom_ratio = data.ext.digital_zoom_ratio;
+                    result.ext.length_in35mm_film = data.ext.length_in35mm_film;
+                    result.ext.gimbal_roll = data.ext.gimbal_roll;
+                    result.ext.gimbal_yaw = data.ext.gimbal_yaw;
+                    result.ext.gimbal_yaw_degree = data.ext.gimbal_yaw_degree;
+                    result.ext.flight_id = data.ext.flight_id;
+                    result.ext.duration = data.ext.duration;
+                    result.ext.shoot_position.lat = data.ext.shoot_position.lat;
+                    result.ext.shoot_position.lng = data.ext.shoot_position.lng;
+                    result.ext.shoot_position.abs_alt = data.ext.shoot_position.abs_alt;
+                    result.ext.shoot_position.rel_alt = data.ext.shoot_position.rel_alt;
+                    result.ext.absolute_altitude = data.ext.absolute_altitude;
+                    result.ext.relative_altitude = data.ext.relative_altitude;
+                    result.ext.created_time = data.ext.created_time;
+                    result.ext.creation_time = data.ext.creation_time;
+                    result.ext.create_time = data.ext.create_time;
+                    result.ext.encoder = data.ext.encoder;
+                    result.ext.format_long_name = data.ext.format_long_name;
+                    result.ext.format_name = data.ext.format_name;
+                    result.ext.ext_size = data.ext.ext_size;
+                    result.ext.flight_yaw = data.ext.flight_yaw;
+                    result.ext.focal_length = data.ext.focal_length;
+                    result.ext.gimbal_pitch = data.ext.gimbal_pitch;
+                    result.ext.image_type = data.ext.image_type;
+                    result.pano_stitch_state = data.pano_stitch_state;
+                    result.pano_stitch_progress = data.pano_stitch_progress;
+                    result.pano_error_code = data.pano_error_code;
                     callback(err, result);
                 });
-            });
+            }, session_id_);
     });
+}
+
+// ── 3X 超清全景拼接 ──────────────────────────────────────────────────────
+
+/// 辅助宏：pano 5 个 HTTP 方法的公共结构（WeakDummy + IO post + Main callback）
+#define PANO_HTTP_ACTION_IMPL(method_name, http_func)                                          \
+void MediaServiceModuleImpl::method_name(                                                      \
+    long long file_id,                                                                         \
+    const std::function<void(FlightHubError err)>& callback) {                                 \
+    if (!callback) { LOG_ERROR(#method_name "(): callback is NULL !"); return; }               \
+    if (file_id <= 0) {                                                                        \
+        LOG_ERROR(#method_name "(): file_id is invalid !");                                    \
+        callback(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM));        \
+        return;                                                                                \
+    }                                                                                          \
+    int sid = session_id_;                                                                     \
+    WeakDummy(weak_ptr);                                                                       \
+    drc_sdk::common::Executors::IO()->Post([this, weak_ptr, file_id, callback, sid]() {        \
+        WeakDummyReturn(weak_ptr);                                                             \
+        http_func(file_id,                                                                     \
+            [weak_ptr, callback, sid](FlightHubError err) {                                    \
+                WeakDummyReturn(weak_ptr);                                                     \
+                drc_sdk::common::Executors::Main()->Post([err, callback, sid]() {              \
+                    if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {                    \
+                        LOG_ERROR(#method_name "(): err_code: %d", (int)err.error_code);       \
+                    }                                                                          \
+                    callback(err);                                                             \
+                });                                                                            \
+            }, sid);                                                                           \
+    });                                                                                        \
+}
+
+PANO_HTTP_ACTION_IMPL(startPanoStitch,  post_invoke_pano_stitch)
+PANO_HTTP_ACTION_IMPL(stopPanoStitch,   post_cancel_pano_stitch)
+PANO_HTTP_ACTION_IMPL(retryPanoStitch,  post_retry_pano_stitch)
+PANO_HTTP_ACTION_IMPL(startPanoTier,    post_invoke_pano_tier)
+
+#undef PANO_HTTP_ACTION_IMPL
+
+void MediaServiceModuleImpl::getPanoTierTileUrl(
+    long long file_id,
+    const std::function<void(FlightHubError err, const GetPanoTierTileUrlResult& result)>& callback) {
+    if (!callback) { LOG_ERROR("getPanoTierTileUrl(): callback is NULL !"); return; }
+    if (file_id <= 0) {
+        LOG_ERROR("getPanoTierTileUrl(): file_id is invalid !");
+        callback(FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_PARAM), {});
+        return;
+    }
+    int sid = session_id_;
+    WeakDummy(weak_ptr);
+    drc_sdk::common::Executors::IO()->Post([this, weak_ptr, file_id, callback, sid]() {
+        WeakDummyReturn(weak_ptr);
+        get_pano_tier_tile_url(file_id,
+            [weak_ptr, callback, sid](const GetPanoTierTileUrlResponseData& data, FlightHubError err) {
+                WeakDummyReturn(weak_ptr);
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, sid]() {
+                    if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
+                        LOG_ERROR("getPanoTierTileUrl(): err_code: %d", (int)err.error_code);
+                        callback(err, {});
+                        return;
+                    }
+                    GetPanoTierTileUrlResult result;
+                    result.state    = data.state;
+                    result.base_url = data.base_url;
+                    // cookies: PaaS 后端通过 HTTP Set-Cookie 响应头下发，body 中无此字段；
+                    // SDK 底层 HttpHeaders(std::map) 不支持多值 key，PaaS 场景 cookies 不填充。
+                    // Native/Java ISV 请使用 query_params 完成 CDN 鉴权（Key/Value 与 cookies 相同）。
+                    for (const auto& c : data.cookies) {
+                        PanoTierCookie cookie;
+                        cookie.name  = c.name;
+                        cookie.value = c.value;
+                        cookie.path  = c.path;
+                        cookie.expires_unix_sec = 0;
+                        result.cookies.push_back(std::move(cookie));
+                    }
+                    result.query_params = data.query_params;
+                    callback(err, result);
+                });
+            }, sid);
+    });
+}
+
+int MediaServiceModuleImpl::subscribePanoStitchProgress(
+    const std::function<void(const PanoStitchProgressMsg& msg)>& callback) {
+    if (!callback) { LOG_ERROR("subscribePanoStitchProgress(): callback is NULL !"); return -1; }
+    auto bm = ResolveBusinessManager(session_id_);
+    if (!bm) {
+        LOG_ERROR("subscribePanoStitchProgress(): BusinessManager not found, session_id=%d", session_id_);
+        return -1;
+    }
+    WeakDummy(weak_ptr);
+    return bm->ListenPanoStitchProgress(
+        [weak_ptr, callback](const notification_center::PanoStitchProgress& msg) {
+            WeakDummyReturn(weak_ptr);
+            drc_sdk::common::Executors::Main()->Post([callback, msg]() {
+                PanoStitchProgressMsg out;
+                out.workspace_id         = msg.workspace_id;
+                out.file_id              = msg.file_id;
+                out.name                 = msg.name;
+                out.pano_stitch_state    = msg.pano_stitch_state;
+                out.pano_stitch_progress = msg.pano_stitch_progress;
+                out.pano_error_code      = msg.pano_error_code;
+                callback(out);
+            });
+        },
+        [](const notification_center::NotificationCenterErrorCode& code) {
+            LOG_ERROR("subscribePanoStitchProgress(): NC error: %d", (int)code);
+        },
+        // PaaS 全景拼接进度不按设备 SN/workspace 过滤，后端以空 device_sn/workspace_id 推送。
+        // 固定传空字符串订阅全局 topic_pano_stitch_progress。
+        "",
+        notification_center::NotificationFrequency_OnChanged);
+}
+
+void MediaServiceModuleImpl::cancelListenPanoStitchProgress(int listen_id) {
+    if (listen_id < 0) return;
+    auto bm = ResolveBusinessManager(session_id_);
+    if (bm) {
+        bm->CancelObserve(listen_id);
+    }
 }
 
 }  // namespace flight_hub_sdk

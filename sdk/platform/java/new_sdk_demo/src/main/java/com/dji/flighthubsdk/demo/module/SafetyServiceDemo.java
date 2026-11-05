@@ -16,6 +16,7 @@ import com.dji.flighthubsdk.bean.FlightAreasContentData;
 import com.dji.flighthubsdk.bean.FlightHubError;
 import com.dji.flighthubsdk.bean.GetAreasSyncStatusResults;
 import com.dji.flighthubsdk.bean.GetFlightAreasResults;
+import com.dji.flighthubsdk.bean.GetFlightAreasUrlResults;
 import com.dji.flighthubsdk.bean.GetOfflineMapsModelInfoResults;
 import com.dji.flighthubsdk.bean.GetOfflineMapsSyncStatusResults;
 import com.dji.flighthubsdk.bean.ModelItemInfoData;
@@ -42,7 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * 安全服务 Demo(菜单驱动)：信号地图查询、自定义飞行区域管理、地形障碍物离线地图管理。
  *
- * <p>对应 {@code SafetyServiceModule} 的 13 个安全服务接口(非全量: 模块共 19 个接口,
+ * <p>对应 {@code SafetyServiceModule} 的 14 个安全服务接口(非全量: 模块共 20 个接口,
  * 其余 6 个解禁证书接口由 {@code FlySafeUnlockDemo} 覆盖, 见下方职责区分;
  * getCustomizedFlightAreas 另有一个参数对象重载, 本 demo 用平铺参数重载, 不单独计)：
  *
@@ -56,25 +57,27 @@ import java.util.concurrent.atomic.AtomicReference;
  * │   ├── [4]  更新                    updateCustomizedFlightAreas(需输入 id)
  * │   ├── [5]  删除                    deleteCustomizedFlightAreas(需输入 id)
  * │   ├── [6]  同步至设备              syncCustomizedFlightAreas
- * │   └── [7]  查同步状态              getFlightAreasSyncStatus
+ * │   ├── [7]  查同步状态              getFlightAreasSyncStatus
+ * │   └── [8]  查文件下载地址          getFlightAreasUrl
  * └── [地形障碍物-离线地图]
- *     ├── [8]  查询模型信息            getOfflineMapsModelInfo
- *     ├── [9]  创建/更新模型           updateOfflineMapsModelInfo
- *     ├── [10] 取消生成                cancelOfflineMapsModelInfo
- *     ├── [11] 修改开关                setOfflineMaps
- *     ├── [12] 同步至设备              syncOfflineMaps
- *     └── [13] 查同步状态              getOfflineMapsSyncStatus
+ *     ├── [9]  查询模型信息            getOfflineMapsModelInfo
+ *     ├── [10] 创建/更新模型           updateOfflineMapsModelInfo
+ *     ├── [11] 取消生成                cancelOfflineMapsModelInfo
+ *     ├── [12] 修改开关                setOfflineMaps
+ *     ├── [13] 同步至设备              syncOfflineMaps
+ *     └── [14] 查同步状态              getOfflineMapsSyncStatus
  * </pre>
  *
  * <p><b>与 FlySafeUnlockDemo 的职责区分：</b>两个 demo 共用同一个
  * {@code SafetyServiceModule}, 但覆盖的接口互不重叠：
  * <ul>
- *   <li>SafetyServiceDemo(本类) → 安全服务 → 信号地图 / 自定义飞行区域 / 离线地图, 共 13 个接口；</li>
+ *   <li>SafetyServiceDemo(本类) → 安全服务 → 信号地图 / 自定义飞行区域 / 离线地图, 共 14 个接口；</li>
  *   <li>FlySafeUnlockDemo → 限飞解禁 → 同模块的 6 个解禁证书接口(getUnlockLicenseList 等)。</li>
  * </ul>
  *
  * <p><b>接口串联设计：</b>[2] 创建成功回显的区域 id 供 [4] 更新 / [5] 删除手动输入(不自动缓存);
- * [6]/[12] 同步下发后用 [7]/[13] 查看各设备同步状态。
+ * [6]/[13] 同步下发后用 [7]/[14] 查看各设备同步状态; [8] 取当前工作空间飞行区文件的签名下载地址,
+ * 可与 [7] 的 checksum 校验失败原因(reason=12)对照排查。
  *
  * <p><b>SDK 入口：</b>{@code session.workspace().getSafetyServiceModule()}(挂在 Workspace 上)。
  *
@@ -83,7 +86,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *   <li>复杂参数(几何、模型条目、SN 列表等)全部从 {@code demo_params.json} 的
  *       {@code safety_service} 配置节读取, 交互仅收敛在 flightAreaId 与开关类输入；</li>
  *   <li>三态结果回显(SUCCESS/TIMEOUT/FAILED), 结果对象仅在 SUCCESS 时解析回显；</li>
- *   <li>同步类接口([6][7][12][13])的 SN 须为网关类型设备(机场 1、2、3 以及地面站, 见 message.h
+ *   <li>同步类接口([6][7][13][14])的 SN 须为网关类型设备(机场 1、2、3 以及地面站, 见 message.h
  *       DeviceSyncStatusResults 注释); SN 列表为空时 SDK 本地即同步回调 ERROR_INVALID_PARAM
  *       (safety_service_module_impl.cpp), demo 提前拦截并提示补配置；</li>
  *   <li>均为即时 HTTP 动作, 无订阅、无退出收尾。</li>
@@ -116,7 +119,7 @@ public class SafetyServiceDemo extends ModuleDemo {
         while (true) {
             Utils.printTitle("执行 " + name());
             System.out.print(menu());
-            int choice = Utils.readIntInRange(input, "请选择(1-13, q 退出): ", 1, 13);
+            int choice = Utils.readIntInRange(input, "请选择(1-14, q 退出): ", 1, 14);
             if (choice == Utils.QUIT) {
                 DemoLog.info(name(), "退出安全服务菜单");
                 break;
@@ -130,12 +133,13 @@ public class SafetyServiceDemo extends ModuleDemo {
                     case 5:  deleteCustomizedFlightAreas(module, actionTimeout); break;
                     case 6:  syncCustomizedFlightAreas(module, actionTimeout);   break;
                     case 7:  getFlightAreasSyncStatus(module, actionTimeout);    break;
-                    case 8:  getOfflineMapsModelInfo(module, actionTimeout);     break;
-                    case 9:  updateOfflineMapsModelInfo(module, actionTimeout);  break;
-                    case 10: cancelOfflineMapsModelInfo(module, actionTimeout);  break;
-                    case 11: setOfflineMaps(module, actionTimeout);              break;
-                    case 12: syncOfflineMaps(module, actionTimeout);             break;
-                    case 13: getOfflineMapsSyncStatus(module, actionTimeout);    break;
+                    case 8:  getFlightAreasUrl(module, actionTimeout);           break;
+                    case 9:  getOfflineMapsModelInfo(module, actionTimeout);     break;
+                    case 10: updateOfflineMapsModelInfo(module, actionTimeout);  break;
+                    case 11: cancelOfflineMapsModelInfo(module, actionTimeout);  break;
+                    case 12: setOfflineMaps(module, actionTimeout);              break;
+                    case 13: syncOfflineMaps(module, actionTimeout);             break;
+                    case 14: getOfflineMapsSyncStatus(module, actionTimeout);    break;
                     default: break;
                 }
             } catch (Exception e) {
@@ -295,9 +299,18 @@ public class SafetyServiceDemo extends ModuleDemo {
         p.setFlightAreaId(id);
         p.setName(cfg.str("name", "demo-flight-area") + "-updated");
         p.setContent(buildContent(cfg));
-        p.setUpdateBy(cfg.str("created_by", "demo_user"));
+        String status = Utils.readLineEcho(input, "   status(enable/disable, 回车跳过): ");
+        if (status != null && !status.isEmpty()) {
+            p.setStatus(status);
+        }
+        String type = Utils.readLineEcho(input, "   type(dfence/nfz/noland, 回车跳过): ");
+        if (type != null && !type.isEmpty()) {
+            p.setType(type);
+        }
+        // update_by 已废弃: 后端 updated_by 以登录态为准, SDK 不再上送该字段, 故不设置。
 
-        console("   > id=" + p.getFlightAreaId() + " name=" + p.getName());
+        console("   > id=" + p.getFlightAreaId() + " name=" + p.getName()
+                + " status=" + p.getStatus() + " type=" + p.getType());
 
         final Await<FlightHubError> await = new Await<>(name() + ".updateCustomizedFlightAreas");
         final AtomicReference<UpdateFlightAreasResults> ref = new AtomicReference<>();
@@ -399,7 +412,38 @@ public class SafetyServiceDemo extends ModuleDemo {
         }
     }
 
-    // ==================== [8] 查询离线地图模型信息 (getOfflineMapsModelInfo) ====================
+    // ==================== [8] 获取飞行区文件下载地址 (getFlightAreasUrl) ====================
+
+    /**
+     * 取当前工作空间飞行区文件的签名下载地址。无入参(工作空间/项目由网关按请求头解析,
+     * 见 http_interface.cpp get_flight_areas_url: GET /safety/api/v1/flight-areas/url);
+     * 返回的 url 为签名地址, 有效期 3600 秒, checksum 为文件内容 SHA-256(十六进制),
+     * 可与 [7] 同步状态中 reason=12(checksum 校验失败) 对照排查。
+     */
+    private void getFlightAreasUrl(SafetyServiceModule module, long timeout) {
+        final Await<FlightHubError> await = new Await<>(name() + ".getFlightAreasUrl");
+        final AtomicReference<GetFlightAreasUrlResults> ref = new AtomicReference<>();
+        Outcome o = runOutcome("查询飞行区文件下载地址", timeout, await, () ->
+            module.getFlightAreasUrl(new FlightHubCallback.GetFlightAreasUrlCallback() {
+                @Override
+                public void onResult(FlightHubError error, GetFlightAreasUrlResults result) {
+                    ref.set(result);
+                    await.set(error);
+                }
+            })
+        );
+
+        if (o == Outcome.SUCCESS) {
+            GetFlightAreasUrlResults r = ref.get();
+            if (r != null) {
+                console("   name=" + r.getName() + " size=" + r.getSize() + " 字节(" + humanSize(r.getSize()) + ")");
+                console("   checksum(SHA-256)=" + r.getChecksum());
+                console("   url(签名地址, 有效期 3600 秒)=" + r.getUrl());
+            }
+        }
+    }
+
+    // ==================== [9] 查询离线地图模型信息 (getOfflineMapsModelInfo) ====================
 
     private void getOfflineMapsModelInfo(SafetyServiceModule module, long timeout) {
         final Await<FlightHubError> await = new Await<>(name() + ".getOfflineMapsModelInfo");
@@ -434,7 +478,7 @@ public class SafetyServiceDemo extends ModuleDemo {
         }
     }
 
-    // ==================== [9] 创建/更新离线地图模型 (updateOfflineMapsModelInfo) ====================
+    // ==================== [10] 创建/更新离线地图模型 (updateOfflineMapsModelInfo) ====================
 
     private void updateOfflineMapsModelInfo(SafetyServiceModule module, long timeout) {
         Node cfg = params.node("safety_service");
@@ -451,13 +495,13 @@ public class SafetyServiceDemo extends ModuleDemo {
         callOutcome("更新离线地图", cb -> module.updateOfflineMapsModelInfo(p, cb), timeout);
     }
 
-    // ==================== [10] 取消离线地图生成 (cancelOfflineMapsModelInfo) ====================
+    // ==================== [11] 取消离线地图生成 (cancelOfflineMapsModelInfo) ====================
 
     private void cancelOfflineMapsModelInfo(SafetyServiceModule module, long timeout) {
         callOutcome("取消离线地图生成", cb -> module.cancelOfflineMapsModelInfo(cb), timeout);
     }
 
-    // ==================== [11] 修改离线地图开关 (setOfflineMaps) ====================
+    // ==================== [12] 修改离线地图开关 (setOfflineMaps) ====================
 
     private void setOfflineMaps(SafetyServiceModule module, long timeout) {
         int v = Utils.readIntInRange(input, "   请输入离线地图开关(0=禁用 1=启用, q 取消): ", 0, 1);
@@ -472,7 +516,7 @@ public class SafetyServiceDemo extends ModuleDemo {
         callOutcome("修改离线地图开关", cb -> module.setOfflineMaps(p, cb), timeout);
     }
 
-    // ==================== [12] 同步离线地图至设备 (syncOfflineMaps) ====================
+    // ==================== [13] 同步离线地图至设备 (syncOfflineMaps) ====================
 
     private void syncOfflineMaps(SafetyServiceModule module, long timeout) {
         Node cfg = params.node("safety_service");
@@ -503,7 +547,7 @@ public class SafetyServiceDemo extends ModuleDemo {
         }
     }
 
-    // ==================== [13] 获取设备离线地图同步状态 (getOfflineMapsSyncStatus) ====================
+    // ==================== [14] 获取设备离线地图同步状态 (getOfflineMapsSyncStatus) ====================
 
     private void getOfflineMapsSyncStatus(SafetyServiceModule module, long timeout) {
         Node cfg = params.node("safety_service");
@@ -634,8 +678,23 @@ public class SafetyServiceDemo extends ModuleDemo {
         return v == null ? "" : v.toString();
     }
 
+    /** 字节数 → 人类可读单位(二进制进位, 保留一位小数), 仅用于 [8] 的回显。 */
+    private static String humanSize(long bytes) {
+        if (bytes < 1024L) {
+            return bytes + " B";
+        }
+        String[] units = {"KB", "MB", "GB", "TB"};
+        double v = bytes;
+        int i = -1;
+        while (v >= 1024.0 && i < units.length - 1) {
+            v /= 1024.0;
+            i++;
+        }
+        return String.format("%.1f %s", v, units[i]);
+    }
+
     /**
-     * 回显同步下发结果列表([6]/[12] 共用): 逐设备 sn + code(带 {@link #describeSyncCode} 中文释义)。
+     * 回显同步下发结果列表([6]/[13] 共用): 逐设备 sn + code(带 {@link #describeSyncCode} 中文释义)。
      */
     private void printSyncDispatchResults(List<DeviceSyncResults> results) {
         int size = results != null ? results.size() : 0;
@@ -650,7 +709,7 @@ public class SafetyServiceDemo extends ModuleDemo {
     }
 
     /**
-     * 回显设备同步状态列表([7]/[13] 共用): 逐设备 sn + status + reason(带
+     * 回显设备同步状态列表([7]/[14] 共用): 逐设备 sn + status + reason(带
      * {@link #describeSyncReason} 中文释义)。status 为字符串枚举: "waiting"=等待同步,
      * "synchronizing"=同步中, "synchronized"=已同步, "fail"=同步失败
      * (DeviceSyncStatusResults bean 与 message.h 同注)。
@@ -712,12 +771,12 @@ public class SafetyServiceDemo extends ModuleDemo {
     }
 
     /** 纯控制台输出(不落日志文件), 用于菜单文案与结果回显。 */
-    private void console(String line) {
+    protected void console(String line) {
         System.out.println(line);
     }
 
     /** 提示信息双写：既落日志文件(带 demo 名 tag)又回显控制台, 用于前置条件不满足、取消等需留痕的提示。 */
-    private void hint(String msg) {
+    protected void hint(String msg) {
         DemoLog.info(name(), msg);
         console("   " + msg);
     }
@@ -725,7 +784,7 @@ public class SafetyServiceDemo extends ModuleDemo {
     // ==================== 菜单文案 ====================
 
     /**
-     * 主菜单文案：13 个菜单项与 {@code SafetyServiceModule} 同名接口一一对应(见类 Javadoc 菜单树)。
+     * 主菜单文案：14 个菜单项与 {@code SafetyServiceModule} 同名接口一一对应(见类 Javadoc 菜单树)。
      * 增删菜单项时须同步 {@link #run()} 中的 switch 分支与 {@code readIntInRange} 的取值上界。
      */
     private String menu() {
@@ -740,13 +799,14 @@ public class SafetyServiceDemo extends ModuleDemo {
             + "   5.  删除自定义飞行区域        (deleteCustomizedFlightAreas, 需输入 id)\n"
             + "   6.  同步至设备                (syncCustomizedFlightAreas)\n"
             + "   7.  获取同步状态              (getFlightAreasSyncStatus)\n"
+            + "   8.  获取文件下载地址          (getFlightAreasUrl)\n"
             + "  [地形障碍物-离线地图]\n"
-            + "   8.  查询模型信息              (getOfflineMapsModelInfo)\n"
-            + "   9.  创建/更新离线地图模型     (updateOfflineMapsModelInfo)\n"
-            + "  10.  取消离线地图生成          (cancelOfflineMapsModelInfo)\n"
-            + "  11.  修改离线地图开关          (setOfflineMaps)\n"
-            + "  12.  同步至设备                (syncOfflineMaps)\n"
-            + "  13.  获取设备同步状态          (getOfflineMapsSyncStatus)\n"
+            + "   9.  查询模型信息              (getOfflineMapsModelInfo)\n"
+            + "  10.  创建/更新离线地图模型     (updateOfflineMapsModelInfo)\n"
+            + "  11.  取消离线地图生成          (cancelOfflineMapsModelInfo)\n"
+            + "  12.  修改离线地图开关          (setOfflineMaps)\n"
+            + "  13.  同步至设备                (syncOfflineMaps)\n"
+            + "  14.  获取设备同步状态          (getOfflineMapsSyncStatus)\n"
             + "\n"
             + "  q.  返回上级菜单\n";
     }

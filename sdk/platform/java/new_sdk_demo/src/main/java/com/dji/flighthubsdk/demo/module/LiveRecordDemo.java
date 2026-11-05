@@ -11,21 +11,21 @@ import com.dji.flighthubsdk.bean.LiveRecordStateInfo;
 import com.dji.flighthubsdk.core.Drone;
 import com.dji.flighthubsdk.core.LiveDeviceModule;
 import com.dji.flighthubsdk.core.LiveRecordModule;
+import com.dji.flighthubsdk.demo.base.Menu;
 import com.dji.flighthubsdk.demo.base.ModuleDemo;
 import com.dji.flighthubsdk.demo.runtime.Await;
 import com.dji.flighthubsdk.demo.runtime.DemoLog;
 import com.dji.flighthubsdk.demo.runtime.FlightHubException;
 import com.dji.flighthubsdk.demo.runtime.Node;
 import com.dji.flighthubsdk.demo.runtime.Subscription;
-import com.dji.flighthubsdk.demo.utils.Utils;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * 直播录制 Demo(菜单驱动)：开始/停止录制、查询录制记录、订阅/取消订阅录制状态。
+ * 直播录制 Demo(菜单驱动): 开始/停止录制、查询录制记录、订阅/取消订阅录制状态。
  *
- * <p>对应 {@code LiveRecordModule} 全部 5 个接口：
+ * <p>对应 {@code LiveRecordModule} 全部 5 个接口:
  *
  * <pre>
  * 主菜单
@@ -36,15 +36,15 @@ import java.util.concurrent.atomic.AtomicReference;
  * └── [5] 取消订阅录制状态    cancelListenRecordState
  * </pre>
  *
- * <p><b>SDK 入口(本 demo 仅覆盖 drone 侧)：</b>先经
+ * <p><b>SDK 入口 (本 demo 仅覆盖 drone 侧): </b>先经
  * {@code drone.getLiveDeviceModule().listenLiveAvailableRange} 拿到 {@link LiveInfo},
  * 再 {@code drone.getLiveRecord(liveInfo)} 得到 {@link LiveRecordModule}。
  * demo 启动时一次性发现并缓存 module, 后续菜单操作复用。
  *
- * <p><b>设计要点：</b>
+ * <p><b>设计要点: </b>
  * <ul>
- *   <li>直播源发现按<b>本机 SN</b> 过滤({@link #discoverLiveInfo}), 不盲选他机源；</li>
- *   <li>三态结果回显(SUCCESS/TIMEOUT/FAILED), 超时与失败明确区分；</li>
+ *   <li>直播源发现按<b>本机 SN</b> 过滤 ({@link #discoverLiveInfo}), 不盲选他机源; </li>
+ *   <li>三态结果回显 (SUCCESS/TIMEOUT/FAILED), 超时与失败明确区分; </li>
  *   <li>[4] 的订阅经基类 {@code subscribe} 登记到会话 registry(demo 结束兜底退订),
  *       正常路径由 [5] 或 run() 收尾显式关闭, 推送只落日志文件不刷控制台。</li>
  * </ul>
@@ -52,13 +52,13 @@ import java.util.concurrent.atomic.AtomicReference;
 public class LiveRecordDemo extends ModuleDemo {
 
     /**
-     * 等待 drone 上报可用直播源(range)的超时(ms)。range 来自 SDK 每 5s 一轮的 live_capacity
+     * 等待 drone 上报可用直播源 (range)的超时 (ms)。range 来自 SDK 每 5s 一轮的 live_capacity
      * 轮询, 10s 可覆盖 ~2 轮; 相比 {@code LiveStreamDemo} 的 20s(需额外容忍首轮 topo 拉取延迟),
      * 本 demo 场景下设备通常已在线, 无需更长等待。
      */
     private static final long RANGE_TIMEOUT_MS = 10000L;
 
-    /** [4] 的订阅句柄(基类 subscribe 已登记到 registry, demo 结束自动收尾)。 */
+    /** [4] 的订阅句柄 (基类 subscribe 已登记到 registry, demo 结束自动收尾)。 */
     private Subscription stateSub;
 
     @Override
@@ -82,7 +82,7 @@ public class LiveRecordDemo extends ModuleDemo {
         }
 
         final Drone drone = session.drone();
-        final long actionTimeout = timeout("default_callback_timeout_ms");
+        final long actionTimeout = defaultTimeout();
         DemoLog.info(name(), "actionTimeout=" + actionTimeout + "ms");
 
         console("发现无人机直播源(最长等待 " + RANGE_TIMEOUT_MS + "ms) ...");
@@ -97,35 +97,24 @@ public class LiveRecordDemo extends ModuleDemo {
             console("   获取 LiveRecordModule 失败(返回 null), 无法进入本 demo 菜单");
             return;
         }
-        DemoLog.info(name(), "LiveRecordModule 已就绪: sn=" + liveInfo.getDeviceSn()
+        DemoLog.debug(name(), "LiveRecordModule 已就绪: sn=" + liveInfo.getDeviceSn()
             + " camera=" + liveInfo.getPayloadIndex() + " video=" + liveInfo.getVideoId());
 
         try {
-            while (true) {
-                Utils.printTitle("执行 " + name());
-                if (stateSub != null) {
-                    console("(录制状态订阅中: 推送只落日志; 选 [5] 取消)");
-                }
-                System.out.print(menu());
-                int choice = Utils.readIntInRange(input, "请选择(1-5, q 退出): ", 1, 5);
-                if (choice == Utils.QUIT) {
-                    DemoLog.info(name(), "退出直播录制菜单");
-                    break;
-                }
-                try {
-                    switch (choice) {
-                        case 1: startLiveRecord(module, actionTimeout);      break;
-                        case 2: stopLiveRecord(module, actionTimeout);       break;
-                        case 3: getDeviceLiveRecords(module, actionTimeout); break;
-                        case 4: listenRecordState(module);                   break;
-                        case 5: cancelListenRecordState();                   break;
-                        default: break;
-                    }
-                } catch (Exception e) {
-                    console("   结果 -> [异常] " + Utils.describe(e));
-                    DemoLog.error(name(), "菜单动作执行异常: " + Utils.describe(e), e);
-                }
-            }
+            Menu.of(this, "执行 " + name())
+                    .banner("=== 直播录制 (Live Record) ===")
+                    .header(() -> {
+                        if (stateSub != null) {
+                            console("(录制状态订阅中: 推送只落日志; 选 [5] 取消)");
+                        }
+                    })
+                    .item("开始录制           (startLiveRecord)", () -> startLiveRecord(module, actionTimeout))
+                    .item("停止录制           (stopLiveRecord)", () -> stopLiveRecord(module, actionTimeout))
+                    .item("查询设备录制记录   (getDeviceLiveRecords)", () -> getDeviceLiveRecords(module, actionTimeout))
+                    .item("订阅录制状态       (listenRecordState, 推送只落日志)", () -> listenRecordState(module))
+                    .item("取消订阅录制状态   (cancelListenRecordState)", () -> cancelListenRecordState())
+                    .exitLog("退出直播录制菜单")
+                    .run();
         } finally {
             // registry() 会兜底关订阅, 这里显式关一次让本地字段清空, 并从 registry 移除死引用
             if (stateSub != null) {
@@ -157,7 +146,7 @@ public class LiveRecordDemo extends ModuleDemo {
 
     private void getDeviceLiveRecords(LiveRecordModule module, long timeout) {
         final String sn = session.droneSn();
-        console("   查询录制记录: sn=" + sn);
+        consoleDebug("   查询录制记录: sn=" + sn);
 
         /* @deprecated: 本接口暂未开放使用
         final Await<FlightHubError> await = new Await<>(name() + ".getDeviceLiveRecords");
@@ -179,7 +168,7 @@ public class LiveRecordDemo extends ModuleDemo {
             if (records != null) {
                 for (int i = 0; i < records.size(); i++) {
                     LiveRecordItem r = records.get(i);
-                    console("   [" + (i + 1) + "] bid=" + r.getBid()
+                    consoleDebug("   [" + (i + 1) + "] bid=" + r.getBid()
                         + "  sn=" + r.getSn() + "  camera=" + r.getCamera()
                         + "  state=" + r.getState() + "(" + describeRecordState(r.getState()) + ")"
                         + "  duration=" + r.getDuration() + "s");
@@ -203,7 +192,7 @@ public class LiveRecordDemo extends ModuleDemo {
                 if (info == null) {
                     return;
                 }
-                pushLog("listenRecordState() #LiveRecordStateInfo, 录制状态推送: sn=" + info.getSn()
+                pushLogDebug("listenRecordState() #LiveRecordStateInfo, 录制状态推送: sn=" + info.getSn()
                     + " camera=" + info.getCamera() + " video=" + info.getVideo()
                     + " state=" + info.getState() + " duration=" + info.getDuration() + "s"
                     + " bid=" + info.getBid() + " createdBy=" + info.getCreatedBy());
@@ -275,7 +264,7 @@ public class LiveRecordDemo extends ModuleDemo {
     }
 
     /**
-     * 从可用源列表挑一路<b>属于本设备</b>({@code ownSn})的源: sn 匹配优先; sn 为空(上报未带归属,
+     * 从可用源列表挑一路<b>属于本设备</b>({@code ownSn})的源: sn 匹配优先; sn 为空 (上报未带归属,
      * 无法验证)时兜底采用并告警; 全部明确属于其它设备则返回 {@code null}(调用方继续等待, 不盲选)。
      */
     private LiveInfo pickOwnLiveInfo(List<LiveInfo> infos, String ownSn) {
@@ -302,7 +291,7 @@ public class LiveRecordDemo extends ModuleDemo {
         return unknown;
     }
 
-    /** 录制状态枚举描述(见 LiveRecordItem bean 注释, 同 RecordState: 0=成功/已结束 1=录制中 2=初始化中 3=失败)。 */
+    /** 录制状态枚举描述 (见 LiveRecordItem bean 注释, 同 RecordState: 0=成功/已结束 1=录制中 2=初始化中 3=失败)。 */
     private static String describeRecordState(int state) {
         switch (state) {
             case 0:  return "成功/已结束";
@@ -313,37 +302,4 @@ public class LiveRecordDemo extends ModuleDemo {
         }
     }
 
-    /** 纯控制台输出(不落日志文件), 用于菜单文案与结果回显。 */
-    private void console(String line) {
-        System.out.println(line);
-    }
-
-    /** 提示信息双写：既落日志文件(带 demo 名 tag)又回显控制台, 用于前置条件不满足、取消等需留痕的提示。 */
-    private void hint(String msg) {
-        DemoLog.info(name(), msg);
-        console("   " + msg);
-    }
-
-    /** 监听推送专用：只落日志文件不刷控制台, 避免推送打断菜单交互。 */
-    private void pushLog(String line) {
-        DemoLog.info(name(), line);
-    }
-
-    // ==================== 菜单文案 ====================
-
-    /**
-     * 主菜单文案：5 个菜单项与 {@code LiveRecordModule} 同名接口一一对应(见类 Javadoc 菜单树)。
-     * 增删菜单项时须同步 {@link #run()} 中的 switch 分支与 {@code readIntInRange} 的取值上界。
-     */
-    private String menu() {
-        return "\n"
-            + "  === 直播录制 (Live Record) ===\n"
-            + "  1.  开始录制           (startLiveRecord)\n"
-            + "  2.  停止录制           (stopLiveRecord)\n"
-            + "  3.  查询设备录制记录   (getDeviceLiveRecords)\n"
-            + "  4.  订阅录制状态       (listenRecordState, 推送只落日志)\n"
-            + "  5.  取消订阅录制状态   (cancelListenRecordState)\n"
-            + "\n"
-            + "  q.  返回上级菜单\n";
-    }
 }

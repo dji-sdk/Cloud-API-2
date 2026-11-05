@@ -5,12 +5,13 @@
 
 #include "api/terra_build.h"
 #include "common/util/async_capture_protect.h"
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class TerraBuildModuleImpl : public ITerraBuildModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit TerraBuildModuleImpl();
+    explicit TerraBuildModuleImpl(int session_id);
     ~TerraBuildModuleImpl();
 
     void getReconstructionSettings(
@@ -56,6 +57,14 @@ public:
     void batchDeleteModelFiles(
         const std::vector<int>& file_ids,
         std::function<void(FlightHubError err)> callback) override;
+
+    void deleteModelFileWithResult(
+        int file_id,
+        std::function<void(FlightHubError err, const TerraDeleteModelFilesResult& result)> callback) override;
+
+    void batchDeleteModelFilesWithResult(
+        const std::vector<int>& file_ids,
+        std::function<void(FlightHubError err, const TerraDeleteModelFilesResult& result)> callback) override;
 
     void createPanorama(
         const CreatePanoramaParams& params,
@@ -115,6 +124,7 @@ public:
         std::function<void(FlightHubError err)> callback) override;
 
 private:
+    int session_id_;
     int instance_id_ = 0;
     std::string log_tag_;  // 格式: "TerraBuild<instance_id>"
 };

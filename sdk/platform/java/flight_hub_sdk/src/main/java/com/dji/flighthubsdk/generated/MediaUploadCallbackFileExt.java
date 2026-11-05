@@ -115,6 +115,30 @@ public class MediaUploadCallbackFileExt {
     return flighthubsdkmoduleJNI.MediaUploadCallbackFileExt_wayline_id_get(swigCPtr, this);
   }
 
+  public void setWayline_action_uuid(String value) {
+    flighthubsdkmoduleJNI.MediaUploadCallbackFileExt_wayline_action_uuid_set(swigCPtr, this, value);
+  }
+
+  public String getWayline_action_uuid() {
+    return flighthubsdkmoduleJNI.MediaUploadCallbackFileExt_wayline_action_uuid_get(swigCPtr, this);
+  }
+
+  public void setTask_name(String value) {
+    flighthubsdkmoduleJNI.MediaUploadCallbackFileExt_task_name_set(swigCPtr, this, value);
+  }
+
+  public String getTask_name() {
+    return flighthubsdkmoduleJNI.MediaUploadCallbackFileExt_task_name_get(swigCPtr, this);
+  }
+
+  public void setSn(String value) {
+    flighthubsdkmoduleJNI.MediaUploadCallbackFileExt_sn_set(swigCPtr, this, value);
+  }
+
+  public String getSn() {
+    return flighthubsdkmoduleJNI.MediaUploadCallbackFileExt_sn_get(swigCPtr, this);
+  }
+
   public void setTinny_fingerprint(String value) {
     flighthubsdkmoduleJNI.MediaUploadCallbackFileExt_tinny_fingerprint_set(swigCPtr, this, value);
   }
@@ -137,6 +161,22 @@ public class MediaUploadCallbackFileExt {
 
   public long getMedia_index() {
     return flighthubsdkmoduleJNI.MediaUploadCallbackFileExt_media_index_get(swigCPtr, this);
+  }
+
+  public void setExpected_file_count(int value) {
+    flighthubsdkmoduleJNI.MediaUploadCallbackFileExt_expected_file_count_set(swigCPtr, this, value);
+  }
+
+  public int getExpected_file_count() {
+    return flighthubsdkmoduleJNI.MediaUploadCallbackFileExt_expected_file_count_get(swigCPtr, this);
+  }
+
+  public void setPano_total_count(int value) {
+    flighthubsdkmoduleJNI.MediaUploadCallbackFileExt_pano_total_count_set(swigCPtr, this, value);
+  }
+
+  public int getPano_total_count() {
+    return flighthubsdkmoduleJNI.MediaUploadCallbackFileExt_pano_total_count_get(swigCPtr, this);
   }
 
   public MediaUploadCallbackFileExt() {

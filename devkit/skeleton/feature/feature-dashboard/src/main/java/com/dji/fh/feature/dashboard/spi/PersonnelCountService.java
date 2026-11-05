@@ -19,7 +19,7 @@ package com.dji.fh.feature.dashboard.spi;
 /**
  * 人员计数 SPI，供看板统计使用。
  *
- * <p>默认 mock 实现返回 0；ISV 可通过声明自有 bean 覆盖，
+ * <p>默认 mock 实现返回 0；集成商 可通过声明自有 bean 覆盖，
  * 例如基于 {@code UserRepository.count()} 返回真实注册用户数。
  *
  * @author DJI DevKit Team

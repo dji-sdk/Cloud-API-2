@@ -83,8 +83,17 @@ services:
     environment:
       VITE_FH2_ADDRESS: ${VITE_FH2_ADDRESS:-}
       VITE_FH2_PORT: ${VITE_FH2_PORT:-30812}
+      # 同源反代前缀（可选）：留空则直连 VITE_FH2_ADDRESS
+      VITE_FH2_ASSET_HOST: ${VITE_FH2_ASSET_HOST:-}
+      VITE_FH2_BASE_URL: ${VITE_FH2_BASE_URL:-}
       VITE_FH2_WSS_URL: ${VITE_FH2_WSS_URL:-}
+      # 上游 TLS 校验：默认 on（fail-closed，安全审计 CICD-09）；现场自签名证书需显式设 off，
+      # 或挂载内网 CA 并用 FH2_PROXY_SSL_CA 指定
+      FH2_PROXY_SSL_VERIFY: ${FH2_PROXY_SSL_VERIFY:-on}
+      FH2_PROXY_SSL_CA: ${FH2_PROXY_SSL_CA:-}
       VITE_FH2_PRJ_ID: ${VITE_FH2_PRJ_ID:-}
+      # FH2 网关鉴权凭据：仅由 nginx 反代注入，不写入 config.js
+      VITE_FH2_USER_TOKEN: ${VITE_FH2_USER_TOKEN:-}
       VITE_FH2_SDK_AUTH_KEY: ${VITE_FH2_SDK_AUTH_KEY:-}
       VITE_FH2_SDK_AUTH_VALUE: ${VITE_FH2_SDK_AUTH_VALUE:-}
       VITE_DEFAULT_THEME: ${VITE_DEFAULT_THEME:-light}
@@ -101,7 +110,7 @@ services:
 
   # SSL 终止代理（profile: https）——仅当 deploy.env 配置了证书路径时由 deploy.sh 激活
   # Web Speech API 需要 HTTPS；证书借用服务器上已有的 DJI 自签名证书
-  # ISV 自建环境可执行：openssl req -x509 -nodes -days 365 -newkey rsa:2048
+  # 集成商自建环境可执行：openssl req -x509 -nodes -days 365 -newkey rsa:2048
   #     -keyout key.pem -out cert.pem -subj "/CN=<your-server-ip>"
   fh-ssl:
     image: ${REGISTRY:?REGISTRY must be set}/public/nginx:1.26.1

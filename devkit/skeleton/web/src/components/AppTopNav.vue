@@ -18,6 +18,9 @@
 import { useRoute } from 'vue-router'
 import UserDropdown from './UserDropdown.vue'
 import { useChatStore } from '@/stores/chat'
+import { useChatAvailability } from '@/composables/useChatAvailability'
+import { usePaasAvailability } from '@/composables/usePaasAvailability'
+import { formatPaasShortHint } from '@/utils/paasMessages'
 import {
   LayoutDashboard,
   Cpu,
@@ -28,7 +31,6 @@ import {
   Globe,
   Box,
   MonitorPlay,
-
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
 
@@ -36,23 +38,60 @@ interface NavItem {
   path: string
   label: string
   icon: Component
+  /** 该入口依赖 FH2 底座（paas.js / 直播 SDK / 航线编辑器 SDK），底座不可用时置灰 */
+  requiresPaas?: boolean
 }
 
 const route = useRoute()
 const chatStore = useChatStore()
 
+// 探测未完成前不渲染入口，避免后端关掉 AI 助手时按钮闪现后消失
+const { available: chatAvailable, probed: chatProbed } = useChatAvailability()
+
+// 底部探测 + 导航置灰共用同一份结果
+const { availability: paasAvailability, probed: paasProbed } = usePaasAvailability()
+
 const navItems: NavItem[] = [
   { path: '/', label: '数据看板', icon: LayoutDashboard },
-  { path: '/live-stream', label: '直播大屏', icon: MonitorPlay },
-  { path: '/devices', label: '设备管理', icon: Cpu },
-  { path: '/cockpit', label: '驾驶舱', icon: Gamepad2 },
-  { path: '/wayline', label: '航线编辑器', icon: Route },
+  { path: '/live-stream', label: '直播大屏', icon: MonitorPlay, requiresPaas: true },
+  { path: '/devices', label: '设备管理', icon: Cpu, requiresPaas: true },
+  { path: '/cockpit', label: '驾驶舱', icon: Gamepad2, requiresPaas: true },
+  { path: '/wayline', label: '航线编辑器', icon: Route, requiresPaas: true },
   { path: '/flight-tasks', label: '任务管理', icon: PlayCircle },
   { path: '/media', label: '媒体管理', icon: Camera },
   { path: '/flight-areas', label: '空域管理', icon: Globe },
-
   { path: '/models', label: '模型库', icon: Box },
 ]
+
+/**
+ * 判断导航项是否因底座不可用而禁用。
+ *
+ * <p>放在 script 而非模板里，避免模板中堆叠三段条件难以阅读。
+ * 探测完成前不置灰：available 初始值为 false，若直接据此判定会让入口
+ * 「先灰后亮」闪一下，观感比稍慢一点更差。
+ *
+ * @param item 导航项
+ * @returns true 表示需要置灰且禁止跳转
+ */
+function isNavItemDisabled(item: NavItem): boolean {
+  if (item.requiresPaas !== true) {
+    return false
+  }
+  return paasProbed.value && !paasAvailability.value.available
+}
+
+/**
+ * 生成禁用导航项的悬浮说明。
+ *
+ * <p>探测尚未完成时 reason 为 null，此时入口不会置灰（available 默认 false 会让
+ * 入口先灰后亮，故仅在探测完成后才判定），因此这里 reason 必定非空。
+ *
+ * @returns 含不可用原因的一句话提示
+ */
+function disabledNavHint(): string {
+  const { reason, address } = paasAvailability.value
+  return reason ? formatPaasShortHint(reason, address) : ''
+}
 </script>
 
 <template>
@@ -62,20 +101,35 @@ const navItems: NavItem[] = [
     </div>
 
     <nav class="top-nav__items">
-      <router-link
-        v-for="item in navItems"
-        :key="item.path"
-        :to="item.path"
-        class="nav-item"
-        :class="{ 'nav-item--active': route.path === item.path }"
-      >
-        <component :is="item.icon" class="nav-icon" :size="16" :stroke-width="1.75" />
-        <span>{{ item.label }}</span>
-      </router-link>
+      <!--
+        依赖底座的入口在底座不可用时渲染为 span 而非 router-link：
+        灰掉链接但仍可点击/可聚焦会让键盘用户和读屏用户误以为能进。
+      -->
+      <template v-for="item in navItems" :key="item.path">
+        <span
+          v-if="isNavItemDisabled(item)"
+          class="nav-item nav-item--disabled"
+          :title="disabledNavHint()"
+          aria-disabled="true"
+        >
+          <component :is="item.icon" class="nav-icon" :size="16" :stroke-width="1.75" />
+          <span>{{ item.label }}</span>
+        </span>
+        <router-link
+          v-else
+          :to="item.path"
+          class="nav-item"
+          :class="{ 'nav-item--active': route.path === item.path }"
+        >
+          <component :is="item.icon" class="nav-icon" :size="16" :stroke-width="1.75" />
+          <span>{{ item.label }}</span>
+        </router-link>
+      </template>
     </nav>
 
     <div class="top-nav__actions">
       <button
+        v-if="chatProbed && chatAvailable"
         class="ai-btn"
         :class="{ 'ai-btn--active': chatStore.isOpen }"
         title="AI 助手 (Ctrl+/)"
@@ -141,6 +195,15 @@ const navItems: NavItem[] = [
 
 .nav-item:hover {
   color: #ffffff;
+}
+
+.nav-item--disabled {
+  color: rgba(255, 255, 255, 0.35);
+  cursor: not-allowed;
+}
+
+.nav-item--disabled:hover {
+  color: rgba(255, 255, 255, 0.35);
 }
 
 .nav-item--active {

@@ -7,13 +7,13 @@
 #include "notification_center/notification_center.h"
 #include "common/executors/executors.h"
 #include <BusinessManager.h>
+#include "session/session_bm.h"
 
 using namespace notification_center;
 
 namespace flight_hub_sdk {
 
-WaylineManageModuleImpl::WaylineManageModuleImpl()
-    {
+WaylineManageModuleImpl::WaylineManageModuleImpl(int session_id) : session_id_(session_id) {
     LOG_INFO("[WaylineManageModuleImpl] constructor");
 }
 
@@ -21,12 +21,13 @@ void WaylineManageModuleImpl::getWaylineList(const GetWaylineListParam& param, s
     WeakDummy(weak_ptr);
     get_wayline_list(param, [this, weak_ptr, callback](const GetWaylineListResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 获取航线列表; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_GET_LIST, err, "[WaylineManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_GET_LIST, err, session_id_, "[WaylineManageModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("getWaylineList: err_code: %d", (int)err.error_code);
                 }
@@ -47,25 +48,39 @@ void WaylineManageModuleImpl::getWaylineList(const GetWaylineListParam& param, s
                     item_result.with_megaphone = item.with_megaphone;
                     item_result.with_search_light = item.with_search_light;
                     item_result.is_ai_wayline = item.is_ai_wayline;
+                    item_result.editor_warnings = item.editor_warnings;
+                    item_result.execute_warnings = item.execute_warnings;
+                    item_result.has_collisions = item.has_collisions;
+                    for (const auto& collision : item.collision_positions) {
+                        WaylineCollisionEvent event;
+                        event.wayline_uuid = collision.wayline_uuid;
+                        event.flight_task_uuid = collision.flight_task_uuid;
+                        event.timestamp = collision.timestamp;
+                        event.latitude = collision.latitude;
+                        event.longitude = collision.longitude;
+                        event.altitude = collision.altitude;
+                        item_result.collision_positions.push_back(event);
+                    }
                     result.list.push_back(item_result);
                 }
                 if (callback) {
                     callback(err, result);
                 }
             });
-        });
+        }, session_id_);
 }
 
 void WaylineManageModuleImpl::getWaylineDetail(const std::string& wayline_uuid, std::function<void(FlightHubError err, GetWaylineDetailResult result)> callback) {
     WeakDummy(weak_ptr);
     get_wayline_detail(wayline_uuid, [this, weak_ptr, callback](const GetWaylineDetailResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 获取航线详情; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_GET_DETAIL, err, "[WaylineManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_GET_DETAIL, err, session_id_, "[WaylineManageModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("getWaylineDetail: err_code: %d", (int)err.error_code);
                 }
@@ -127,6 +142,7 @@ void WaylineManageModuleImpl::getWaylineDetail(const std::string& wayline_uuid, 
                 result.kmz_data.action_uuid_to_md5_map                  = response.kmz_data.action_uuid_to_md5_map;
                 result.kmz_data.audio_action_uuid_to_file_path_map      = response.kmz_data.audio_action_uuid_to_file_path_map;
                 result.kmz_data.ai_audio_action_uuid_to_file_path_map   = response.kmz_data.ai_audio_action_uuid_to_file_path_map;
+                result.kmz_data.md5                                     = response.kmz_data.md5;
                 for (const auto& p : response.kmz_data.survey_area_scope.points) {
                     WaylineDetailSurveyAreaScopePoint point;
                     point.lng = p.lng;
@@ -139,11 +155,58 @@ void WaylineManageModuleImpl::getWaylineDetail(const std::string& wayline_uuid, 
                 result.ext_data.target_area_file_object_key  = response.ext_data.target_area_file_object_key;
                 result.ext_data.business_file_object_key     = response.ext_data.business_file_object_key;
                 result.ext_data.model_file_object_keys       = response.ext_data.model_file_object_keys;
+                result.ext_data.elevation_file_object_keys   = response.ext_data.elevation_file_object_keys;
+                result.ext_data.content_length               = response.ext_data.content_length;
+                for (const auto& m : response.ext_data.models) {
+                    ConcatWaylineExtDataModel model;
+                    model.uuid     = m.uuid;
+                    model.file_key = m.file_key;
+                    model.boundary.latitude  = m.boundary.latitude;
+                    model.boundary.longitude = m.boundary.longitude;
+                    model.boundary.altitude  = m.boundary.altitude;
+                    model.boundary.half_x    = m.boundary.half_x;
+                    model.boundary.half_y    = m.boundary.half_y;
+                    model.boundary.half_z    = m.boundary.half_z;
+                    model.boundary.transform = m.boundary.transform;
+                    for (const auto& p : m.bounding.points) {
+                        ConcatWaylineExtDataModelBoundingPoint point;
+                        point.lng = p.lng;
+                        point.lat = p.lat;
+                        model.bounding.points.push_back(point);
+                    }
+                    result.ext_data.models.push_back(model);
+                }
+                result.editor_warnings      = response.editor_warnings;
+                result.execute_warnings     = response.execute_warnings;
+                result.wayline_point_nums   = response.wayline_point_nums;
+                result.elevation_uuid       = response.elevation_uuid;
+                for (const auto& obs : response.obstacles) {
+                    WaylineObstacle obstacle;
+                    obstacle.id             = obs.id;
+                    obstacle.type           = obs.type;
+                    obstacle.timestamp      = obs.timestamp;
+                    obstacle.latitude       = obs.latitude;
+                    obstacle.longitude      = obs.longitude;
+                    obstacle.height         = obs.height;
+                    obstacle.wayline_id     = obs.wayline_id;
+                    obstacle.waypoint_index = obs.waypoint_index;
+                    result.obstacles.push_back(obstacle);
+                }
+                for (const auto& collision : response.collision_positions) {
+                    WaylineCollisionEvent event;
+                    event.wayline_uuid    = collision.wayline_uuid;
+                    event.flight_task_uuid = collision.flight_task_uuid;
+                    event.timestamp       = collision.timestamp;
+                    event.latitude        = collision.latitude;
+                    event.longitude       = collision.longitude;
+                    event.altitude        = collision.altitude;
+                    result.collision_positions.push_back(event);
+                }
                 if (callback) {
                     callback(err, result);
                 }
             });
-        });
+        }, session_id_);
 }
 
 void WaylineManageModuleImpl::batchDeleteWaylines(const std::vector<std::string>& wayline_uuids,
@@ -151,12 +214,13 @@ void WaylineManageModuleImpl::batchDeleteWaylines(const std::vector<std::string>
     WeakDummy(weak_ptr);
     post_batch_delete_waylines(wayline_uuids, [this, weak_ptr, callback](const BatchDeleteWaylinesResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 批量删除航线; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_BATCH_DELETE_WAYLINES, err, "[WaylineManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_BATCH_DELETE_WAYLINES, err, session_id_, "[WaylineManageModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("batchDeleteWaylines: err_code: %d, server_code: %d, server_message: %s", (int)err.error_code,
                         response.server_code, response.server_message.c_str());
@@ -168,19 +232,20 @@ void WaylineManageModuleImpl::batchDeleteWaylines(const std::vector<std::string>
                     callback(err, result);
                 }
             });
-        });
+        }, session_id_);
 }
 
 void WaylineManageModuleImpl::updateWayline(const std::string& wayline_uuid, const std::string& wayline_name, std::function<void(FlightHubError err, UpdateWaylineResult result)> callback) {
     WeakDummy(weak_ptr);
     post_update_wayline(wayline_uuid, wayline_name, [this, weak_ptr, callback](const UpdateWaylineResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 更新航线; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_UPDATE, err, "[WaylineManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_UPDATE, err, session_id_, "[WaylineManageModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("updateWayline: err_code: %d", (int)err.error_code);
                 }
@@ -190,19 +255,20 @@ void WaylineManageModuleImpl::updateWayline(const std::string& wayline_uuid, con
                     callback(err, result);
                 }
             });
-        });
+        }, session_id_);
 }
 
 void WaylineManageModuleImpl::submitWaylineInfo(const SubmitWaylineInfoParam& param, std::function<void(FlightHubError err)> callback) {
     WeakDummy(weak_ptr);
     post_import_wayline_callback(param, [this, weak_ptr, callback](const SubmitWaylineInfoResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 提交航线文件信息; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_SUBMIT_INFO, err, "[WaylineManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_SUBMIT_INFO, err, session_id_, "[WaylineManageModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("submitWaylineInfo: err_code: %d", (int)err.error_code);
                 }
@@ -210,19 +276,20 @@ void WaylineManageModuleImpl::submitWaylineInfo(const SubmitWaylineInfoParam& pa
                     callback(err);
                 }
             });
-        });
+        }, session_id_);
 }
 
 void WaylineManageModuleImpl::batchDownloadWaylines(const BatchDownloadWaylinesParam& param, std::function<void(FlightHubError err, BatchDownloadWaylinesResult result)> callback) {
     WeakDummy(weak_ptr);
     post_batch_download_waylines(param, [this, weak_ptr, callback](const BatchDownloadWaylinesResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 批量下载航线文件; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_BATCH_DOWNLOAD_WAYLINES, err, "[WaylineManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_BATCH_DOWNLOAD_WAYLINES, err, session_id_, "[WaylineManageModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("batchDownloadWaylines: err_code: %d", (int)err.error_code);
                 }
@@ -240,19 +307,20 @@ void WaylineManageModuleImpl::batchDownloadWaylines(const BatchDownloadWaylinesP
                     callback(err, result);
                 }
             });
-        });
+        }, session_id_);
 }
 
 void WaylineManageModuleImpl::duplicateWayline(const DuplicateWaylineParam& param, std::function<void(FlightHubError err, DuplicateWaylineResult result)> callback) {
     WeakDummy(weak_ptr);
     post_duplicate_wayline(param, [this, weak_ptr, callback](const DuplicateWaylineResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 创建副本航线; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_DUPLICATE, err, "[WaylineManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_DUPLICATE, err, session_id_, "[WaylineManageModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("duplicateWayline: err_code: %d", (int)err.error_code);
                 }
@@ -263,19 +331,20 @@ void WaylineManageModuleImpl::duplicateWayline(const DuplicateWaylineParam& para
                     callback(err, result);
                 }
             });
-        });
+        }, session_id_);
 }
 
 void WaylineManageModuleImpl::copyWayline(const CopyWaylineParam& param, std::function<void(FlightHubError err, CopyWaylineResult result)> callback) {
     WeakDummy(weak_ptr);
     post_copy_wayline(param, [this, weak_ptr, callback](const CopyWaylineResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 航线复制（去组织化，不需要 workspace_id）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_COPY, err, "[WaylineManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_COPY, err, session_id_, "[WaylineManageModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("copyWayline: err_code: %d", (int)err.error_code);
                 }
@@ -286,19 +355,20 @@ void WaylineManageModuleImpl::copyWayline(const CopyWaylineParam& param, std::fu
                     callback(err, result);
                 }
             });
-        });
+        }, session_id_);
 }
 
 void WaylineManageModuleImpl::concatWayline(const ConcatWaylineParam& param, std::function<void(FlightHubError err, ConcatWaylineResult result)> callback) {
     WeakDummy(weak_ptr);
     post_concat_wayline(param, [this, weak_ptr, callback](const ConcatWaylineResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 航线拼接（去组织化，不需要 workspace_id）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_CONCAT, err, "[WaylineManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_CONCAT, err, session_id_, "[WaylineManageModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("concatWayline: err_code: %d", (int)err.error_code);
                 }
@@ -389,19 +459,20 @@ void WaylineManageModuleImpl::concatWayline(const ConcatWaylineParam& param, std
                     callback(err, result);
                 }
             });
-        });
+        }, session_id_);
 }
 
 void WaylineManageModuleImpl::importKmz(const std::vector<std::string>& file_paths, std::function<void(FlightHubError err, ImportKmzResult result)> callback) {
     WeakDummy(weak_ptr);
     post_import_kmz(file_paths, [this, weak_ptr, callback](const ImportKmzResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 上传 KMZ 文件并导入航线; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_IMPORT_KMZ, err, "[WaylineManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_WAYLINE_IMPORT_KMZ, err, session_id_, "[WaylineManageModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("importKmz: err_code: %d", (int)err.error_code);
                 }
@@ -410,6 +481,7 @@ void WaylineManageModuleImpl::importKmz(const std::vector<std::string>& file_pat
                 for (const auto& item : response.list) {
                     ImportKmzItem kmz_item;
                     kmz_item.kmz_object_key = item.kmz_object_key;
+                    kmz_item.wayline_uuid = item.wayline_uuid;
                     kmz_item.wayline_name = item.wayline_name;
                     kmz_item.async_request_id = item.async_request_id;
                     result.list.push_back(kmz_item);
@@ -418,13 +490,16 @@ void WaylineManageModuleImpl::importKmz(const std::vector<std::string>& file_pat
                     callback(err, result);
                 }
             });
-        });
+        }, session_id_);
 }
 
 int WaylineManageModuleImpl::listenImportWaylineEvent(const std::function<void(const ImportWaylineEventResult& result)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("listenImportWaylineEvent");
     WeakDummy(weak_ptr);
-    auto listen_id = NotificationCenter::getInstance()->getBusinessManager()->ListenImportWaylineEvent(
+    auto listen_id = -1;
+    if (bm) {
+        listen_id = bm->ListenImportWaylineEvent(
         [this, weak_ptr, callback](const notification_center::ImportWaylineEvent& msg) -> void {
             WeakDummyReturn(weak_ptr);
             if (!callback) return;
@@ -509,11 +584,17 @@ int WaylineManageModuleImpl::listenImportWaylineEvent(const std::function<void(c
             }
         },
         "", notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     return listen_id;
 }
 
 void WaylineManageModuleImpl::cancelListenImportWaylineEvent(int listen_id) {
-    NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(listen_id);
+    auto bm = ResolveBusinessManager(session_id_);
+    if (bm) {
+        bm->CancelObserve(listen_id);
+    }
 }
 
 void WaylineManageModuleImpl::getWaylineEditorSts(
@@ -527,7 +608,7 @@ void WaylineManageModuleImpl::getWaylineEditorSts(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_WAYLINE_GET_EDITOR_STS, param_err, "[WaylineManageModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_WAYLINE_GET_EDITOR_STS, param_err, session_id_, "[WaylineManageModuleImpl]");
         callback(param_err, {});
         return;
     }
@@ -540,14 +621,15 @@ void WaylineManageModuleImpl::getWaylineEditorSts(
     drc_sdk::common::Executors::IO()->Post([this, weak_ptr, request, callback]() {
         WeakDummyReturn(weak_ptr);
         get_wayline_editor_sts(request,
-            [weak_ptr, callback](const GetWaylineEditorStsResponseData& data, FlightHubError err) {
+            [weak_ptr, callback, this](const GetWaylineEditorStsResponseData& data, FlightHubError err) {
                 WeakDummyReturn(weak_ptr);
-                drc_sdk::common::Executors::Main()->Post([err, callback, data]() {
+                drc_sdk::common::Executors::Main()->Post([err, callback, data, this, weak_ptr]() {
+                    WeakDummyReturn(weak_ptr);
                     // 埋点: 获取航线编辑器 OSS STS 临时上传凭证; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                     // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                     // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                     // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                    report_beacon_event_helper(kBeaconReportEvent_WAYLINE_GET_EDITOR_STS, err, "[WaylineManageModuleImpl]");
+                    report_beacon_event_helper(kBeaconReportEvent_WAYLINE_GET_EDITOR_STS, err, session_id_, "[WaylineManageModuleImpl]");
                     if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                         LOG_ERROR("getWaylineEditorSts(): err_code: %d", static_cast<int>(err.error_code));
                         callback(err, {});
@@ -566,7 +648,7 @@ void WaylineManageModuleImpl::getWaylineEditorSts(
                     result.region     = data.region;
                     callback(err, result);
                 });
-            });
+            }, session_id_);
     });
 }
 

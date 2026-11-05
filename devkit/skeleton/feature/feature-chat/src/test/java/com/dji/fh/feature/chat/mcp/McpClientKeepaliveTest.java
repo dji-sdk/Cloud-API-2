@@ -52,6 +52,8 @@ class McpClientKeepaliveTest {
         props.setReconnectInitialDelay(Duration.ofMillis(100));
         props.setReconnectMaxDelay(Duration.ofMillis(500));
         props.setReconnectMaxAttempts(3);
+        // 关闭抖动，保证保活与重连的时序断言稳定
+        props.setReconnectJitterRatio(0);
         props.setKeepaliveEnabled(true);
         props.setKeepaliveInterval(Duration.ofMillis(200));
         props.setHeartbeatTimeout(Duration.ofMillis(500));

@@ -22,10 +22,11 @@ private:
     // Level-1 Cache;
     mutable std::shared_mutex  device_topo_list_rw_mutex_;
     std::vector<DeviceTopo>    device_topo_list_;
+    int                session_id_;
 
 
 public:
-    DeviceListManager();
+    explicit DeviceListManager(int session_id);
 
     virtual ~DeviceListManager();
 

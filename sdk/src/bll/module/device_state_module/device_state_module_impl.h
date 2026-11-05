@@ -7,12 +7,13 @@
 #include "api/value.h"
 #include "common/util/async_capture_protect.h"
 #include "tool/callback_container.h"
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class DeviceStateModuleImpl : public IDeviceStateModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    DeviceStateModuleImpl(DeviceKind kind, const std::string& sn);
+    DeviceStateModuleImpl(DeviceKind kind, const std::string& sn, int session_id);
     ~DeviceStateModuleImpl() override;
 
     int listenDockOnlineStatus(
@@ -26,6 +27,7 @@ public:
     void cancelListenDroneOnlineStatus(int listen_id) override;
 
 private:
+    int session_id_;
     void registerNotificationCenterListeners();
 
     DeviceKind kind_;

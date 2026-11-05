@@ -10,13 +10,14 @@ namespace flight_hub_sdk {
 
 class RemoteControllerImpl : public IRemoteController {
 public:
-    RemoteControllerImpl(const std::string& sn);
+    RemoteControllerImpl(const std::string& sn, int session_id);
     ~RemoteControllerImpl() override = default;
 
     const std::string& getSn() const override { return sn_; }
 
 private:
     std::string sn_;
+    int session_id_;
 };
 
 } // namespace flight_hub_sdk

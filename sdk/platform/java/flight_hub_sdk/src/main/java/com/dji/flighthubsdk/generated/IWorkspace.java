@@ -123,6 +123,11 @@ public class IWorkspace {
     return (cPtr == 0) ? null : new IFlashLedModule(cPtr, true);
   }
 
+  public IAutoRecordModule getAutoRecordModule() {
+    long cPtr = flighthubsdkmoduleJNI.IWorkspace_getAutoRecordModule(swigCPtr, this);
+    return (cPtr == 0) ? null : new IAutoRecordModule(cPtr, true);
+  }
+
   public ITerraBuildModule getTerraBuildModule() {
     long cPtr = flighthubsdkmoduleJNI.IWorkspace_getTerraBuildModule(swigCPtr, this);
     return (cPtr == 0) ? null : new ITerraBuildModule(cPtr, true);

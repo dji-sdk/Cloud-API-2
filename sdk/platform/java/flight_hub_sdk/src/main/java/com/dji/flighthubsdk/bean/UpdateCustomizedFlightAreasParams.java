@@ -12,7 +12,15 @@ public class UpdateCustomizedFlightAreasParams {
     private String name = "";
     /** content, 飞行区内容; */
     private FlightAreasContentData content;
-    /** update_by, 更新用户 ID; */
+    /** status, 飞行区状态: enable / disable（可选, 空表示不更新） */
+    private String status = "";
+    /** type, 飞行区类型: dfence / nfz / noland（可选, 空表示不更新） */
+    private String type = "";
+    /**
+     * update_by, 更新用户 ID;
+     * @deprecated 后端 updated_by 以登录态为准, 请求不再上送该字段, 设置无效(保留仅为兼容)。
+     */
+    @Deprecated
     private String updateBy = "";
 
     public UpdateCustomizedFlightAreasParams() {
@@ -31,9 +39,25 @@ public class UpdateCustomizedFlightAreasParams {
     public FlightAreasContentData getContent() { return content; }
     /** @param content content, 飞行区内容; */
     public void setContent(FlightAreasContentData content) { this.content = content; }
-    /** update_by, 更新用户 ID; */
+    /** status, 飞行区状态: enable / disable（可选, 空表示不更新） */
+    public String getStatus() { return status; }
+    /** @param status status, 飞行区状态: enable / disable（可选, 空表示不更新） */
+    public void setStatus(String status) { this.status = status != null ? status : ""; }
+    /** type, 飞行区类型: dfence / nfz / noland（可选, 空表示不更新） */
+    public String getType() { return type; }
+    /** @param type type, 飞行区类型: dfence / nfz / noland（可选, 空表示不更新） */
+    public void setType(String type) { this.type = type != null ? type : ""; }
+    /**
+     * update_by, 更新用户 ID;
+     * @deprecated 后端 updated_by 以登录态为准, 请求不再上送该字段, 设置无效。
+     */
+    @Deprecated
     public String getUpdateBy() { return updateBy; }
-    /** @param updateBy update_by, 更新用户 ID; */
+    /**
+     * @param updateBy update_by, 更新用户 ID;
+     * @deprecated 后端 updated_by 以登录态为准, 请求不再上送该字段, 设置无效。
+     */
+    @Deprecated
     public void setUpdateBy(String updateBy) { this.updateBy = updateBy != null ? updateBy : ""; }
 
     @Override
@@ -48,12 +72,14 @@ public class UpdateCustomizedFlightAreasParams {
         return Objects.equals(flightAreaId, that.flightAreaId)
                 && Objects.equals(name, that.name)
                 && Objects.equals(content, that.content)
+                && Objects.equals(status, that.status)
+                && Objects.equals(type, that.type)
                 && Objects.equals(updateBy, that.updateBy);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(flightAreaId, name, content, updateBy);
+        return Objects.hash(flightAreaId, name, content, status, type, updateBy);
     }
 
     @Override
@@ -62,6 +88,8 @@ public class UpdateCustomizedFlightAreasParams {
                 + "flightAreaId='" + flightAreaId + '\''
                 + ", name='" + name + '\''
                 + ", content=" + content
+                + ", status='" + status + '\''
+                + ", type='" + type + '\''
                 + ", updateBy='" + updateBy + '\''
                 + '}';
     }

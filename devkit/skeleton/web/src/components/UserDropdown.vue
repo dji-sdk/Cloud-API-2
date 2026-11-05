@@ -27,7 +27,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const { setPrimaryColor } = useTheme()
-const mockEnabled = getRuntimeConfig('MOCK_ENABLED') === 'true'
+const mockDebugPanelEnabled = getRuntimeConfig('MOCK_DEBUG_PANEL') === 'true'
 const open = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 
@@ -107,7 +107,7 @@ async function handleLogout(): Promise<void> {
             <span>使用说明</span>
           </a>
           <router-link
-            v-if="mockEnabled"
+            v-if="mockDebugPanelEnabled"
             to="/mock-debug"
             class="dropdown-item"
             @click="close"

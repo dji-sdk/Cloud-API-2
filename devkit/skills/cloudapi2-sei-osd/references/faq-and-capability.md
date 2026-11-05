@@ -1,8 +1,7 @@
-# ISV SEI / OSD 问题解答与 FHSDK 能力对照
+# 集成商 SEI / OSD 问题解答与 FHSDK 能力对照
 
-> **对应来源**：[ISV_SEI_OSD_需求与困惑汇总_2026-06-15.md](./ISV_SEI_OSD_需求与困惑汇总_2026-06-15.md)  
 > **整理日期**：2026-06-15  
-> **视角**：以上云 API 2 + **FHSDK（DJI CloudAPI2 SDK）** 为对外交付主线，汇总培训可答项、FHSDK 可闭环项、以及需产品/平台单独跟进的未决项。  
+> **视角**：以DJI Cloud API 2 + **FHSDK（DJI Cloud API 2 SDK）** 为对外交付主线，汇总培训可答项、FHSDK 可闭环项、以及需产品/平台单独跟进的未决项。  
 
 ---
 
@@ -65,7 +64,7 @@
 
 ### 1.3 交付形态与前端 AR（内部决策摘要）
 
-| 形态 | 状态 | 对 ISV 的含义 |
+| 形态 | 状态 | 对集成商的含义 |
 |------|------|----------------|
 | **Java SDK** | ✅ 当前主交付 | SEI 在 JVM 回调；浏览器需自建 WebSocket 等转发 |
 | **Web SDK**（`platform/web`，含 `subscribeArSei`） | ⚠️ 代码存在，接口列表标「支持」 | 是否正式发包、文档、SLA **需产品确认** |
@@ -74,10 +73,10 @@
 
 **推荐对外策略（分层，非二选一）**：
 
-1. **主路径**：标准 ISV 用 **FHSDK 结构化 API**，不默认发放 SEI 二进制协议全文。
+1. **主路径**：标准集成商用 **FHSDK 结构化 API**，不默认发放 SEI 二进制协议全文。
 2. **前端 AR**：**Java 解析 SEI → 业务 API/WebSocket → 前端 Canvas**（当前可落地）；或正式交付 Web LiveModule。
 3. **例外路径**：自建流媒体用户声明**不在标准支持范围**；若必须支持，走单独立项，勿散发圈内 parser 源码。
-4. **合规**：FHSDK 作为产品面交付 SEI 解析**无妨**；DUSS/Confluence/DJI 上云API 2同源实现**不宜**默认外发，协议附录需法务/信安评审。
+4. **合规**：FHSDK 作为产品面交付 SEI 解析**无妨**；DUSS/Confluence/DJI Cloud API 2同源实现**不宜**默认外发，协议附录需法务/信安评审。
 
 ---
 
@@ -86,7 +85,7 @@
 | # | 原结论要点 | FHSDK / 培训口径 |
 |---|------------|------------------|
 | 1 | OSD 0.5～1Hz 无法对齐画面 | ✅ 认同。FHSDK **不提高 OSD 频率**；对齐画面用 **`subscribeArSeiInfo` 等** |
-| 2 | 标准解法在 WebRTC i 帧 SEI，ISV 未接通 | ✅ FHSDK 已封装解析，ISV **无需自己抠 NAL**（走 FHSDK 拉流时） |
+| 2 | 标准解法在 WebRTC i 帧 SEI，集成商 未接通 | ✅ FHSDK 已封装解析，集成商 **无需自己抠 NAL**（走 FHSDK 拉流时） |
 | 2a | 拉流方式不对拿不到 SEI | ✅ 培训必讲：**须 FHSDK RTC 拉流**；RTSP/未解析 SEI 的自建流 **FHSDK 不保证** |
 | 2b | 不知哪代设备/固件支持 | ⚠️ **U1 未决**；代码仅有 `payload_index` 分支，**无官方矩阵**，培训前须产品补齐 |
 | 3 | 培训重点是讲清已有能力 + 少量补能力 | ✅ FHSDK 接入教程 + 后端转发前端 AR 示例应作为培训核心产出 |
@@ -98,7 +97,7 @@
 
 ### C1 详细解答：MQTT OSD vs DRC OSD vs SEI
 
-ISV 常把"OSD"和"SEI"混为一谈，实际位置数据有**三个层级**：
+集成商 常把"OSD"和"SEI"混为一谈，实际位置数据有**三个层级**：
 
 | 通道 | 频率 | 条件 | 传输方式 | 内容 |
 |------|------|------|----------|------|
@@ -117,9 +116,9 @@ push_rc_osd_id_ = cloud_worker_->StartTimer([this]() { PublishRcOSDInfo(false); 
 push_relay_osd_id_ = cloud_worker_->StartTimer([this]() { PublishRelayOSDInfo(false); }, 2000, true);
 ```
 
-**ISV 感知的"2 秒一次对不齐画面"就是 MQTT OSD 的 0.5Hz**——这是机场 MC 模块写死的上报节奏，SDK 侧无法调高。
+**集成商 感知的"2 秒一次对不齐画面"就是 MQTT OSD 的 0.5Hz**——这是机场 MC 模块写死的上报节奏，SDK 侧无法调高。
 
-**对 ISV 的标准回答**：
+**对集成商的标准回答**：
 
 - 要**对齐视频画面**的位置 → 用 **SEI**（`subscribeArSeiInfo`），帧级
 - 只看**设备状态监控** → 用 **MQTT OSD**（`listenAircraftPayloadsOsdInfo` 等），0.5Hz 够用
@@ -141,7 +140,7 @@ push_relay_osd_id_ = cloud_worker_->StartTimer([this]() { PublishRelayOSDInfo(fa
 | **C2** | SEI 怎么取 | ✅ 能 | 见下方 C2 详细解答 |
 | **C3** | 哪代设备/固件支持 SEI | ❌ FHSDK 不能单独答 | **U1 待办**。代码已知：JSON 路径 `80-0-0`/`81-0-0`（M3D 等）、`66/67/129-0-0`（M3E 等）；二进制为其余；**跳过** `39-0-7`（FPV）、`165-0-7`（Dock Live）。**不能**代替「机场 1/2/3 代 + 固件」矩阵 |
 | **C4** | OSD 频率为何调不了 | ✅ 能 | **见 C1 三层级表**。MQTT OSD 0.5Hz 是设备端 `dji-cloud-access` 硬编码 2000ms 定时器，SDK 无法调高。追帧级对齐应走 SEI |
-| **C5** | 高频 OSD 一开就停航线 | ⚠️ 暂缓 | 疑似 bug，暂时无法回答。ISV 追帧级位置应走 SEI（见 C1），不需要开高频 OSD |
+| **C5** | 高频 OSD 一开就停航线 | ⚠️ 暂缓 | 疑似 bug，暂时无法回答。集成商 追帧级位置应走 SEI（见 C1），不需要开高频 OSD |
 | **C6** | OSD 太多打挂服务器 | — 不处理 | 属于平台基建问题（MQTT 扇入/NC 订阅机制），不属于 SEI/CV 范畴 |
 | **C7** | 视锥中心 / 像素反算经纬度 | ⚠️ 部分 | 见下方 C7 详细解答 |
 | **C8** | 固件升级 OSD 枚举坏了 | — 不处理 | 固件兼容性问题，FHSDK 无能为力。U3 待办归固件/平台团队 |
@@ -151,7 +150,7 @@ push_relay_osd_id_ = cloud_worker_->StartTimer([this]() { PublishRelayOSDInfo(fa
 
 #### 问题本质
 
-ISV 想做两件事：
+集成商 想做两件事：
 1. **视锥中心点 GPS**：画面正中心对应的地面经纬度
 2. **任意像素反算经纬度**：画面上任意一点 (u,v) → GPS
 
@@ -171,8 +170,8 @@ ISV 想做两件事：
 
 | 精度 | 方法 | 需要什么 | 谁有实现 |
 |------|------|----------|---------|
-| **粗略** | 假设地面平坦 + 飞行高度已知，射线与平面求交 | ArSeiInfo + FovSeiInfo + altitude | ISV 自研（~50 行代码） |
-| **中等** | 在粗略基础上加畸变校正 | + 畸变 k1~p2 表 | ISV 自研 + DJI 提供畸变表 |
+| **粗略** | 假设地面平坦 + 飞行高度已知，射线与平面求交 | ArSeiInfo + FovSeiInfo + altitude | 集成商 自研（~50 行代码） |
+| **中等** | 在粗略基础上加畸变校正 | + 畸变 k1~p2 表 | 集成商 自研 + DJI 提供畸变表 |
 | **精确** | 射线与 DEM 地形求交 | + DEM 高程瓦片 | dji-arcore `decodeTerrainGeoPos` |
 
 #### 各端已有的逆投影实现
@@ -182,9 +181,9 @@ ISV 想做两件事：
 | CSDK PinPoint | ✅ `project_gps_point_to_liveview` | ❌ 无 |
 | dji-arcore | ✅ `toScreen` | ✅ `getPointFromScreenPercent(x, y, distance)`、`decodePlaneGeoPos`（平面）、`decodeTerrainGeoPos`（DEM） |
 | FHSDK | ❌ 无投影 API | ❌ 无 |
-| 前端 PaaS 组件 | ✅ ArCore WASM 内置 | ✅ ArCore WASM 内置（是否暴露给 ISV 待确认） |
+| 前端 PaaS 组件 | ✅ ArCore WASM 内置 | ✅ ArCore WASM 内置（是否暴露给集成商待确认） |
 
-#### ISV 自研逆投影的步骤（平面假设，无畸变）
+#### 集成商 自研逆投影的步骤（平面假设，无畸变）
 
 ```
 输入：像素坐标 (u, v)（归一化 [0,1]），ArSeiInfo，FovSeiInfo，假设地面高度 h_ground
@@ -213,17 +212,17 @@ ISV 想做两件事：
 
 注意：步骤 2 的轴重映射与 CSDK `liveview_ar.cpp` 的 `pos_tar2cam` 反向操作对应（CSDK 是 y→x, z→y, x→z，逆向则是 z→x, x→y, y→z）。
 
-#### 对 ISV 的标准回答
+#### 对集成商的标准回答
 
 1. **最简单的"视锥中心点"**：设备有激光测距时，直接用 OSD `measure_target_latitude/longitude/altitude`（设备已算好，无需自研）
 2. **通用方案（无激光 / 任意像素）**：用 SEI 数据自研逆投影（见上方步骤），精度取决于是否加畸变 + 地面是否平坦
 3. **前端 PaaS 组件用户**：ArCore WASM 内置 `getPointFromScreenPercent`，如果组件暴露该 API 则直接可用
-4. **FHSDK 能力边界**：给数据（外参 + 内参动态部分），不给投影算法。ISV 需自研或等组件正式暴露逆投影 API
+4. **FHSDK 能力边界**：给数据（外参 + 内参动态部分），不给投影算法。集成商 需自研或等组件正式暴露逆投影 API
 
 #### 待确认
 
 - DRC OSD `liveview_world_region` 的具体语义（是否就是视锥四角地面投影？）
-- 前端 PaaS 组件是否对 ISV 暴露了 ArCore 的 `getPointFromScreenPercent` API
+- 前端 PaaS 组件是否对集成商暴露了 ArCore 的 `getPointFromScreenPercent` API
 - U5：OSD 中是否有"裁剪对应关系"隐藏参数（联云提出的 AI 框 GPS 偏差问题）
 
 ### C2 详细解答：SEI 怎么取
@@ -239,36 +238,36 @@ live.subscribeArSeiInfo(info -> { /* 每帧位姿 ~25fps */ });
 live.subscribeFovSeiInfo(info -> { /* 每帧 FOV */ });
 ```
 
-FHSDK 内部完成 NAL 拆包 + TLV/JSON 解析 + 去竞争字节，ISV 无需关心协议细节。
+FHSDK 内部完成 NAL 拆包 + TLV/JSON 解析 + 去竞争字节，集成商 无需关心协议细节。
 
-**ISV 自建流媒体场景**：
+**集成商 自建流媒体场景**：
 
 | 转发方式 | SEI 是否保留 | 说明 |
 |----------|-------------|------|
 | **透传 / remux**（不重新编码） | ✅ 保留 | 码流 NAL 不变，SEI 原样存在 |
 | **转码**（重新编码） | ❌ 丢失 | 转码器不会保留原始 DJI ext SEI |
 
-**关键提醒**：ISV 自建流媒体转发时必须确保码流 pass-through（透传），不能转码。一旦重新编码，SEI 就没了。
+**关键提醒**：集成商 自建流媒体转发时必须确保码流 pass-through（透传），不能转码。一旦重新编码，SEI 就没了。
 
 **RTSP 点播（录像回放）场景**：
 
-设备 SD 卡录像文件（MP4/MOV）是否包含 DJI ext SEI，**目前无代码证据确认**。ISV 实测反馈"RTSP 点播拿不到 SEI"，可能原因包括：
+设备 SD 卡录像文件（MP4/MOV）是否包含 DJI ext SEI，**目前无代码证据确认**。集成商 实测反馈"RTSP 点播拿不到 SEI"，可能原因包括：
 - 设备录像编码时未将 DJI ext SEI 写入媒体文件
 - RTSP 服务器 remux 时剥离了 SEI NAL
-- ISV 没有从点播码流中主动解析 SEI
+- 集成商 没有从点播码流中主动解析 SEI
 
 此项需进一步确认设备固件的录像行为。**建议对外口径**：SEI 为实时直播能力，录像点播不承诺 SEI 可用。
 
 **前端 PaaS 组件与 Java SDK 的 SEI 能力对比**：
 
-ISV 同时拥有两个 SDK，SEI 能力互补：
+集成商 同时拥有两个 SDK，SEI 能力互补：
 
 | SDK | 能否获取 SEI 原始数据 | 能否做 AR 绘制 | 适用场景 |
 |-----|---------------------|--------------|----------|
 | **Java SDK（FHSDK）** | ✅ `subscribeArSeiInfo` / `subscribeFovSeiInfo` 等 | ❌ 需自研投影 | 后端数据消费、自研算法、转发给自有前端 |
-| **前端 PaaS 组件（uranus-cockpit-app）** | ❌ 不直接暴露 SEI 结构体给 ISV | ✅ 内置 AR 点线面绘制（ArCore WASM） | 在直播画面上叠加 Pin/线/面标注 |
+| **前端 PaaS 组件（uranus-cockpit-app）** | ❌ 不直接暴露 SEI 结构体给 集成商 | ✅ 内置 AR 点线面绘制（ArCore WASM） | 在直播画面上叠加 Pin/线/面标注 |
 
-前端组件内部链路：RTC SDK 回调 → `parseRawSEIData` → `transformSeiDataForRender` + `HostDistortParam` → `ArInstance._onSeiV2` → Canvas 绘制。ISV 通过组件 API 设置 Pin/Line/Polygon 的 GPS 坐标，组件自动完成投影和绘制。
+前端组件内部链路：RTC SDK 回调 → `parseRawSEIData` → `transformSeiDataForRender` + `HostDistortParam` → `ArInstance._onSeiV2` → Canvas 绘制。集成商 通过组件 API 设置 Pin/Line/Polygon 的 GPS 坐标，组件自动完成投影和绘制。
 
 **注意**：前端组件启动时会发 `ar_info_switch: 1` 指令给设备（`openDroneSeiMessageSend`），SEI 需要设备端开启才推送。
 
@@ -276,12 +275,12 @@ ISV 同时拥有两个 SDK，SEI 能力互补：
 - 只需 AR 标注绑定 → 用**前端 PaaS 组件**，不需要处理 SEI
 - 需要 SEI 原始数据做自研算法 → 用 **Java SDK**
 - 两者可组合使用
-- 不教 ISV 自己写 NAL parser，不默认开放 TLV 协议文档
+- 不教集成商自己写 NAL parser，不默认开放 TLV 协议文档
 - 自建流媒体转发必须**保持码流透传（不转码）**，否则 SEI 丢失
 
 ### C3 详细解答：哪代设备/哪个固件支持 SEI
 
-从多端代码（Pilot `camera_*.json`、DJI 上云API 2前端 `parse-data.ts` / `sei.ts`、FHSDK `live_module_impl.cpp`）可推导出较完整的机型支持矩阵。
+从多端代码（Pilot `camera_*.json`、DJI Cloud API 2前端 `parse-data.ts` / `sei.ts`、FHSDK `live_module_impl.cpp`）可推导出较完整的机型支持矩阵。
 
 #### Pilot 侧：ArOsdVersion（决定 SEI 位姿来源）
 
@@ -293,7 +292,7 @@ Pilot 按 `camera_*.json` 中 `arInfo.arOsdVersion` 选择位姿获取方式（�
 | **V2** | 飞控 `CameraARInfoMsg` 推送 | ❌ 非帧级 | M3/M10 系（camera_100） |
 | **V1** | 老 OSD `DeviceInfo` | ❌ | X20(camera_31)、CM50(camera_50) |
 
-#### DJI 上云API 2前端侧：`parseRawSEIData` 解析路径
+#### DJI Cloud API 2前端侧：`parseRawSEIData` 解析路径
 
 | 机型 | 解析路径 | SEI 格式 |
 |---|---|---|
@@ -313,7 +312,7 @@ Pilot 按 `camera_*.json` 中 `arInfo.arOsdVersion` 选择位姿获取方式（�
 | `165-0-7` | Dock Live（机场画面） | — | ❌ 跳过 |
 | 其余所有 | M4 系、EA340 等 | 二进制 TLV | ✅ |
 
-#### 综合结论（对 ISV 的回答）
+#### 综合结论（对集成商的回答）
 
 | 设备代际 | 代表机型 | SEI 支持 | SEI 帧同步 | 备注 |
 |----------|---------|---------|-----------|------|
@@ -327,7 +326,7 @@ Pilot 按 `camera_*.json` 中 `arInfo.arOsdVersion` 选择位姿获取方式（�
 
 - 各机型从**哪个固件版本**开始支持 SEI（代码不做版本校验，无法从代码推断）
 - 机场一代/二代/三代的**产品命名**与上述技术代际的精确对应
-- M3 系的 V2 路径（飞控推送）频率是多少、是否满足 ISV 需求
+- M3 系的 V2 路径（飞控推送）频率是多少、是否满足集成商需求
 - 飞控收到 `ap_ar_aei_info_enable_0=1` 后具体行为（见下方开关链路分析）
 
 #### `ar_info_switch` 开关链路（代码验证）
@@ -385,20 +384,20 @@ DJI 目前有两条机载 AI 识别结果上云的路径：
 | 路径 | 方式 | 识别结果传输 | FHSDK 可获取 | 前端组件可渲染 |
 |------|------|------------|-------------|--------------|
 | **AI Inside（算力开放平台）** | 自训练模型部署到 M4 系列内置芯片 | 设备固件写入码流 **AI SEI（type=7）** | ✅ `subscribeAiSeiInfo` | ✅（AI 框叠加） |
-| **妙算 3 + Payload SDK** | PSDK 应用运行在妙算，获取相机图像做推理 | PSDK "AI 识别结果回传显示"能力（具体通道待确认：可能是 SEI 注入或独立数据通道） | ⚠️ 待确认 | ✅ "支持DJI 上云API 2渲染妙算3 AI 应用识别结果"（PSDK 发布日志明确提及） |
+| **妙算 3 + Payload SDK** | PSDK 应用运行在妙算，获取相机图像做推理 | PSDK "AI 识别结果回传显示"能力（具体通道待确认：可能是 SEI 注入或独立数据通道） | ⚠️ 待确认 | ✅ "支持DJI Cloud API 2渲染妙算3 AI 应用识别结果"（PSDK 发布日志明确提及） |
 
 **锋则原始诉求的回答**：
 
 | 项 | 答复 |
 |----|------|
-| 妙算识别结果能否接入上云座舱 | ⚠️ **现在应该可以**——PSDK 3.9+ 已支持"DJI 上云API 2渲染妙算3 AI 应用识别结果"（2025-05 发布日志）。需确认：ISV 用的是妙算几代？是否升级了 PSDK 版本？ |
+| 妙算识别结果能否接入上云座舱 | ⚠️ **现在应该可以**——PSDK 3.9+ 已支持"DJI Cloud API 2渲染妙算3 AI 应用识别结果"（2025-05 发布日志）。需确认：集成商 用的是妙算几代？是否升级了 PSDK 版本？ |
 | 第三方边缘盒子（非妙算）识别结果 | ❌ **不走 SEI 通道**。FHSDK 不支持注入第三方 SEI 到设备码流。替代方案：算法结果走业务 API/WebSocket → 前端自行合成叠加 |
 | FHSDK 侧能否拿到妙算 AI 结果 | ⚠️ 待确认：如果妙算 AI 结果走 AI SEI（type=7）注入码流，则 `subscribeAiSeiInfo` 可拿到；如果走独立通道则 FHSDK 拿不到 |
 
 **待确认项**：
 - 妙算 3 AI 结果回传的具体技术通道（SEI 注入 vs PSDK 小数据传输 vs 其它）
 - AI Inside（机载算力）识别结果是否同时出现在 AI SEI 和其它通道
-- ISV 如果用非 DJI 算力（第三方盒子），是否有标准接入方式
+- 集成商 如果用非 DJI 算力（第三方盒子），是否有标准接入方式
 
 #### ② 场景：影像 GIS 贴图与快门同步
 
@@ -407,7 +406,7 @@ DJI 目前有两条机载 AI 识别结果上云的路径：
 | 每帧画面对应位置 | ⚠️ `subscribeArSeiInfo` 提供**高频相机位姿+原点经纬度**，优于 1Hz OSD；**无「快门同步」语义保证** |
 | API 直接给 POV / 视锥中心 | ❌ FHSDK **无 POV 字段**；可用 SEI 自算中心射线，或 OSD 激光测距（打点目标，非任意像素） |
 | OSD 提到 2Hz | ❌ **U2**，FHSDK 不能解决 |
-| 「还要 ISV 再算一次」 | ⚠️ FHSDK 只给原始 SEI；**地图贴图/投影** SDK 不做，需 ISV 或未来 AR 组件 |
+| 「还要集成商再算一次」 | ⚠️ FHSDK 只给原始 SEI；**地图贴图/投影** SDK 不做，需集成商或未来 AR 组件 |
 | 推荐路径 | Java：`subscribeArSeiInfo` + `subscribeFovSeiInfo` → 后端转发 → 前端 GIS 引擎 |
 
 #### ③ 场景：视频叠加 AI 结果与地块投射
@@ -415,7 +414,7 @@ DJI 目前有两条机载 AI 识别结果上云的路径：
 | 项 | 答复 |
 |----|------|
 | 帧级镜头/飞机位姿缺失 | ✅ 走 FHSDK SEI 可解决**数据面**（相对 2s OSD） |
-| ① 地块边框投射 | ⚠️ 数据够，**投影与绘制 ISV 自研** |
+| ① 地块边框投射 | ⚠️ 数据够，**投影与绘制集成商自研** |
 | ② 任意像素反算经纬度 | ⚠️ 无畸变/EIS 封装，**精度有限** |
 | ③ AI 车辆跟踪 | ✅ `subscribeAiSeiInfo`；跟车应用 SEI 帧率，非 OSD |
 | 自建 WebRTC / 不用声网 | ⚠️ **须验证 FHSDK `LiveModule` 拉流**；纯自建转码且不经过 FHSDK → **不承诺 SEI** |
@@ -433,8 +432,8 @@ DJI 目前有两条机载 AI 识别结果上云的路径：
 
 | # | 诉求 | 答复 |
 |---|------|------|
-| 1 | AI 框 GPS 偏差、裁剪对应 | ⚠️ **可解但需 ISV 自研**。`subscribeAiSeiInfo` 给 AI 框归一化坐标（万分比 cx/cy），要反算 GPS 需走 C7 逆投影流程：将 (cx/10000, cy/10000) 当作归一化像素 → 内参反算射线 → 旋转到世界系 → 与地面求交。偏差来源：①未加畸变校正（广角边缘偏差大）②未考虑 EIS 裁剪偏移。EIS 裁剪信息在 `subscribeEisSeiInfo` 中已有（归一化 0~65535）。**畸变数据**：DJI 内部有现成标定值（`HostDistortParam` / `camera_*.json`），但涉及公司内部数据，**是否提供给 ISV 需领导决策**；若不提供，ISV 可通过 OpenCV `calibrateCamera()` + 棋盘格自行标定 |
-| 2 | SEI 跟随延迟 | ⚠️ 已识别为 FHSDK 技术债务。当前 SEI 被 Post 到 Main 线程异步处理，与视频帧无统一 timestamp。改进方向：提供静态 `SeiParser.parse(frameData)` 让用户同步解析（见讨论备忘第5节）。当前 ISV 可用时间近似对齐或做平滑插值 |
+| 1 | AI 框 GPS 偏差、裁剪对应 | ⚠️ **可解但需集成商自研**。`subscribeAiSeiInfo` 给 AI 框归一化坐标（万分比 cx/cy），要反算 GPS 需走 C7 逆投影流程：将 (cx/10000, cy/10000) 当作归一化像素 → 内参反算射线 → 旋转到世界系 → 与地面求交。偏差来源：①未加畸变校正（广角边缘偏差大）②未考虑 EIS 裁剪偏移。EIS 裁剪信息在 `subscribeEisSeiInfo` 中已有（归一化 0~65535）。**畸变数据**：DJI 内部有现成标定值（`HostDistortParam` / `camera_*.json`），但涉及公司内部数据，**是否提供给集成商需领导决策**；若不提供，集成商 可通过 OpenCV `calibrateCamera()` + 棋盘格自行标定 |
+| 2 | SEI 跟随延迟 | ⚠️ 已识别为 FHSDK 技术债务。当前 SEI 被 Post 到 Main 线程异步处理，与视频帧无统一 timestamp。改进方向：提供静态 `SeiParser.parse(frameData)` 让用户同步解析（见讨论备忘第5节）。当前集成商可用时间近似对齐或做平滑插值 |
 | 3 | 语音操控 0.1m 精度停 | ❌ 不属于 SEI/CV 范畴。靠高频 OSD 判停不可行（0.5Hz 精度不够）。建议改用 `FlyTo` 等指点飞行 API，由飞控做精确停靠 |
 | 4 | OSD 漂移/中断 | ❌ **U7** 固件稳定性问题，非 SDK 可修复 |
 
@@ -443,14 +442,14 @@ DJI 目前有两条机载 AI 识别结果上云的路径：
 | 项 | 答复 |
 |----|------|
 | RTSP 拿 SEI | ❌ **不支持**。FHSDK SEI 绑 **RTC 直播** |
-| 改法 | 改为 API 2 + **FHSDK `LiveModule.start`**；DJI 上云API 2 mock 仅作DJI 上云API 2场景参考 |
+| 改法 | 改为 API 2 + **FHSDK `LiveModule.start`**；DJI Cloud API 2 mock 仅作DJI Cloud API 2场景参考 |
 | 算法结果回传 | ❌ 非 SEI 范畴，需业务 API 设计 |
 
 #### ⑦ 场景：视频与定位数据同步
 
 | 项 | 答复 |
 |----|------|
-| 两通道不同步 | ⚠️ 统一走 **FHSDK 拉流 + SEI 回调**；若仍 OSD+视频分离，需 ISV 打时间戳 |
+| 两通道不同步 | ⚠️ 统一走 **FHSDK 拉流 + SEI 回调**；若仍 OSD+视频分离，需集成商打时间戳 |
 | i 帧无坐标 | ✅ 核对机型固件（**U1**）；用 `subscribeArSeiInfo` 验证 |
 | 结构化数据 | ✅ FHSDK 直接给 `ArSeiInfo` 等结构体，无需自解析 JSON |
 
@@ -475,9 +474,9 @@ DJI 目前有两条机载 AI 识别结果上云的路径：
 | 项 | 答复 |
 |----|------|
 | 正常航线临时高频 OSD（10~20Hz） | ❌ FHSDK **不能**提供。MQTT OSD 2s 定时器硬编码在设备端，SDK 无法调高 |
-| ISV 真实需求分析 | ISV 要的不是"实时高频 OSD"，而是**事后精确轨迹回溯**（炸机定位/理赔） |
+| 集成商 真实需求分析 | 集成商 要的不是"实时高频 OSD"，而是**事后精确轨迹回溯**（炸机定位/理赔） |
 | SEI 能否替代 | ❌ **SEI 不适用此场景**。SEI 是实时直播数据，不存储到设备/云端。飞行中如果没有拉流（或网络断了），SEI 数据就没了 |
-| 替代方案 | ① **DJI 上云API 2飞行记录功能**（事后回溯轨迹）② **OSD**（0.5Hz 粗粒度轨迹）③ **DRC 高频 OSD**（3Hz，需建 DRC 链路，飞行中实时缓存可获得更高精度轨迹）④ ISV 自行在后端缓存 SEI 数据做轨迹记录（需飞行中拉流） |
+| 替代方案 | ① **DJI Cloud API 2飞行记录功能**（事后回溯轨迹）② **OSD**（0.5Hz 粗粒度轨迹）③ **DRC 高频 OSD**（3Hz，需建 DRC 链路，飞行中实时缓存可获得更高精度轨迹）④ 集成商 自行在后端缓存 SEI 数据做轨迹记录（需飞行中拉流） |
 | 状态 | **U4 待办**，归入"全生命周期—丢失场景如何找回"议题 |
 
 #### ⑪ 众芯汉创（OSD 降载、可配置频率）
@@ -542,7 +541,7 @@ DJI 目前有两条机载 AI 识别结果上云的路径：
 | FHSDK `LiveModule.start`（RTC） | ✅ | **推荐标准路径** |
 | Java 后端订 SEI → WebSocket → 前端 | ✅ | **当前前端 AR 推荐架构** |
 | Web SDK `subscribeArSei`（若正式交付） | ✅ | 需产品确认 |
-| DJI 上云API 2 + mock（DJI 上云API 2前端） | — | 非 FHSDK ISV 主路径，可并列介绍 |
+| DJI Cloud API 2 + mock（DJI Cloud API 2前端） | — | 非 FHSDK 集成商 主路径，可并列介绍 |
 | RTSP 点播 | ❌ | |
 | 声网/自建 WebRTC，不经 FHSDK | ❌ | 不承诺 |
 | 自建流媒体未解析 SEI | ❌ | |
@@ -560,15 +559,15 @@ DJI 目前有两条机载 AI 识别结果上云的路径：
 ```
 
 - FHSDK **不提供**投影公式与 ArCore；**提供** AR 所需输入字段（见 `message.h` `ArSeiInfo` / `FovSeiInfo`）。
-- ISV 常见误解：「Java SDK = 做不了 AR」→ 应纠正为「**SEI 在服务端，AR 在客户端，中间要一条转发链**」。
+- 集成商 常见误解：「Java SDK = 做不了 AR」→ 应纠正为「**SEI 在服务端，AR 在客户端，中间要一条转发链**」。
 
 ### 7.2 是否教用户自解析码流？
 
 | 策略 | 建议 |
 |------|------|
-| 标准 ISV | **不教**二进制 TLV；用 FHSDK API |
+| 标准 集成商 | **不教**二进制 TLV；用 FHSDK API |
 | 前端要强依赖浏览器拉流 | **产品决策**：正式交付 Web LiveModule，而非散发 parser |
-| 自建流 ISV | 声明非标准；**不单独立项则不教**圈内 parser |
+| 自建流 集成商 | 声明非标准；**不单独立项则不教**圈内 parser |
 | 对外协议文档 | 默认**不发布**完整 DUSS/Confluence；以 SDK 为契约；例外走法务 |
 
 ### 7.3 PaaS 组件待确认项（对内）
@@ -579,9 +578,9 @@ DJI 目前有两条机载 AI 识别结果上云的路径：
 
 ---
 
-## 8. 常见 ISV 问法 → 推荐一句话回复
+## 8. 常见集成商问法 → 推荐一句话回复
 
-| ISV 问法 | 推荐回复 |
+| 集成商 问法 | 推荐回复 |
 |----------|----------|
 | OSD 太慢，能不能调到 5Hz？ | 不能。帧级位姿请用 **FHSDK SEI 回调**，不要提高 OSD 频率。 |
 | 能不能把地图贴到画面上？ | FHSDK 给 **相机位姿+FOV**；贴图要你们 **自研投影** 或等 AR 组件；可参考激光测距 OSD 做打点。 |
@@ -596,7 +595,7 @@ DJI 目前有两条机载 AI 识别结果上云的路径：
 
 | 日期 | 说明 |
 |------|------|
-| 2026-06-15 | 初版：对照 ISV 汇总文档逐条答复，并入 FHSDK 能力边界与交付决策讨论 |
+| 2026-06-15 | 初版：对照集成商汇总文档逐条答复，并入 FHSDK 能力边界与交付决策讨论 |
 
 ---
 

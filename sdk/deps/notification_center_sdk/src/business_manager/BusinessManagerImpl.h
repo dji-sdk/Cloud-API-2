@@ -184,6 +184,7 @@ int64_t MethodName( \
         DEFINE_LISTEN_METHOD(ListenAircraftEphemerisInfo, std::function<void(const EphemerisInfo &msg)>, PublishAircraftEphemerisInfoTopic, "topic_drone_ephemeris_info")
 
         DEFINE_LISTEN_METHOD(ListenMediaFilePostProcessMessage, std::function<void(const MediaFilePostProcess& msg)>, PublishMediaFilePostProcessTopic, "topic_media_file_post_process")
+        DEFINE_LISTEN_METHOD(ListenPanoStitchProgress, std::function<void(const PanoStitchProgress& msg)>, PublishPanoStitchProgressTopic, "topic_pano_stitch_progress")
         DEFINE_LISTEN_METHOD(ListenMediaFileDeviceUploadMessage, std::function<void(const MediaFileDeviceUpload& msg)>, PublishMediaFileDeviceUploadTopic, "topic_media_file_device_upload")
         DEFINE_LISTEN_METHOD(ListenReconstructionStatusChangedMessage, std::function<void(const ReconstructionStatusChanged& msg)>, PublishReconstructionStatusChangedTopic, "topic_reconstruction_status_changed_event")
         DEFINE_LISTEN_METHOD(ListenTerraUnzipProgress, std::function<void(const TerraUnzipProgress& msg)>, PublishTerraUnzipProgressTopic, "topic_reconstruction_unzip_progress")
@@ -197,6 +198,8 @@ int64_t MethodName( \
         DEFINE_LISTEN_METHOD(ListenFlyToTaskEvent, std::function<void(const FlyToTaskEvent &msg)>, PublishFlyToTaskEventTopic, "topic_atc_flyto_task_event")
         DEFINE_LISTEN_METHOD(ListenPoiTaskEvent, std::function<void(const PoiTaskEvent &msg)>, PublishPoiTaskEventTopic, "topic_atc_poi_task_event")
         DEFINE_LISTEN_METHOD(ListenWaylineTaskEvent, std::function<void(const WaylineTaskEvent &msg)>, PublishWaylineTaskEventTopic, "topic_atc_wayline_task_event")
+        DEFINE_LISTEN_METHOD(ListenReturnHomeInfoEvent, std::function<void(const ReturnHomeInfoEvent &msg)>, PublishReturnHomeInfoEventTopic, "topic_atc_return_home_info_event")
+        DEFINE_LISTEN_METHOD(ListenTaskExceptionEvent, std::function<void(const TaskExceptionEvent &msg)>, PublishTaskExceptionEventTopic, "topic_atc_task_exception_event")
         DEFINE_LISTEN_METHOD(ListenInFlightWaylineTaskNotify, std::function<void(const InFlightWaylineTaskNotify &msg)>, PublishInFlightWaylineTaskNotifyTopic, "in_flight_wayline_task_notify")
 
         DEFINE_LISTEN_METHOD(ListenDeviceOtaProgress, std::function<void(const DeviceOtaProgress &msg)>, PublishDeviceOtaProgressTopic, "topic_device_ota_progress")
@@ -217,6 +220,10 @@ int64_t MethodName( \
         DEFINE_LISTEN_METHOD(ListenDockAirConditionerMode, std::function<void(const DockAirConditionerMode &msg)>, PublishDockAirConditionerModeTopic, "topic_dock_air_conditioner_mode")
         DEFINE_LISTEN_METHOD(ListenDroneFlysafeDatabaseVersion, std::function<void(const DroneFlysafeDatabaseVersion &msg)>, PublishDroneFlysafeDatabaseVersionTopic, "topic_drone_flysafe_database_version")
         DEFINE_LISTEN_METHOD(ListenDronePsdkUiResource, std::function<void(const DronePsdkUiResource &msg)>, PublishDronePsdkUiResourceTopic, "topic_drone_psdk_ui_resource")
+        DEFINE_LISTEN_METHOD(ListenPsdkCustomDataTransmissionFromPsdk, std::function<void(const PsdkCustomDataTransmission &msg)>, PublishPsdkCustomDataTransmissionTopic, "topic_custom_data_transmission_from_psdk")
+        DEFINE_LISTEN_METHOD(ListenEsdkCustomDataTransmissionFromEsdk, std::function<void(const EsdkCustomDataTransmission &msg)>, PublishEsdkCustomDataTransmissionTopic, "topic_custom_data_transmission_from_esdk")
+        DEFINE_LISTEN_METHOD(ListenHighestPriorityUploadFlighttaskMedia, std::function<void(const HighestPriorityUploadFlighttaskMedia &msg)>, PublishHighestPriorityUploadFlighttaskMediaTopic, "topic_highest_priority_upload_flighttask_media")
+        DEFINE_LISTEN_METHOD(ListenAirsenseWarning, std::function<void(const AirsenseWarning &msg)>, PublishAirsenseWarningTopic, "topic_airsense_warning")
         DEFINE_LISTEN_METHOD(ListenDroneModeCodeReason, std::function<void(const DroneModeCodeReason &msg)>, PublishDroneModeCodeReasonTopic, "topic_drone_mode_code_reason")
         DEFINE_LISTEN_METHOD(ListenDroneCommanderFlightMode, std::function<void(const DroneCommanderFlightMode &msg)>, PublishDroneCommanderFlightModeTopic, "topic_drone_commander_flight_mode")
         DEFINE_LISTEN_METHOD(ListenDroneCurrentCommanderFlightMode, std::function<void(const DroneCurrentCommanderFlightMode &msg)>, PublishDroneCurrentCommanderFlightModeTopic, "topic_drone_current_commander_flight_mode")
@@ -225,6 +232,13 @@ int64_t MethodName( \
         DEFINE_LISTEN_METHOD(ListenDroneOfflineMapEnable, std::function<void(const DroneOfflineMapEnable &msg)>, PublishDroneOfflineMapEnableTopic, "topic_drone_offline_map_enable")
         DEFINE_LISTEN_METHOD(ListenDroneDongleInfos, std::function<void(const DroneDongleInfos &msg)>, PublishDroneDongleInfosTopic, "topic_drone_dongle_infos")
         DEFINE_LISTEN_METHOD(ListenDroneCameraWatermarkSettings, std::function<void(const DroneCameraWatermarkSettingsPush &msg)>, PublishDroneCameraWatermarkSettingsTopic, "topic_drone_camera_watermark_settings")
+        DEFINE_LISTEN_METHOD(ListenAiAlertRecords, std::function<void(const AiAlertRecordsNotification &msg)>, PublishAiAlertRecordsTopic, "alert_records.alert_records_notify")
+
+        // 级联节点状态变更 (topic_cascade_node_status)
+        DEFINE_LISTEN_METHOD(ListenCascadeNodeStatus, std::function<void(const CascadeNodeStatusEvent &msg)>, PublishCascadeNodeStatusTopic, "topic_cascade_node_status")
+
+        // 跨节点通道消息 (topic_cascade_notify)
+        DEFINE_LISTEN_METHOD(ListenCascadeNotify, std::function<void(const CascadeNotifyEvent &msg)>, PublishCascadeNotifyTopic, "topic_cascade_notify")
 
 #undef DEFINE_LISTEN_METHOD
     };

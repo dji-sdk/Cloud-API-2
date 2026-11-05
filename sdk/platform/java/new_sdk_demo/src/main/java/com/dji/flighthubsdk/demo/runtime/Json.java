@@ -9,23 +9,23 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 极简零依赖 JSON 解析器(递归下降)。
+ * 极简零依赖 JSON 解析器 (递归下降)。
  *
- * <p>为什么手写：SDK jar 未内置任何 JSON 库, 且本项目约束「零第三方依赖」(不引入 Jackson/Gson)。
+ * <p>为什么手写: SDK jar 未内置任何 JSON 库, 且本项目约束「零第三方依赖」(不引入 Jackson/Gson)。
  * 高版本 JDK(≥15) 移除了 Nashorn, 故不能用脚本引擎的 JSON.parse。
  *
- * <p>支持标准 JSON：对象 / 数组 / 字符串(含 \\uXXXX 与常见转义)/ 数字 / true/false/null。
- * 返回类型：{@link Map}&lt;String,Object&gt; / {@link List}&lt;Object&gt; / String / Double / Long / Boolean / null。
- * 对象保序(LinkedHashMap)。仅用于读取本地配置文件, 不追求极致性能。
+ * <p>支持标准 JSON: 对象 / 数组 / 字符串 (含 \\uXXXX 与常见转义)/ 数字 / true/false/null。
+ * 返回类型: {@link Map}&lt; String, Object&gt; / {@link List}&lt; Object&gt; / String / Double / Long / Boolean / null。
+ * 对象保序 (LinkedHashMap)。仅用于读取本地配置文件, 不追求极致性能。
  */
 public final class Json {
 
-    /** 递归嵌套上限：超过即抛 FlightHubException(可被上层 catch(Exception) 接住), 避免深层嵌套配置触发不可捕获的 StackOverflowError。 */
+    /** 递归嵌套上限: 超过即抛 FlightHubException(可被上层 catch(Exception) 接住), 避免深层嵌套配置触发不可捕获的 StackOverflowError。 */
     private static final int MAX_DEPTH = 512;
 
     private final String s;
     private int i;
-    /** 当前递归深度(对象/数组每下探一层 +1), 用于封顶防栈溢出。 */
+    /** 当前递归深度 (对象/数组每下探一层 +1), 用于封顶防栈溢出。 */
     private int depth;
 
     private Json(String src) {
@@ -62,7 +62,7 @@ public final class Json {
     }
 
     private Object value() {
-        // value() 是唯一的递归汇聚点(object/array 的每个子值都经此下探), 在此封顶递归深度。
+        // value() 是唯一的递归汇聚点 (object/array 的每个子值都经此下探), 在此封顶递归深度。
         if (++depth > MAX_DEPTH) {
             throw err("JSON 嵌套层级过深(>" + MAX_DEPTH + "), 疑似畸形配置");
         }

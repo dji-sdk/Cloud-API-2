@@ -11,7 +11,7 @@ namespace drc_sdk {
 namespace common {
 namespace injector {
 
-// FH36-P2-02: 请求/响应体与请求头(含鉴权头)内容日志统一经 log_safe()
+// 请求/响应体与请求头(含鉴权头)内容日志统一经 log_safe()
 using drc_sdk::common::log_safe;
 
 

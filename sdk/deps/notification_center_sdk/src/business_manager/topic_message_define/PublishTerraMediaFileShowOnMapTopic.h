@@ -8,7 +8,7 @@
 
 namespace notification_center {
     // "topic_media_file_show_on_map"
-    // 模型显示地图推送（BatchShowOnMap 触发，来自 file-storage）
+    // 模型显示地图推送（BatchShowOnMap 触发，来自云端媒体服务）
 
     /// 地理坐标
     class TerraMediaFileShowOnMapGeoMsg {

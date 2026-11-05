@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 /**
  * 媒体文件管理 service（默认实现）。
  *
- * <p>默认返回空数据。ISV 接入真实 SDK 时由 {@code SdkMediaService} 覆盖。
+ * <p>默认返回空数据。集成商 接入真实 SDK 时由 {@code SdkMediaService} 覆盖。
  *
  * @author DJI DevKit Team
  */

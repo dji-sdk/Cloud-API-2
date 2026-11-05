@@ -3,7 +3,9 @@
 
 package com.dji.flighthubsdk.bean;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import java.util.Objects;
@@ -17,6 +19,7 @@ public final class GetWaylineDetailResult {
     private String url;
     private String suffix;
     private long deletedAt;
+    /** 更新时间(unix 秒) */
     private long updatedAt;
     private String kmzWithoutResUrl;
     private String targetAreaFileUrl;
@@ -25,6 +28,14 @@ public final class GetWaylineDetailResult {
     private WaylineDetailExtData extData;
     private Map<String, String> editorWarnings;
     private Map<String, String> executeWarnings;
+    /** 航线点数量 */
+    private int waylinePointNums;
+    /** 避障信息列表 */
+    private List<WaylineObstacle> obstacles = new ArrayList<>();
+    /** 高程文件 UUID */
+    private String elevationUuid;
+    /** 碰撞位置列表 */
+    private List<WaylineCollisionEvent> collisionPositions = new ArrayList<>();
     public GetWaylineDetailResult() {
     }
 
@@ -38,7 +49,7 @@ public final class GetWaylineDetailResult {
      * @param url 下载 URL
      * @param suffix 文件后缀
      * @param deletedAt 删除时间
-     * @param updatedAt 更新时间
+     * @param updatedAt 更新时间(unix 秒)
      * @param kmzWithoutResUrl 不含资源的 KMZ 下载 URL
      * @param targetAreaFileUrl 目标区域文件 URL
      * @param businessFileUrl 业务文件 URL
@@ -94,7 +105,7 @@ public final class GetWaylineDetailResult {
     public String getSuffix() { return suffix; }
     /** 删除时间 */
     public long getDeletedAt() { return deletedAt; }
-    /** 更新时间 */
+    /** 更新时间(unix 秒) */
     public long getUpdatedAt() { return updatedAt; }
     /** 不含资源的 KMZ 下载 URL */
     public String getKmzWithoutResUrl() { return kmzWithoutResUrl; }
@@ -110,6 +121,14 @@ public final class GetWaylineDetailResult {
     public Map<String, String> getEditorWarnings() { return editorWarnings; }
     /** 执行态告警 */
     public Map<String, String> getExecuteWarnings() { return executeWarnings; }
+    /** 航线点数量 */
+    public int getWaylinePointNums() { return waylinePointNums; }
+    /** 避障信息列表 */
+    public List<WaylineObstacle> getObstacles() { return obstacles; }
+    /** 高程文件 UUID */
+    public String getElevationUuid() { return elevationUuid; }
+    /** 碰撞位置列表 */
+    public List<WaylineCollisionEvent> getCollisionPositions() { return collisionPositions; }
 
     /** 航线 UUID */
     public void setWaylineUuid(String waylineUuid) {
@@ -146,7 +165,7 @@ public final class GetWaylineDetailResult {
         this.deletedAt = deletedAt;
     }
 
-    /** 更新时间 */
+    /** 更新时间(unix 秒) */
     public void setUpdatedAt(long updatedAt) {
         this.updatedAt = updatedAt;
     }
@@ -186,6 +205,26 @@ public final class GetWaylineDetailResult {
         this.executeWarnings = executeWarnings;
     }
 
+    /** @param waylinePointNums 航线点数量 */
+    public void setWaylinePointNums(int waylinePointNums) {
+        this.waylinePointNums = waylinePointNums;
+    }
+
+    /** @param obstacles 避障信息列表 */
+    public void setObstacles(List<WaylineObstacle> obstacles) {
+        this.obstacles = obstacles != null ? obstacles : new ArrayList<>();
+    }
+
+    /** @param elevationUuid 高程文件 UUID */
+    public void setElevationUuid(String elevationUuid) {
+        this.elevationUuid = elevationUuid;
+    }
+
+    /** @param collisionPositions 碰撞位置列表 */
+    public void setCollisionPositions(List<WaylineCollisionEvent> collisionPositions) {
+        this.collisionPositions = collisionPositions != null ? collisionPositions : new ArrayList<>();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -209,7 +248,11 @@ public final class GetWaylineDetailResult {
                 && Objects.equals(kmzData, that.kmzData)
                 && Objects.equals(extData, that.extData)
                 && Objects.equals(editorWarnings, that.editorWarnings)
-                && Objects.equals(executeWarnings, that.executeWarnings);
+                && Objects.equals(executeWarnings, that.executeWarnings)
+                && waylinePointNums == that.waylinePointNums
+                && Objects.equals(obstacles, that.obstacles)
+                && Objects.equals(elevationUuid, that.elevationUuid)
+                && Objects.equals(collisionPositions, that.collisionPositions);
     }
 
     @Override
@@ -229,7 +272,11 @@ public final class GetWaylineDetailResult {
                 kmzData,
                 extData,
                 editorWarnings,
-                executeWarnings);
+                executeWarnings,
+                waylinePointNums,
+                obstacles,
+                elevationUuid,
+                collisionPositions);
     }
 
     @Override
@@ -250,6 +297,10 @@ public final class GetWaylineDetailResult {
                 + ", extData=" + extData
                 + ", editorWarnings=" + editorWarnings
                 + ", executeWarnings=" + executeWarnings
+                + ", waylinePointNums=" + waylinePointNums
+                + ", obstacles=" + obstacles
+                + ", elevationUuid='" + elevationUuid + '\''
+                + ", collisionPositions=" + collisionPositions
                 + '}';
     }
 }

@@ -14,6 +14,8 @@ public final class GetMediaUploadStsResult {
     private String endpoint;
     private String provider;
     private String region;
+    /** 扩展信息原始 JSON（如 cloud_to_cloud_configs） */
+    private String ext;
     public GetMediaUploadStsResult() {
     }
 
@@ -34,12 +36,35 @@ public final class GetMediaUploadStsResult {
             String endpoint,
             String provider,
             String region) {
+        this(bucket, credentials, objectKeyPrefix, endpoint, provider, region, "");
+    }
+
+    /**
+     * 构造 GetMediaUploadStsResult。
+     *
+     * @param bucket 存储桶
+     * @param credentials STS 临时凭证
+     * @param objectKeyPrefix 上传路径前缀
+     * @param endpoint 访问端点
+     * @param provider 存储提供商
+     * @param region 区域
+     * @param ext 扩展信息原始 JSON
+     */
+    public GetMediaUploadStsResult(
+            String bucket,
+            MediaUploadStsCredentials credentials,
+            String objectKeyPrefix,
+            String endpoint,
+            String provider,
+            String region,
+            String ext) {
         this.bucket = bucket != null ? bucket : "";
         this.credentials = credentials;
         this.objectKeyPrefix = objectKeyPrefix != null ? objectKeyPrefix : "";
         this.endpoint = endpoint != null ? endpoint : "";
         this.provider = provider != null ? provider : "";
         this.region = region != null ? region : "";
+        this.ext = ext != null ? ext : "";
     }
 
     /** 存储桶 */
@@ -90,6 +115,14 @@ public final class GetMediaUploadStsResult {
         this.region = region;
     }
 
+    /** 扩展信息原始 JSON（如 cloud_to_cloud_configs） */
+    public String getExt() { return ext; }
+
+    /** 扩展信息原始 JSON（如 cloud_to_cloud_configs） */
+    public void setExt(String ext) {
+        this.ext = ext;
+    }
+
 
     @Override
     public boolean equals(Object o) {
@@ -101,12 +134,13 @@ public final class GetMediaUploadStsResult {
                 && Objects.equals(objectKeyPrefix, that.objectKeyPrefix)
                 && Objects.equals(endpoint, that.endpoint)
                 && Objects.equals(provider, that.provider)
-                && Objects.equals(region, that.region);
+                && Objects.equals(region, that.region)
+                && Objects.equals(ext, that.ext);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(bucket, credentials, objectKeyPrefix, endpoint, provider, region);
+        return Objects.hash(bucket, credentials, objectKeyPrefix, endpoint, provider, region, ext);
     }
 
     @Override
@@ -118,6 +152,7 @@ public final class GetMediaUploadStsResult {
                 + ", endpoint='" + endpoint + '\''
                 + ", provider='" + provider + '\''
                 + ", region='" + region + '\''
+                + ", ext='" + ext + '\''
                 + '}';
     }
 }

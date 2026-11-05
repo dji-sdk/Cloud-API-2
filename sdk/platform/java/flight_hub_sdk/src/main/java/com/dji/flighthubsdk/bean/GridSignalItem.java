@@ -10,13 +10,13 @@ public final class GridSignalItem {
     /** Uber H3网格下标，等级为 11; */
     private String h3Index;
     /** 平均sdr信号强度; */
-    private int sdrAvg;
+    private double sdrAvg;
     /** 最大sdr信号强度; */
     private int sdrMax;
     /** 最小sdr信号强度; */
     private int sdrMin;
     /** 平均4g信号强度, 如果没有插入4G模块, 则无此字段; */
-    private int signal4gAvg;
+    private double signal4gAvg;
     /** 最大4g信号强度, 如果没有插入4G模块, 则无此字段; */
     private int signal4gMax;
     /** 最小4g信号强度, 如果没有插入4G模块, 则无此字段; */
@@ -37,10 +37,10 @@ public final class GridSignalItem {
      */
     public GridSignalItem(
             String h3Index,
-            int sdrAvg,
+            double sdrAvg,
             int sdrMax,
             int sdrMin,
-            int signal4gAvg,
+            double signal4gAvg,
             int signal4gMax,
             int signal4gMin) {
         this.h3Index = h3Index != null ? h3Index : "";
@@ -55,13 +55,13 @@ public final class GridSignalItem {
     /** Uber H3网格下标，等级为 11; */
     public String getH3Index() { return h3Index; }
     /** 平均sdr信号强度; */
-    public int getSdrAvg() { return sdrAvg; }
+    public double getSdrAvg() { return sdrAvg; }
     /** 最大sdr信号强度; */
     public int getSdrMax() { return sdrMax; }
     /** 最小sdr信号强度; */
     public int getSdrMin() { return sdrMin; }
     /** 平均4g信号强度, 如果没有插入4G模块, 则无此字段; */
-    public int getSignal4gAvg() { return signal4gAvg; }
+    public double getSignal4gAvg() { return signal4gAvg; }
     /** 最大4g信号强度, 如果没有插入4G模块, 则无此字段; */
     public int getSignal4gMax() { return signal4gMax; }
     /** 最小4g信号强度, 如果没有插入4G模块, 则无此字段; */
@@ -73,7 +73,7 @@ public final class GridSignalItem {
     }
 
     /** @param sdrAvg 平均sdr信号强度; */
-    public void setSdrAvg(int sdrAvg) {
+    public void setSdrAvg(double sdrAvg) {
         this.sdrAvg = sdrAvg;
     }
 
@@ -88,7 +88,7 @@ public final class GridSignalItem {
     }
 
     /** @param signal4gAvg 平均4g信号强度, 如果没有插入4G模块, 则无此字段; */
-    public void setSignal4gAvg(int signal4gAvg) {
+    public void setSignal4gAvg(double signal4gAvg) {
         this.signal4gAvg = signal4gAvg;
     }
 
@@ -112,10 +112,10 @@ public final class GridSignalItem {
         }
         GridSignalItem that = (GridSignalItem) o;
         return Objects.equals(h3Index, that.h3Index)
-                && sdrAvg == that.sdrAvg
+                && Double.compare(sdrAvg, that.sdrAvg) == 0
                 && sdrMax == that.sdrMax
                 && sdrMin == that.sdrMin
-                && signal4gAvg == that.signal4gAvg
+                && Double.compare(signal4gAvg, that.signal4gAvg) == 0
                 && signal4gMax == that.signal4gMax
                 && signal4gMin == that.signal4gMin;
     }

@@ -1,0 +1,16 @@
+meta:
+  skill: {{skill-name}}
+  level: L2
+  author: {{author}}
+  min_pass_rate: 0.85
+  source: manual
+
+tests:
+  - description: "TODO: 参数提取用例描述"
+    vars:
+      prompt: "TODO: 包含可提取参数的用户输入"
+    assert:
+      - type: tool_called
+        value: "{{skill-name}}"
+      - type: param-extract
+        value: '{"TODO_key": "TODO_value"}'

@@ -12,6 +12,8 @@ public final class STSCredential {
     private String securityToken;
     /** 直播专用，后续再废弃 */
     private int platform;
+    /** 凭证绝对过期时间 */
+    private String expiration;
     public STSCredential() {
     }
 
@@ -25,11 +27,27 @@ public final class STSCredential {
      * @param platform 直播专用，后续再废弃
      */
     public STSCredential(String accessKeyId, String accessKeySecret, long expire, String securityToken, int platform) {
+        this(accessKeyId, accessKeySecret, expire, securityToken, platform, "");
+    }
+
+    /**
+     * 构造 STSCredential。
+     *
+     * @param accessKeyId AccessKeyId
+     * @param accessKeySecret AccessKeySecret
+     * @param expire 过期时间
+     * @param securityToken 安全令牌
+     * @param platform 直播专用，后续再废弃
+     * @param expiration 凭证绝对过期时间
+     */
+    public STSCredential(String accessKeyId, String accessKeySecret, long expire, String securityToken,
+            int platform, String expiration) {
         this.accessKeyId = accessKeyId != null ? accessKeyId : "";
         this.accessKeySecret = accessKeySecret != null ? accessKeySecret : "";
         this.expire = expire;
         this.securityToken = securityToken != null ? securityToken : "";
         this.platform = platform;
+        this.expiration = expiration != null ? expiration : "";
     }
 
     /** AccessKeyId */
@@ -68,6 +86,14 @@ public final class STSCredential {
         this.platform = platform;
     }
 
+    /** 凭证绝对过期时间 */
+    public String getExpiration() { return expiration; }
+
+    /** 凭证绝对过期时间 */
+    public void setExpiration(String expiration) {
+        this.expiration = expiration;
+    }
+
 
     @Override
     public boolean equals(Object o) {
@@ -78,12 +104,13 @@ public final class STSCredential {
                 && platform == that.platform
                 && Objects.equals(accessKeyId, that.accessKeyId)
                 && Objects.equals(accessKeySecret, that.accessKeySecret)
-                && Objects.equals(securityToken, that.securityToken);
+                && Objects.equals(securityToken, that.securityToken)
+                && Objects.equals(expiration, that.expiration);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(accessKeyId, accessKeySecret, expire, securityToken, platform);
+        return Objects.hash(accessKeyId, accessKeySecret, expire, securityToken, platform, expiration);
     }
 
     @Override
@@ -94,6 +121,7 @@ public final class STSCredential {
                 + ", expire=" + expire
                 + ", securityToken='" + securityToken + '\''
                 + ", platform=" + platform
+                + ", expiration='" + expiration + '\''
                 + '}';
     }
 }

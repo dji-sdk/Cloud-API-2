@@ -18,6 +18,7 @@ package com.dji.flighthub.mcp.tools.wayline;
 
 import com.dji.flighthub.mcp.sdk.SdkCallbackBridge;
 import com.dji.flighthub.mcp.sdk.SdkService;
+import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
@@ -150,6 +151,16 @@ public class FhWaylineRecommendTool extends AbstractMcpTool {
     public FhWaylineRecommendTool(SessionManager sessionManager, SdkService sdkService) {
         super(sessionManager);
         this.sdkService = sdkService;
+    }
+
+    /**
+     * 声明工具级静态安全等级：READ_ONLY。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.READ_ONLY;
     }
 
     @Override

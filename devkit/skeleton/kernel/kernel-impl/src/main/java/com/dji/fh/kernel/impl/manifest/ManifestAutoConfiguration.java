@@ -57,7 +57,7 @@ public class ManifestAutoConfiguration {
      * 启动期触发加载。任何一份失败将抛 {@link ManifestException}，
      * 包装为 Spring bean 创建异常导致 context 启动失败（fail-fast）。
      *
-     * <p>ISV 通过 {@code @Autowired List<ModuleManifest>} 获取已加载列表。
+     * <p>集成商 通过 {@code @Autowired List<ModuleManifest>} 获取已加载列表。
      *
      * @param loader manifest 加载器
      * @return 已加载的 manifest 列表

@@ -5,12 +5,13 @@
 
 #include "api/rtk_calibration_module.h"
 #include "common/util/async_capture_protect.h"
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class RtkCalibrationModuleImpl : public IRtkCalibrationModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    RtkCalibrationModuleImpl(const std::string& sn, std::string device_module);
+    RtkCalibrationModuleImpl(const std::string& sn, std::string device_module, int session_id);
     ~RtkCalibrationModuleImpl() override;
 
     void calibrationByNetwork(
@@ -27,6 +28,7 @@ public:
     void unsubscribeCalibrationProgress(int listen_id) override;
 
 private:
+    int session_id_;
     std::string sn_;
     std::string device_module_;
 };

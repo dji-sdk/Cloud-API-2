@@ -22,7 +22,7 @@ package com.dji.fh.kernel.impl.auth;
  * <p>{@link AuthorizationAspect} 检测到当前 {@link com.dji.fh.kernel.spi.auth.SecurityContext}
  * 不满足 {@code @RequireRole} / {@code @RequirePermission} / {@code @RequireAuthenticated} 的要求时抛出。
  *
- * <p>ISV 可在 {@code @ControllerAdvice} 中捕获并映射为 HTTP 403。
+ * <p>集成商 可在 {@code @ControllerAdvice} 中捕获并映射为 HTTP 403。
  *
  * @author DJI DevKit Team
  */

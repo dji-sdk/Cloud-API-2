@@ -131,7 +131,21 @@ public class LiveSyncModule {
     }
 
     /**
-     * 更新转码器（仅 enable 或全量改配置）
+     * 更新转码器（仅 enable 或全量改配置）。
+     *
+     * <p>采用 set* 标记模型：未调用 {@code setSetXxx(true)} 的字段不会写入。
+     * 停用转码器必须同时调用 {@code setSetEnable(true)} 和 {@code setEnable(false)}：
+     * <pre>{@code
+     * LiveSyncUpdateParams p = new LiveSyncUpdateParams();
+     * p.setId("converter-id");
+     * p.setSetEnable(true);
+     * p.setEnable(false);
+     * liveSyncModule.updateLiveSync(p, callback);
+     * }</pre>
+     *
+     * @param params 更新参数
+     * @param callback 更新结果回调
+     * @see com.dji.flighthubsdk.bean.LiveSyncUpdateParams
      * @implNote PUT /gateway/manage/api/v1/paas/c2c/live-sync/{id}
      */
     public void updateLiveSync(

@@ -106,6 +106,34 @@ public class IMediaServiceModule {
     flighthubsdkmoduleJNI.IMediaServiceModule_getMediaFileDetailByIdWrapper(swigCPtr, this, file_id, GetMediaFileDetailByIdCallback.getCPtr(callback), callback);
   }
 
+  public void startPanoStitchWrapper(long file_id, PanoStitchActionCallback callback) {
+    flighthubsdkmoduleJNI.IMediaServiceModule_startPanoStitchWrapper(swigCPtr, this, file_id, PanoStitchActionCallback.getCPtr(callback), callback);
+  }
+
+  public void stopPanoStitchWrapper(long file_id, PanoStitchActionCallback callback) {
+    flighthubsdkmoduleJNI.IMediaServiceModule_stopPanoStitchWrapper(swigCPtr, this, file_id, PanoStitchActionCallback.getCPtr(callback), callback);
+  }
+
+  public void retryPanoStitchWrapper(long file_id, PanoStitchActionCallback callback) {
+    flighthubsdkmoduleJNI.IMediaServiceModule_retryPanoStitchWrapper(swigCPtr, this, file_id, PanoStitchActionCallback.getCPtr(callback), callback);
+  }
+
+  public void startPanoTierWrapper(long file_id, PanoStitchActionCallback callback) {
+    flighthubsdkmoduleJNI.IMediaServiceModule_startPanoTierWrapper(swigCPtr, this, file_id, PanoStitchActionCallback.getCPtr(callback), callback);
+  }
+
+  public void getPanoTierTileUrlWrapper(long file_id, GetPanoTierTileUrlCallback callback) {
+    flighthubsdkmoduleJNI.IMediaServiceModule_getPanoTierTileUrlWrapper(swigCPtr, this, file_id, GetPanoTierTileUrlCallback.getCPtr(callback), callback);
+  }
+
+  public int subscribePanoStitchProgressWrapper(PanoStitchProgressCallback callback) {
+    return flighthubsdkmoduleJNI.IMediaServiceModule_subscribePanoStitchProgressWrapper(swigCPtr, this, PanoStitchProgressCallback.getCPtr(callback), callback);
+  }
+
+  public void cancelListenPanoStitchProgressWrapper(int listen_id) {
+    flighthubsdkmoduleJNI.IMediaServiceModule_cancelListenPanoStitchProgressWrapper(swigCPtr, this, listen_id);
+  }
+
   public IMediaServiceModule() {
     this(flighthubsdkmoduleJNI.new_IMediaServiceModule(), true);
     flighthubsdkmoduleJNI.IMediaServiceModule_director_connect(this, swigCPtr, true, true);

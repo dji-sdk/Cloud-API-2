@@ -1,14 +1,14 @@
 ---
 name: cloudapi2-skeleton-deploy
 description: |
-  仅在用户要求部署或清理 FH Skeleton（DJI CloudAPI2 SDK ISV 接入骨架）到自有环境时使用。
+  仅在用户要求部署或清理 FH Skeleton（DJI Cloud API 2 SDK 集成商接入骨架）到自有环境时使用。
   适用场景：普通机器 / Docker Compose / Kubernetes 三种形态的 skeleton 部署引导与清理卸载，
   含环境探测、形态选型、密钥生成、配置填写、构建启动、健康检查验证、部署/清理排障。
   关键词：部署, 清理, 卸载, 下线, remove, cleanup, undeploy, 清理部署, 卸载骨架,
   deploy, skeleton 部署, 普通机器部署, docker 部署, k8s 部署, kubernetes 部署,
   部署到这台机器, 移除部署, 撤销部署, 环境准备, 镜像构建, native lib, systemd, nginx, ingress,
   FH_JWT_SECRET, FH_SKELETON_SDK, MCP Server 部署
-author: DJI CloudAPI2 Team
+author: DJI Cloud API 2 Team
 version: 1.0.0
 ---
 
@@ -52,8 +52,9 @@ version: 1.0.0
    ├─ 已有 K8s 集群 + 镜像仓库 → 推荐 Kubernetes（加载 references/k8s部署步骤.md）
    ├─ 单机 + Docker 24+ → 推荐 Docker Compose（加载 references/docker部署步骤.md）
    └─ 单机无 Docker（或已有物理机/虚拟机）→ 推荐普通机器（加载 references/普通机器部署步骤.md）
-→ 若探测到非 amd64 架构：明确提示"SDK JNI 原生库仅支持 Linux x86_64（amd64），
-   sdk 模式无法在该架构运行；可选 mock 模式演示或换 amd64 机器"
+→ 架构判断：SDK 分 amd64 / arm64 两个包，Linux x86_64 与 Linux aarch64 都支持
+   sdk 模式；Windows / Intel Mac 只能用 mock 模式或 Docker。
+   构建镜像时 SDK_ARCH 必须与目标架构一致（--build-arg SDK_ARCH=amd64|arm64）
 → 与用户确认形态后，进入对应 references 的步骤清单逐步推进
 ```
 
@@ -74,7 +75,7 @@ version: 1.0.0
 |---|---|---|
 | `FH_JWT_SECRET` | `openssl rand -hex 32` | JWT 签名密钥，至少 32 字节，**未配启动失败** |
 | `FH_DB_PASSWORD` / `MYSQL_ROOT_PASSWORD` | `openssl rand -hex 24` | 数据库密码 |
-| `FH_SKELETON_SDK_TOKEN` | 从 DJI CloudAPI2 控制台获取 | SDK 身份令牌（sdk profile） |
+| `FH_SKELETON_SDK_TOKEN` | 从 DJI Cloud API 2 控制台获取 | SDK 身份令牌（sdk profile） |
 | `FH_SKELETON_SDK_ADDRESS` | — | SDK 服务地址 |
 | `FH_SKELETON_SDK_NOTIFICATION_SERVER` | — | SDK 通知服务地址（sdk profile 必填） |
 

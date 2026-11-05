@@ -21,13 +21,13 @@ public class JniLibraryLoader {
     private static final Object loadLock = new Object();
     
     // 依赖库加载顺序（按照依赖关系，从底层到上层）
-    // macOS：JNI / paho 已改为 @loader_path 依赖打包的 OpenSSL 3（BIN-P0-02），必须先解压并加载
+    // macOS：JNI / paho 已改为 @loader_path 依赖打包的 OpenSSL 3，必须先解压并加载
     private static final String[] DEPENDENCY_LIBS_MACOS = {
         "libcrypto.3.dylib",           // OpenSSL crypto（最底层）
         "libssl.3.dylib",              // OpenSSL SSL（依赖 crypto）
         "libwebsockets.12.dylib",      // WebSocket库（依赖 OpenSSL）
         "libpaho-mqtt3as.1.dylib",     // Paho MQTT库（依赖 OpenSSL）
-        // C-01 (ES320 v3.6 第二轮): Volc RTC / Agora RTC 已从发布构建移除, FHSDK 收敛到 WebRTC + DRTC.
+        // Volc RTC / Agora RTC 未包含在本发布构建中, FHSDK 实时链路收敛到 WebRTC + DRTC.
         // 相关 dylib 不再随包分发, 依赖列表同步剥离; 如需恢复请与 CMake / bin/build.sh 里的 gate 同步启用.
     };
 
@@ -37,10 +37,20 @@ public class JniLibraryLoader {
         "libssl.so.1.1",               // OpenSSL SSL库（依赖crypto）
         "libwebsockets.so.12",         // WebSocket库（依赖ssl）
         "libpaho-mqtt3as.so.1",       // MQTT库（SSL 版本）
-        // C-01: Volc / Agora native 已从本构建移除, 依赖列表同步剥离 (与 CMake OFF + build.sh gate 保持一致)
+        // Volc / Agora native 未包含在本构建中, 依赖列表同步剥离 (与 CMake OFF + build.sh gate 保持一致)
         // DRTC user SDK 动态库（按依赖关系顺序，从底层到上层） - DJI 自有, 保留
         "libdrpc.so",                 // DRTC RPC 底层库（被 libdrtc_device_sdk.so 依赖）
         "libdrtc_device_sdk.so",      // DRTC device SDK 主库（被 libflighthubsdk_jni.so 依赖）
+    };
+
+    // Linux aarch64：与 CMake libdrtc gate 一致（DRTC v0.28.0.199 GNU/Linux aarch64）
+    private static final String[] DEPENDENCY_LIBS_LINUX_AARCH64 = {
+        "libcrypto.so.1.1",
+        "libssl.so.1.1",
+        "libwebsockets.so.12",
+        "libpaho-mqtt3as.so.1",
+        "libdrpc.so",
+        "libdrtc_device_sdk.so",
     };
     
     // 主JNI库文件名
@@ -49,14 +59,18 @@ public class JniLibraryLoader {
     /**
      * 根据平台获取对应的依赖库列表
      */
-    private static String[] getDependencyLibsForPlatform(String platformName) {
-        switch (platformName) {
-            case "macosx":
+    private static String[] getDependencyLibsForPlatform(String fullPlatform) {
+        switch (fullPlatform) {
+            case "macosx-arm64":
+            case "macosx-x86_64":
                 return DEPENDENCY_LIBS_MACOS;
-            case "linux":
+            case "linux-x86_64":
+                // 开发联调环境需要加载 DRTC；麒麟 V10 (glibc 2.28) 仍不支持 v0.28 so，部署侧另做 gate。
                 return DEPENDENCY_LIBS_LINUX;
+            case "linux-aarch64":
+                return DEPENDENCY_LIBS_LINUX_AARCH64;
             default:
-                throw new UnsupportedOperationException("Unsupported platform: " + platformName);
+                throw new UnsupportedOperationException("Unsupported platform: " + fullPlatform);
         }
     }
     
@@ -125,18 +139,23 @@ public class JniLibraryLoader {
     private static String getPlatform() {
         String osName = System.getProperty("os.name").toLowerCase();
         String osArch = System.getProperty("os.arch").toLowerCase();
-        
-        // 规范化架构名称
+
+        // 规范化架构名称：macOS 用 arm64（跟仓内 lib/macosx-arm64 对齐）；
+        // Linux 用 aarch64（跟仓内 lib/linux-aarch64、CMake preset、build_java.sh 对齐）
         if (osArch.equals("amd64") || osArch.equals("x86_64")) {
             osArch = "x86_64";
-        } else if (osArch.equals("aarch64") || osArch.equals("arm64")) {
-            osArch = "arm64";
         }
-        
+
         if (osName.contains("linux")) {
+            if (osArch.equals("arm64") || osArch.equals("aarch64")) {
+                osArch = "aarch64";
+            }
             return "linux-" + osArch;
         }
         if (osName.contains("mac") || osName.contains("darwin")) {
+            if (osArch.equals("arm64") || osArch.equals("aarch64")) {
+                osArch = "arm64";
+            }
             return "macosx-" + osArch;
         }
         throw new UnsupportedOperationException("Unsupported platform: " + osName + "-" + osArch);
@@ -154,7 +173,7 @@ public class JniLibraryLoader {
         String platformName = fullPlatform.split("-")[0];
         
         // 获取当前平台的依赖库列表
-        String[] dependencyLibs = getDependencyLibsForPlatform(platformName);
+        String[] dependencyLibs = getDependencyLibsForPlatform(fullPlatform);
         if (dependencyLibs.length == 0) {
             Logger.info("FlightHubSDK", "当前平台无需加载依赖库");
             // 创建空目录并返回

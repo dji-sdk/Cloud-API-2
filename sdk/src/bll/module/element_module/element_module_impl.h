@@ -5,6 +5,7 @@
 
 #include "api/element.h"
 #include "common/util/async_capture_protect.h"
+#include <memory>
 
 namespace flight_hub_sdk {
 
@@ -12,7 +13,7 @@ class ElementModuleImpl
     : public IElementModule
     , public drc_sdk::common::AsyncCaptureProtect {
 public:
-    ElementModuleImpl() = default;
+    explicit ElementModuleImpl(int session_id);
     ~ElementModuleImpl() override = default;
 
     void createElement(
@@ -46,6 +47,8 @@ public:
     int listenElementDelete(
         const std::function<void(const ElementDeleteMsg& msg)>& callback) override;
     void cancelListenElementDelete(int listen_id) override;
+private:
+    int session_id_;
 };
 
 }  // namespace flight_hub_sdk

@@ -280,12 +280,6 @@ public class FhTakeoffTool extends AbstractMcpTool {
             }
         }
 
-        // 4. 确保 DRC 链路就绪（自动获取控制权 + 连接 DRC）— 确认通过后才执行
-        Map<String, Object> drcError = ensureDrcLink(session, droneSn, sdkService);
-        if (drcError != null) {
-            return drcError;
-        }
-
         // 4. 校验 target_height 范围
         double targetHeight = getDoubleArg(args, PARAM_TARGET_HEIGHT, DEFAULT_TARGET_HEIGHT);
         Map<String, Object> heightError = validateTargetHeight(targetHeight);
@@ -324,7 +318,9 @@ public class FhTakeoffTool extends AbstractMcpTool {
                     "Must be one of: " + VALID_OUT_OF_CONTROL_ACTIONS);
         }
 
-        // 8. dry_run 模式：参数校验通过，返回预览（无需 confirm）
+        // 7. dry_run 模式：参数校验通过，返回预览（无需 confirm）
+        //    必须在 ensureDrcLink 之前返回，保证干跑不抢控、不建立 DRC 链路；
+        //    因此预览中的前置条件只列已实际检查的项，不能声明 drc_linked
         if (isDryRun(args)) {
             return dryRunResult(
                     "Would take off drone " + droneSn + " to altitude " + (int) targetHeight + "m",
@@ -334,12 +330,16 @@ public class FhTakeoffTool extends AbstractMcpTool {
                                     "rth_altitude", rthAltitude,
                                     "max_speed", maxSpeed,
                                     "out_of_control_action", outOfControlAction),
-                            List.of("session_active", "security_level_allowed", "drc_linked", "params_valid"),
+                            List.of("session_active", "security_level_allowed", "params_valid"),
                             getSecurityLevel(), requiresHumanConfirmation()));
         }
 
-        // 9. 人工确认已在 step 3 完成
-        //    此处不再重复弹窗，直接进入执行阶段
+        // 8. 确保 DRC 链路就绪（自动获取控制权 + 连接 DRC）— 确认通过后才执行
+        //    若用户此前显式断开，ensureDrcLink 会拒绝静默重连并要求 fh_drc_connect
+        Map<String, Object> drcError = ensureDrcLink(session, droneSn, sdkService);
+        if (drcError != null) {
+            return drcError;
+        }
 
         // 9. Mock 模式：直接执行起飞
         if (sdkService.isMockMode()) {
@@ -489,11 +489,14 @@ public class FhTakeoffTool extends AbstractMcpTool {
                 params.setTargetLongitude(dockLocation.getLongitude());
                 params.setOutOfControlAction(mapOutOfControlAction(outOfControlAction));
 
+                // 日志只输出 3 位小数坐标（约 0.1m 精度），避免全精度经纬度敏感信息外泄；
+                // 参数赋值仍保留全精度（params.setTargetLatitude/Longitude 使用原始值）
                 log.info("fh_takeoff: drone={}, dock={}, lat={}, lon={}, "
                                 + "targetHeight={}m, securityTakeoffHeight={}m, "
                                 + "rthAltitude={}m, rthMode={}, maxSpeed={}m/s",
                         droneSn, dockSn,
-                        dockLocation.getLatitude(), dockLocation.getLongitude(),
+                        String.format("%.3f", dockLocation.getLatitude()),
+                        String.format("%.3f", dockLocation.getLongitude()),
                         targetHeight, securityTakeoffHeight,
                         rthAltitude, RTH_MODE_PRESET, maxSpeed);
 

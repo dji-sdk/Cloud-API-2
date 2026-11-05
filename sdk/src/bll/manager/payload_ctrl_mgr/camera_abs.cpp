@@ -7,15 +7,15 @@
 #include "http_interface/request_message.h"
 #include "http_interface/http_interface.h"
 #include "api/flight_hub_sdk.h"
-#include "notification_center/notification_center.h"
 #include <BusinessManager.h>
 #include <common/executors/executors.h>
 #include "tool/flight_hub_utils.h"
+#include "session/session_bm.h"
 
 namespace flight_hub_sdk {
 
-CameraAbs::CameraAbs(const std::string& payload_index, const std::string& drone_sn, const std::string& gateway_sn, const std::shared_ptr<message_engine::IMessageEngine>& message_engine, int drone_instance_id)
-    : payload_index_(payload_index), drone_sn_(drone_sn), gateway_sn_(gateway_sn), message_engine_(message_engine) {
+CameraAbs::CameraAbs(const std::string& payload_index, const std::string& drone_sn, const std::string& gateway_sn, const std::shared_ptr<message_engine::IMessageEngine>& message_engine, int drone_instance_id, int session_id)
+    : payload_index_(payload_index), drone_sn_(drone_sn), gateway_sn_(gateway_sn), message_engine_(message_engine), session_id_(session_id) {
     instance_id_ = drone_instance_id;
     log_tag_ = drone_sn_ + "#" + std::to_string(instance_id_);
     LOG_INFO("[CameraAbs][%s][%s] constructor", log_tag_.c_str(), payload_index_.c_str());
@@ -24,10 +24,15 @@ CameraAbs::CameraAbs(const std::string& payload_index, const std::string& drone_
 }
 
 CameraAbs::~CameraAbs() {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("[CameraAbs][%s][%s] destructor", log_tag_.c_str(), payload_index_.c_str());
-    NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_payloads_list_listen_id_);
+    if (bm) {
+        bm->CancelObserve(aircraft_payloads_list_listen_id_);
+    }
     if (payload_control_authority_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(payload_control_authority_listen_id_);
+        if (bm) {
+            bm->CancelObserve(payload_control_authority_listen_id_);
+        }
         payload_control_authority_listen_id_ = -1;
     }
     message_engine_->getCloudMessageManager()->CancelObserveMessage(drc_camera_osd_listen_id_);
@@ -38,6 +43,7 @@ CameraAbs::~CameraAbs() {
 }
 
 void CameraAbs::initializeDeviceStatusListening() {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(p);
     drc_camera_osd_listen_id_ = message_engine_->getCloudMessageManager()->ObserveDrcDrcCameraOsdInfoPushNorthbound(
         [this, p](const std::shared_ptr<message_engine::DrcDrcCameraOsdInfoPushNorthbound>& msg) {
@@ -112,7 +118,8 @@ void CameraAbs::initializeDeviceStatusListening() {
                   log_tag_.c_str(), payload_index_.c_str(), camera_photo_info_listen_id_);
     }
 
-    aircraft_payloads_list_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftPayloadsList(
+    if (bm) {
+        aircraft_payloads_list_listen_id_ = bm->ListenAircraftPayloadsList(
         [this, p](const notification_center::AircraftPayloadsList& msg)-> void {
             WeakDummyReturn(p);
             onReceiveAircraftPayloadsList(msg);
@@ -120,6 +127,9 @@ void CameraAbs::initializeDeviceStatusListening() {
             WeakDummyReturn(p);
             LOG_INFO("[CameraAbs][%s][%s] ListenAircraftPayloadsList, listen result: %d", log_tag_.c_str(), payload_index_.c_str(), error_code);
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     if (aircraft_payloads_list_listen_id_ < 0) {
         LOG_ERROR("[CameraAbs][%s][%s] ListenAircraftPayloadsList failed, aircraft_payloads_list_listen_id_ %d", log_tag_.c_str(), payload_index_.c_str(), aircraft_payloads_list_listen_id_);
     }
@@ -136,8 +146,10 @@ void CameraAbs::initializeDeviceStatusListening() {
 }
 
 void CameraAbs::initPayloadAuthorityListening() {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
-    payload_control_authority_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenControlRightsCloudControlStatus(
+    if (bm) {
+        payload_control_authority_listen_id_ = bm->ListenControlRightsCloudControlStatus(
         [this, weak_ptr](const notification_center::ControlRightsCloudControlStatus& msg) -> void {
             WeakDummyReturn(weak_ptr);
             onReceivePayloadControlAuthority(msg);
@@ -148,6 +160,9 @@ void CameraAbs::initPayloadAuthorityListening() {
                 log_tag_.c_str(), payload_index_.c_str(), error_code);
         },
         drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     if (payload_control_authority_listen_id_ < 0) {
         LOG_ERROR("[CameraAbs][%s][%s] ListenControlRightsCloudControlStatus failed, payload_control_authority_listen_id_ %d",
             log_tag_.c_str(), payload_index_.c_str(), payload_control_authority_listen_id_);
@@ -520,7 +535,24 @@ void CameraAbs::onReceiveCameraPhotoInfoPush(const std::shared_ptr<message_engin
 
 
 void CameraAbs::acquirePayloadControlAuthority(const std::function<void(FlightHubError)>& callback) {
-    LOG_INFO("[CameraAbs][%s][%s] acquirePayloadControlAuthority", log_tag_.c_str(), payload_index_.c_str());
+    acquirePayloadControlAuthorityWithResult([callback](FlightHubError err, const ControlAuthResult&) {
+        if (callback) {
+            callback(err);
+        }
+    });
+}
+
+void CameraAbs::releasePayloadControlAuthority(const std::function<void(FlightHubError)>& callback) {
+    releasePayloadControlAuthorityWithResult([callback](FlightHubError err, const ControlAuthResult&) {
+        if (callback) {
+            callback(err);
+        }
+    });
+}
+
+void CameraAbs::acquirePayloadControlAuthorityWithResult(
+    const std::function<void(FlightHubError, const ControlAuthResult&)>& callback) {
+    LOG_INFO("[CameraAbs][%s][%s] acquirePayloadControlAuthorityWithResult", log_tag_.c_str(), payload_index_.c_str());
     AcquireCtrlAuthorityRequest request;
     request.drone_sn = drone_sn_;
     request.control_keys = {"payload_" + payload_index_};
@@ -529,16 +561,38 @@ void CameraAbs::acquirePayloadControlAuthority(const std::function<void(FlightHu
     acquire_ctrl_authority(request, [callback, p, this](const AcquireCtrlAuthorityResponse& response, FlightHubError err) {
         WeakDummyReturn(p);
         if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
-            LOG_ERROR("[CameraAbs][%s][%s] acquirePayloadControlAuthority, err_code: %d", log_tag_.c_str(), payload_index_.c_str(), static_cast<int>(err.error_code));
+            LOG_ERROR("[CameraAbs][%s][%s] acquirePayloadControlAuthorityWithResult, err_code: %d", log_tag_.c_str(), payload_index_.c_str(), static_cast<int>(err.error_code));
+        }
+        ControlAuthResult result;
+        result.drone_sn = response.drone_sn.empty() ? drone_sn_ : response.drone_sn;
+        result.bid = response.bid;
+        for (const auto& item : response.controls) {
+            ControlAuthController controller;
+            controller.key = item.key;
+            controller.type = item.type;
+            controller.version = item.version;
+            controller.gateway.sn = item.gateway.sn;
+            controller.gateway.id = item.gateway.id;
+            controller.gateway.auth_control_keys = item.gateway.auth_control_keys;
+            controller.gateway.device_model_class = item.gateway.device_model_class;
+            controller.user.call_sign = item.user.call_sign;
+            controller.user.user_id = item.user.user_id;
+            controller.user.type = item.user.type;
+            controller.spec.is_locked = item.spec.is_locked;
+            controller.spec.payload_index = item.spec.payload_index;
+            controller.spec.is_cloud_control_auth = item.spec.is_cloud_control_auth;
+            controller.spec.waiting_for_auth_user = item.spec.waiting_for_auth_user;
+            result.controls.push_back(controller);
         }
         if (callback) {
-            callback(err);
+            callback(err, result);
         }
-    });
+    }, session_id_);
 }
 
-void CameraAbs::releasePayloadControlAuthority(const std::function<void(FlightHubError)>& callback) {
-    LOG_INFO("[CameraAbs][%s][%s] releasePayloadControlAuthority", log_tag_.c_str(), payload_index_.c_str());
+void CameraAbs::releasePayloadControlAuthorityWithResult(
+    const std::function<void(FlightHubError, const ControlAuthResult&)>& callback) {
+    LOG_INFO("[CameraAbs][%s][%s] releasePayloadControlAuthorityWithResult", log_tag_.c_str(), payload_index_.c_str());
     ReleaseCtrlAuthorityRequest request;
     request.drone_sn = drone_sn_;
     request.control_keys = {"payload_" + payload_index_};
@@ -547,12 +601,33 @@ void CameraAbs::releasePayloadControlAuthority(const std::function<void(FlightHu
     release_ctrl_authority(request, [callback, p, this](const ReleaseCtrlAuthorityResponse& response, FlightHubError err) {
         WeakDummyReturn(p);
         if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
-            LOG_ERROR("[CameraAbs][%s][%s] releasePayloadControlAuthority, err_code: %d", log_tag_.c_str(), payload_index_.c_str(), static_cast<int>(err.error_code));
+            LOG_ERROR("[CameraAbs][%s][%s] releasePayloadControlAuthorityWithResult, err_code: %d", log_tag_.c_str(), payload_index_.c_str(), static_cast<int>(err.error_code));
+        }
+        ControlAuthResult result;
+        result.drone_sn = response.drone_sn.empty() ? drone_sn_ : response.drone_sn;
+        result.bid = response.bid;
+        for (const auto& item : response.controls) {
+            ControlAuthController controller;
+            controller.key = item.key;
+            controller.type = item.type;
+            controller.version = item.version;
+            controller.gateway.sn = item.gateway.sn;
+            controller.gateway.id = item.gateway.id;
+            controller.gateway.auth_control_keys = item.gateway.auth_control_keys;
+            controller.gateway.device_model_class = item.gateway.device_model_class;
+            controller.user.call_sign = item.user.call_sign;
+            controller.user.user_id = item.user.user_id;
+            controller.user.type = item.user.type;
+            controller.spec.is_locked = item.spec.is_locked;
+            controller.spec.payload_index = item.spec.payload_index;
+            controller.spec.is_cloud_control_auth = item.spec.is_cloud_control_auth;
+            controller.spec.waiting_for_auth_user = item.spec.waiting_for_auth_user;
+            result.controls.push_back(controller);
         }
         if (callback) {
-            callback(err);
+            callback(err, result);
         }
-    });
+    }, session_id_);
 }
 
 int CameraAbs::listenPayloadControlAuthority(const std::function<void(bool)>& callback) {
@@ -1048,7 +1123,7 @@ void CameraAbs::lookAtTarget(const LookAtTargetParams& params, const std::functi
                  log_tag_.c_str(), payload_index_.c_str(),
                  static_cast<int>(err.error_code), err.http_code, err.server_code);
         callback(err);
-    });
+    }, session_id_);
 }
 
 // 云台拖拽: drc_camera_screen_drag
@@ -1228,7 +1303,7 @@ void CameraAbs::drcStartPanorama(const PanoramaParam& params, const std::functio
 }
 
 void CameraAbs::drcStopPanorama(const std::function<void(FlightHubError err)>& callback) {
-    // 全景停止与「停止拍照」一致：统一走 drcStopTakePhoto（drc_camera_photo_stop），避免重复实现（HYAPP-167698）
+    // 全景停止与「停止拍照」一致：统一走 drcStopTakePhoto（drc_camera_photo_stop），避免重复实现
     LOG_INFO("[CameraAbs][%s][%s] drcStopPanorama -> drcStopTakePhoto", log_tag_.c_str(), payload_index_.c_str());
     drcStopTakePhoto(callback);
 }

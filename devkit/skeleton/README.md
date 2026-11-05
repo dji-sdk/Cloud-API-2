@@ -1,6 +1,6 @@
-# FH Skeleton — ISV 快速接入骨架
+# FH Skeleton — 集成商快速接入骨架
 
-基于 DJI CloudAPI2 SDK 的 ISV 接入骨架项目，提供开箱即用的 Spring Boot 后端 + Vue 3 前端，ISV 开发者只需实现业务逻辑即可完成 SDK 集成。
+基于 DJI Cloud API 2 SDK 的集成商接入骨架项目，提供开箱即用的 Spring Boot 后端 + Vue 3 前端，集成商开发者只需实现业务逻辑即可完成 SDK 集成。
 
 ## 技术栈
 
@@ -22,15 +22,20 @@ skeleton/
 │   ├── kernel-impl/           #   公共实现（事件总线、异步配置）
 │   ├── kernel-mock-sdk/       #   Mock 实现（本地开发，无需真实 SDK）
 │   └── kernel-real-sdk/       #   真实 SDK 适配（生产部署）
-├── feature/                   # 功能模块层（按领域拆分）
+├── feature/                   # 功能模块层（按领域拆分，共 8 个）
 │   ├── feature-device/        #   设备管理（列表、OSD、HMS 告警）
+│   ├── feature-wayline/       #   航线任务管理
+│   ├── feature-media/         #   媒体文件管理
+│   ├── feature-terra/         #   三维重建任务
+│   ├── feature-flight-area/   #   飞行区域管理
+│   ├── feature-dashboard/     #   仪表盘概览（无条件启用）
 │   ├── feature-user/          #   用户认证（注册/登录/JWT/RBAC）
-│   └── feature-chat/          #   AI Chat Bot（Spring AI + RAG）
+│   └── feature-chat/          #   AI Chat Bot（Spring AI + RAG，默认关闭）
 ├── app/fh-skeleton-app/       # 启动模块（组装所有 feature）
 ├── web/                       # 前端（Vue 3 + FH2 PaaS 组件）
 ├── docker/                    # Docker Compose 本地开发环境
 ├── fh-skeleton-bom/           # BOM（统一依赖版本）
-└── docs/                      # 设计文档、ADR
+└── docs/                      # 使用说明文档
 ```
 
 ## 快速启动
@@ -41,15 +46,35 @@ skeleton/
 - Maven 3.8+
 - Node.js 18+（前端）
 - MySQL 8.0+（可用 Docker 替代）
+- **私有 SDK JAR**（宿主机上的任何本地 Maven 构建都需要，包括默认 Mock 构建；Docker Compose 方式在镜像内自动安装，宿主机无需执行此步）：`../libs/{amd64,arm64}/flight-hub-sdk-3.3.7.jar` 不在任何远端仓库，
+  feature 模块的 `spi/sdk` 实现类在编译期依赖它，首次构建前按架构安装到本地 Maven 仓库（详见 [../libs/README.md](../libs/README.md)）：
+  ```bash
+  cd skeleton
+  mvn install:install-file \
+    -Dfile=../libs/amd64/flight-hub-sdk-3.3.7.jar \
+    -DgroupId=com.dji.flighthubsdk \
+    -DartifactId=flight-hub-sdk \
+    -Dversion=3.3.7 \
+    -Dpackaging=jar \
+    --settings ../config/settings.xml
+  ```
+  > arm64 开发机把 `-Dfile` 换成 `../libs/arm64/flight-hub-sdk-3.3.7.jar`。
 
-### 方式一：Docker Compose（推荐，零配置）
+### 方式一：Docker Compose（推荐）
+
+`skeleton/docker/docker-compose.yml` 只包含后端与前端两个服务，**本身不提供数据库**，单独执行无法启动后端。本地开发需叠加 `deploy-local-mock.override.yml`：该覆盖文件会额外启动一个 `mysql:8.0` 服务，并注入 `FH_DB_URL`、`FH_JWT_SECRET`、`FH_SDK_MODE=mock` 等变量。
+
+首次使用先编辑 `skeleton/deploy.env.local-mock`，填写 `MYSQL_ROOT_PASSWORD` / `FH_DB_PASSWORD`（两者保持一致）和 `FH_JWT_SECRET`（可用 `openssl rand -hex 32` 生成；必须替换模板中的 `CHANGE_ME_*` 占位值，否则服务端拒绝启动）。若 `FH_JWT_SECRET` 缺失，`docker compose` 会直接报错退出，不会带起任何容器：
 
 ```bash
-cd skeleton/docker
-docker compose up --build
+docker compose -f skeleton/docker/docker-compose.yml \
+               -f skeleton/docker/deploy-local-mock.override.yml \
+               --env-file skeleton/deploy.env.local-mock up --build
 ```
 
-后端运行在 `http://localhost:8080`，前端运行在 `http://localhost:5173`。
+> 注意：`--env-file` 只提供 compose 插值，变量还必须出现在服务的 `environment:` 段才会注入容器。基线 compose 已显式透传 `FH_JWT_SECRET` 与 `FH_DB_*`；早期版本漏传该变量时，Spring 会把 `${FH_JWT_SECRET}` 当作字面量绑定，报"长度不足（当前 16 字节）"。
+
+启动后后端运行在 `http://localhost:8081`，前端运行在 `http://localhost:8082`（覆盖文件将容器内 8080 映射到宿主机 8081/8082）。
 
 ### 方式二：本地开发
 
@@ -58,11 +83,27 @@ docker compose up --build
 ```bash
 cd skeleton
 
-# 编译（Mock 模式，跳过测试）
+# 编译（默认 Mock 模式，不编译 kernel-real-sdk；feature 模块的 SDK 实现类仍需 SDK JAR，请先完成上方安装）
 mvn clean package -DskipTests
 
-# 启动（默认 mock profile，H2 内存数据库）
+# 接入真实设备时需要先安装私有 SDK JAR（见上方前置条件），再执行：
+mvn clean package -DskipTests -Psdk-real
+
+# 启动前需准备：
+# 1. 本机可连的 MySQL 8.0（mock profile 同样使用 MySQL，不内置 H2；空库会由 JPA 自动建表）
+# 2. FH_JWT_SECRET 必填，至少 32 字节（可用 `openssl rand -hex 32` 生成）
+# 3. FH_DB_URL / FH_DB_USERNAME / FH_DB_PASSWORD 指向上述 MySQL
+# 4. FH_SDK_MODE=mock —— 可选：application-mock.yml 已将 fh.skeleton.sdk.mode 设为 mock，
+#    仅激活 mock profile 即可；显式设置便于阅读并防止 profile 与 mode 错配
+export FH_SKELETON_PROFILE=mock
+export FH_SDK_MODE=mock
+export FH_JWT_SECRET=$(openssl rand -hex 32)
+export FH_DB_URL='jdbc:mysql://localhost:3306/fh_skeleton?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC'
+export FH_DB_USERNAME=root
+export FH_DB_PASSWORD=your-mysql-password
 java -jar app/fh-skeleton-app/target/fh-skeleton-app-0.1.0.jar
+
+# 上述变量在 Docker Compose 方式一中已由覆盖文件自动配置，无需手动导出。
 ```
 
 #### 2. 启动前端
@@ -82,7 +123,8 @@ npm run dev
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `FH_SKELETON_PORT` | `8080` | 后端服务端口 |
-| `FH_SKELETON_PROFILE` | `mock` | 运行模式：`mock`（本地）/ `sdk`（生产） |
+| `FH_SKELETON_PROFILE` | `sdk` | Spring profile：`mock` 为本地开发的可选项，生产固定 `sdk` |
+| `FH_SDK_MODE` | `sdk` | SDK 子系统模式：`mock`（本地，配合 mock profile）/ `sdk`（生产） |
 | `FH_JWT_SECRET` | — | JWT 签名密钥（**生产必填**，至少 32 字节） |
 | `FH_DB_URL` | `jdbc:mysql://localhost:3306/fh_skeleton` | 数据库连接 |
 | `FH_DB_USERNAME` | `root` | 数据库用户名 |
@@ -108,13 +150,13 @@ Chat Bot 默认关闭，启用需设置：
 
 提供完整的用户注册/登录/JWT 鉴权体系：
 
-- **注册**：`POST /api/v1/users/register`（首个用户自动成为 admin）
+- **注册**：`POST /api/v1/users/register`（首个用户自动成为 admin；默认关闭，需 `FH_USER_REGISTRATION_ENABLED=true` 临时开启）
 - **登录**：`POST /api/v1/users/login`（返回 JWT token）
 - **当前用户**：`GET /api/v1/users/me`（需 Authorization header）
 - **安全过滤器**：`AuthenticatingSecurityFilter` 自动解析 JWT 并注入 SecurityContext
 - **权限注解**：`@RequireAuthenticated` 标注需要登录的接口
 
-ISV 扩展点：实现 `AuthenticationProvider` SPI 可对接自有认证系统。
+集成商扩展点：实现 `AuthenticationProvider` SPI 可对接自有认证系统。
 
 ### feature-device：设备管理
 
@@ -124,7 +166,7 @@ ISV 扩展点：实现 `AuthenticationProvider` SPI 可对接自有认证系统�
 - **设备详情**：`GET /api/v1/devices/{sn}`
 - **事件监听**：通过 `@EventListener` 消费 `DeviceOnlineEvent`、`OsdUpdateEvent` 等
 
-Mock 模式下返回模拟设备数据，生产模式自动对接 DJI CloudAPI2 SDK。
+Mock 模式下返回模拟设备数据，生产模式自动对接 DJI Cloud API 2 SDK。
 
 ### feature-chat：AI Chat Bot
 
@@ -134,7 +176,7 @@ Mock 模式下返回模拟设备数据，生产模式自动对接 DJI CloudAPI2 
 - **Tool 确认**：`POST /api/v1/chat/confirm/{id}`
 - **RAG 知识库**：自动加载 `chat-docs/` 下的文档作为上下文
 
-详细使用指南参见 Chat Bot 模块源码。
+详细使用指南参见 `docs/user-guide/使用说明文档.md`。
 
 ## 前端说明
 
@@ -180,7 +222,7 @@ mvn verify -Pci
 
 ### 总入口：部署指南
 
-面向 **ISV 的完整部署指南**（普通机器 / Docker Compose / Kubernetes 三种形态 + MCP Server 部署）。以下为内部远端部署脚本方式。
+面向 **集成商的完整部署指南**（普通机器 / Docker Compose / Kubernetes 三种形态 + MCP Server 部署）见 [部署指南.md](./docs/部署指南.md)。以下为内部远端部署脚本方式。
 
 ### 远端部署（SSH + Docker Compose）
 
@@ -193,9 +235,9 @@ cp skeleton/deploy.env.example skeleton/deploy.env
 ./skeleton/deploy.sh
 ```
 
-详细部署指南见 deploy.env.example 中的注释说明（唯一部署参考）。
+详细部署指南见 [部署指南.md](./docs/部署指南.md)（唯一部署文档）。
 
-> **注意**：`.gitlab-ci.yml` 中的 `skeleton-privatization-build-wibu-*` stage 为 DJI 内部私有化构建专用（依赖内部 Harbor 镜像和 Wibu AxProtector 工具链），外部 ISV fork 后**无法使用且可安全跳过**，不影响标准构建和部署流程。
+> **注意**：`.gitlab-ci.yml` 中的 `skeleton-privatization-build-wibu-*` stage 为 DJI 内部私有化构建专用（依赖内部 Harbor 镜像和 Wibu AxProtector 工具链），外部集成商 fork 后**无法使用且可安全跳过**，不影响标准构建和部署流程。
 
 ### 生产模式（接入真实 SDK）
 
@@ -213,7 +255,7 @@ FH_SKELETON_SDK_ADDRESS=https://your-flighthub-server
 FH_SKELETON_SDK_TOKEN=your-access-token
 ```
 
-## ISV 扩展指南
+## 集成商扩展指南
 
 ### 添加新 Feature 模块
 
@@ -251,11 +293,12 @@ public class MyEventListener {
 
 ## 相关文档
 
-（以下文档待补充，当前不可用）
+- [部署指南](docs/部署指南.md) — 唯一部署文档（普通机器/Docker/K8s）
+- [使用说明文档](docs/user-guide/使用说明文档.md) — 功能操作指南（含截图）
 
 ## 安全加固指南
 
-ISV 部署前务必完成以下安全检查清单：
+集成商部署前务必完成以下安全检查清单：
 
 ### 必须项
 

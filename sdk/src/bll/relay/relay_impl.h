@@ -11,7 +11,7 @@ namespace flight_hub_sdk {
 
 class RelayImpl : public IRelay {
 public:
-    RelayImpl(const std::string& sn);
+    RelayImpl(const std::string& sn, int session_id);
     ~RelayImpl() override = default;
 
     const std::string& getSn() const override { return sn_; }
@@ -20,6 +20,7 @@ public:
 
 private:
     std::string sn_;
+    int session_id_;
     std::shared_ptr<IRelayControlModule> relay_control_module_;
     std::shared_ptr<IRtkCalibrationModule> rtk_calibration_module_;
 };

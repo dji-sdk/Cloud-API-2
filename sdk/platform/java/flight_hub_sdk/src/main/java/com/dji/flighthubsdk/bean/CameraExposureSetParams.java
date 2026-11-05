@@ -9,7 +9,7 @@ import java.util.Objects;
 public class CameraExposureSetParams {
     /** 负载索引，格式为 {type-subtype-gimbalindex}，例如 "81-0-0" */
     private String payloadIndex = "";
-    /** 相机类型（镜头类型） */
+    /** 相机类型（镜头类型）整型码，取值语义同 `flight_hub_sdk::CameraLensType`（见 `value.h`） */
     private int cameraLensType = 0;
     /** 曝光补偿值 */
     private int exposureValue = 0;
@@ -21,9 +21,9 @@ public class CameraExposureSetParams {
     public String getPayloadIndex() { return payloadIndex; }
     /** @param payloadIndex 负载索引，格式为 {type-subtype-gimbalindex}，例如 "81-0-0" */
     public void setPayloadIndex(String payloadIndex) { this.payloadIndex = payloadIndex != null ? payloadIndex : ""; }
-    /** 相机类型（镜头类型） */
+    /** 相机类型（镜头类型）整型码，取值语义同 `flight_hub_sdk::CameraLensType`（见 `value.h`） */
     public int getCameraLensType() { return cameraLensType; }
-    /** @param cameraLensType 相机类型（镜头类型） */
+    /** @param cameraLensType 相机类型（镜头类型）整型码，取值语义同 `flight_hub_sdk::CameraLensType`（见 `value.h`） */
     public void setCameraLensType(int cameraLensType) { this.cameraLensType = cameraLensType; }
     /** 曝光补偿值 */
     public int getExposureValue() { return exposureValue; }

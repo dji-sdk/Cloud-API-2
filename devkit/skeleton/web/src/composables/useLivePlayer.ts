@@ -16,6 +16,7 @@
 
 import { ref, onBeforeUnmount } from 'vue'
 import { useFH2Config } from './useFH2Config'
+import { formatPaasResourceErrorMessage } from '@/utils/paasMessages'
 import type {
   DjiLivePlayerInstance,
   DjiLivePlayerOptions,
@@ -53,12 +54,15 @@ function loadLivePlayerSDK(address: string): Promise<void> {
         resolve()
       } else {
         _sdkLoadPromise = null
-        reject(new Error('DJILivePlayer SDK 加载成功但全局对象未注册'))
+        reject(new Error(
+          `${formatPaasResourceErrorMessage('直播播放器 SDK', `${baseUrl}/sdk.umd.js`)}\n`
+          + '脚本已加载但未注册 window.DJILivePlayer，通常是 SDK 版本不兼容，请核对底座版本。',
+        ))
       }
     }
     script.onerror = () => {
       _sdkLoadPromise = null
-      reject(new Error(`DJILivePlayer SDK 加载失败: ${baseUrl}/sdk.umd.js`))
+      reject(new Error(formatPaasResourceErrorMessage('直播播放器 SDK', `${baseUrl}/sdk.umd.js`)))
     }
     document.head.appendChild(script)
   })

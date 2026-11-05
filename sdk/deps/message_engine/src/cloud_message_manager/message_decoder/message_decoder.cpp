@@ -10,7 +10,7 @@ using namespace message_engine;
 
 // 没有按照标准协议格式定义的历史包袱
 std::unordered_set<std::string> black_list_method = {
-    "heart_beat",
+    "heart_beat"
 };
 
 std::shared_ptr<MessageWrapper> MessageDecoder::Decode(const std::string& string_data) {

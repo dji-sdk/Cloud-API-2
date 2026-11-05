@@ -7,15 +7,17 @@
 #include "notification_center/notification_center.h"
 #include "common/executors/executors.h"
 #include <BusinessManager.h>
+#include "session/session_bm.h"
 
 using namespace flight_hub_sdk;
 using namespace notification_center;
 
 namespace flight_hub_sdk {
 
-DeviceManageModuleImpl::DeviceManageModuleImpl()
+DeviceManageModuleImpl::DeviceManageModuleImpl(int session_id)
     :
-      device_list_mgr_() {
+      device_list_mgr_(session_id), session_id_(session_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("[DeviceManageModuleImpl] constructor");
 }
 
@@ -24,7 +26,9 @@ void DeviceManageModuleImpl::initWorkspaceDeviceChangeListening() {
         return;
     }
     WeakDummy(p);
-    workspace_device_change_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenWorkspaceDeviceChanged(
+    auto bm = ResolveBusinessManager(session_id_);
+    if (bm) {
+        workspace_device_change_listen_id_ = bm->ListenWorkspaceDeviceChanged(
         [this, p](const notification_center::WorkspaceDeviceChange& msg)-> void {
             WeakDummyReturn(p);
             WorkspaceDeviceChange workspace_device_change;
@@ -45,6 +49,9 @@ void DeviceManageModuleImpl::initWorkspaceDeviceChangeListening() {
                 LOG_ERROR("[DeviceManageModuleImpl] listenWorkspaceDeviceChanged, error: %d", error_code);
             }
         }, "", notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     if (workspace_device_change_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DeviceManageModuleImpl] ListenWorkspaceDeviceChanged, error: %d", workspace_device_change_listen_id_);
         workspace_device_change_listen_id_ = -1;
@@ -58,7 +65,9 @@ void DeviceManageModuleImpl::initDeviceTopoChangeListening() {
         return;
     }
     WeakDummy(p);
-    device_topo_change_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDeviceTopoChanged(
+    auto bm = ResolveBusinessManager(session_id_);
+    if (bm) {
+        device_topo_change_listen_id_ = bm->ListenDeviceTopoChanged(
         [this, p](const notification_center::DeviceTopoChange& msg) -> void {
             WeakDummyReturn(p);
             DeviceTopoChange device_topo_change;
@@ -73,6 +82,9 @@ void DeviceManageModuleImpl::initDeviceTopoChangeListening() {
                 LOG_ERROR("[DeviceManageModuleImpl] listenDeviceTopoChanged, error: %d", error_code);
             }
         }, "", notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     if (device_topo_change_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DeviceManageModuleImpl] ListenDeviceTopoChanged, error: %d", device_topo_change_listen_id_);
         device_topo_change_listen_id_ = -1;
@@ -82,20 +94,16 @@ void DeviceManageModuleImpl::initDeviceTopoChangeListening() {
 }
 
 DeviceManageModuleImpl::~DeviceManageModuleImpl() {
-    auto* notification_center = NotificationCenter::getInstance();
-    if (!notification_center) {
-        return;
-    }
-    auto business_manager = notification_center->getBusinessManager();
-    if (!business_manager) {
+    auto bm = ResolveBusinessManager(session_id_);
+    if (!bm) {
         return;
     }
     if (workspace_device_change_listen_id_ != -1) {
-        business_manager->CancelObserve(workspace_device_change_listen_id_);
+        bm->CancelObserve(workspace_device_change_listen_id_);
         workspace_device_change_listen_id_ = -1;
     }
     if (device_topo_change_listen_id_ != -1) {
-        business_manager->CancelObserve(device_topo_change_listen_id_);
+        bm->CancelObserve(device_topo_change_listen_id_);
         device_topo_change_listen_id_ = -1;
     }
 }
@@ -110,14 +118,15 @@ std::vector<DeviceTopo> DeviceManageModuleImpl::getCachedDeviceList() {
 
 void DeviceManageModuleImpl::getDeviceDetailInfo(const std::string& device_sn, std::function<void(FlightHubError err, const DeviceDetailInfo& device_detail)> callback) {
     WeakDummy(weak_ptr);
-    get_device_detail(device_sn, [weak_ptr, callback](const DeviceDetailResponse& response, FlightHubError err) {
+    get_device_detail(device_sn, [weak_ptr, callback, this](const DeviceDetailResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 获取设备详情; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_DEVICE_MANAGE_GET_DEVICE_DETAIL_INFO, err, "[DeviceManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_DEVICE_MANAGE_GET_DEVICE_DETAIL_INFO, err, session_id_, "[DeviceManageModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("getDeviceDetailInfo: err_code: %d", (int)err.error_code);
                 }
@@ -139,6 +148,7 @@ void DeviceManageModuleImpl::getDeviceDetailInfo(const std::string& device_sn, s
                 result.device_firmware_status = response.device_firmware_status;
                 result.device_working_status = response.device_working_status;
                 result.complete_machine_sn = response.complete_machine_sn;
+                result.device_state = response.device_state;
 
                 result.sub_devices.clear();
                 for (const auto& sub : response.sub_devices) {
@@ -158,13 +168,14 @@ void DeviceManageModuleImpl::getDeviceDetailInfo(const std::string& device_sn, s
                     sub_info.device_working_status = sub.device_working_status;
                     sub_info.flysafe_database_version = sub.flysafe_database_version;
                     sub_info.parent_sns = sub.parent_sns;
+                    sub_info.device_state = sub.device_state;
                     result.sub_devices.push_back(sub_info);
                 }
                 if (callback) {
                     callback(err, result);
                 }
             });
-    });
+    }, session_id_);
 }
 
 void DeviceManageModuleImpl::modifyDeviceName(const ModifyDeviceNameParam& device_list, std::function<void(FlightHubError err)> callback) {
@@ -175,12 +186,13 @@ void DeviceManageModuleImpl::modifyDeviceName(const ModifyDeviceNameParam& devic
     }
     put_modify_device_name(request, [this, weak_ptr, callback](const FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 修改设备名称; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_DEVICE_MANAGE_MODIFY_DEVICE_NAME, err, "[DeviceManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_DEVICE_MANAGE_MODIFY_DEVICE_NAME, err, session_id_, "[DeviceManageModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("modifyDeviceName: err_code: %d", (int)err.error_code);
                 }
@@ -188,7 +200,7 @@ void DeviceManageModuleImpl::modifyDeviceName(const ModifyDeviceNameParam& devic
                     callback(err);
                 }
             });
-    });
+    }, session_id_);
 }
 
 int DeviceManageModuleImpl::listenWorkspaceDeviceChanged(const std::function<void(const WorkspaceDeviceChange& msg)>& callback) {
@@ -217,12 +229,13 @@ void DeviceManageModuleImpl::unbindDevice(const std::vector<std::string>& device
     request.device_sns = device_sns;
     post_unbind_device(request, [this, weak_ptr, callback](const FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 解绑设备; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_DEVICE_MANAGE_UNBIND_DEVICE, err, "[DeviceManageModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_DEVICE_MANAGE_UNBIND_DEVICE, err, session_id_, "[DeviceManageModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("unbindDevice: err_code: %d", (int)err.error_code);
                 }
@@ -230,16 +243,16 @@ void DeviceManageModuleImpl::unbindDevice(const std::vector<std::string>& device
                     callback(err);
                 }
             });
-    });
+    }, session_id_);
 }
 
 void DeviceManageModuleImpl::getDockDeviceStatus(const std::vector<std::string>& device_sns, std::function<void(FlightHubError err, const DockDeviceStatusResultList& status)> callback) {
-    get_dock_status(device_sns, [device_sns, callback](const DockStatusResponse& status, const FlightHubError err) {
+    get_dock_status(device_sns, [device_sns, callback, this](const DockStatusResponse& status, const FlightHubError err) {
         // 埋点: 获取机场设备状态; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DEVICE_MANAGE_GET_DOCK_DEVICE_STATUS, err, "[DeviceManageModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_DEVICE_MANAGE_GET_DOCK_DEVICE_STATUS, err, session_id_, "[DeviceManageModuleImpl]");
         LOG_INFO("[DeviceManageModuleImpl] getDockDeviceStatus: device_sns size: %zu, err_code %d", device_sns.size(), (int)err.error_code);
         DockDeviceStatusResultList result;
         for (const auto& item : status.list) {
@@ -291,16 +304,16 @@ void DeviceManageModuleImpl::getDockDeviceStatus(const std::vector<std::string>&
         if (callback) {
             callback(err, result);
         }
-    });
+    }, session_id_);
 }
 
 void DeviceManageModuleImpl::getDroneDeviceStatus(const std::vector<std::string>& device_sns, std::function<void(FlightHubError err, const DroneDeviceStatusResultList& status)> callback) {
-    get_drone_status(device_sns, [device_sns, callback](const DroneStatusResponse& status, const FlightHubError err) {
+    get_drone_status(device_sns, [device_sns, callback, this](const DroneStatusResponse& status, const FlightHubError err) {
         // 埋点: 获取飞机设备状态; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DEVICE_MANAGE_GET_DRONE_DEVICE_STATUS, err, "[DeviceManageModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_DEVICE_MANAGE_GET_DRONE_DEVICE_STATUS, err, session_id_, "[DeviceManageModuleImpl]");
         LOG_INFO("[DeviceManageModuleImpl] getDroneDeviceStatus: device_sns size: %zu, err_code %d", device_sns.size(), (int)err.error_code);
         DroneDeviceStatusResultList result;
         for (const auto& item : status.list) {
@@ -368,7 +381,7 @@ void DeviceManageModuleImpl::getDroneDeviceStatus(const std::vector<std::string>
         if (callback) {
             callback(err, result);
         }
-    });
+    }, session_id_);
 }
 
 }  // namespace flight_hub_sdk

@@ -100,6 +100,14 @@ public class GetMediaUploadStsResult {
     return flighthubsdkmoduleJNI.GetMediaUploadStsResult_region_get(swigCPtr, this);
   }
 
+  public void setExt(String value) {
+    flighthubsdkmoduleJNI.GetMediaUploadStsResult_ext_set(swigCPtr, this, value);
+  }
+
+  public String getExt() {
+    return flighthubsdkmoduleJNI.GetMediaUploadStsResult_ext_get(swigCPtr, this);
+  }
+
   public GetMediaUploadStsResult() {
     this(flighthubsdkmoduleJNI.new_GetMediaUploadStsResult(), true);
   }

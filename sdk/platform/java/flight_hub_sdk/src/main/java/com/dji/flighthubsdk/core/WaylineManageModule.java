@@ -591,6 +591,7 @@ public class WaylineManageModule {
                                         com.dji.flighthubsdk.generated.ImportKmzItem nativeItem = nativeList.get(i);
                                         com.dji.flighthubsdk.bean.ImportKmzItem beanItem = new com.dji.flighthubsdk.bean.ImportKmzItem();
                                         beanItem.setKmzObjectKey(nativeItem.getKmz_object_key());
+                                        beanItem.setWaylineUuid(nativeItem.getWayline_uuid());
                                         beanItem.setWaylineName(nativeItem.getWayline_name());
                                         beanItem.setAsyncRequestId(nativeItem.getAsync_request_id());
                                         beanList.add(beanItem);

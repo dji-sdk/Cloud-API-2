@@ -38,7 +38,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
  * <p>{@code @EnableAspectJAutoProxy} 启用 Spring AOP，让 Aspect 生效。
  *
  * <p>注：{@link AuthorizationAspect} 不加 {@code @ConditionalOnMissingBean} —— 它是基础设施 bean，
- * ISV 想换实现请用 {@code @Primary} 或排除本 AutoConfiguration。
+ * 集成商 想换实现请用 {@code @Primary} 或排除本 AutoConfiguration。
  *
  * @author DJI DevKit Team
  */
@@ -75,7 +75,7 @@ public class AuthAutoConfiguration {
     /**
      * 装配全局异常处理器。仅在 Web 应用中激活。
      *
-     * <p>ISV 覆盖方式（任选其一）：
+     * <p>集成商 覆盖方式（任选其一）：
      * <ul>
      *   <li>声明 {@code @RestControllerAdvice @Order(Ordered.HIGHEST_PRECEDENCE)} 更高优先级拦截</li>
      *   <li>排除本 AutoConfiguration：{@code @SpringBootApplication(exclude = AuthAutoConfiguration.class)}</li>

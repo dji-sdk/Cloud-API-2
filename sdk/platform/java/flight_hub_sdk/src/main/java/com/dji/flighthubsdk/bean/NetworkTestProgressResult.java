@@ -20,7 +20,7 @@ public final class NetworkTestProgressResult {
      * 构造 NetworkTestProgressResult。
      *
      * @param message 消息
-     * @param bid 业务ID
+     * @param bid 业务ID。仅 startNetworkTest 响应与 subscribeNetworkTestProgress 推送有值；getNetworkTestProgress 后端不返回，恒为空
      * @param createTime 创建时间
      * @param updateTime 更新时间
      * @param downloadSpeed 下载速度
@@ -51,12 +51,12 @@ public final class NetworkTestProgressResult {
         this.message = message;
     }
 
-    /** 业务ID */
+    /** 业务ID。仅 startNetworkTest 响应与 subscribeNetworkTestProgress 推送有值；getNetworkTestProgress 后端不返回，恒为空 */
     public String getBid() {
         return bid;
     }
 
-    /** 业务ID */
+    /** 业务ID。仅 startNetworkTest 响应与 subscribeNetworkTestProgress 推送有值；getNetworkTestProgress 后端不返回，恒为空 */
     public void setBid(String bid) {
         this.bid = bid;
     }

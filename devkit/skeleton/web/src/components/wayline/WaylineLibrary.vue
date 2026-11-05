@@ -22,6 +22,7 @@ import { useFH2Config } from '@/composables/useFH2Config'
 import { ensureFH2Init } from '@/composables/useFH2'
 import { formatDateTime } from '@/utils/format'
 import { injectScriptUMD } from '@/utils/sdk'
+import { formatPaasResourceErrorMessage } from '@/utils/paasMessages'
 import WaylineConcatDialog from './WaylineConcatDialog.vue'
 import WaylineDeleteDialog from './WaylineDeleteDialog.vue'
 import WaylineImportDialog from './WaylineImportDialog.vue'
@@ -94,11 +95,15 @@ async function handleConcatConfirm(name: string): Promise<void> {
     const cfg = useFH2Config()
     await ensureFH2Init()
 
+    const jsUrl = `${cfg.address}/paasjs-demo/wayline-edit-sdk/index.js`
     if (!window.WaylineEditor) {
-      await injectScriptUMD(`${cfg.address}/paasjs-demo/wayline-edit-sdk/index.js`, 'WaylineEditor')
+      await injectScriptUMD(jsUrl, 'WaylineEditor')
     }
     if (!window.WaylineEditor || typeof window.WaylineEditor.concatWayline !== 'function') {
-      throw new Error('WaylineEditor SDK 加载后仍未暴露 concatWayline 方法')
+      throw new Error(
+        `${formatPaasResourceErrorMessage('航线编辑器 SDK', jsUrl)}\n`
+        + '脚本已加载但未暴露 window.WaylineEditor.concatWayline，通常是 SDK 版本不兼容，请核对底座版本。',
+      )
     }
 
     // concatWayline 静态方法内部依赖 mount() 中初始化的 HTTP client

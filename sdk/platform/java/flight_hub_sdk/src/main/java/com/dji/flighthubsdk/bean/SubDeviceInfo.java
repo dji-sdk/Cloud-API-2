@@ -20,6 +20,7 @@ public final class SubDeviceInfo {
     private int deviceWorkingStatus;
     private String flysafeDatabaseVersion;
     private List<String> parentSns;
+    private String deviceState = "";
     public SubDeviceInfo() {
     }
 
@@ -118,6 +119,16 @@ public final class SubDeviceInfo {
         this.parentSns = parentSns;
     }
 
+    /** 设备状态（raw JSON） */
+    public String getDeviceState() {
+        return deviceState;
+    }
+
+    /** 设备状态（raw JSON） */
+    public void setDeviceState(String deviceState) {
+        this.deviceState = deviceState != null ? deviceState : "";
+    }
+
 
     @Override
     public boolean equals(Object o) {
@@ -136,7 +147,8 @@ public final class SubDeviceInfo {
                 && Objects.equals(modelInfo, that.modelInfo)
                 && Objects.equals(deviceFirmwareVersion, that.deviceFirmwareVersion)
                 && Objects.equals(flysafeDatabaseVersion, that.flysafeDatabaseVersion)
-                && Objects.equals(parentSns, that.parentSns);
+                && Objects.equals(parentSns, that.parentSns)
+                && Objects.equals(deviceState, that.deviceState);
     }
 
     @Override
@@ -150,7 +162,8 @@ public final class SubDeviceInfo {
                 deviceFirmwareStatus,
                 deviceWorkingStatus,
                 flysafeDatabaseVersion,
-                parentSns);
+                parentSns,
+                deviceState);
     }
 
     @Override
@@ -165,6 +178,7 @@ public final class SubDeviceInfo {
                 + ", deviceWorkingStatus=" + deviceWorkingStatus
                 + ", flysafeDatabaseVersion='" + flysafeDatabaseVersion + '\''
                 + ", parentSns=" + parentSns
+                + ", deviceState='" + deviceState + '\''
                 + '}';
     }
 }

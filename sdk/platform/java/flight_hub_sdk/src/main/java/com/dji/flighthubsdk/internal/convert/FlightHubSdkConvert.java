@@ -215,10 +215,12 @@ import com.dji.flighthubsdk.bean.DeviceUnlockRidUnlock;
 import com.dji.flighthubsdk.bean.BatchDownloadWaylinesItemResult;
 import com.dji.flighthubsdk.bean.GetWaylineDetailResult;
 import com.dji.flighthubsdk.bean.WaylineDetailExtData;
+import com.dji.flighthubsdk.bean.WaylineExtDataModel;
 import com.dji.flighthubsdk.bean.WaylineDetailKmzData;
 import com.dji.flighthubsdk.bean.WaylineDetailSurveyAreaScopePoint;
 import com.dji.flighthubsdk.bean.WaylineDetailSurveyAreaScope;
 import com.dji.flighthubsdk.bean.DuplicateWaylineResult;
+import com.dji.flighthubsdk.bean.WaylineCollisionEvent;
 import com.dji.flighthubsdk.bean.WaylineListItemResult;
 import com.dji.flighthubsdk.bean.WaylineListPaginationResult;
 import com.dji.flighthubsdk.bean.GetWaylineListResult;
@@ -248,6 +250,8 @@ import com.dji.flighthubsdk.bean.HmsArgs;
 import com.dji.flighthubsdk.bean.HmsDataBasics;
 import com.dji.flighthubsdk.bean.HmsData;
 import com.dji.flighthubsdk.bean.HmsDataItem;
+import com.dji.flighthubsdk.bean.AirsenseWarning;
+import com.dji.flighthubsdk.bean.AirsenseWarningItem;
 import com.dji.flighthubsdk.bean.ContentsGeometryData;
 import com.dji.flighthubsdk.bean.ContentsPropertyData;
 import com.dji.flighthubsdk.bean.CreateDeviceJobDataResult;
@@ -281,9 +285,13 @@ import com.dji.flighthubsdk.bean.FlightTrackPoint;
 import com.dji.flighthubsdk.bean.FlightTrackInfo;
 import com.dji.flighthubsdk.bean.GetFlightTaskTrackParams;
 import com.dji.flighthubsdk.bean.GetFlightTaskTrackResults;
+import com.dji.flighthubsdk.bean.FlightRiskItem;
+import com.dji.flighthubsdk.bean.GetFlightRisksParams;
+import com.dji.flighthubsdk.bean.GetFlightRisksResults;
 import com.dji.flighthubsdk.bean.GetAreasSyncStatusResults;
 import com.dji.flighthubsdk.bean.GetExportFlightRecordsProgressResults;
 import com.dji.flighthubsdk.bean.GetFlightAreasResults;
+import com.dji.flighthubsdk.bean.GetFlightAreasUrlResults;
 import com.dji.flighthubsdk.bean.GetMediaFilesDownloadUrlResults;
 import com.dji.flighthubsdk.bean.GetMediaFilesListResults;
 import com.dji.flighthubsdk.bean.GetMediaUploadStsParams;
@@ -368,8 +376,14 @@ import com.dji.flighthubsdk.bean.AiAlertAlarmInfo;
 import com.dji.flighthubsdk.bean.AiAlertAlarmTarget;
 import com.dji.flighthubsdk.bean.AiAlertFlightItem;
 import com.dji.flighthubsdk.bean.AiAlertLocation;
+import com.dji.flighthubsdk.bean.AiAlertNotifyFlightData;
+import com.dji.flighthubsdk.bean.AiAlertNotifyRecordItem;
+import com.dji.flighthubsdk.bean.AiAlertNotifyTargetInfo;
 import com.dji.flighthubsdk.bean.AiAlertRecordItem;
+import com.dji.flighthubsdk.bean.AiAlertRecordsNotifyResult;
 import com.dji.flighthubsdk.bean.AiAlertTargetAlertInfo;
+import com.dji.flighthubsdk.bean.AiAlertTriggerAction;
+import com.dji.flighthubsdk.bean.DeleteAiAlertRecordParam;
 import com.dji.flighthubsdk.bean.GetAiAlertAlgorithmSettingParam;
 import com.dji.flighthubsdk.bean.GetAiAlertAlgorithmSettingResult;
 import com.dji.flighthubsdk.bean.GetAiAlertDeviceSettingParam;
@@ -410,6 +424,7 @@ import com.dji.flighthubsdk.value.OutOfControlAction;
 import com.dji.flighthubsdk.value.POITaskStatus;
 import com.dji.flighthubsdk.value.PsdkSubType;
 import com.dji.flighthubsdk.value.PsdkType;
+import com.dji.flighthubsdk.value.SpeedMode;
 import com.dji.flighthubsdk.value.SearchLightWorkMode;
 import com.dji.flighthubsdk.value.TakeoffMode;
 
@@ -1252,7 +1267,7 @@ public final class FlightHubSdkConvert {
         if (nativeTarget == null) {
             return null;
         }
-        return new AiDetectionTarget(
+        AiDetectionTarget bean = new AiDetectionTarget(
                 nativeTarget.getTarget_id(),
                 nativeTarget.getTarget_type(),
                 nativeTarget.getTarget_state(),
@@ -1261,6 +1276,10 @@ public final class FlightHubSdkConvert {
                 nativeTarget.getTarget_w(),
                 nativeTarget.getTarget_h(),
                 nativeTarget.getTarget_distance());
+        bean.setModelIndex(nativeTarget.getModel_index());
+        bean.setFrameSource(nativeTarget.getFrame_source());
+        bean.setModelInfoType(nativeTarget.getModel_info_type());
+        return bean;
     }
 
     /**
@@ -1325,6 +1344,9 @@ public final class FlightHubSdkConvert {
         n.setTarget_w(bean.getTargetW());
         n.setTarget_h(bean.getTargetH());
         n.setTarget_distance(bean.getTargetDistance());
+        n.setModel_index(bean.getModelIndex());
+        n.setFrame_source(bean.getFrameSource());
+        n.setModel_info_type(bean.getModelInfoType());
         return n;
     }
 
@@ -2098,6 +2120,14 @@ public final class FlightHubSdkConvert {
         return n;
     }
 
+    /**
+     * 速度模式 → 原生 int。UNKNOWN / null 映射为 -1（未设置），BLL 层据此跳过该字段、
+     * 不写入 JSON，设备保持当前模式。
+     */
+    private static int speedModeValue(SpeedMode mode) {
+        return (mode == null || mode == SpeedMode.UNKNOWN) ? -1 : mode.getValue();
+    }
+
     private static String safeString(String s) {
         return s != null ? s : "";
     }
@@ -2349,6 +2379,43 @@ public final class FlightHubSdkConvert {
             return new HmsData(Collections.emptyList());
         }
         return new HmsData(toHmsDataItemList(n.getHms_data_items()));
+    }
+
+    public static AirsenseWarningItem toAirsenseWarningItem(com.dji.flighthubsdk.generated.AirsenseWarningItem n) {
+        if (n == null) {
+            return new AirsenseWarningItem("", 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        }
+        return new AirsenseWarningItem(
+                safeString(n.getIcao()),
+                n.getWarning_level(),
+                n.getLatitude(),
+                n.getLongitude(),
+                n.getAltitude(),
+                n.getAltitude_type(),
+                n.getHeading(),
+                n.getRelative_altitude(),
+                n.getVert_trend(),
+                n.getDistance());
+    }
+
+    public static List<AirsenseWarningItem> toAirsenseWarningItemList(
+            com.dji.flighthubsdk.generated.AirsenseWarningItemVector v) {
+        if (v == null || v.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<AirsenseWarningItem> out = new ArrayList<>(v.size());
+        for (int i = 0; i < v.size(); i++) {
+            out.add(toAirsenseWarningItem(v.get(i)));
+        }
+        return out;
+    }
+
+    /** 从 native {@code AirsenseWarning} 深拷贝为对外 {@link AirsenseWarning}。 */
+    public static AirsenseWarning toAirsenseWarning(com.dji.flighthubsdk.generated.AirsenseWarning n) {
+        if (n == null) {
+            return new AirsenseWarning(Collections.emptyList());
+        }
+        return new AirsenseWarning(toAirsenseWarningItemList(n.getData()));
     }
 
     public static SmartTrackPointInfo toSmartTrackPointInfo(com.dji.flighthubsdk.generated.SmartTrackPointInfo n) {
@@ -3037,6 +3104,7 @@ public final class FlightHubSdkConvert {
                 safeString(n.getFlysafe_database_version()),
                 copyStringVector(n.getParent_sns()));
         result.setNickname(safeString(n.getNickname()));
+        result.setDeviceState(safeString(n.getDevice_state()));
         return result;
     }
 
@@ -3057,7 +3125,7 @@ public final class FlightHubSdkConvert {
         if (n == null) {
             return new DeviceDetailInfo("", "", null, 0, false, "", 0, 0, "", null);
         }
-        return new DeviceDetailInfo(
+        DeviceDetailInfo result = new DeviceDetailInfo(
                 safeString(n.getDevice_sn()),
                 safeString(n.getNickname()),
                 toModelInfo(n.getModel_info()),
@@ -3068,6 +3136,8 @@ public final class FlightHubSdkConvert {
                 n.getDevice_working_status(),
                 safeString(n.getComplete_machine_sn()),
                 toSubDeviceInfoList(n.getSub_devices()));
+        result.setDeviceState(safeString(n.getDevice_state()));
+        return result;
     }
 
     public static DeviceChange toDeviceChange(
@@ -3100,14 +3170,15 @@ public final class FlightHubSdkConvert {
 
     public static STSCredential toSTSCredential(com.dji.flighthubsdk.generated.STSCredential n) {
         if (n == null) {
-            return new STSCredential("", "", 0, "", 0);
+            return new STSCredential("", "", 0, "", 0, "");
         }
         return new STSCredential(
                 safeString(n.getAccess_key_id()),
                 safeString(n.getAccess_key_secret()),
                 n.getExpire(),
                 safeString(n.getSecurity_token()),
-                n.getPlatform());
+                n.getPlatform(),
+                safeString(n.getExpiration()));
     }
 
     public static STSInfo toSTSInfo(com.dji.flighthubsdk.generated.STSInfo n) {
@@ -3133,6 +3204,7 @@ public final class FlightHubSdkConvert {
         n.setExpire(bean.getExpire());
         n.setSecurity_token(safeString(bean.getSecurityToken()));
         n.setPlatform(bean.getPlatform());
+        n.setExpiration(safeString(bean.getExpiration()));
         return n;
     }
 
@@ -3178,7 +3250,7 @@ public final class FlightHubSdkConvert {
                     0L,
                     "");
         }
-        return new PsdkSpeakerResource(
+        PsdkSpeakerResource r = new PsdkSpeakerResource(
                 n.getId(),
                 safeString(n.getName()),
                 safeString(n.getFile_type()),
@@ -3199,6 +3271,10 @@ public final class FlightHubSdkConvert {
                 safeString(n.getOpus_object_key()),
                 n.getOpus_size(),
                 safeString(n.getOpus_md5_sum()));
+        r.setProjectId(safeString(n.getProject_id()));
+        r.setVisible(n.getVisible());
+        r.setCreateScene(safeString(n.getCreate_scene()));
+        return r;
     }
 
     public static List<PsdkSpeakerResource> toPsdkSpeakerResourceList(
@@ -3585,7 +3661,7 @@ public final class FlightHubSdkConvert {
             }
             devices = Collections.unmodifiableList(devices);
         }
-        return new FirmwareUpgradeResult(n.getDevice_code(), safeString(n.getStatus()), devices);
+        return new FirmwareUpgradeResult(safeString(n.getBid()), n.getDevice_code(), safeString(n.getStatus()), devices);
     }
 
     public static FirmwareUpgradeProgressStep toFirmwareUpgradeProgressStep(
@@ -3628,7 +3704,7 @@ public final class FlightHubSdkConvert {
             return new FirmwareUpgradeProgressItem(
                     null, null, 0, 0, null, "", 0);
         }
-        return new FirmwareUpgradeProgressItem(
+        FirmwareUpgradeProgressItem item = new FirmwareUpgradeProgressItem(
                 toFirmwareUpgradeAssociateDrone(n.getAssociate_drone()),
                 toFirmwareUpgradeAssociateRelay(n.getAssociate_relay()),
                 n.getDevice_code(),
@@ -3636,6 +3712,10 @@ public final class FlightHubSdkConvert {
                 toFirmwareUpgradeProgressOTA(n.getOta()),
                 safeString(n.getSn()),
                 n.getWorking_status());
+        item.setFirmwareVersion(safeString(n.getFirmware_version()));
+        item.setDeviceModelKey(safeString(n.getDevice_model_key()));
+        item.setServices(toFirmwareService(n.getServices()));
+        return item;
     }
 
     public static List<FirmwareUpgradeProgressItem> toFirmwareUpgradeProgressItemList(
@@ -3684,6 +3764,19 @@ public final class FlightHubSdkConvert {
         return Collections.unmodifiableList(out);
     }
 
+    public static com.dji.flighthubsdk.bean.FirmwareListResult toFirmwareListResult(
+            com.dji.flighthubsdk.generated.FirmwareListResult r) {
+        if (r == null) {
+            return new com.dji.flighthubsdk.bean.FirmwareListResult(Collections.emptyList(), null);
+        }
+        CommonPaginationData pagination = null;
+        com.dji.flighthubsdk.generated.CommonPaginationData gp = r.getPagination();
+        if (gp != null) {
+            pagination = new CommonPaginationData(gp.getPage(), gp.getPage_size(), gp.getTotal());
+        }
+        return new com.dji.flighthubsdk.bean.FirmwareListResult(toFirmwareItemResultList(r), pagination);
+    }
+
     public static FirmwareCompatibilityRulesResult toFirmwareCompatibilityRulesResult(
             com.dji.flighthubsdk.generated.FirmwareCompatibilityRulesResult n) {
         if (n == null) {
@@ -3698,8 +3791,26 @@ public final class FlightHubSdkConvert {
             return new FirmwareCompatibilityConfigItemResult("", Collections.emptyList(), null);
         }
         List<String> cv = Collections.unmodifiableList(new ArrayList<>(copyStringVector(n.getCompatible_versions())));
-        return new FirmwareCompatibilityConfigItemResult(
+        FirmwareCompatibilityConfigItemResult out = new FirmwareCompatibilityConfigItemResult(
                 safeString(n.getDevice_model_key()), cv, toFirmwareCompatibilityRulesResult(n.getRules()));
+        out.setKey(safeString(n.getKey()));
+        out.setUserType(new ArrayList<>(copyStringVector(n.getUser_type())));
+        out.setDescription(safeString(n.getDescription()));
+        com.dji.flighthubsdk.generated.FirmwareCompatibilityValidateResultVector vv = n.getValidates();
+        if (vv != null && !vv.isEmpty()) {
+            java.util.List<com.dji.flighthubsdk.bean.FirmwareCompatibilityValidateResult> list =
+                    new ArrayList<>(vv.size());
+            for (int i = 0; i < vv.size(); i++) {
+                com.dji.flighthubsdk.generated.FirmwareCompatibilityValidateResult v = vv.get(i);
+                if (v != null) {
+                    list.add(new com.dji.flighthubsdk.bean.FirmwareCompatibilityValidateResult(
+                            safeString(v.getField()), safeString(v.getDescription()),
+                            safeString(v.getCompare()), safeString(v.getValue())));
+                }
+            }
+            out.setValidates(list);
+        }
+        return out;
     }
 
     public static List<FirmwareCompatibilityConfigItemResult> toFirmwareCompatibilityConfigItemResultList(
@@ -3948,7 +4059,22 @@ public final class FlightHubSdkConvert {
                     Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
         }
         List<String> ef = Collections.unmodifiableList(new ArrayList<>(copyStringVector(n.getErr_file_name())));
-        List<String> em = Collections.unmodifiableList(new ArrayList<>(copyStringVector(n.getErr_cert_mismatch())));
+        List<com.dji.flighthubsdk.bean.ErrCertMismatch> em = new ArrayList<>();
+        com.dji.flighthubsdk.generated.ErrCertMismatchVector emVec = n.getErr_cert_mismatch();
+        if (emVec != null) {
+            for (int i = 0; i < emVec.size(); i++) {
+                com.dji.flighthubsdk.generated.ErrCertMismatch e = emVec.get(i);
+                if (e == null) {
+                    continue;
+                }
+                com.dji.flighthubsdk.bean.ErrCertMismatch b = new com.dji.flighthubsdk.bean.ErrCertMismatch();
+                b.setAirportSn(safeString(e.getAirport_sn()));
+                b.setAircraftSn(safeString(e.getAircraft_sn()));
+                b.setFileName(safeString(e.getFile_name()));
+                em.add(b);
+            }
+        }
+        em = Collections.unmodifiableList(em);
         com.dji.flighthubsdk.generated.CheckUnlockLicenseResultItemVector v = n.getList();
         List<CheckUnlockLicenseResultItem> items = Collections.emptyList();
         if (v != null && !v.isEmpty()) {
@@ -3985,7 +4111,7 @@ public final class FlightHubSdkConvert {
                     false,
                     false);
         }
-        return new WaylineListItemResult(
+        WaylineListItemResult r = new WaylineListItemResult(
                 safeString(n.getWayline_uuid()),
                 Collections.unmodifiableList(new ArrayList<>(copyIntVector(n.getWayline_types()))),
                 safeString(n.getWayline_name()),
@@ -3997,6 +4123,27 @@ public final class FlightHubSdkConvert {
                 n.getWith_megaphone(),
                 n.getWith_search_light(),
                 n.getIs_ai_wayline());
+        r.setEditorWarnings(n.getEditor_warnings() == null ? null
+                : new HashMap<>(n.getEditor_warnings()));
+        r.setExecuteWarnings(n.getExecute_warnings() == null ? null
+                : new HashMap<>(n.getExecute_warnings()));
+        r.setHasCollisions(n.getHas_collisions());
+        java.util.List<WaylineCollisionEvent> collisions = new ArrayList<>();
+        com.dji.flighthubsdk.generated.WaylineCollisionEventVector cv = n.getCollision_positions();
+        if (cv != null) {
+            for (int i = 0; i < cv.size(); i++) {
+                com.dji.flighthubsdk.generated.WaylineCollisionEvent c = cv.get(i);
+                collisions.add(new WaylineCollisionEvent(
+                        safeString(c.getWayline_uuid()),
+                        safeString(c.getFlight_task_uuid()),
+                        c.getTimestamp(),
+                        c.getLatitude(),
+                        c.getLongitude(),
+                        c.getAltitude()));
+            }
+        }
+        r.setCollisionPositions(collisions);
+        return r;
     }
 
     public static GetWaylineListResult toGetWaylineListResult(
@@ -4046,7 +4193,7 @@ public final class FlightHubSdkConvert {
         if (n == null) {
             return null;
         }
-        return new WaylineDetailKmzData(
+        WaylineDetailKmzData result = new WaylineDetailKmzData(
                 n.getWayline_type(),
                 n.getWayline_point_count(),
                 n.getExit_on_rc_lost_type(),
@@ -4087,6 +4234,8 @@ public final class FlightHubSdkConvert {
                 Collections.unmodifiableList(new ArrayList<>(copyStringVector(n.getAccurate_action_uuids()))),
                 Collections.unmodifiableList(new ArrayList<>(copyStringVector(n.getAction_uuids()))),
                 toWaylineDetailSurveyAreaScope(n.getSurvey_area_scope()));
+        result.setMd5(safeString(n.getMd5()));
+        return result;
     }
 
     public static WaylineDetailExtData toWaylineDetailExtData(
@@ -4094,11 +4243,62 @@ public final class FlightHubSdkConvert {
         if (n == null) {
             return null;
         }
-        return new WaylineDetailExtData(
+        WaylineDetailExtData result = new WaylineDetailExtData(
                 safeString(n.getKmz_without_res_object_key()),
                 safeString(n.getKmz_without_res_md5()),
                 safeString(n.getTarget_area_file_object_key()),
                 safeString(n.getBusiness_file_object_key()));
+        result.setModelFileObjectKeys(copyStringVector(n.getModel_file_object_keys()));
+        result.setElevationFileObjectKeys(copyStringVector(n.getElevation_file_object_keys()));
+        result.setContentLength(n.getContent_length());
+        List<WaylineExtDataModel> models = new ArrayList<>();
+        com.dji.flighthubsdk.generated.ConcatWaylineExtDataModelVector modelVector = n.getModels();
+        if (modelVector != null) {
+            for (int i = 0; i < modelVector.size(); i++) {
+                com.dji.flighthubsdk.generated.ConcatWaylineExtDataModel m = modelVector.get(i);
+                if (m == null) {
+                    continue;
+                }
+                WaylineExtDataModel model = new WaylineExtDataModel();
+                model.setUuid(safeString(m.getUuid()));
+                model.setFileKey(safeString(m.getFile_key()));
+                com.dji.flighthubsdk.generated.ConcatWaylineExtDataModelBoundary b = m.getBoundary();
+                if (b != null) {
+                    WaylineExtDataModel.Boundary boundary = new WaylineExtDataModel.Boundary();
+                    boundary.setLatitude(b.getLatitude());
+                    boundary.setLongitude(b.getLongitude());
+                    boundary.setAltitude(b.getAltitude());
+                    boundary.setHalfX(b.getHalf_x());
+                    boundary.setHalfY(b.getHalf_y());
+                    boundary.setHalfZ(b.getHalf_z());
+                    boundary.setTransform(copyDoubleVector(b.getTransform()));
+                    model.setBoundary(boundary);
+                }
+                com.dji.flighthubsdk.generated.ConcatWaylineExtDataModelBounding bd = m.getBounding();
+                if (bd != null) {
+                    WaylineExtDataModel.Bounding bounding = new WaylineExtDataModel.Bounding();
+                    List<WaylineExtDataModel.BoundingPoint> points = new ArrayList<>();
+                    com.dji.flighthubsdk.generated.ConcatWaylineExtDataModelBoundingPointVector pv = bd.getPoints();
+                    if (pv != null) {
+                        for (int j = 0; j < pv.size(); j++) {
+                            com.dji.flighthubsdk.generated.ConcatWaylineExtDataModelBoundingPoint p = pv.get(j);
+                            if (p == null) {
+                                continue;
+                            }
+                            WaylineExtDataModel.BoundingPoint point = new WaylineExtDataModel.BoundingPoint();
+                            point.setLng(p.getLng());
+                            point.setLat(p.getLat());
+                            points.add(point);
+                        }
+                    }
+                    bounding.setPoints(points);
+                    model.setBounding(bounding);
+                }
+                models.add(model);
+            }
+        }
+        result.setModels(models);
+        return result;
     }
 
     public static GetWaylineDetailResult toGetWaylineDetailResult(
@@ -4106,7 +4306,7 @@ public final class FlightHubSdkConvert {
         if (n == null) {
             return null;
         }
-        return new GetWaylineDetailResult(
+        GetWaylineDetailResult result = new GetWaylineDetailResult(
                 safeString(n.getWayline_uuid()),
                 safeString(n.getMd5()),
                 safeString(n.getWayline_name()),
@@ -4122,6 +4322,35 @@ public final class FlightHubSdkConvert {
                 toWaylineDetailExtData(n.getExt_data()),
                 copyStringStringUnorderedMap(n.getEditor_warnings()),
                 copyStringStringUnorderedMap(n.getExecute_warnings()));
+        result.setWaylinePointNums(n.getWayline_point_nums());
+        result.setElevationUuid(safeString(n.getElevation_uuid()));
+        List<WaylineObstacle> obstacles = new ArrayList<>();
+        com.dji.flighthubsdk.generated.WaylineObstacleVector obsVec = n.getObstacles();
+        if (obsVec != null) {
+            for (int i = 0; i < obsVec.size(); i++) {
+                obstacles.add(toWaylineObstacle(obsVec.get(i)));
+            }
+        }
+        result.setObstacles(obstacles);
+        List<WaylineCollisionEvent> collisions = new ArrayList<>();
+        com.dji.flighthubsdk.generated.WaylineCollisionEventVector cv = n.getCollision_positions();
+        if (cv != null) {
+            for (int i = 0; i < cv.size(); i++) {
+                com.dji.flighthubsdk.generated.WaylineCollisionEvent c = cv.get(i);
+                if (c == null) {
+                    continue;
+                }
+                collisions.add(new WaylineCollisionEvent(
+                        safeString(c.getWayline_uuid()),
+                        safeString(c.getFlight_task_uuid()),
+                        c.getTimestamp(),
+                        c.getLatitude(),
+                        c.getLongitude(),
+                        c.getAltitude()));
+            }
+        }
+        result.setCollisionPositions(collisions);
+        return result;
     }
 
     private static WaylineDetailSurveyAreaScope toImportWaylineEventSurveyAreaScope(
@@ -4677,7 +4906,7 @@ public final class FlightHubSdkConvert {
         if (n == null) {
             return null;
         }
-        return new MediaFilesListItemInfoData(
+        MediaFilesListItemInfoData r = new MediaFilesListItemInfoData(
                 n.getFile_id(),
                 safeString(n.getFlight_id()),
                 safeString(n.getWayline_action_uuid()),
@@ -4691,6 +4920,12 @@ public final class FlightHubSdkConvert {
                 safeString(n.getDevice_sn()),
                 safeString(n.getPayload_type()),
                 n.getType());
+        r.setWaylineUuid(safeString(n.getWayline_uuid()));
+        r.setPreviewKey(safeString(n.getPreview_key()));
+        r.setPanoTotalCount(n.getPano_total_count());
+        r.setPanoStitchState(n.getPano_stitch_state());
+        r.setPanoStitchProgress(n.getPano_stitch_progress());
+        return r;
     }
 
     public static GetMediaFilesListResults toGetMediaFilesListResults(
@@ -4783,19 +5018,21 @@ public final class FlightHubSdkConvert {
     public static MediaUploadStsCredentials toMediaUploadStsCredentials(
             com.dji.flighthubsdk.generated.MediaUploadStsCredentials n) {
         if (n == null) {
-            return new MediaUploadStsCredentials("", "", 0, "");
+            return new MediaUploadStsCredentials("", "", 0, "", "", 0);
         }
         return new MediaUploadStsCredentials(
                 safeString(n.getAccess_key_id()),
                 safeString(n.getAccess_key_secret()),
                 n.getExpire(),
-                safeString(n.getSecurity_token()));
+                safeString(n.getSecurity_token()),
+                safeString(n.getExpiration()),
+                n.getPlatform());
     }
 
     public static GetMediaUploadStsResult toGetMediaUploadStsResult(
             com.dji.flighthubsdk.generated.GetMediaUploadStsResult n) {
         if (n == null) {
-            return new GetMediaUploadStsResult("", null, "", "", "", "");
+            return new GetMediaUploadStsResult("", null, "", "", "", "", "");
         }
         return new GetMediaUploadStsResult(
                 safeString(n.getBucket()),
@@ -4803,7 +5040,8 @@ public final class FlightHubSdkConvert {
                 safeString(n.getObject_key_prefix()),
                 safeString(n.getEndpoint()),
                 safeString(n.getProvider()),
-                safeString(n.getRegion()));
+                safeString(n.getRegion()),
+                safeString(n.getExt()));
     }
 
     public static com.dji.flighthubsdk.generated.GetMediaUploadStsParams toNativeGetMediaUploadStsParams(
@@ -4857,7 +5095,12 @@ public final class FlightHubSdkConvert {
                 safeString(n.getWayline_id()),
                 safeString(n.getTinny_fingerprint()),
                 n.getFast_reconstruction_media_type(),
-                n.getMedia_index());
+                n.getMedia_index(),
+                safeString(n.getWayline_action_uuid()),
+                safeString(n.getTask_name()),
+                safeString(n.getSn()),
+                n.getExpected_file_count(),
+                n.getPano_total_count());
     }
 
     public static MediaUploadCallbackFile toMediaUploadCallbackFile(
@@ -4917,6 +5160,48 @@ public final class FlightHubSdkConvert {
             nFile.setCloud_to_cloud_id(file.getCloudToCloudId() != null ? file.getCloudToCloudId() : "");
             nFile.setCreated_time(file.getCreatedTime() != null ? file.getCreatedTime() : "");
             nFile.setSource(file.getSource() != null ? file.getSource() : "");
+
+            MediaUploadCallbackFileExt be = file.getExt();
+            com.dji.flighthubsdk.generated.MediaUploadCallbackFileExt nExt =
+                    new com.dji.flighthubsdk.generated.MediaUploadCallbackFileExt();
+            if (be != null) {
+                nExt.setWayline_id(safeString(be.getWaylineId()));
+                nExt.setWayline_action_uuid(safeString(be.getWaylineActionUuid()));
+                nExt.setPrj_uuid(safeString(be.getPrjUuid()));
+                nExt.setWorkspace_id(safeString(be.getWorkspaceId()));
+                nExt.setFlight_id(safeString(be.getFlightId()));
+                nExt.setDrone_model_key(safeString(be.getDroneModelKey()));
+                nExt.setPayload_model_key(safeString(be.getPayloadModelKey()));
+                nExt.setIs_original(be.isOriginal());
+                nExt.setTask_name(safeString(be.getTaskName()));
+                nExt.setSn(safeString(be.getSn()));
+                nExt.setTinny_fingerprint(safeString(be.getTinnyFingerprint()));
+                nExt.setUser_id(safeString(be.getUserId()));
+                nExt.setMedia_index(be.getMediaIndex());
+                nExt.setExpected_file_count(be.getExpectedFileCount());
+                nExt.setFast_reconstruction_media_type(be.getFastReconstructionMediaType());
+                nExt.setPano_total_count(be.getPanoTotalCount());
+            }
+            nFile.setExt(nExt);
+
+            MediaUploadCallbackMetadata bm = file.getMetadata();
+            com.dji.flighthubsdk.generated.MediaUploadCallbackMetadata nMeta =
+                    new com.dji.flighthubsdk.generated.MediaUploadCallbackMetadata();
+            if (bm != null) {
+                nMeta.setAbsolute_altitude(bm.getAbsoluteAltitude());
+                nMeta.setRelative_altitude(bm.getRelativeAltitude());
+                nMeta.setGimbal_yaw_degree(bm.getGimbalYawDegree());
+                nMeta.setCreated_time(safeString(bm.getCreatedTime()));
+                MediaUploadCallbackShootPosition bp = bm.getShootPosition();
+                com.dji.flighthubsdk.generated.MediaUploadCallbackShootPosition nPos =
+                        new com.dji.flighthubsdk.generated.MediaUploadCallbackShootPosition();
+                if (bp != null) {
+                    nPos.setLat(bp.getLat());
+                    nPos.setLng(bp.getLng());
+                }
+                nMeta.setShoot_position(nPos);
+            }
+            nFile.setMetadata(nMeta);
             n.setFile(nFile);
         }
         return n;
@@ -5130,6 +5415,18 @@ public final class FlightHubSdkConvert {
         return new GetAreasSyncStatusResults(toDeviceSyncStatusResultsList(n.getList()));
     }
 
+    public static GetFlightAreasUrlResults toGetFlightAreasUrlResults(
+            com.dji.flighthubsdk.generated.GetFlightAreasUrlResults n) {
+        if (n == null) {
+            return new GetFlightAreasUrlResults("", "", "", 0L);
+        }
+        return new GetFlightAreasUrlResults(
+                safeString(n.getName()),
+                safeString(n.getUrl()),
+                safeString(n.getChecksum()),
+                n.getSize());
+    }
+
     public static OfflineMapsSyncResults toOfflineMapsSyncResults(
             com.dji.flighthubsdk.generated.OfflineMapsSyncResults n) {
         if (n == null) {
@@ -5253,6 +5550,15 @@ public final class FlightHubSdkConvert {
         return new PaginationInfo(n.getPage(), n.getPage_size(), n.getTotal());
     }
 
+    public static com.dji.flighthubsdk.bean.FlyToPointStartResult toFlyToPointStartResult(
+            com.dji.flighthubsdk.generated.FlyToPointStartResult n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.FlyToPointStartResult("", "");
+        }
+        return new com.dji.flighthubsdk.bean.FlyToPointStartResult(
+                safeString(n.getFly_to_id()), safeString(n.getFlight_id()));
+    }
+
     public static TaskDetail toTaskDetail(com.dji.flighthubsdk.generated.TaskDetail n) {
         if (n == null) {
             return new TaskDetail(
@@ -5270,7 +5576,7 @@ public final class FlightHubSdkConvert {
             }
             obstacles = Collections.unmodifiableList(obstacles);
         }
-        return new TaskDetail(
+        TaskDetail detail = new TaskDetail(
                 safeString(n.getUuid()),
                 safeString(n.getName()),
                 n.getTask_type(),
@@ -5302,6 +5608,9 @@ public final class FlightHubSdkConvert {
                 Collections.unmodifiableList(new ArrayList<>(copyStringVector(n.getTags()))),
                 safeString(n.getUpdated_at()),
                 n.getWayline_duration());
+        detail.setCloudToCloudId(safeString(n.getCloud_to_cloud_id()));
+        detail.setFastReconstruction(n.getFast_reconstruction());
+        return detail;
     }
 
     public static FlightTaskListResult toFlightTaskListResult(com.dji.flighthubsdk.generated.FlightTaskListResult n) {
@@ -5392,6 +5701,29 @@ public final class FlightHubSdkConvert {
                 trackInfo);
     }
 
+    public static GetFlightRisksResults toGetFlightRisksResults(com.dji.flighthubsdk.generated.GetFlightRisksResults n) {
+        if (n == null) {
+            return new GetFlightRisksResults(null);
+        }
+        com.dji.flighthubsdk.generated.FlightRiskItemVector rv = n.getList();
+        java.util.List<FlightRiskItem> list;
+        if (rv == null || rv.isEmpty()) {
+            list = Collections.emptyList();
+        } else {
+            list = new ArrayList<>(rv.size());
+            for (int i = 0; i < rv.size(); i++) {
+                com.dji.flighthubsdk.generated.FlightRiskItem r = rv.get(i);
+                list.add(new FlightRiskItem(
+                        com.dji.flighthubsdk.value.FlightRiskType.fromValue(r.getRisk_type()),
+                        r.getLatitude(),
+                        r.getLongitude(),
+                        r.getHeight()));
+            }
+            list = Collections.unmodifiableList(list);
+        }
+        return new GetFlightRisksResults(list);
+    }
+
     public static CreateTaskResp toCreateTaskResp(
             com.dji.flighthubsdk.generated.CreateTaskResp n) {
         if (n == null) {
@@ -5426,7 +5758,20 @@ public final class FlightHubSdkConvert {
         if (n == null) {
             return new TCAInfo("", "");
         }
-        return new TCAInfo(safeString(n.getCenter_sn()), safeString(n.getData_json()));
+        TCAInfo r = new TCAInfo(safeString(n.getCenter_sn()), safeString(n.getData_json()));
+        r.setTcaStatus(safeString(n.getTca_status()));
+        r.setVersion(n.getVersion());
+        java.util.List<com.dji.flighthubsdk.bean.TCAZoneStatus> zones = new ArrayList<>();
+        com.dji.flighthubsdk.generated.TCAZoneStatusVector zv = n.getTca();
+        if (zv != null) {
+            for (int i = 0; i < zv.size(); i++) {
+                com.dji.flighthubsdk.generated.TCAZoneStatus z = zv.get(i);
+                zones.add(new com.dji.flighthubsdk.bean.TCAZoneStatus(
+                        z.getStatus(), safeString(z.getSn()), z.getRadius()));
+            }
+        }
+        r.setTca(zones);
+        return r;
     }
 
     public static GetTCAInfosResp toGetTCAInfosResp(com.dji.flighthubsdk.generated.GetTCAInfosResp n) {
@@ -5464,7 +5809,8 @@ public final class FlightHubSdkConvert {
             com.dji.flighthubsdk.generated.HistoryHmsDataResultItem n) {
         if (n == null) {
             return new HistoryHmsDataResultItem(
-                    "", "", "", 0, 0, "", 0, "", 0L, 0L, 0L, 0L, null, "", "", 0, 0, "", "", "");
+                    "", "", "", 0, 0, "", 0, "", 0L, 0L, 0L, 0L, null, "", "", 0, 0, "", "", "",
+                    Collections.<HistoryHmsDataResultItem>emptyList());
         }
         return new HistoryHmsDataResultItem(
                 safeString(n.get_id()),
@@ -5486,7 +5832,20 @@ public final class FlightHubSdkConvert {
                 n.getIn_the_sky(),
                 safeString(n.getJoint_key()),
                 safeString(n.getStatus_key()),
-                safeString(n.getSn()));
+                safeString(n.getSn()),
+                toHistoryHmsDataResultItemList(n.getSub_hms_list()));
+    }
+
+    private static List<HistoryHmsDataResultItem> toHistoryHmsDataResultItemList(
+            com.dji.flighthubsdk.generated.HistoryHmsDataResultItemVector v) {
+        if (v == null || v.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<HistoryHmsDataResultItem> list = new ArrayList<>(v.size());
+        for (int i = 0; i < v.size(); i++) {
+            list.add(toHistoryHmsDataResultItem(v.get(i)));
+        }
+        return Collections.unmodifiableList(list);
     }
 
     public static HistoryHmsDataResultPagination toHistoryHmsDataResultPagination(
@@ -5880,7 +6239,33 @@ public final class FlightHubSdkConvert {
         nativeParam.setCloud_to_cloud_id(
                 param.getCloudToCloudId() != null ? param.getCloudToCloudId() : "");
         nativeParam.setNeed_verify_flight_control(param.getNeedVerifyFlightControl());
+        nativeParam.setSpeed_mode(speedModeValue(param.getSpeedMode()));
+        nativeParam.setReal_height_cap_enabled(param.getRealHeightCapEnabled());
+        nativeParam.setReal_height_cap_limit(param.getRealHeightCapLimit());
         return nativeParam;
+    }
+
+    public static com.dji.flighthubsdk.generated.GroundTakeoffParams toNativeGroundTakeoffParams(
+            com.dji.flighthubsdk.bean.GroundTakeoffParams param) {
+        com.dji.flighthubsdk.generated.GroundTakeoffParams nativeParam =
+                new com.dji.flighthubsdk.generated.GroundTakeoffParams();
+        if (param == null) {
+            return nativeParam;
+        }
+        nativeParam.setAuto_takeoff_height(param.getAutoTakeoffHeight());
+        nativeParam.setOut_of_control_action(
+                param.getOutOfControlAction() != null
+                        ? param.getOutOfControlAction().getValue()
+                        : OutOfControlAction.UNKNOWN.getValue());
+        return nativeParam;
+    }
+
+    public static com.dji.flighthubsdk.bean.GroundTakeoffResult toGroundTakeoffResult(
+            com.dji.flighthubsdk.generated.GroundTakeoffResult result) {
+        if (result == null) {
+            return new com.dji.flighthubsdk.bean.GroundTakeoffResult("");
+        }
+        return new com.dji.flighthubsdk.bean.GroundTakeoffResult(result.getFlight_id());
     }
 
     public static com.dji.flighthubsdk.generated.ThermalGainModeSetParams toNativeThermalGainModeSetParams(
@@ -5892,7 +6277,7 @@ public final class FlightHubSdkConvert {
         }
         nativeParam.setPayload_index(param.getPayloadIndex());
         nativeParam.setThermal_gain_mode(
-                param.getThermalGainMode() != null ? param.getThermalGainMode().getValue() : IrGainMode.Auto.getValue());
+                param.getThermalGainMode() != null ? param.getThermalGainMode().getValue() : IrGainMode.LowGain.getValue());
         return nativeParam;
     }
 
@@ -6017,6 +6402,17 @@ public final class FlightHubSdkConvert {
             com.dji.flighthubsdk.bean.GetFlightTaskTrackParams params) {
         com.dji.flighthubsdk.generated.GetFlightTaskTrackParams nativeParams =
                 new com.dji.flighthubsdk.generated.GetFlightTaskTrackParams();
+        if (params == null) {
+            return nativeParams;
+        }
+        nativeParams.setTask_uuid(params.getTaskUuid());
+        return nativeParams;
+    }
+
+    public static com.dji.flighthubsdk.generated.GetFlightRisksParams toNativeGetFlightRisksParams(
+            com.dji.flighthubsdk.bean.GetFlightRisksParams params) {
+        com.dji.flighthubsdk.generated.GetFlightRisksParams nativeParams =
+                new com.dji.flighthubsdk.generated.GetFlightRisksParams();
         if (params == null) {
             return nativeParams;
         }
@@ -6295,7 +6691,9 @@ public final class FlightHubSdkConvert {
         nativeParams.setFlight_area_id(params.getFlightAreaId());
         nativeParams.setName(params.getName());
         nativeParams.setContent(toNativeFlightAreasContentData(params.getContent()));
-        nativeParams.setUpdate_by(params.getUpdateBy());
+        nativeParams.setStatus(params.getStatus());
+        nativeParams.setType(params.getType());
+        // update_by 已废弃: 后端以登录态为准, 不再透传到请求。
         return nativeParams;
     }
 
@@ -6333,6 +6731,9 @@ public final class FlightHubSdkConvert {
             return nativeParams;
         }
         nativeParams.setFlight_id(params.getFlightId());
+        nativeParams.setWayline_uuid(params.getWaylineUuid());
+        nativeParams.setWayline_action_uuid(params.getWaylineActionUuid());
+        nativeParams.setPayload_types(toNativeStringVector(params.getPayloadTypes()));
         nativeParams.setStart_index(params.getStartIndex());
         nativeParams.setPage_size(params.getPageSize());
         nativeParams.setFile_types(toNativeStringVector(params.getFileTypes()));
@@ -6349,10 +6750,30 @@ public final class FlightHubSdkConvert {
         if (params == null) {
             return nativeParams;
         }
-        nativeParams.setLatitude(params.getLatitude());
-        nativeParams.setLongitude(params.getLongitude());
-        nativeParams.setHeight(params.getHeight());
         nativeParams.setMax_speed(params.getMaxSpeed());
+        nativeParams.setSpeed_mode(speedModeValue(params.getSpeedMode()));
+        nativeParams.setReal_height_cap_enabled(params.getRealHeightCapEnabled());
+        nativeParams.setReal_height_cap_limit(params.getRealHeightCapLimit());
+        // start_point(航段起点/当前机位)与 points(目标点)语义不同, 分别转换, 不可互填。
+        if (params.getStartPoint() != null) {
+            com.dji.flighthubsdk.generated.FlyToTargetPoint sp = new com.dji.flighthubsdk.generated.FlyToTargetPoint();
+            sp.setLatitude(params.getStartPoint().getLatitude());
+            sp.setLongitude(params.getStartPoint().getLongitude());
+            sp.setHeight(params.getStartPoint().getHeight());
+            nativeParams.setStart_point(sp);
+        }
+        if (params.getPoints() != null) {
+            com.dji.flighthubsdk.generated.FlyToTargetPointVector nativePoints =
+                    new com.dji.flighthubsdk.generated.FlyToTargetPointVector();
+            for (com.dji.flighthubsdk.bean.FlyToTargetPoint p : params.getPoints()) {
+                com.dji.flighthubsdk.generated.FlyToTargetPoint np = new com.dji.flighthubsdk.generated.FlyToTargetPoint();
+                np.setLatitude(p.getLatitude());
+                np.setLongitude(p.getLongitude());
+                np.setHeight(p.getHeight());
+                nativePoints.add(np);
+            }
+            nativeParams.setPoints(nativePoints);
+        }
         return nativeParams;
     }
 
@@ -7106,6 +7527,8 @@ public final class FlightHubSdkConvert {
         nativeParam.setWayline_uuids(listToStringVector(param.getWaylineUuids()));
         nativeParam.setPayload_types(listToStringVector(param.getPayloadTypes()));
         nativeParam.setWayline_types(listToStringVector(param.getWaylineTypes()));
+        nativeParam.setWayline_types_int(toNativeIntVector(param.getWaylineTypesInt()));
+        nativeParam.setKeyword(safeString(param.getKeyword()));
         return nativeParam;
     }
 
@@ -7182,6 +7605,18 @@ public final class FlightHubSdkConvert {
         return nativeParam;
     }
 
+    public static com.dji.flighthubsdk.generated.PsdkSpeakerResourceListParams toNativePsdkSpeakerResourceListParams(
+            com.dji.flighthubsdk.bean.PsdkSpeakerResourceListParams param) {
+        com.dji.flighthubsdk.generated.PsdkSpeakerResourceListParams nativeParam =
+                new com.dji.flighthubsdk.generated.PsdkSpeakerResourceListParams();
+        if (param == null) {
+            return nativeParam;
+        }
+        nativeParam.setFile_type(safeString(param.getFileType()));
+        nativeParam.setMd5_sum(safeString(param.getMd5Sum()));
+        return nativeParam;
+    }
+
     public static com.dji.flighthubsdk.generated.EditPsdkSpeakerResourceParams toNativeEditPsdkSpeakerResourceParams(
             com.dji.flighthubsdk.bean.EditPsdkSpeakerResourceParams param) {
         com.dji.flighthubsdk.generated.EditPsdkSpeakerResourceParams nativeParam = new com.dji.flighthubsdk.generated.EditPsdkSpeakerResourceParams();
@@ -7193,6 +7628,9 @@ public final class FlightHubSdkConvert {
         nativeParam.setFile_type(param.getFileType());
         nativeParam.setVisible(param.isVisible());
         nativeParam.setContent(param.getContent());
+        nativeParam.setOpus_object_key(safeString(param.getOpusObjectKey()));
+        nativeParam.setOpus_size(param.getOpusSize());
+        nativeParam.setOpus_md5_sum(safeString(param.getOpusMd5Sum()));
         return nativeParam;
     }
 
@@ -7358,7 +7796,7 @@ public final class FlightHubSdkConvert {
             return new com.dji.flighthubsdk.bean.FlightCommanderHeightResult(
                     0, new com.dji.flighthubsdk.bean.FlightSafeSyncResult("", java.util.Collections.emptyList()));
         }
-        int height = n.getSettings() != null ? n.getSettings().getCommander_flight_height() : 0;
+        double height = n.getSettings() != null ? n.getSettings().getCommander_flight_height() : 0;
         return new com.dji.flighthubsdk.bean.FlightCommanderHeightResult(
                 height, toFlightSafeSyncResult(n.getDevice_shadow_sync()));
     }
@@ -7412,6 +7850,10 @@ public final class FlightHubSdkConvert {
         }
         nativeParams.setFly_to_id(safeString(params.getFlyToId()));
         nativeParams.setMax_speed(params.getMaxSpeed());
+        nativeParams.setSpeed_mode(speedModeValue(params.getSpeedMode()));
+        nativeParams.setReal_height_cap_enabled(params.getRealHeightCapEnabled());
+        nativeParams.setReal_height_cap_limit(params.getRealHeightCapLimit());
+        nativeParams.setNeed_verify_flight_control(params.getNeedVerifyFlightControl());
         if (params.getStartPoint() != null) {
             com.dji.flighthubsdk.generated.FlyToTargetPoint sp = new com.dji.flighthubsdk.generated.FlyToTargetPoint();
             sp.setLatitude(params.getStartPoint().getLatitude());
@@ -7657,7 +8099,10 @@ public final class FlightHubSdkConvert {
             n.getPart(), n.getOrigin(),
             toSelfDiagnosticResultData(n.getSelf_diagnostic_result()),
             toDiagnosisDeviceReportProgress(n.getDevice_report_progress()),
-            n.getQr_code_content(), n.getQr_guide_text()
+            n.getQr_code_content(), n.getQr_guide_text(),
+            n.getCloud_submit_status(), n.getQr_code_url(), n.getQr_code_sign(), n.getQr_code_nonce(),
+            n.getDevice_callback_updated_at(), n.getCreated_at(), n.getUpdated_at(),
+            n.getOrganization_uuid(), n.getProject_uuid(), n.getDevice_type()
         );
     }
 
@@ -8300,7 +8745,7 @@ public final class FlightHubSdkConvert {
 
     public static TerraBuildModelFileItem toTerraBuildModelFileItem(com.dji.flighthubsdk.generated.TerraBuildModelFileItem n) {
         if (n == null) return null;
-        return new TerraBuildModelFileItem(
+        TerraBuildModelFileItem item = new TerraBuildModelFileItem(
                 n.getId(),
                 safeString(n.getUuid()),
                 safeString(n.getName()),
@@ -8312,6 +8757,8 @@ public final class FlightHubSdkConvert {
                 safeString(n.getZip_url()),
                 safeString(n.getCreated_at()),
                 safeString(n.getUpdated_at()));
+        item.setPreviewUrl(safeString(n.getPreview_url()));
+        return item;
     }
 
     public static TerraBuildModelFileListResult toTerraBuildModelFileListResult(com.dji.flighthubsdk.generated.TerraBuildModelFileListResult n) {
@@ -8881,6 +9328,83 @@ public final class FlightHubSdkConvert {
                 toWaylineTaskData(n.getTask_data()));
     }
 
+    public static com.dji.flighthubsdk.bean.MultiDockHomeInfo toMultiDockHomeInfo(
+            com.dji.flighthubsdk.generated.MultiDockHomeInfo n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.MultiDockHomeInfo("", 0, 0, 0);
+        }
+        return new com.dji.flighthubsdk.bean.MultiDockHomeInfo(
+                safeString(n.getSn()), n.getPlan_status(), n.getEstimated_battery_consumption(),
+                n.getHome_distance());
+    }
+
+    public static com.dji.flighthubsdk.bean.ReturnHomeInfo toReturnHomeInfo(
+            com.dji.flighthubsdk.generated.ReturnHomeInfo n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.ReturnHomeInfo(0,
+                    new java.util.ArrayList<com.dji.flighthubsdk.bean.Waypoint>(), 0, "",
+                    new java.util.ArrayList<com.dji.flighthubsdk.bean.MultiDockHomeInfo>());
+        }
+        java.util.List<com.dji.flighthubsdk.bean.Waypoint> plannedPathPoints =
+                new java.util.ArrayList<com.dji.flighthubsdk.bean.Waypoint>();
+        com.dji.flighthubsdk.generated.WaypointVector nativePoints = n.getPlanned_path_points();
+        if (nativePoints != null) {
+            for (int i = 0; i < nativePoints.size(); i++) {
+                com.dji.flighthubsdk.generated.Waypoint p = nativePoints.get(i);
+                plannedPathPoints.add(new com.dji.flighthubsdk.bean.Waypoint(
+                        p.getLatitude(), p.getLongitude(), p.getHeight()));
+            }
+        }
+        java.util.List<com.dji.flighthubsdk.bean.MultiDockHomeInfo> multiDockHomeInfo =
+                new java.util.ArrayList<com.dji.flighthubsdk.bean.MultiDockHomeInfo>();
+        com.dji.flighthubsdk.generated.MultiDockHomeInfoVector nativeDockInfo = n.getMulti_dock_home_info();
+        if (nativeDockInfo != null) {
+            for (int i = 0; i < nativeDockInfo.size(); i++) {
+                multiDockHomeInfo.add(toMultiDockHomeInfo(nativeDockInfo.get(i)));
+            }
+        }
+        return new com.dji.flighthubsdk.bean.ReturnHomeInfo(
+                n.getTimestamp(), plannedPathPoints, n.getLast_point_type(),
+                safeString(n.getHome_dock_sn()), multiDockHomeInfo);
+    }
+
+    public static com.dji.flighthubsdk.bean.ReturnHomeInfoEvent toReturnHomeInfoEvent(
+            com.dji.flighthubsdk.generated.ReturnHomeInfoEvent n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.ReturnHomeInfoEvent("", "", toReturnHomeInfo(null));
+        }
+        return new com.dji.flighthubsdk.bean.ReturnHomeInfoEvent(
+                safeString(n.getFlight_id()), safeString(n.getSn()), toReturnHomeInfo(n.getInfo()));
+    }
+
+    public static com.dji.flighthubsdk.bean.TaskExceptionItem toTaskExceptionItem(
+            com.dji.flighthubsdk.generated.TaskExceptionItem n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.TaskExceptionItem(0, "", "", 0);
+        }
+        return new com.dji.flighthubsdk.bean.TaskExceptionItem(
+                n.getCode(), safeString(n.getMessage()), safeString(n.getSn()), n.getHappen_at());
+    }
+
+    public static com.dji.flighthubsdk.bean.TaskExceptionEvent toTaskExceptionEvent(
+            com.dji.flighthubsdk.generated.TaskExceptionEvent n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.TaskExceptionEvent("", "", "", 0, 0, 0,
+                    new java.util.ArrayList<com.dji.flighthubsdk.bean.TaskExceptionItem>());
+        }
+        java.util.List<com.dji.flighthubsdk.bean.TaskExceptionItem> exceptions =
+                new java.util.ArrayList<com.dji.flighthubsdk.bean.TaskExceptionItem>();
+        com.dji.flighthubsdk.generated.TaskExceptionItemVector nativeExceptions = n.getExceptions();
+        if (nativeExceptions != null) {
+            for (int i = 0; i < nativeExceptions.size(); i++) {
+                exceptions.add(toTaskExceptionItem(nativeExceptions.get(i)));
+            }
+        }
+        return new com.dji.flighthubsdk.bean.TaskExceptionEvent(
+                safeString(n.getUuid()), safeString(n.getName()), safeString(n.getSn()),
+                n.getTask_type(), n.getStatus(), n.getTimestamp(), exceptions);
+    }
+
     public static com.dji.flighthubsdk.generated.CreateInFlightWaylineTaskParams toNativeCreateInFlightWaylineTaskParams(
             com.dji.flighthubsdk.bean.CreateInFlightWaylineTaskParams param) {
         com.dji.flighthubsdk.generated.CreateInFlightWaylineTaskParams nativeParam =
@@ -9085,6 +9609,9 @@ public final class FlightHubSdkConvert {
         b.setImageSource(new java.util.ArrayList<>(copyIntVector(n.getImage_source())));
         b.setDigitalEffect(new java.util.ArrayList<>(copyIntVector(n.getDigital_effect())));
         b.setVlResolution(new java.util.ArrayList<>(copyIntVector(n.getVl_resolution())));
+        b.setModelTypes(new java.util.ArrayList<>(copyIntVector(n.getModel_types())));
+        b.setModelCombination(safeString(n.getModel_combination()));
+        b.setStatus(safeString(n.getStatus()));
         b.setLabels(toAIInsideLabelList(n.getLabels()));
         return b;
     }
@@ -9107,7 +9634,11 @@ public final class FlightHubSdkConvert {
         if (n == null) { return b; }
         b.setDeviceModelKey(safeString(n.getDevice_model_key()));
         b.setDomain(safeString(n.getDomain()));
+        b.setType(safeString(n.getType()));
+        b.setSubType(safeString(n.getSub_type()));
         b.setName(safeString(n.getName()));
+        b.setDeviceModelClass(safeString(n.getDevice_model_class()));
+        b.setDevelopCode(safeString(n.getDevelop_code()));
         return b;
     }
 
@@ -9945,6 +10476,86 @@ public final class FlightHubSdkConvert {
         return new com.dji.flighthubsdk.bean.FlashLedConfigList(toFlashLedConfigList(n.getConfigs()));
     }
 
+    public static com.dji.flighthubsdk.generated.AutoRecordItem toNativeAutoRecordItem(
+            com.dji.flighthubsdk.bean.AutoRecordItem bean) {
+        com.dji.flighthubsdk.generated.AutoRecordItem n =
+                new com.dji.flighthubsdk.generated.AutoRecordItem();
+        if (bean == null) return n;
+        n.setSn(bean.getSn() != null ? bean.getSn() : "");
+        n.setCamera_index(bean.getCameraIndex());
+        n.setCamera_sn(bean.getCameraSn() != null ? bean.getCameraSn() : "");
+        n.setRecording_strategy(bean.getRecordingStrategy());
+        return n;
+    }
+
+    public static com.dji.flighthubsdk.generated.AutoRecordItemVector toNativeAutoRecordItemVector(
+            List<com.dji.flighthubsdk.bean.AutoRecordItem> beans) {
+        com.dji.flighthubsdk.generated.AutoRecordItemVector v =
+                new com.dji.flighthubsdk.generated.AutoRecordItemVector();
+        if (beans == null) return v;
+        for (com.dji.flighthubsdk.bean.AutoRecordItem b : beans) {
+            v.add(toNativeAutoRecordItem(b));
+        }
+        return v;
+    }
+
+    public static com.dji.flighthubsdk.bean.AutoRecordItem toAutoRecordItem(
+            com.dji.flighthubsdk.generated.AutoRecordItem n) {
+        com.dji.flighthubsdk.bean.AutoRecordItem bean =
+                new com.dji.flighthubsdk.bean.AutoRecordItem();
+        if (n == null) return bean;
+        bean.setSn(safeString(n.getSn()));
+        bean.setCameraIndex(n.getCamera_index());
+        bean.setCameraSn(safeString(n.getCamera_sn()));
+        bean.setRecordingStrategy(n.getRecording_strategy());
+        return bean;
+    }
+
+    public static List<com.dji.flighthubsdk.bean.AutoRecordItem> toAutoRecordItemList(
+            com.dji.flighthubsdk.generated.AutoRecordItemVector v) {
+        if (v == null || v.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<com.dji.flighthubsdk.bean.AutoRecordItem> out = new ArrayList<>(v.size());
+        for (int i = 0; i < v.size(); i++) {
+            out.add(toAutoRecordItem(v.get(i)));
+        }
+        return out;
+    }
+
+    public static com.dji.flighthubsdk.bean.AutoRecordConfig toAutoRecordConfig(
+            com.dji.flighthubsdk.generated.AutoRecordConfig n) {
+        com.dji.flighthubsdk.bean.AutoRecordConfig bean =
+                new com.dji.flighthubsdk.bean.AutoRecordConfig();
+        if (n == null) return bean;
+        bean.setId(n.getId());
+        bean.setProjectId(safeString(n.getProject_id()));
+        bean.setCreatedAt(n.getCreated_at());
+        bean.setUpdatedAt(n.getUpdated_at());
+        bean.setAutoCleaningTime(n.getAuto_cleaning_time());
+        bean.setDisabledAutoClean(n.getDisabled_auto_clean());
+        bean.setDisableDockRecording(n.getDisable_dock_recording());
+        bean.setDisableDroneRecording(n.getDisable_drone_recording());
+        bean.setDisableBaseStationRecording(n.getDisable_base_station_recording());
+        bean.setDisableRtmpRecording(n.getDisable_rtmp_recording());
+        bean.setRecordingItems(toAutoRecordItemList(n.getRecording_items()));
+        return bean;
+    }
+
+    public static com.dji.flighthubsdk.generated.SaveAutoRecordConfigParams toNativeSaveAutoRecordConfigParams(
+            com.dji.flighthubsdk.bean.SaveAutoRecordConfigParams bean) {
+        com.dji.flighthubsdk.generated.SaveAutoRecordConfigParams n =
+                new com.dji.flighthubsdk.generated.SaveAutoRecordConfigParams();
+        if (bean == null) return n;
+        n.setAuto_cleaning_time(bean.getAutoCleaningTime());
+        n.setDisable_dock_recording(bean.isDisableDockRecording());
+        n.setDisable_drone_recording(bean.isDisableDroneRecording());
+        n.setDisable_base_station_recording(bean.isDisableBaseStationRecording());
+        n.setDisable_rtmp_recording(bean.isDisableRtmpRecording());
+        n.setRecording_items(toNativeAutoRecordItemVector(bean.getRecordingItems()));
+        return n;
+    }
+
     public static com.dji.flighthubsdk.generated.CameraLookAtParams toNativeCameraLookAtParams(
             com.dji.flighthubsdk.bean.CameraLookAtParams bean) {
         com.dji.flighthubsdk.generated.CameraLookAtParams n =
@@ -10023,7 +10634,20 @@ public final class FlightHubSdkConvert {
         if (n == null) { return b; }
         b.setTargetType(n.getTarget_type());
         b.setTargetValue(n.getTarget_value());
+        b.setUseMinThreshold(n.getUse_min_threshold());
+        b.setUseMaxThreshold(n.getUse_max_threshold());
+        b.setTargetMaxThreshold(n.getTarget_max_threshold());
+        b.setTargetMinThreshold(n.getTarget_min_threshold());
         b.setLabel(safeString(n.getLabel()));
+        return b;
+    }
+
+    private static AiAlertTriggerAction toAiAlertTriggerAction(
+            com.dji.flighthubsdk.generated.AiAlertTriggerAction n) {
+        AiAlertTriggerAction b = new AiAlertTriggerAction();
+        if (n == null) { return b; }
+        b.setAction(n.getAction());
+        b.setDuration(n.getDuration());
         return b;
     }
 
@@ -10036,6 +10660,8 @@ public final class FlightHubSdkConvert {
         b.setFlightTaskName(safeString(n.getFlight_task_name()));
         b.setStatus(n.getStatus());
         b.setStartTime(n.getStart_time());
+        b.setFlightTaskType(n.getFlight_task_type());
+        b.setCommented(n.getIs_commented());
         return b;
     }
 
@@ -10045,15 +10671,25 @@ public final class FlightHubSdkConvert {
         if (n == null) { return b; }
         b.setAlertUuid(safeString(n.getAlert_uuid()));
         b.setFlightId(safeString(n.getFlight_id()));
+        b.setProjectId(safeString(n.getProject_id()));
         b.setDroneSn(safeString(n.getDrone_sn()));
         b.setGatewaySn(safeString(n.getGateway_sn()));
         b.setStatus(n.getStatus());
+        b.setReason(safeString(n.getReason()));
         b.setAlgorithmSource(n.getAlgorithm_source());
         b.setLocation(toAiAlertLocation(n.getLocation()));
+        b.setFileId(n.getFile_id());
         b.setThumbnailUrl(safeString(n.getThumbnail_url()));
         b.setTimestamp(n.getTimestamp());
         b.setTaskName(safeString(n.getTask_name()));
         b.setMediaIndex(n.getMedia_index());
+        b.setIntervalSeconds(n.getInterval_seconds());
+        com.dji.flighthubsdk.generated.AiAlertTriggerActionVector actions = n.getTrigger_actions();
+        if (actions != null) {
+            List<AiAlertTriggerAction> actionList = new ArrayList<>();
+            for (int i = 0; i < actions.size(); i++) { actionList.add(toAiAlertTriggerAction(actions.get(i))); }
+            b.setTriggerActions(actionList);
+        }
         com.dji.flighthubsdk.generated.AiAlertTargetAlertInfoVector infos = n.getTarget_alert_infos();
         if (infos != null) {
             List<AiAlertTargetAlertInfo> list = new ArrayList<>();
@@ -10086,6 +10722,15 @@ public final class FlightHubSdkConvert {
         com.dji.flighthubsdk.generated.GetAiAlertDeviceSettingParam n = new com.dji.flighthubsdk.generated.GetAiAlertDeviceSettingParam();
         if (param == null) { return n; }
         n.setDrone_sn(safeString(param.getDroneSn()));
+        return n;
+    }
+
+    public static com.dji.flighthubsdk.generated.DeleteAiAlertRecordParam toNativeDeleteAiAlertRecordParam(
+            DeleteAiAlertRecordParam param) {
+        com.dji.flighthubsdk.generated.DeleteAiAlertRecordParam n = new com.dji.flighthubsdk.generated.DeleteAiAlertRecordParam();
+        if (param == null) { return n; }
+        n.setAlert_uuid(safeString(param.getAlertUuid()));
+        n.setFlight_id(safeString(param.getFlightId()));
         return n;
     }
 
@@ -10229,6 +10874,91 @@ public final class FlightHubSdkConvert {
                 bMap.put(entry.getKey(), list);
             }
             b.setData(bMap);
+        }
+        return b;
+    }
+
+    // ===== AI Alert WS Notify 转换方法 =====
+
+    public static AiAlertRecordsNotifyResult toAiAlertRecordsNotifyResult(
+            com.dji.flighthubsdk.generated.AiAlertRecordsNotifyResult n) {
+        AiAlertRecordsNotifyResult b = new AiAlertRecordsNotifyResult();
+        if (n == null) return b;
+        com.dji.flighthubsdk.generated.AiAlertNotifyFlightDataVector flights = n.getData();
+        if (flights != null) {
+            java.util.List<AiAlertNotifyFlightData> list = new java.util.ArrayList<>();
+            for (int i = 0; i < flights.size(); i++) {
+                list.add(toAiAlertNotifyFlightData(flights.get(i)));
+            }
+            b.setData(list);
+        }
+        return b;
+    }
+
+    private static AiAlertNotifyFlightData toAiAlertNotifyFlightData(
+            com.dji.flighthubsdk.generated.AiAlertNotifyFlightData n) {
+        AiAlertNotifyFlightData b = new AiAlertNotifyFlightData();
+        if (n == null) return b;
+        b.setFlightId(safeString(n.getFlight_id()));
+        b.setFlightTaskName(safeString(n.getFlight_task_name()));
+        com.dji.flighthubsdk.generated.AiAlertNotifyRecordItemVector records = n.getRecords();
+        if (records != null) {
+            java.util.List<AiAlertNotifyRecordItem> list = new java.util.ArrayList<>();
+            for (int i = 0; i < records.size(); i++) {
+                list.add(toAiAlertNotifyRecordItem(records.get(i)));
+            }
+            b.setRecords(list);
+        }
+        return b;
+    }
+
+    private static AiAlertNotifyRecordItem toAiAlertNotifyRecordItem(
+            com.dji.flighthubsdk.generated.AiAlertNotifyRecordItem n) {
+        AiAlertNotifyRecordItem b = new AiAlertNotifyRecordItem();
+        if (n == null) return b;
+        b.setAlertUuid(safeString(n.getAlert_uuid()));
+        b.setFlightId(safeString(n.getFlight_id()));
+        b.setDroneSn(safeString(n.getDrone_sn()));
+        b.setGatewaySn(safeString(n.getGateway_sn()));
+        b.setStatus(n.getStatus());
+        b.setAlgorithmSource(n.getAlgorithm_source());
+        com.dji.flighthubsdk.generated.AiAlertLocation loc = n.getLocation();
+        if (loc != null) {
+            AiAlertLocation bLoc = new AiAlertLocation();
+            bLoc.setLatitude(loc.getLatitude());
+            bLoc.setLongitude(loc.getLongitude());
+            bLoc.setAltitude(loc.getAltitude());
+            b.setLocation(bLoc);
+        }
+        b.setFileId(n.getFile_id());
+        b.setMediaIndex(n.getMedia_index());
+        b.setTaskName(safeString(n.getTask_name()));
+        com.dji.flighthubsdk.generated.AiAlertNotifyTargetInfoVector infos = n.getTarget_alert_infos();
+        if (infos != null) {
+            java.util.List<AiAlertNotifyTargetInfo> infoList = new java.util.ArrayList<>();
+            for (int i = 0; i < infos.size(); i++) {
+                com.dji.flighthubsdk.generated.AiAlertNotifyTargetInfo ti = infos.get(i);
+                AiAlertNotifyTargetInfo bti = new AiAlertNotifyTargetInfo();
+                bti.setTargetType(ti.getTarget_type());
+                bti.setTargetValue(ti.getTarget_value());
+                bti.setUseMinThreshold(ti.getUse_min_threshold());
+                bti.setUseMaxThreshold(ti.getUse_max_threshold());
+                bti.setTargetMaxThreshold(ti.getTarget_max_threshold());
+                bti.setTargetMinThreshold(ti.getTarget_min_threshold());
+                bti.setLabel(safeString(ti.getLabel()));
+                infoList.add(bti);
+            }
+            b.setTargetAlertInfos(infoList);
+        }
+        b.setTimestamp(n.getTimestamp());
+        b.setThumbnailUrl(safeString(n.getThumbnail_url()));
+        com.dji.flighthubsdk.generated.StringVector labels = n.getLabels();
+        if (labels != null) {
+            java.util.List<String> labelList = new java.util.ArrayList<>();
+            for (int i = 0; i < labels.size(); i++) {
+                labelList.add(safeString(labels.get(i)));
+            }
+            b.setLabels(labelList);
         }
         return b;
     }
@@ -10592,6 +11322,25 @@ public final class FlightHubSdkConvert {
     }
 
     /** TerraShowOnMapParams → native TerraShowOnMapJavaParams */
+    public static com.dji.flighthubsdk.bean.TerraDeleteModelFilesResult toTerraDeleteModelFilesResult(
+            com.dji.flighthubsdk.generated.TerraDeleteModelFilesResult n) {
+        com.dji.flighthubsdk.bean.TerraDeleteModelFilesResult r =
+                new com.dji.flighthubsdk.bean.TerraDeleteModelFilesResult();
+        if (n == null) {
+            return r;
+        }
+        r.setHasLockFiles(n.getHas_lock_files());
+        java.util.List<String> lockFiles = new ArrayList<>();
+        com.dji.flighthubsdk.generated.StringVector lv = n.getLock_files();
+        if (lv != null) {
+            for (int i = 0; i < lv.size(); i++) {
+                lockFiles.add(safeString(lv.get(i)));
+            }
+        }
+        r.setLockFiles(lockFiles);
+        return r;
+    }
+
     public static com.dji.flighthubsdk.generated.TerraShowOnMapJavaParams toNativeTerraShowOnMapParams(
             com.dji.flighthubsdk.bean.TerraShowOnMapParams params) {
         com.dji.flighthubsdk.generated.TerraShowOnMapJavaParams n =
@@ -10608,6 +11357,19 @@ public final class FlightHubSdkConvert {
             n.setIs_distributed(params.getIsDistributed());
             n.setIs_distributed_set(true);
         }
+        n.setRestore(params.isRestore());
+        if (params.getIsDisplayed() != null) {
+            n.setIs_displayed(params.getIsDisplayed());
+            n.setIs_displayed_set(true);
+        }
+        if (params.getInUniformHeight() != null) {
+            n.setIn_uniform_height(params.getInUniformHeight());
+            n.setIn_uniform_height_set(true);
+        }
+        if (params.getModelDisplayMod() != null) {
+            n.setModel_display_mod(params.getModelDisplayMod());
+            n.setModel_display_mod_set(true);
+        }
         if (params.getSelectFilter() != null) {
             com.dji.flighthubsdk.generated.TerraSelectFilterJavaParams sf =
                     new com.dji.flighthubsdk.generated.TerraSelectFilterJavaParams();
@@ -10620,6 +11382,21 @@ public final class FlightHubSdkConvert {
             if (fp.getExceptIds() != null) for (int id : fp.getExceptIds()) excIds.add(id);
             sf.setExcept_ids(excIds);
             sf.setKey(fp.getKey() != null ? fp.getKey() : "");
+            sf.setGet_sub_file(fp.isGetSubFile());
+            sf.setStart_time(fp.getStartTime());
+            sf.setEnd_time(fp.getEndTime());
+            sf.setFile_all_types(listToStringVector(fp.getFileAllTypes()));
+            sf.setPayload_model_key(listToStringVector(fp.getPayloadModelKey()));
+            sf.setParent_id(fp.getParentId());
+            sf.setFile_tags(listToStringVector(fp.getFileTags()));
+            if (fp.getShareState() != null) {
+                sf.setShare_state(fp.getShareState());
+                sf.setShare_state_set(true);
+            }
+            if (fp.getShowOnMap() != null) {
+                sf.setShow_on_map(fp.getShowOnMap());
+                sf.setShow_on_map_set(true);
+            }
             n.setSelect_filter(sf);
             n.setSelect_filter_set(true);
         }
@@ -10821,6 +11598,10 @@ public final class FlightHubSdkConvert {
                 props.setTransparent(np.getIs_transparent());
                 props.setFontSize(np.getFont_size());
                 props.setIcon(np.getIcon());
+                props.setIconUrl(safeString(np.getIcon_url()));
+                props.setWidth(np.getWidth());
+                props.setStartCap(np.getStart_cap());
+                props.setEndCap(np.getEnd_cap());
                 content.setProperties(props);
             }
             // geometry
@@ -10846,6 +11627,11 @@ public final class FlightHubSdkConvert {
                         img.setObjectKey(safeString(ni.getObject_key()));
                         img.setMediaFileId(ni.getMedia_file_id());
                         img.setMediaFileUuid(safeString(ni.getMedia_file_uuid()));
+                        img.setUrl(safeString(ni.getUrl()));
+                        img.setPreviewUrl(safeString(ni.getPreview_url()));
+                        img.setWebpUrl(safeString(ni.getWebp_url()));
+                        img.setFileType(ni.getFile_type());
+                        img.setSubFileType(ni.getSub_file_type());
                         imgList.add(img);
                     }
                     mr.setImages(imgList);
@@ -10913,6 +11699,10 @@ public final class FlightHubSdkConvert {
             nc.getProperties().setIs_transparent(c.getProperties().isTransparent());
             nc.getProperties().setFont_size(c.getProperties().getFontSize());
             nc.getProperties().setIcon(c.getProperties().getIcon());
+            nc.getProperties().setIcon_url(c.getProperties().getIconUrl());
+            nc.getProperties().setWidth(c.getProperties().getWidth());
+            nc.getProperties().setStart_cap(c.getProperties().getStartCap());
+            nc.getProperties().setEnd_cap(c.getProperties().getEndCap());
         }
         if (c.getGeometry() != null) {
             nc.getGeometry().setType(c.getGeometry().getType() != null ? c.getGeometry().getType() : "");
@@ -10950,6 +11740,10 @@ public final class FlightHubSdkConvert {
             nc.getProperties().setIs_transparent(c.getProperties().isTransparent());
             nc.getProperties().setFont_size(c.getProperties().getFontSize());
             nc.getProperties().setIcon(c.getProperties().getIcon());
+            nc.getProperties().setIcon_url(c.getProperties().getIconUrl());
+            nc.getProperties().setWidth(c.getProperties().getWidth());
+            nc.getProperties().setStart_cap(c.getProperties().getStartCap());
+            nc.getProperties().setEnd_cap(c.getProperties().getEndCap());
         }
         if (c.getGeometry() != null) {
             nc.getGeometry().setType(c.getGeometry().getType() != null ? c.getGeometry().getType() : "");
@@ -11109,14 +11903,62 @@ public final class FlightHubSdkConvert {
         r.setSuffix(safeString(n.getSuffix()));
         r.setSize(n.getSize());
         r.setCreateAt(safeString(n.getCreate_at()));
-        r.setExtWidth(n.getExt().getWidth());
-        r.setExtHeight(n.getExt().getHeight());
-        com.dji.flighthubsdk.bean.MediaFileGeoPosition pos = new com.dji.flighthubsdk.bean.MediaFileGeoPosition(
-                n.getExt().getPhoto_position().getLat(),
-                n.getExt().getPhoto_position().getLng(),
-                n.getExt().getPhoto_position().getAbs_alt());
-        r.setPhotoPosition(pos);
+        com.dji.flighthubsdk.generated.MediaFileDetailExt ne = n.getExt();
+        com.dji.flighthubsdk.bean.MediaFileDetailExt e = new com.dji.flighthubsdk.bean.MediaFileDetailExt();
+        if (ne != null) {
+            e.setWidth(ne.getWidth());
+            e.setHeight(ne.getHeight());
+            e.setPhotoPosition(toMediaFileGeoPosition(ne.getPhoto_position()));
+            e.setResolution(safeString(ne.getResolution()));
+            e.setPhotographer(safeString(ne.getPhotographer()));
+            e.setTaskName(safeString(ne.getTask_name()));
+            e.setLineName(safeString(ne.getLine_name()));
+            e.setWaylineUuid(safeString(ne.getWayline_uuid()));
+            e.setOriginWaylineUuid(safeString(ne.getOrigin_wayline_uuid()));
+            e.setWaylineActionUuid(safeString(ne.getWayline_action_uuid()));
+            e.setPayloadModelKey(safeString(ne.getPayload_model_key()));
+            e.setDroneModelKey(safeString(ne.getDrone_model_key()));
+            e.setOriginal(ne.getIs_original());
+            e.setDigitalZoomRatio(ne.getDigital_zoom_ratio());
+            e.setLengthIn35mmFilm(ne.getLength_in35mm_film());
+            e.setGimbalRoll(ne.getGimbal_roll());
+            e.setGimbalYaw(ne.getGimbal_yaw());
+            e.setGimbalYawDegree(ne.getGimbal_yaw_degree());
+            e.setFlightId(safeString(ne.getFlight_id()));
+            e.setDuration(ne.getDuration());
+            e.setShootPosition(toMediaFileGeoPosition(ne.getShoot_position()));
+            e.setAbsoluteAltitude(ne.getAbsolute_altitude());
+            e.setRelativeAltitude(ne.getRelative_altitude());
+            e.setCreatedTime(safeString(ne.getCreated_time()));
+            e.setCreationTime(safeString(ne.getCreation_time()));
+            e.setCreateTime(safeString(ne.getCreate_time()));
+            e.setEncoder(safeString(ne.getEncoder()));
+            e.setFormatLongName(safeString(ne.getFormat_long_name()));
+            e.setFormatName(safeString(ne.getFormat_name()));
+            e.setExtSize(safeString(ne.getExt_size()));
+            e.setFlightYaw(ne.getFlight_yaw());
+            e.setFocalLength(ne.getFocal_length());
+            e.setGimbalPitch(ne.getGimbal_pitch());
+            e.setImageType(safeString(ne.getImage_type()));
+        }
+        r.setExt(e);
+        // 兼容旧字段
+        r.setExtWidth(e.getWidth());
+        r.setExtHeight(e.getHeight());
+        r.setPhotoPosition(e.getPhotoPosition());
+        r.setPanoStitchState(n.getPano_stitch_state());
+        r.setPanoStitchProgress(n.getPano_stitch_progress());
+        r.setPanoErrorCode(n.getPano_error_code());
         return r;
+    }
+
+    private static com.dji.flighthubsdk.bean.MediaFileGeoPosition toMediaFileGeoPosition(
+            com.dji.flighthubsdk.generated.MediaFileGeoPosition n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.MediaFileGeoPosition();
+        }
+        return new com.dji.flighthubsdk.bean.MediaFileGeoPosition(
+                n.getLat(), n.getLng(), n.getAbs_alt(), n.getRel_alt());
     }
 
     /** 获取航线编辑器 STS 结果转换 */
@@ -11375,6 +12217,30 @@ public final class FlightHubSdkConvert {
         return new com.dji.flighthubsdk.bean.DronePsdkUiResource(toPsdkUiResourceItemList(n.getPsdk_ui_resource()));
     }
 
+    public static com.dji.flighthubsdk.bean.PsdkCustomDataTransmission toPsdkCustomDataTransmission(
+            com.dji.flighthubsdk.generated.PsdkCustomDataTransmission n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.PsdkCustomDataTransmission();
+        }
+        return new com.dji.flighthubsdk.bean.PsdkCustomDataTransmission(safeString(n.getValue()));
+    }
+
+    public static com.dji.flighthubsdk.bean.EsdkCustomDataTransmission toEsdkCustomDataTransmission(
+            com.dji.flighthubsdk.generated.EsdkCustomDataTransmission n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.EsdkCustomDataTransmission();
+        }
+        return new com.dji.flighthubsdk.bean.EsdkCustomDataTransmission(safeString(n.getValue()));
+    }
+
+    public static com.dji.flighthubsdk.bean.HighestPriorityUploadFlighttaskMedia toHighestPriorityUploadFlighttaskMedia(
+            com.dji.flighthubsdk.generated.HighestPriorityUploadFlighttaskMedia n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.HighestPriorityUploadFlighttaskMedia();
+        }
+        return new com.dji.flighthubsdk.bean.HighestPriorityUploadFlighttaskMedia(safeString(n.getFlight_id()));
+    }
+
     public static com.dji.flighthubsdk.bean.DroneModeCodeReason toDroneModeCodeReason(
             com.dji.flighthubsdk.generated.DroneModeCodeReason n) {
         if (n == null) {
@@ -11584,4 +12450,338 @@ public final class FlightHubSdkConvert {
     }
 
     // ===================== 云环境切换 转换方法 End =====================
+
+    // ===================== Cascade 转换方法 Begin ==============    // 对齐 v1.1 §1..§9：手写 bean（camelCase Java 惯例）↔ SWIG generated（%rename 后
+    // camelCase getter）。int64 已在 impl 层完成字符串→数值解析，此处直接透传。
+    // v1.1 变更：NodeRef/Parent 的 online 字段类型 bool→String；Parent 新增 nodeID；
+    //          新增 §8 Connectivity 结构体。
+
+    // ---------- fromNative（入向：generated → bean） ----------
+
+    /** generated.CascadePage → bean.CascadePage。 */
+    public static com.dji.flighthubsdk.bean.CascadePage fromNative(com.dji.flighthubsdk.generated.CascadePage n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.CascadePage();
+        }
+        return new com.dji.flighthubsdk.bean.CascadePage(n.getTotal(), n.getPage(), n.getSize());
+    }
+
+    /** generated.CascadeNodeInfo → bean.CascadeNodeInfo（v1.1：补 networked/netStatus 差异字段）。 */
+    public static com.dji.flighthubsdk.bean.CascadeNodeInfo fromNative(
+            com.dji.flighthubsdk.generated.CascadeNodeInfo n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.CascadeNodeInfo();
+        }
+        return new com.dji.flighthubsdk.bean.CascadeNodeInfo(
+                safeString(n.getNodeId()), safeString(n.getName()), safeString(n.getCode()),
+                safeString(n.getParentId()), n.getLevel(), n.getEnabled(),
+                safeString(n.getOnline()), safeString(n.getAddress()),
+                n.getNetworked(), safeString(n.getNet_status()));
+    }
+
+    /** generated.CascadeChildNodeListResult → bean.CascadeChildNodeListResult。 */
+    public static com.dji.flighthubsdk.bean.CascadeChildNodeListResult fromNative(
+            com.dji.flighthubsdk.generated.CascadeChildNodeListResult n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.CascadeChildNodeListResult();
+        }
+        com.dji.flighthubsdk.generated.CascadeNodeInfoVector v = n.getList();
+        List<com.dji.flighthubsdk.bean.CascadeNodeInfo> out;
+        if (v == null || v.isEmpty()) {
+            out = Collections.emptyList();
+        } else {
+            int sz = v.size();
+            out = new ArrayList<>(sz);
+            for (int i = 0; i < sz; i++) {
+                com.dji.flighthubsdk.generated.CascadeNodeInfo e = v.get(i);
+                if (e != null) {
+                    out.add(fromNative(e));
+                }
+            }
+            out = Collections.unmodifiableList(out);
+        }
+        return new com.dji.flighthubsdk.bean.CascadeChildNodeListResult(out, fromNative(n.getPage()));
+    }
+
+    /** generated.CascadeParentNodeInfo → bean.CascadeParentNodeInfo（v1.1：nodeID 新增、online 是 string、netStatus 新增）。 */
+    public static com.dji.flighthubsdk.bean.CascadeParentNodeInfo fromNative(
+            com.dji.flighthubsdk.generated.CascadeParentNodeInfo n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.CascadeParentNodeInfo();
+        }
+        return new com.dji.flighthubsdk.bean.CascadeParentNodeInfo(
+                safeString(n.getNodeId()), safeString(n.getName()), safeString(n.getOnline()),
+                n.getDepth(), n.getEnabled(), n.getHeartbeatPeriod(),
+                safeString(n.getNet_status()));
+    }
+
+    /** generated.CascadeConnectivityItem → bean.CascadeConnectivityItem（v1.1 §8）。 */
+    public static com.dji.flighthubsdk.bean.CascadeConnectivityItem fromNative(
+            com.dji.flighthubsdk.generated.CascadeConnectivityItem n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.CascadeConnectivityItem();
+        }
+        return new com.dji.flighthubsdk.bean.CascadeConnectivityItem(
+                safeString(n.getNodeId()), safeString(n.getName()),
+                n.getReachable(), n.getRtt());
+    }
+
+    /** generated.CascadeConnectivityResult → bean.CascadeConnectivityResult（v1.1 §8）。 */
+    public static com.dji.flighthubsdk.bean.CascadeConnectivityResult fromNative(
+            com.dji.flighthubsdk.generated.CascadeConnectivityResult n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.CascadeConnectivityResult();
+        }
+        com.dji.flighthubsdk.generated.CascadeConnectivityItemVector v = n.getItems();
+        List<com.dji.flighthubsdk.bean.CascadeConnectivityItem> out;
+        if (v == null || v.isEmpty()) {
+            out = Collections.emptyList();
+        } else {
+            int sz = v.size();
+            out = new ArrayList<>(sz);
+            for (int i = 0; i < sz; i++) {
+                com.dji.flighthubsdk.generated.CascadeConnectivityItem e = v.get(i);
+                if (e != null) {
+                    out.add(fromNative(e));
+                }
+            }
+            out = Collections.unmodifiableList(out);
+        }
+        return new com.dji.flighthubsdk.bean.CascadeConnectivityResult(out);
+    }
+
+    /** generated.CascadeParentConnectivity → bean.CascadeParentConnectivity（v1.1 §10）。 */
+    public static com.dji.flighthubsdk.bean.CascadeParentConnectivity fromNative(
+            com.dji.flighthubsdk.generated.CascadeParentConnectivity n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.CascadeParentConnectivity();
+        }
+        return new com.dji.flighthubsdk.bean.CascadeParentConnectivity(
+                safeString(n.getNodeId()), safeString(n.getName()),
+                n.getReachable(), n.getRtt());
+    }
+
+    /** generated.AddChildNodeResult → bean.AddChildNodeResult。 */
+    public static com.dji.flighthubsdk.bean.AddChildNodeResult fromNative(
+            com.dji.flighthubsdk.generated.AddChildNodeResult n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.AddChildNodeResult();
+        }
+        return new com.dji.flighthubsdk.bean.AddChildNodeResult(
+                safeString(n.getNodeId()), safeString(n.getGrantId()), safeString(n.getParentId()),
+                safeString(n.getExecutedBy()), n.getEnabled());
+    }
+
+    /** generated.CascadeBatchOpResult → bean.CascadeBatchOpResult。 */
+    public static com.dji.flighthubsdk.bean.CascadeBatchOpResult fromNative(
+            com.dji.flighthubsdk.generated.CascadeBatchOpResult n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.CascadeBatchOpResult();
+        }
+        return new com.dji.flighthubsdk.bean.CascadeBatchOpResult(n.getOkCount(), n.getFailCount());
+    }
+
+    /**
+     * generated.CascadeNodeStatusEvent → bean.CascadeNodeStatusEvent（v1.1 事件推送）。
+     * wire camelCase 经 SWIG %rename 后 getter 已是 camelCase；这里聚合 nested list/parent。
+     */
+    public static com.dji.flighthubsdk.bean.CascadeNodeStatusEvent fromNative(
+            com.dji.flighthubsdk.generated.CascadeNodeStatusEvent n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.CascadeNodeStatusEvent();
+        }
+        // child list
+        com.dji.flighthubsdk.generated.CascadeChildNodeStatusVector v = n.getChildNodeStatusList();
+        List<com.dji.flighthubsdk.bean.CascadeNodeStatusEvent.ChildStatus> children;
+        if (v == null || v.isEmpty()) {
+            children = Collections.emptyList();
+        } else {
+            int sz = v.size();
+            children = new ArrayList<>(sz);
+            for (int i = 0; i < sz; i++) {
+                com.dji.flighthubsdk.generated.CascadeChildNodeStatus c = v.get(i);
+                if (c != null) {
+                    children.add(new com.dji.flighthubsdk.bean.CascadeNodeStatusEvent.ChildStatus(
+                            safeString(c.getNodeId()), safeString(c.getStatus())));
+                }
+            }
+            children = Collections.unmodifiableList(children);
+        }
+        // parent
+        com.dji.flighthubsdk.bean.CascadeNodeStatusEvent.ParentStatus parent =
+                new com.dji.flighthubsdk.bean.CascadeNodeStatusEvent.ParentStatus();
+        com.dji.flighthubsdk.generated.CascadeParentNodeStatus pn = n.getParentNodeStatus();
+        if (pn != null) {
+            parent = new com.dji.flighthubsdk.bean.CascadeNodeStatusEvent.ParentStatus(
+                    safeString(pn.getNodeId()), safeString(pn.getStatus()));
+        }
+        return new com.dji.flighthubsdk.bean.CascadeNodeStatusEvent(children, parent, n.getChangedAt());
+    }
+
+    /** generated.CascadeNotifyEvent → bean.CascadeNotifyEvent（v1.1 事件推送 topic_cascade_notify）。 */
+    public static com.dji.flighthubsdk.bean.CascadeNotifyEvent fromNative(
+            com.dji.flighthubsdk.generated.CascadeNotifyEvent n) {
+        if (n == null) {
+            return new com.dji.flighthubsdk.bean.CascadeNotifyEvent();
+        }
+        return new com.dji.flighthubsdk.bean.CascadeNotifyEvent(safeString(n.getPayload()));
+    }
+
+    // ---------- toNative（出向：bean → generated） ----------
+
+    /** bean.AddChildNodeRequest → generated.AddChildNodeRequest（sourceAddr/childAddr/name/code/token）。 */
+    public static com.dji.flighthubsdk.generated.AddChildNodeRequest toNative(
+            com.dji.flighthubsdk.bean.AddChildNodeRequest bean) {
+        if (bean == null) {
+            return null;
+        }
+        com.dji.flighthubsdk.generated.AddChildNodeRequest n = new com.dji.flighthubsdk.generated.AddChildNodeRequest();
+        n.setSourceAddr(safeString(bean.getSourceAddr()));
+        n.setChildAddr(safeString(bean.getChildAddr()));
+        n.setName(safeString(bean.getName()));
+        n.setCode(safeString(bean.getCode()));
+        n.setToken(safeString(bean.getToken()));
+        return n;
+    }
+
+    /** bean.CascadeChildrenQuery → generated.CascadeChildrenQuery。 */
+    public static com.dji.flighthubsdk.generated.CascadeChildrenQuery toNative(
+            com.dji.flighthubsdk.bean.CascadeChildrenQuery bean) {
+        if (bean == null) {
+            return null;
+        }
+        com.dji.flighthubsdk.generated.CascadeChildrenQuery n = new com.dji.flighthubsdk.generated.CascadeChildrenQuery();
+        n.setNodeId(safeString(bean.getNodeId()));
+        n.setPage(bean.getPage());
+        n.setSize(bean.getSize());
+        n.setName(safeString(bean.getName()));
+        n.setStatus(safeString(bean.getStatus()));
+        return n;
+    }
+
+    /** bean.CascadeParentRespondRequest → generated.CascadeParentRespondRequest（v1.1 §7）。 */
+    public static com.dji.flighthubsdk.generated.CascadeParentRespondRequest toNative(
+            com.dji.flighthubsdk.bean.CascadeParentRespondRequest bean) {
+        if (bean == null) {
+            return null;
+        }
+        com.dji.flighthubsdk.generated.CascadeParentRespondRequest n =
+                new com.dji.flighthubsdk.generated.CascadeParentRespondRequest();
+        n.setNodeId(safeString(bean.getNodeId()));
+        n.setParentId(safeString(bean.getParentId()));
+        n.setStatus(safeString(bean.getStatus()));
+        return n;
+    }
+
+    /** List&lt;String&gt; → generated.StringVector（用于批量启用/禁用/删除 nodeId 列表）。 */
+    public static com.dji.flighthubsdk.generated.StringVector toNodeIdVector(java.util.List<String> ids) {
+        com.dji.flighthubsdk.generated.StringVector v = new com.dji.flighthubsdk.generated.StringVector();
+        if (ids != null) {
+            for (String s : ids) {
+                v.add(s == null ? "" : s);
+            }
+        }
+        return v;
+    }
+
+    // ===================== Cascade 转换方法 End =====================
+    // ===================== 3X 超清全景拼接转换方法 Start =====================
+
+    /**
+     * 全景拼接进度消息转换（generated → bean）。
+     * PanoStitchProgressMsg 字段全为基础类型，空安全简单。
+     */
+    public static com.dji.flighthubsdk.bean.PanoStitchProgressMsg toPanoStitchProgressMsg(
+            com.dji.flighthubsdk.generated.PanoStitchProgressMsg n) {
+        com.dji.flighthubsdk.bean.PanoStitchProgressMsg r = new com.dji.flighthubsdk.bean.PanoStitchProgressMsg();
+        if (n == null) return r;
+        r.setWorkspaceId(safeString(n.getWorkspace_id()));
+        r.setFileId(n.getFile_id());
+        r.setName(safeString(n.getName()));
+        r.setPanoStitchState(n.getPano_stitch_state());
+        r.setPanoStitchProgress(n.getPano_stitch_progress());
+        r.setPanoErrorCode(n.getPano_error_code());
+        return r;
+    }
+
+    /**
+     * 获取全景瓦片 URL 结果转换（generated → bean）。
+     * query_params 通过 SWIG 导出的 StringStringMap 遍历转换到 Java HashMap，
+     * 用于 PaaS 通道 CDN 鉴权（ISV 将 key/value 附加到瓦片请求 URL query string）。
+     * cookies：PaaS 通道后端经 HTTP Set-Cookie 响应头下发，body 无此字段，保持空集合。
+     */
+    public static com.dji.flighthubsdk.bean.GetPanoTierTileUrlResult toGetPanoTierTileUrlResult(
+            com.dji.flighthubsdk.generated.GetPanoTierTileUrlResult n) {
+        com.dji.flighthubsdk.bean.GetPanoTierTileUrlResult r = new com.dji.flighthubsdk.bean.GetPanoTierTileUrlResult();
+        if (n == null) return r;
+        r.setState(n.getState());
+        r.setBaseUrl(safeString(n.getBase_url()));
+        // query_params：遍历 SWIG StringStringMap 转换为 Java HashMap（PaaS CDN 鉴权核心字段）
+        com.dji.flighthubsdk.generated.StringStringMap swigMap = n.getQuery_params();
+        if (swigMap != null && !swigMap.isEmpty()) {
+            java.util.Map<String, String> qp = new java.util.HashMap<>(swigMap);
+            r.setQueryParams(qp);
+        }
+        // cookies：PaaS 通道不填充，保持空集合
+        return r;
+    }
+
+    // ===================== 控制权结果转换 =====================
+    public static com.dji.flighthubsdk.bean.ControlAuthResult toControlAuthResult(
+            com.dji.flighthubsdk.generated.ControlAuthResult n) {
+        com.dji.flighthubsdk.bean.ControlAuthResult r = new com.dji.flighthubsdk.bean.ControlAuthResult();
+        if (n == null) {
+            return r;
+        }
+        r.setDroneSn(safeString(n.getDrone_sn()));
+        r.setBid(safeString(n.getBid()));
+        java.util.List<com.dji.flighthubsdk.bean.ControlAuthController> controls = new java.util.ArrayList<>();
+        com.dji.flighthubsdk.generated.ControlAuthControllerVector vec = n.getControls();
+        if (vec != null) {
+            for (int i = 0; i < vec.size(); i++) {
+                com.dji.flighthubsdk.generated.ControlAuthController c = vec.get(i);
+                if (c == null) {
+                    continue;
+                }
+                com.dji.flighthubsdk.bean.ControlAuthController out = new com.dji.flighthubsdk.bean.ControlAuthController();
+                out.setKey(safeString(c.getKey()));
+                out.setType(safeString(c.getType()));
+                out.setVersion(c.getVersion());
+
+                com.dji.flighthubsdk.generated.ControlAuthGateway g = c.getGateway();
+                if (g != null) {
+                    com.dji.flighthubsdk.bean.ControlAuthGateway gateway = new com.dji.flighthubsdk.bean.ControlAuthGateway();
+                    gateway.setSn(safeString(g.getSn()));
+                    gateway.setId(safeString(g.getId()));
+                    gateway.setAuthControlKeys(new java.util.ArrayList<>(copyStringVector(g.getAuth_control_keys())));
+                    gateway.setDeviceModelClass(safeString(g.getDevice_model_class()));
+                    out.setGateway(gateway);
+                }
+
+                com.dji.flighthubsdk.generated.ControlAuthUser u = c.getUser();
+                if (u != null) {
+                    com.dji.flighthubsdk.bean.ControlAuthUser user = new com.dji.flighthubsdk.bean.ControlAuthUser();
+                    user.setCallSign(safeString(u.getCall_sign()));
+                    user.setUserId(safeString(u.getUser_id()));
+                    user.setType(safeString(u.getType()));
+                    out.setUser(user);
+                }
+
+                com.dji.flighthubsdk.generated.ControlAuthSpec s = c.getSpec();
+                if (s != null) {
+                    com.dji.flighthubsdk.bean.ControlAuthSpec spec = new com.dji.flighthubsdk.bean.ControlAuthSpec();
+                    spec.setIsLocked(s.getIs_locked());
+                    spec.setPayloadIndex(safeString(s.getPayload_index()));
+                    spec.setIsCloudControlAuth(s.getIs_cloud_control_auth());
+                    spec.setWaitingForAuthUser(safeString(s.getWaiting_for_auth_user()));
+                    out.setSpec(spec);
+                }
+                controls.add(out);
+            }
+        }
+        r.setControls(controls);
+        return r;
+    }
+
+    // ===================== 3X 超清全景拼接转换方法 End =====================
 }

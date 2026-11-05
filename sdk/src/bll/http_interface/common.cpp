@@ -105,7 +105,6 @@ namespace flight_hub_sdk {
         std::ostringstream oss;
 
         oss << "name: \"" << request.name << "\"";
-        oss << ", update_by: \"" << request.update_by << "\"";
         
         // content.type
         oss << ", content.type: \"" << request.content.type << "\"";

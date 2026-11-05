@@ -19,13 +19,18 @@
 
 namespace flight_hub_sdk {
 
-// FH36-P2-02: 响应内容日志统一经 log_safe()(共享实现 deps/base/common/log_safe.h)
+// 响应内容日志统一经 log_safe()(共享实现 deps/base/common/log_safe.h)
 using drc_sdk::common::log_safe;
 
 /// 为 /gateway/ 路径请求补充鉴权头（auth_keys 等）
 void ensure_gateway_auth_headers_if_needed(
     const std::string& url,
     drc_sdk::common::HttpHeaders& headers);
+
+/// 按 session_id 查 SessionInfo.node_id 并注入 mesh 头；查不到返回 false
+bool ensure_mesh_dst_header_for_session(
+    drc_sdk::common::HttpHeaders& headers,
+    int session_id);
 
 std::string generate_url(const std::string& address, const std::string& port, const std::string& api);
 CommonResponse convert_response_struct(const std::string& response);
@@ -57,7 +62,9 @@ bool parse_common_response_data(
 /// @param out        输出业务 struct（失败时保持不变）
 /// @param data_required  data 是否必须（同 parse_common_response_data）
 /// @param callback   业务回调（签名: void(const T&, FlightHubError)）
-/// 失败时 callback 以 make_http_error(http_code, response) 调用，out 保持默认值。
+/// 失败时 callback 以错误调用，out 保持默认值：
+///   - 网络错误 / code!=0 → make_http_error(http_code, response)
+///   - 响应体解析失败 → from_parse_error(http_code, err)（ERROR_RESPONSE_PARSE_FAILED，err 写入 server_message）
 template<typename T>
 void dispatch_common_json_response(
     const char* log_tag,
@@ -86,7 +93,7 @@ void dispatch_common_json_response(
     if (!parse_common_response_data(common_response, out, &err, data_required)) {
         LOG_ERROR("%s: parse error: %s, data: %s", log_tag,
                   err.c_str(), common_response.data.has_value() ? log_safe(*common_response.data).c_str() : "");
-        callback({}, make_http_error(http_code, response));
+        callback({}, FlightHubError::from_parse_error(http_code, err));
         return;
     }
 

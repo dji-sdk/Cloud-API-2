@@ -25,7 +25,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  平台 (DJI CloudAPI2 Server)                                               │
+│  平台 (DJI Cloud API 2)                                               │
 │     │                                                                 │
 │     ├── notification / MQTT ──► SDK(JNI) ──► Drone/Dock               │  ← MQTT OSD（秒级）
 │     │                                                                 │
@@ -597,7 +597,7 @@ public void startLive(DeviceContext ctx) {
 （`arSeiListenId` / `fovSeiListenId`）。
 
 > 💡 **订阅时机**：SDK 只要求 `LiveModule` 已 `start` 成功即可订阅 SEI，**不依赖 DRC**。
-> ISV Demo 选择在 `connectDrcLink` 成功后一并订阅 SEI（与快激光同入口），便于前端在 DRC 就绪后再画相机三轴；
+> 集成商 Demo 选择在 `connectDrcLink` 成功后一并订阅 SEI（与快激光同入口），便于前端在 DRC 就绪后再画相机三轴；
 > 你也可以在 `startLive` 成功后立即订阅。
 
 ```java

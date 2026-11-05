@@ -18,6 +18,8 @@
 const props = defineProps<{
   modelValue: boolean
   label?: string
+  /** 禁用态：不响应点击，也不发出 update 事件 */
+  disabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -25,12 +27,19 @@ const emit = defineEmits<{
 }>()
 
 function toggle(): void {
+  if (props.disabled) {
+    return
+  }
   emit('update:modelValue', !props.modelValue)
 }
 </script>
 
 <template>
-  <div class="toggle-switch-wrapper" @click="toggle">
+  <div
+    class="toggle-switch-wrapper"
+    :class="{ disabled }"
+    @click="toggle"
+  >
     <span v-if="label" class="toggle-label">{{ label }}</span>
     <div class="toggle-track" :class="{ active: modelValue }">
       <div class="toggle-thumb" />
@@ -45,6 +54,11 @@ function toggle(): void {
   gap: 8px;
   cursor: pointer;
   user-select: none;
+}
+
+.toggle-switch-wrapper.disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .toggle-label {

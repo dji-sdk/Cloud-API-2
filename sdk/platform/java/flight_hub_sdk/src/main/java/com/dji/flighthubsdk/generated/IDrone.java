@@ -78,6 +78,11 @@ public class IDrone {
     return (cPtr == 0) ? null : new ITakeoffModule(cPtr, true);
   }
 
+  public IGroundFlightModule getGroundFlightModule() {
+    long cPtr = flighthubsdkmoduleJNI.IDrone_getGroundFlightModule(swigCPtr, this);
+    return (cPtr == 0) ? null : new IGroundFlightModule(cPtr, true);
+  }
+
   public IFlightControlModule getFlightControlModule() {
     long cPtr = flighthubsdkmoduleJNI.IDrone_getFlightControlModule(swigCPtr, this);
     return (cPtr == 0) ? null : new IFlightControlModule(cPtr, true);
@@ -111,6 +116,16 @@ public class IDrone {
   public IPsdkControlModule getPsdkControlModule() {
     long cPtr = flighthubsdkmoduleJNI.IDrone_getPsdkControlModule(swigCPtr, this);
     return (cPtr == 0) ? null : new IPsdkControlModule(cPtr, true);
+  }
+
+  public IEsdkControlModule getEsdkControlModule() {
+    long cPtr = flighthubsdkmoduleJNI.IDrone_getEsdkControlModule(swigCPtr, this);
+    return (cPtr == 0) ? null : new IEsdkControlModule(cPtr, true);
+  }
+
+  public IFlightTaskMediaUploadModule getFlightTaskMediaUploadModule() {
+    long cPtr = flighthubsdkmoduleJNI.IDrone_getFlightTaskMediaUploadModule(swigCPtr, this);
+    return (cPtr == 0) ? null : new IFlightTaskMediaUploadModule(cPtr, true);
   }
 
   public ICameraControlModule getCameraControlModule() {
@@ -151,6 +166,11 @@ public class IDrone {
   public IDeviceHMSModule getDeviceHMSModule() {
     long cPtr = flighthubsdkmoduleJNI.IDrone_getDeviceHMSModule(swigCPtr, this);
     return (cPtr == 0) ? null : new IDeviceHMSModule(cPtr, true);
+  }
+
+  public IAirsenseWarningModule getAirsenseWarningModule() {
+    long cPtr = flighthubsdkmoduleJNI.IDrone_getAirsenseWarningModule(swigCPtr, this);
+    return (cPtr == 0) ? null : new IAirsenseWarningModule(cPtr, true);
   }
 
   public IDeviceDebugModule getDeviceDebugModule() {

@@ -99,7 +99,7 @@ public class StartupAuthValidator implements SmartInitializingSingleton {
     }
 
     /**
-     * 判断 token 是否为示例占位值（ISV 未替换）。
+     * 判断 token 是否为示例占位值（集成商未替换）。
      *
      * @param token 待校验 token
      * @return true 表示为弱占位值

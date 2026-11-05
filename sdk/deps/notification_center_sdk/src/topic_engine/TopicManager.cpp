@@ -170,7 +170,26 @@ int64_t TopicManager::Observe(const std::string& sn, const std::string& topic, N
         }
     });
     if (ret != TopicManager_NoError) {
-        // 订阅失败, 清理监听回调
+        // WS 尚未建立/未打开（首次 initialize 后立即订阅、或断线窗口内订阅）导致发送失败：
+        // 不丢弃订阅，改为移入 recovery 表，待 OnWebsocketOpen 触发 RecoverySubscribe 补订阅。
+        // 否则该订阅永久丢失，WS 连上后也不会补订（recovery 表为空），表现为"订阅返回成功假象但永远收不到推送"。
+        if (ret == TopicManager_ErrorNoWebsocket || ret == TopicManager_ErrorWebsocketNotOpen) {
+            std::lock_guard<std::mutex> lock(mtx_);
+            auto it_cb = subscribe_id_to_callback_.find(id);
+            if (it_cb != subscribe_id_to_callback_.end()) {
+                recovery_subscribe_id_to_callback_[id] = std::move(it_cb->second);
+                subscribe_id_to_callback_.erase(it_cb);
+            }
+            auto it_tp = subscribe_id_to_tuple_.find(id);
+            if (it_tp != subscribe_id_to_tuple_.end()) {
+                recovery_subscribe_id_to_tuple_[id] = std::move(it_tp->second);
+                subscribe_id_to_tuple_.erase(it_tp);
+            }
+            LOG_WARN("[TopicManager] Observe: ws not ready (ret=%d), defer subscribe_id=%lld topic=%s to recovery",
+                     ret, id, topic.c_str());
+            return id; // 返回有效 id，订阅已登记待补；CancelObserve 需能处理 recovery 表项
+        }
+        // 其它失败（序列化等）：清理监听回调并返回错误
         {
             std::lock_guard<std::mutex> lock(mtx_);
             subscribe_id_to_callback_.erase(id);
@@ -192,6 +211,15 @@ void TopicManager::CancelObserve(int64_t listen_id) {
         // 导致 SendUnsubscribe 向服务器发送非法的 unsubscribe 消息。
         auto it = subscribe_id_to_tuple_.find(listen_id);
         if (it == subscribe_id_to_tuple_.end()) {
+            // 可能该订阅因 WS 未就绪被暂存在 recovery 表（尚未真正下发订阅）：
+            // 直接从 recovery 表移除即可，无需向服务端发 unsubscribe（本就没 subscribe 成功）。
+            auto it_rc = recovery_subscribe_id_to_tuple_.find(listen_id);
+            if (it_rc != recovery_subscribe_id_to_tuple_.end()) {
+                recovery_subscribe_id_to_callback_.erase(listen_id);
+                recovery_subscribe_id_to_tuple_.erase(it_rc);
+                LOG_INFO("[TopicManager] CancelObserve: removed pending(recovery) listen_id %lld", listen_id);
+                return;
+            }
             LOG_WARN("[TopicManager] CancelObserve: listen_id %lld not found, skip", listen_id);
             return;
         }

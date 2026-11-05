@@ -10,6 +10,9 @@
 #include "api/onboard_ai_module.h"
 #include "bll/module/onboard_ai_module/onboard_ai_module_impl.h"
 #include "bll/module/psdk_control_module/psdk_control_module_impl.h"
+#include "bll/module/esdk_control_module/esdk_control_module_impl.h"
+#include "bll/module/flight_task_media_upload_module/flight_task_media_upload_module_impl.h"
+#include "bll/module/airsense_warning_module/airsense_warning_module_impl.h"
 #include "bll/module/camera_control_module/camera_control_module_impl.h"
 #include "bll/module/drone_osd_module/drone_osd_module_impl.h"
 #include "bll/module/device_debug_module/device_debug_module_impl.h"
@@ -26,6 +29,7 @@
 #include "manager/psdk_ctrl_mgr/psdk_ctrl_mgr.h"
 #include "manager/ai_ctrl_mgr/ai_ctrl_mgr.h"
 #include <mutex>
+#include <memory>
 
 namespace flight_hub_sdk {
 
@@ -34,6 +38,7 @@ class DroneImpl : public IDrone, public drc_sdk::common::AsyncCaptureProtect {
 public:
     DroneImpl(
         DeviceTopo device_topo,
+        int session_id,
         const std::shared_ptr<message_engine::IRtcChannelManagerBridge>& rtc_channel_manager_bridge = nullptr,
         const std::shared_ptr<message_engine::IMqttClientManagerBridge>& mqtt_client_manager_bridge = nullptr);
     ~DroneImpl() override;
@@ -43,6 +48,7 @@ public:
     std::shared_ptr<ILiveRecordModule> getLiveRecord(const LiveInfo& params) override;
     std::shared_ptr<ILiveDeviceModule> getLiveDeviceModule() override;
     std::shared_ptr<ITakeoffModule> getTakeoffModule() override;
+    std::shared_ptr<IGroundFlightModule> getGroundFlightModule() override;
     std::shared_ptr<IFlightControlModule> getFlightControlModule() override;
     std::shared_ptr<IControlAuthModule> getControlAuthModule() override;
     std::shared_ptr<IDrcModule> getDrcModule() override;
@@ -50,6 +56,8 @@ public:
     std::shared_ptr<ITestFlightModule> getTestFlightModule() override;
     std::shared_ptr<IOnboardAiModule> getOnboardAiModule() override;
     std::shared_ptr<IPsdkControlModule> getPsdkControlModule() override;
+    std::shared_ptr<IEsdkControlModule> getEsdkControlModule() override;
+    std::shared_ptr<IFlightTaskMediaUploadModule> getFlightTaskMediaUploadModule() override;
     std::shared_ptr<ICameraControlModule> getCameraControlModule() override;
     std::shared_ptr<IDroneOsdModule> getDroneOsdModule() override;
     std::shared_ptr<IFlyToPointModule> getFlyToPointModule() override;
@@ -58,6 +66,7 @@ public:
     std::shared_ptr<IInFlightWaylineModule> getInFlightWaylineModule() override;
     std::shared_ptr<IDeviceStateModule> getDeviceStateModule() override;
     std::shared_ptr<IDeviceHMSModule> getDeviceHMSModule() override;
+    std::shared_ptr<IAirsenseWarningModule> getAirsenseWarningModule() override;
     std::shared_ptr<IDeviceDebugModule> getDeviceDebugModule() override;
     std::shared_ptr<IAIBoxModule> getAIBoxModule() override;
 
@@ -74,6 +83,12 @@ private:
 
     std::string getGatewaySn();
 
+    /// 上行推送类 topic(topic_custom_data_transmission_from_esdk/psdk、topic_airsense_warning、
+    /// topic_highest_priority_upload_flighttask_media)的 device_sn 由 host_gateway 推送。
+    /// 机场场景 host_gateway=机场 SN(=getGatewaySn)；网联机型 host_gateway=基站 SN
+    /// (与 getGatewaySn 的 self 不同)。这四个监听必须按 host_gateway 订阅才能收到。
+    std::string getHostGatewaySn();
+
     /// params
     DeviceTopo device_topo_;
     std::string drone_sn_;
@@ -81,6 +96,7 @@ private:
     std::string dock_sn_;
     int instance_id_ = 0;
     std::string log_tag_;
+    int session_id_;
 
     /// message engine
     std::shared_ptr<message_engine::IRtcChannelManagerBridge> rtc_channel_manager_bridge_;
@@ -100,6 +116,7 @@ private:
     std::shared_ptr<IPoiModule> poi_module_;
     std::shared_ptr<IInFlightWaylineModule> in_flight_wayline_module_;
     std::shared_ptr<ITakeoffModule> takeoff_module_;
+    std::shared_ptr<IGroundFlightModule> ground_flight_module_;
     std::shared_ptr<IFlightControlModule> flight_control_module_;
     std::shared_ptr<IControlAuthModule> control_auth_module_;
     std::shared_ptr<IDrcModule> drc_module_;
@@ -107,10 +124,14 @@ private:
     std::shared_ptr<ITestFlightModule> test_flight_module_;
     std::shared_ptr<IOnboardAiModule> onboard_ai_module_;
     std::shared_ptr<IPsdkControlModule> psdk_control_module_;
+    std::shared_ptr<IEsdkControlModule> esdk_control_module_;
+    std::shared_ptr<IFlightTaskMediaUploadModule> flight_task_media_upload_module_;
     std::shared_ptr<ICameraControlModule> camera_control_module_;
     std::shared_ptr<IDroneOsdModule> drone_osd_module_;
     std::shared_ptr<IDeviceStateModule> device_state_module_;
     std::shared_ptr<IDeviceHMSModule> device_hms_module_;
+    std::shared_ptr<IAirsenseWarningModule> airsense_warning_module_;
+    std::mutex airsense_warning_module_mutex_;
     std::shared_ptr<IDeviceDebugModule> device_debug_module_;
     std::shared_ptr<IAIBoxModule> ai_box_module_;
     std::unordered_map<std::string, std::shared_ptr<ILiveModule>> live_module_map_;
@@ -128,6 +149,8 @@ private:
     std::mutex test_flight_module_mutex_;
     std::mutex onboard_ai_module_mutex_;
     std::mutex psdk_control_module_mutex_;
+    std::mutex esdk_control_module_mutex_;
+    std::mutex flight_task_media_upload_module_mutex_;
     std::mutex camera_control_module_mutex_;
     std::mutex device_debug_module_mutex_;
     std::mutex ai_box_module_mutex_;

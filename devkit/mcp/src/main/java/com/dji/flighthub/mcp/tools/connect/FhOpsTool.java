@@ -17,6 +17,7 @@
 package com.dji.flighthub.mcp.tools.connect;
 
 import com.dji.flighthub.mcp.sdk.SdkService;
+import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
 import org.slf4j.Logger;
@@ -41,6 +42,18 @@ public class FhOpsTool extends AbstractMcpTool {
 
     private static final long MILLIS_PER_SECOND = 1000L;
 
+    /** action：健康检查 */
+    private static final String ACTION_STATUS = "status";
+
+    /** action：动态调整日志级别 */
+    private static final String ACTION_SET_LOG_LEVEL = "set_log_level";
+
+    /** action：优雅关停 MCP Server */
+    private static final String ACTION_SHUTDOWN = "shutdown";
+
+    /** 人工确认时的目标描述 */
+    private static final String TARGET_MCP_SERVER = "mcp-server";
+
     private final SdkService sdkService;
 
     public FhOpsTool(SessionManager sessionManager, SdkService sdkService) {
@@ -60,7 +73,7 @@ public class FhOpsTool extends AbstractMcpTool {
         Map<String, Object> props = new LinkedHashMap<>();
         props.put("action", Map.of(
                 "type", "string",
-                "enum", List.of("status", "set_log_level", "shutdown"),
+                "enum", List.of(ACTION_STATUS, ACTION_SET_LOG_LEVEL, ACTION_SHUTDOWN),
                 "description", "Operation to perform"
         ));
         props.put("level", Map.of(
@@ -74,16 +87,61 @@ public class FhOpsTool extends AbstractMcpTool {
         return def;
     }
 
+    /**
+     * 声明工具级静态安全等级：READ_ONLY（L0）。
+     *
+     * <p>本工具为混合等级工具，按 {@link AbstractMcpTool#getSecurityLevel()} 的约定返回最低声明等级：
+     * {@code status} 只读；{@code set_log_level} 在 action 内调用
+     * {@link #enforceSecurityLevel(SecurityLevel)} 要求 L1；{@code shutdown} 要求 L3 并追加人工确认。
+     * 派发层按 L0 放行，per-action 门控只会抬高实际要求，不会降低。</p>
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.READ_ONLY;
+    }
+
+    /**
+     * 传输层不做统一 confirm 拦截，人工确认由 {@code shutdown} 的 per-action 路径自行把关，
+     * 避免只读的 {@code status} 也被强制要求 confirm。
+     *
+     * @return 恒为 {@code false}
+     */
+    @Override
+    public boolean requiresHumanConfirmation() {
+        return false;
+    }
+
     @Override
     public Map<String, Object> execute(Map<String, Object> args) {
-        String action = (String) args.getOrDefault("action", "status");
+        String action = getStringArg(args, "action", ACTION_STATUS);
 
         return switch (action) {
-            case "status" -> executeStatus();
-            case "set_log_level" -> executeSetLogLevel(args);
-            case "shutdown" -> executeShutdown();
+            case ACTION_STATUS -> executeStatus();
+            case ACTION_SET_LOG_LEVEL -> {
+                Map<String, Object> denied = enforceSecurityLevel(SecurityLevel.REVERSIBLE);
+                if (denied != null) {
+                    yield denied;
+                }
+                yield executeSetLogLevel(args);
+            }
+            case ACTION_SHUTDOWN -> {
+                // L3：System.exit(0) 不可逆，仅 session 上限 ≥ 3 的会话可触发
+                Map<String, Object> denied = enforceSecurityLevel(SecurityLevel.CRITICAL);
+                if (denied != null) {
+                    yield denied;
+                }
+                // 授权通过后再做人工确认（授权不可被 confirm 绕过，确认仅在授权范围内放行）
+                Map<String, Object> deniedByConfirm = requireHumanConfirm(args, ACTION_SHUTDOWN, TARGET_MCP_SERVER,
+                        "Shutting down the MCP server terminates all sessions and cannot be undone.");
+                if (deniedByConfirm != null) {
+                    yield deniedByConfirm;
+                }
+                yield executeShutdown();
+            }
             default -> errorResult("Unknown action: " + action,
-                    "Valid actions: status, set_log_level, shutdown");
+                    "Valid actions: " + ACTION_STATUS + ", " + ACTION_SET_LOG_LEVEL + ", " + ACTION_SHUTDOWN);
         };
     }
 

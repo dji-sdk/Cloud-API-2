@@ -103,9 +103,15 @@ onUnmounted(() => {
               {{ device.dock.model }} · {{ device.dock.sn }}
             </button>
           </div>
+          <div v-if="device.baseStation" class="device-card__row">
+            <span class="device-card__tag device-card__tag--base">基站</span>
+            <button class="device-card__btn" @click="handleDeviceClick(device.baseStation.sn)">
+              {{ device.baseStation.model }} · {{ device.baseStation.sn }}
+            </button>
+          </div>
           <div v-if="device.drone" class="device-card__row">
             <span class="device-card__tag device-card__tag--drone">飞机</span>
-            <button class="device-card__btn" @click="handleDeviceClick(device.drone!.sn)">
+            <button class="device-card__btn" @click="handleDeviceClick(device.drone.sn)">
               {{ device.drone.model }} · {{ device.drone.sn }}
             </button>
           </div>
@@ -241,6 +247,11 @@ onUnmounted(() => {
 .device-card__tag--drone {
   background: var(--app-success-bg);
   color: var(--app-success);
+}
+
+.device-card__tag--base {
+  background: var(--app-warning-bg);
+  color: var(--app-warning);
 }
 
 .device-card__btn {

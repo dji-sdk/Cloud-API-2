@@ -67,6 +67,14 @@ public class AiAlertRecordItem {
     return flighthubsdkmoduleJNI.AiAlertRecordItem_flight_id_get(swigCPtr, this);
   }
 
+  public void setProject_id(String value) {
+    flighthubsdkmoduleJNI.AiAlertRecordItem_project_id_set(swigCPtr, this, value);
+  }
+
+  public String getProject_id() {
+    return flighthubsdkmoduleJNI.AiAlertRecordItem_project_id_get(swigCPtr, this);
+  }
+
   public void setDrone_sn(String value) {
     flighthubsdkmoduleJNI.AiAlertRecordItem_drone_sn_set(swigCPtr, this, value);
   }
@@ -91,6 +99,14 @@ public class AiAlertRecordItem {
     return flighthubsdkmoduleJNI.AiAlertRecordItem_status_get(swigCPtr, this);
   }
 
+  public void setReason(String value) {
+    flighthubsdkmoduleJNI.AiAlertRecordItem_reason_set(swigCPtr, this, value);
+  }
+
+  public String getReason() {
+    return flighthubsdkmoduleJNI.AiAlertRecordItem_reason_get(swigCPtr, this);
+  }
+
   public void setAlgorithm_source(int value) {
     flighthubsdkmoduleJNI.AiAlertRecordItem_algorithm_source_set(swigCPtr, this, value);
   }
@@ -106,6 +122,23 @@ public class AiAlertRecordItem {
   public AiAlertLocation getLocation() {
     long cPtr = flighthubsdkmoduleJNI.AiAlertRecordItem_location_get(swigCPtr, this);
     return (cPtr == 0) ? null : new AiAlertLocation(cPtr, false);
+  }
+
+  public void setFile_id(long value) {
+    flighthubsdkmoduleJNI.AiAlertRecordItem_file_id_set(swigCPtr, this, value);
+  }
+
+  public long getFile_id() {
+    return flighthubsdkmoduleJNI.AiAlertRecordItem_file_id_get(swigCPtr, this);
+  }
+
+  public void setTrigger_actions(AiAlertTriggerActionVector value) {
+    flighthubsdkmoduleJNI.AiAlertRecordItem_trigger_actions_set(swigCPtr, this, AiAlertTriggerActionVector.getCPtr(value), value);
+  }
+
+  public AiAlertTriggerActionVector getTrigger_actions() {
+    long cPtr = flighthubsdkmoduleJNI.AiAlertRecordItem_trigger_actions_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new AiAlertTriggerActionVector(cPtr, false);
   }
 
   public void setTarget_alert_infos(AiAlertTargetAlertInfoVector value) {
@@ -150,12 +183,20 @@ public class AiAlertRecordItem {
     return flighthubsdkmoduleJNI.AiAlertRecordItem_task_name_get(swigCPtr, this);
   }
 
-  public void setMedia_index(int value) {
+  public void setMedia_index(long value) {
     flighthubsdkmoduleJNI.AiAlertRecordItem_media_index_set(swigCPtr, this, value);
   }
 
-  public int getMedia_index() {
+  public long getMedia_index() {
     return flighthubsdkmoduleJNI.AiAlertRecordItem_media_index_get(swigCPtr, this);
+  }
+
+  public void setInterval_seconds(int value) {
+    flighthubsdkmoduleJNI.AiAlertRecordItem_interval_seconds_set(swigCPtr, this, value);
+  }
+
+  public int getInterval_seconds() {
+    return flighthubsdkmoduleJNI.AiAlertRecordItem_interval_seconds_get(swigCPtr, this);
   }
 
   public AiAlertRecordItem() {

@@ -14,7 +14,7 @@ while IFS= read -r line; do
   MODULES+=("$id")
 done < <(grep '^\s*- id:' "$KNOWLEDGE_DIR/metadata.yaml")
 
-echo "# FlightHub PaaS SDK — Full Knowledge Base" > "$OUTPUT"
+echo "# DJI Cloud API 2 SDK — Full Knowledge Base" > "$OUTPUT"
 echo "" >> "$OUTPUT"
 echo "> Auto-generated from knowledge/ directory. Do not edit manually." >> "$OUTPUT"
 echo "> Generated at: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$OUTPUT"

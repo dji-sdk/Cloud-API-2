@@ -33,6 +33,12 @@ public final class PsdkSpeakerResource {
     private long opusSize;
     /** Opus 文件 MD5 */
     private String opusMd5Sum;
+    /** 项目 ID（编辑接口返回） */
+    private String projectId;
+    /** 是否可见（编辑接口返回） */
+    private boolean visible;
+    /** 创建场景（编辑接口返回） */
+    private String createScene;
     public PsdkSpeakerResource() {
     }
 
@@ -122,6 +128,12 @@ public final class PsdkSpeakerResource {
     public long getOpusSize() { return opusSize; }
     /** Opus 文件 MD5 */
     public String getOpusMd5Sum() { return opusMd5Sum; }
+    /** 项目 ID */
+    public String getProjectId() { return projectId; }
+    /** 是否可见 */
+    public boolean isVisible() { return visible; }
+    /** 创建场景 */
+    public String getCreateScene() { return createScene; }
 
     /** 资源ID */
     public void setId(int id) {
@@ -223,6 +235,21 @@ public final class PsdkSpeakerResource {
         this.opusMd5Sum = opusMd5Sum;
     }
 
+    /** 项目 ID */
+    public void setProjectId(String projectId) {
+        this.projectId = projectId;
+    }
+
+    /** 是否可见 */
+    public void setVisible(boolean visible) {
+        this.visible = visible;
+    }
+
+    /** 创建场景 */
+    public void setCreateScene(String createScene) {
+        this.createScene = createScene;
+    }
+
 
     @Override
     public boolean equals(Object o) {
@@ -248,14 +275,17 @@ public final class PsdkSpeakerResource {
                 && Objects.equals(content, that.content)
                 && Objects.equals(md5Sum, that.md5Sum)
                 && Objects.equals(opusObjectKey, that.opusObjectKey)
-                && Objects.equals(opusMd5Sum, that.opusMd5Sum);
+                && Objects.equals(opusMd5Sum, that.opusMd5Sum)
+                && visible == that.visible
+                && Objects.equals(projectId, that.projectId)
+                && Objects.equals(createScene, that.createScene);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(id, name, fileType, objectKey, objectUrl, format, size, duration, state, stateMessage,
                 pcmObjectKey, pcmObjectUrl, pcmSize, pcmMd5Sum, content, md5Sum, createdAt,
-                opusObjectKey, opusSize, opusMd5Sum);
+                opusObjectKey, opusSize, opusMd5Sum, projectId, visible, createScene);
     }
 
     @Override
@@ -281,6 +311,9 @@ public final class PsdkSpeakerResource {
                 + ", opusObjectKey='" + opusObjectKey + '\''
                 + ", opusSize=" + opusSize
                 + ", opusMd5Sum='" + opusMd5Sum + '\''
+                + ", projectId='" + projectId + '\''
+                + ", visible=" + visible
+                + ", createScene='" + createScene + '\''
                 + '}';
     }
 }
