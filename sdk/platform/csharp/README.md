@@ -27,15 +27,13 @@ GCC/Clang、Python 3、patchelf、binutils，以及原有 Java native 构建所�
 测试使用全新的包缓存，`flight_hub_sdk` 固定从本次本地产物还原；若机器缺少
 .NET targeting packs，只允许对应 Microsoft 框架包从官方 NuGet 源下载。
 
-2026-11-05 已在 Ubuntu 22.04 x64、GCC 11.4、.NET SDK 8.0.422 / Runtime 8.0.33
-完成 Release 原生编译、链接、NuGet 打包及包消费 smoke。原生返回版本 `3.3.7.0`，
-Java 的 1,430 个生成类型、1,193 个业务桥接入口覆盖检查通过。
-这验证了构建、打包及互操作链路；尚未连接 DJI 业务环境验证设备、直播和飞控行为。
+版本以仓库 `VERSION` 和构建时生成的 `dist/api-parity.json` 为准。
+构建检查覆盖打包与互操作，设备、直播和飞控仍需在目标业务环境单独验证。
 
 ## 业务项目引用
 
 ```bash
-dotnet add package flight_hub_sdk --version 3.3.7 --source /path/to/sdk/build/csharp/dist
+dotnet add package flight_hub_sdk --version 3.4.0 --source /path/to/sdk/build/csharp/dist
 ```
 
 ```csharp
