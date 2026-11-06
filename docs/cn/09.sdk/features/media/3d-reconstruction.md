@@ -28,7 +28,8 @@ TerraBuildModule terraBuildModule = workspace.getTerraBuildModule();
 | 任务状态推送 | SDK 通过 WebSocket 异步推送重建任务的状态变更，消息类型为 `TerraBuildReconstructionStatusChanged`，包含 `state`（建图文件状态）、`code`（结果码）等字段。需提前调用 `listenReconstructionStatusChanged()` 订阅，订阅无 error 参数，回调内须对消息对象判空。 |
 | 模型地图展示 | 通过 `showModelOnMap()` 批量加载或卸载模型到地图，`showOnMap=true` 为加载，`false` 为卸载；解压进度、模型状态变更和展示/隐藏状态均有对应推送订阅接口。 |
 | LAS 坐标系 | 对 `subFileType=7`（FormatLas）的点云模型，需调用 `setLasWkt()` 指定坐标系 WKT 后才会触发格式转换流程。 |
-| 可选字段序列化 | `TerraBuildCreateReconstructionParams` 的可选参数（如 `qualityLevel`、`simplifiedFactor`、`isShownOnMap`、`optimizeSfM`）采用"标记才序列化"机制：调用 `setXxx()` 设置值后，还必须调用对应的 `setXxxSet(true)` 才会将该字段序列化到请求中。 |
+| 可选字段序列化 | `TerraBuildCreateReconstructionParams` 的可选参数（如 `qualityLevel`、`simplifiedFactor`、`isShownOnMap`、`optimizeSfM`）采用"标记才序列化"机制：调用 `setXxx()` 设置值后，还必须调用对应的 `setXxxSet(true)` 才会将该字段序列化到请求中。`TerraBuildParameter3D` 等子参数中的可选字段同样适用。 |
+| 建图场景（三维重建） | 三维重建可选择普通、环绕、电力线三种场景，三者通过 `TerraBuildParameter3D` 的 `stereoMode`、`cutAoi`、`globalMinDepth` 三个参数的取值组合区分，均通过 `createReconstruction()` 创建。场景与重建类型（二维、三维等）是两个独立的选项。详见下方「建图场景（三维重建）」。 |
 
 **`TerraBuildCreateReconstructionParams` 字段说明**
 
@@ -59,6 +60,36 @@ TerraBuildModule terraBuildModule = workspace.getTerraBuildModule();
 | `getParameter3d()` | `TerraBuildParameter3D` | 3D 重建子参数（设置后自动启用） |
 | `getParameter3dgs()` | `TerraBuildParameter3DGS` | 3DGS 重建子参数（设置后自动启用） |
 | `getParameterLidar()` | `TerraBuildParameterLidar` | 激光雷达重建子参数（设置后自动启用） |
+
+**`TerraBuildParameter3D` 字段说明**（仅列建图场景相关字段；完整字段见 javadoc）
+
+| 字段（getter/setter） | 类型 | 说明 |
+| --- | --- | --- |
+| `isStereoMode()` / `setStereoMode(boolean)` | `boolean` | 是否立体模式；需配合 `setStereoModeSet(true)` 才序列化 |
+| `isCutAoi()` / `setCutAoi(boolean)` | `boolean` | 是否裁切 AOI；需配合 `setCutAoiSet(true)` 才序列化 |
+| `getGlobalMinDepth()` / `setGlobalMinDepth(int)` | `int` | 全局最低高度；需配合 `setGlobalMinDepthSet(true)` 才序列化 |
+
+**建图场景（三维重建）**
+
+三维重建支持三种建图场景：
+
+| 场景 | 适用情况 |
+| --- | --- |
+| 普通 | 适用于绝大多数场景，包括倾斜摄影和正射拍摄。不设置 `TerraBuildParameter3D` 的上述三个参数即为普通场景 |
+| 环绕 | 适用于环绕拍摄的场景，主要针对基站、铁塔、风力发电机等细小垂直物体 |
+| 电力线 | 适用于使用可见光相机（如 M4E）以垂直电线的 Z 字形路线拍摄电力线的场景 |
+
+三种场景对应的参数取值如下：
+
+| 场景 | `stereoMode` | `cutAoi` | `globalMinDepth` |
+| --- | --- | --- | --- |
+| 普通 | `false` | `false` | `-1` |
+| 环绕 | `true` | `true` | `-1` |
+| 电力线 | `true` | `false` | `8` |
+
+> **注意：** 每个参数必须同时调用 `setXxx()` 和 `setXxxSet(true)`。SDK 根据 `*Set` 标志判断该参数是否下发，只调用 `setXxx()` 时参数不会下发，建模将按默认值执行。
+
+完整调用示例见本文 4.2 节「按场景创建三维重建任务」。
 
 **`TerraBuildCreateReconstructionResult` 字段说明**
 
@@ -381,6 +412,77 @@ public class TerraBuildExample {
 ```
 
 ### 4.2 场景化片段
+
+**按场景创建三维重建任务（普通 / 环绕 / 电力线）**
+
+```java
+import com.dji.flighthubsdk.FlightHubCallback;
+import com.dji.flighthubsdk.FlightHubSDK;
+import com.dji.flighthubsdk.bean.FlightHubError;
+import com.dji.flighthubsdk.bean.TerraBuildCreateReconstructionParams;
+import com.dji.flighthubsdk.bean.TerraBuildCreateReconstructionResult;
+import com.dji.flighthubsdk.bean.TerraBuildParameter3D;
+import com.dji.flighthubsdk.core.TerraBuildModule;
+import java.util.Arrays;
+import java.util.List;
+
+public class ReconScenes {
+
+    private final TerraBuildModule terra =
+            FlightHubSDK.getWorkspaceInstance().getTerraBuildModule();
+
+    /** 普通场景：stereoMode=false, cutAoi=false, globalMinDepth=-1 */
+    public void createNormal(String name, List<String> folderUuids) {
+        TerraBuildParameter3D p = new TerraBuildParameter3D();
+        p.setStereoMode(false);     p.setStereoModeSet(true);
+        p.setCutAoi(false);         p.setCutAoiSet(true);
+        p.setGlobalMinDepth(-1);    p.setGlobalMinDepthSet(true);
+        create(name, folderUuids, p);
+    }
+
+    /** 环绕场景：stereoMode=true, cutAoi=true, globalMinDepth=-1 */
+    public void createOrbit(String name, List<String> folderUuids) {
+        TerraBuildParameter3D p = new TerraBuildParameter3D();
+        p.setStereoMode(true);      p.setStereoModeSet(true);
+        p.setCutAoi(true);          p.setCutAoiSet(true);
+        p.setGlobalMinDepth(-1);    p.setGlobalMinDepthSet(true);
+        create(name, folderUuids, p);
+    }
+
+    /** 电力线场景：stereoMode=true, cutAoi=false, globalMinDepth=8 */
+    public void createPowerLine(String name, List<String> folderUuids) {
+        TerraBuildParameter3D p = new TerraBuildParameter3D();
+        p.setStereoMode(true);      p.setStereoModeSet(true);
+        p.setCutAoi(false);         p.setCutAoiSet(true);
+        p.setGlobalMinDepth(8);     p.setGlobalMinDepthSet(true);
+        create(name, folderUuids, p);
+    }
+
+    private void create(String name, List<String> folderUuids, TerraBuildParameter3D p3d) {
+        TerraBuildCreateReconstructionParams params = new TerraBuildCreateReconstructionParams();
+        params.setName(name);
+        params.setReconstructionType(Arrays.asList(3));   // 3 = 三维重建
+        params.setFolderUuids(folderUuids);               // 已入库的媒体文件夹 UUID
+        params.setParameter3d(p3d);                       // 设置后自动启用 3D 子参数
+
+        terra.createReconstruction(params,
+                new FlightHubCallback.TerraBuildCreateReconstructionCallback() {
+                    @Override
+                    public void onResult(FlightHubError error, TerraBuildCreateReconstructionResult result) {
+                        if (error != null && !error.isSuccess()) {
+                            System.err.println("创建失败: " + error);
+                            return;
+                        }
+                        if (result == null) return;
+                        // 保存 uuid，后续停止/重试/查询均以此为参数
+                        System.out.println("创建成功 id=" + result.getId() + " uuid=" + result.getUuid());
+                    }
+                });
+    }
+}
+```
+
+任务结果以建图文件状态 `state` 为准：`15` 表示重建成功，`8` 表示建图失败。可通过 `listenReconstructionStatusChanged()` 订阅状态推送，或调用 `getModelFileList()` 查询。
 
 **获取重建质量报告**
 
