@@ -46,7 +46,7 @@
 
 本策略适用于上云 API 2 开源仓库中发布的全部代码与文档，包括上云 API 2 SDK 源码、前端组件、AI Plugin 与 AI Coding 脚手架、设备模拟器、调试工具、开源 Demo，以及开发者套件（devkit：MCP Server、接入骨架 Skeleton、AI Skill 集合）。
 
-DJI 硬件产品、大疆在线服务或其他 DJI 软件产品的漏洞，请通过 [DJI 安全响应中心](https://security.dji.com/) 报告。
+DJI 硬件产品、大疆在线服务或其他 DJI 软件产品（含本仓库）的漏洞，也可以通过 [DJI 安全响应中心](https://security.dji.com/) 报告。
 
 ---
 
@@ -92,4 +92,4 @@ We ask that you keep the report confidential until a fix is released. Once it is
 
 This policy covers all code and documentation published in the Cloud API 2 open-source repository, including the Cloud API 2 SDK source, frontend components, AI Plugin and AI Coding scaffolding, device simulator, debugging tools, open-source demos, and the developer kit (devkit: MCP Server, integration skeleton, and AI Skill collection).
 
-For vulnerabilities in DJI hardware products, DJI online services, or other DJI software, please use the [DJI Security Response Center](https://security.dji.com/).
+Vulnerabilities in DJI hardware products, DJI online services, or other DJI software — including this repository — can also be reported through the [DJI Security Response Center](https://security.dji.com/).
