@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>flight_hub_sdk</AssemblyName>
+    <PackageId>flight_hub_sdk</PackageId>
+    <RootNamespace>FlightHubSdk</RootNamespace>
+    <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)../../../VERSION').Trim())</Version>
+    <Description>Cloud API 2 SDK .NET 8 binding for Linux x64.</Description>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GeneratedDir Condition="'$(GeneratedDir)' == ''">$(MSBuildThisFileDirectory)../../../build/csharp/generated</GeneratedDir>
+    <NativeDir Condition="'$(NativeDir)' == ''">$(MSBuildThisFileDirectory)../../../build/csharp/native</NativeDir>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <NoWarn>$(NoWarn);CS8981</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(GeneratedDir)/*.cs" />
+    <Compile Include="*.cs" />
+    <None Include="$(NativeDir)/*.so*" Pack="true" PackagePath="runtimes/linux-x64/native/" />
+    <None Include="../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../../LICENSE" Pack="true" PackagePath="/" />
+    <None Include="../../../NOTICE" Pack="true" PackagePath="/" />
+    <None Include="../../java/THIRD_PARTY_LICENSES/**/*" Pack="true" PackagePath="licenses/%(RecursiveDir)" />
+  </ItemGroup>
+  <Target Name="RequireGeneratedSources" BeforeTargets="CoreCompile">
+    <Error Condition="!Exists('$(GeneratedDir)/FlightHubSdk.cs')" Text="Generate bindings first with scripts/build_csharp.sh." />
+  </Target>
+  <Target Name="RequireNativePayload" BeforeTargets="GenerateNuspec">
+    <ItemGroup>
+      <RequiredNative Include="libflight_hub_sdk_native.so;libcrypto.so.1.1;libssl.so.1.1;libwebsockets.so.12;libpaho-mqtt3as.so.1;libdrpc.so;libdrtc_device_sdk.so" />
+    </ItemGroup>
+    <Error Condition="!Exists('$(NativeDir)/%(RequiredNative.Identity)')" Text="Native Linux payload missing: %(RequiredNative.Identity). Run scripts/build_csharp.sh on Linux x64 before packing." />
+  </Target>
+</Project>

@@ -4,9 +4,14 @@
 
 | 文件 | 作用 |
 |---|---|
+| `build_csharp.sh` | Linux x64 C# SDK 构建、NuGet 打包和关闭顺序回归检查 |
 | `build_java.sh` | Java SDK 全量打包入口：编 C++ JNI → 编 SDK jar → 编两个 demo → 收拢产物 → 打 zip |
 
 ## 用法
+
+### C# SDK（Linux x64）
+
+执行 `./build_csharp.sh -r --jobs=8`。构建会检查在途 IO 回调与主执行器关闭顺序，并验证 NuGet 消费和托管回调。真实底座联调需单独执行。
 
 ### Java SDK（二进制包）
 
