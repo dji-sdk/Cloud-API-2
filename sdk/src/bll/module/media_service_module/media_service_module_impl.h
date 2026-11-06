@@ -6,12 +6,11 @@
 #include "api/media_service_module.h"
 #include "tool/callback_container.h"
 #include "common/util/async_capture_protect.h"
-#include "BusinessManager.h"
-
 #include <unordered_map>
 #include <vector>
 #include <string>
 #include <functional>
+#include <memory>
 
 
 
@@ -19,7 +18,7 @@ namespace flight_hub_sdk {
 
 class MediaServiceModuleImpl : public IMediaServiceModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit MediaServiceModuleImpl();
+    explicit MediaServiceModuleImpl(int session_id);
 
     // 析构函数;
     ~MediaServiceModuleImpl();
@@ -82,7 +81,34 @@ public:
         int file_id,
         const std::function<void(FlightHubError err, const GetMediaFileDetailByIdResult& result)>& callback) override;
 
+    // ── 3X 超清全景拼接 ──────────────────────────────────────────────────────
+    void startPanoStitch(
+        long long file_id,
+        const std::function<void(FlightHubError err)>& callback) override;
+
+    void stopPanoStitch(
+        long long file_id,
+        const std::function<void(FlightHubError err)>& callback) override;
+
+    void retryPanoStitch(
+        long long file_id,
+        const std::function<void(FlightHubError err)>& callback) override;
+
+    void startPanoTier(
+        long long file_id,
+        const std::function<void(FlightHubError err)>& callback) override;
+
+    void getPanoTierTileUrl(
+        long long file_id,
+        const std::function<void(FlightHubError err, const GetPanoTierTileUrlResult& result)>& callback) override;
+
+    int subscribePanoStitchProgress(
+        const std::function<void(const PanoStitchProgressMsg& msg)>& callback) override;
+
+    void cancelListenPanoStitchProgress(int listen_id) override;
+
 private:
+    int session_id_;
 
 };
 

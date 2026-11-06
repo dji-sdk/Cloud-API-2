@@ -35,6 +35,7 @@ import reactor.core.publisher.Sinks;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -54,9 +55,17 @@ class SseTransportTest {
     private SessionManager sessionManager;
     private FlightHubProperties properties;
 
+    /** 探针工具执行次数：用于断言通知未被真正执行（而不只是响应被抑制） */
+    private final AtomicInteger probeInvocations = new AtomicInteger();
+
     @BeforeEach
     void setUp() {
         toolRegistry = createTestToolRegistry();
+        toolRegistry.register(Map.of("name", "fh_probe", "description", "Counting probe"),
+                args -> {
+                    probeInvocations.incrementAndGet();
+                    return Map.of("success", true);
+                });
         objectMapper = new ObjectMapper();
         clientRegistry = new ClientRegistry();
         properties = new FlightHubProperties();
@@ -482,6 +491,122 @@ class SseTransportTest {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    @Test
+    void handleRequest_shouldReturnMethodNotFound_whenMethodIsMissing() {
+        Map<String, Object> results = invokeHandleRequest(Map.of("jsonrpc", "2.0", "id", 20));
+
+        assertNotNull(results, "有 id 的请求必须产生响应");
+        assertEquals(-32601, errorCodeOf(results));
+    }
+
+    @Test
+    void handleRequest_shouldReturnMethodNotFound_whenMethodIsNotString() {
+        Map<String, Object> results = invokeHandleRequest(Map.of("jsonrpc", "2.0", "id", 21, "method", 42));
+
+        assertNotNull(results, "有 id 的请求必须产生响应");
+        assertEquals(-32601, errorCodeOf(results));
+    }
+
+    @Test
+    void handleRequest_shouldReturnMethodNotFound_whenMessageHasNeitherIdNorMethod() {
+        Map<String, Object> results = invokeHandleRequest(Map.of("jsonrpc", "2.0"));
+
+        assertNotNull(results, "既无 id 又无 method 的消息是无效请求，必须产生响应");
+        assertNull(results.get("id"), "无效请求的响应 id 必须为 null");
+        assertEquals(-32601, errorCodeOf(results));
+    }
+
+    @Test
+    void handleRequest_shouldReturnInvalidParams_whenToolNameIsNotString() {
+        Map<String, Object> results = invokeHandleRequest(Map.of(
+                "jsonrpc", "2.0", "id", 22, "method", "tools/call", "params", Map.of("name", 42)));
+
+        assertNotNull(results);
+        assertEquals(-32602, errorCodeOf(results));
+    }
+
+    @Test
+    void handleRequest_shouldReturnInvalidParams_whenArgumentsIsNotObject() {
+        Map<String, Object> results = invokeHandleRequest(Map.of(
+                "jsonrpc", "2.0", "id", 23, "method", "tools/call",
+                "params", Map.of("name", "fh_ops", "arguments", "not-an-object")));
+
+        assertNotNull(results);
+        assertEquals(-32602, errorCodeOf(results));
+    }
+
+    @Test
+    void handleRequest_shouldReturnNull_whenNotificationHasNoId() {
+        Map<String, Object> results = invokeHandleRequest(Map.of(
+                "jsonrpc", "2.0", "method", "tools/call",
+                "params", Map.of("name", "fh_probe", "arguments", Map.of("action", "status"))));
+
+        assertNull(results, "无 id 的通知不得产生响应");
+        assertEquals(0, probeInvocations.get(), "无 id 的 tools/call 不得执行");
+    }
+
+    @Test
+    void handleRequest_shouldReturnMethodNotFound_whenNotificationMethodIsNotString() {
+        Map<String, Object> results = invokeHandleRequest(Map.of("jsonrpc", "2.0", "method", 42));
+
+        assertNotNull(results, "method 非字符串的无 id 消息不是合法通知，必须产生响应");
+        assertNull(results.get("id"), "无效请求的响应 id 必须为 null");
+        assertEquals(-32601, errorCodeOf(results));
+        assertEquals("Method must be a string", errorMessageOf(results));
+    }
+
+    @Test
+    void handleRequest_shouldReturnMethodNotFound_whenRequestMethodIsNotString() {
+        Map<String, Object> results = invokeHandleRequest(Map.of("jsonrpc", "2.0", "id", 24, "method", 42));
+
+        assertNotNull(results, "有 id 的请求必须产生响应");
+        assertEquals(24, results.get("id"));
+        assertEquals(-32601, errorCodeOf(results));
+        assertEquals("Method must be a string", errorMessageOf(results));
+    }
+
+    @Test
+    void handleRequest_shouldReturnNull_whenInitializedNotification() {
+        Map<String, Object> results = invokeHandleRequest(Map.of(
+                "jsonrpc", "2.0", "method", "notifications/initialized"));
+
+        assertNull(results, "合法通知不得产生响应");
+    }
+
+    @Test
+    void handleRequest_shouldReturnInvalidParams_whenParamsIsNotObject() {
+        Map<String, Object> results = invokeHandleRequest(Map.of(
+                "jsonrpc", "2.0", "id", 25, "method", "tools/call", "params", List.of()));
+
+        assertNotNull(results);
+        assertEquals(-32602, errorCodeOf(results));
+        assertEquals("params must be an object", errorMessageOf(results));
+    }
+
+    /**
+     * 从 JSON-RPC 错误响应中取出错误码。
+     *
+     * @param response JSON-RPC 响应
+     * @return 错误码
+     */
+    private static int errorCodeOf(Map<String, Object> response) {
+        Object error = response.get("error");
+        assertTrue(error instanceof Map, "期望错误响应，实际: " + response);
+        return (Integer) ((Map<?, ?>) error).get("code");
+    }
+
+    /**
+     * 从 JSON-RPC 错误响应中取出错误文案。
+     *
+     * @param response JSON-RPC 响应
+     * @return 错误文案
+     */
+    private static String errorMessageOf(Map<String, Object> response) {
+        Object error = response.get("error");
+        assertTrue(error instanceof Map, "期望错误响应，实际: " + response);
+        return (String) ((Map<?, ?>) error).get("message");
     }
 
     // ================ 辅助方法 ================

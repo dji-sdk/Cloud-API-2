@@ -1,5 +1,5 @@
 # 添加新 feature 模块 — 步骤方案
-# 场景：ISV 需要在 skeleton 中新增一个与设备管理相关的业务模块
+# 场景：集成商需要在 skeleton 中新增一个与设备管理相关的业务模块
 
 name: add-device-feature
 description: 在 skeleton 中新建一个 feature 模块的完整步骤

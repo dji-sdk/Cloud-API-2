@@ -9,8 +9,8 @@
 
 using namespace flight_hub_sdk;
 
-FlightSettingsModuleImpl::FlightSettingsModuleImpl(const std::string& gateway_sn)
-    : gateway_sn_(gateway_sn) {
+FlightSettingsModuleImpl::FlightSettingsModuleImpl(const std::string& gateway_sn, int session_id)
+    : gateway_sn_(gateway_sn), session_id_(session_id) {
     LOG_INFO("[FlightSettingsModuleImpl] constructor, gateway_sn: %s", gateway_sn_.c_str());
 }
 
@@ -26,14 +26,14 @@ void FlightSettingsModuleImpl::setFlightSmartPlanMode(
     request.settings.smart_planning_mode = mode;
     WeakDummy(weak_ptr);
     set_flight_smart_plan_mode(request,
-        [callback, weak_ptr](const FlightSmartPlanModeApiResponse& response, FlightHubError err) {
-            drc_sdk::common::Executors::Main()->Post([err, callback, response, weak_ptr]() {
+        [callback, weak_ptr, this](const FlightSmartPlanModeApiResponse& response, FlightHubError err) {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, weak_ptr, this]() {
                 WeakDummyReturn(weak_ptr);
                 // 埋点: 设置智能规划模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_SETTINGS_SET_FLIGHT_SMART_PLAN_MODE, err, "[FlightSettingsModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_SETTINGS_SET_FLIGHT_SMART_PLAN_MODE, err, session_id_, "[FlightSettingsModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("[FlightSettingsModuleImpl] setFlightSmartPlanMode: err_code: %d", (int)err.error_code);
                     if (callback) {
@@ -56,7 +56,7 @@ void FlightSettingsModuleImpl::setFlightSmartPlanMode(
                     callback(err, result);
                 }
             });
-        });
+        }, session_id_);
 }
 
 void FlightSettingsModuleImpl::setOutOfControlAction(
@@ -69,14 +69,14 @@ void FlightSettingsModuleImpl::setOutOfControlAction(
     request.settings.out_of_control_action = action;
     WeakDummy(weak_ptr);
     set_flight_out_of_control_action(request,
-        [callback, weak_ptr](const FlightOutOfControlActionApiResponse& response, FlightHubError err) {
-            drc_sdk::common::Executors::Main()->Post([err, callback, response, weak_ptr]() {
+        [callback, weak_ptr, this](const FlightOutOfControlActionApiResponse& response, FlightHubError err) {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, weak_ptr, this]() {
                 WeakDummyReturn(weak_ptr);
                 // 埋点: 设置失控动作; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_SETTINGS_SET_OUT_OF_CONTROL_ACTION, err, "[FlightSettingsModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_SETTINGS_SET_OUT_OF_CONTROL_ACTION, err, session_id_, "[FlightSettingsModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("[FlightSettingsModuleImpl] setOutOfControlAction: err_code: %d", (int)err.error_code);
                     if (callback) callback(err, FlightOutOfControlActionResult{});
@@ -93,12 +93,12 @@ void FlightSettingsModuleImpl::setOutOfControlAction(
                 }
                 if (callback) callback(err, result);
             });
-        });
+        }, session_id_);
 }
 
 void FlightSettingsModuleImpl::setFlightTaskHeight(
     const std::string& device_sn,
-    int height,
+    double height,
     std::function<void(FlightHubError err, const FlightCommanderHeightResult& result)> callback) {
     FlightCommanderHeightRequest request;
     request.sn = gateway_sn_;   // 使用网关 SN（详见 setFlightSmartPlanMode 注释）
@@ -106,14 +106,14 @@ void FlightSettingsModuleImpl::setFlightTaskHeight(
     request.settings.commander_flight_height = height;
     WeakDummy(weak_ptr);
     set_flight_task_height(request,
-        [callback, weak_ptr](const FlightTaskHeightApiResponse& response, FlightHubError err) {
-            drc_sdk::common::Executors::Main()->Post([err, callback, response, weak_ptr]() {
+        [callback, weak_ptr, this](const FlightTaskHeightApiResponse& response, FlightHubError err) {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, weak_ptr, this]() {
                 WeakDummyReturn(weak_ptr);
                 // 埋点: 设置飞行任务高度; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_SETTINGS_SET_FLIGHT_TASK_HEIGHT, err, "[FlightSettingsModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_SETTINGS_SET_FLIGHT_TASK_HEIGHT, err, session_id_, "[FlightSettingsModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("[FlightSettingsModuleImpl] setFlightTaskHeight: err_code: %d", (int)err.error_code);
                     if (callback) callback(err, FlightCommanderHeightResult{});
@@ -130,7 +130,7 @@ void FlightSettingsModuleImpl::setFlightTaskHeight(
                 }
                 if (callback) callback(err, result);
             });
-        });
+        }, session_id_);
 }
 
 void FlightSettingsModuleImpl::setRthAltitude(
@@ -143,14 +143,14 @@ void FlightSettingsModuleImpl::setRthAltitude(
     request.settings.rth_altitude = altitude;
     WeakDummy(weak_ptr);
     set_rth_altitude(request,
-        [callback, weak_ptr](const FlightRthAltitudeApiResponse& response, FlightHubError err) {
-            drc_sdk::common::Executors::Main()->Post([err, callback, response, weak_ptr]() {
+        [callback, weak_ptr, this](const FlightRthAltitudeApiResponse& response, FlightHubError err) {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, weak_ptr, this]() {
                 WeakDummyReturn(weak_ptr);
                 // 埋点: 设置返航高度; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_SETTINGS_SET_RTH_ALTITUDE, err, "[FlightSettingsModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_SETTINGS_SET_RTH_ALTITUDE, err, session_id_, "[FlightSettingsModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("[FlightSettingsModuleImpl] setRthAltitude: err_code: %d", (int)err.error_code);
                     if (callback) callback(err, FlightRthAltitudeResult{});
@@ -167,7 +167,7 @@ void FlightSettingsModuleImpl::setRthAltitude(
                 }
                 if (callback) callback(err, result);
             });
-        });
+        }, session_id_);
 }
 
 void FlightSettingsModuleImpl::setAirTransferEnable(
@@ -179,18 +179,18 @@ void FlightSettingsModuleImpl::setAirTransferEnable(
     request.air_transfer_enable = enabled;
     WeakDummy(weak_ptr);
     set_air_transfer_enable(request,
-        [callback, weak_ptr](FlightHubError err) {
-            drc_sdk::common::Executors::Main()->Post([err, callback, weak_ptr]() {
+        [callback, weak_ptr, this](FlightHubError err) {
+            drc_sdk::common::Executors::Main()->Post([err, callback, weak_ptr, this]() {
                 WeakDummyReturn(weak_ptr);
                 // 埋点: 设置空中回传开关; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_SETTINGS_SET_AIR_TRANSFER_ENABLE, err, "[FlightSettingsModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_FLIGHT_SETTINGS_SET_AIR_TRANSFER_ENABLE, err, session_id_, "[FlightSettingsModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_INFO("[FlightSettingsModuleImpl] setAirTransferEnable: err_code: %d", (int)err.error_code);
                 }
                 if (callback) callback(err);
             });
-        });
+        }, session_id_);
 }

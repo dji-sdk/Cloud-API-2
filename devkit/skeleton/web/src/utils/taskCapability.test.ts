@@ -64,7 +64,7 @@ describe('isPlanTypeSupported', () => {
 })
 
 describe('提示文案', () => {
-  it('不含通道/链路一类的内部黑话，面向 ISV 用户可读', () => {
+  it('不含通道/链路一类的内部黑话，面向集成商用户可读', () => {
     expect(CHANNEL_UNSUPPORTED_HINT).not.toMatch(/PaaS|通道|链路/)
     expect(UNSUPPORTED_STRATEGY_SAVE_HINT).not.toMatch(/PaaS|通道|链路/)
   })

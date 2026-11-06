@@ -18,6 +18,7 @@ class BaseStationImpl : public IBaseStation {
 public:
     BaseStationImpl(
         const std::string& sn,
+        int session_id,
         const std::shared_ptr<message_engine::IRtcChannelManagerBridge>& rtc_channel_manager_bridge = nullptr,
         const std::shared_ptr<message_engine::IMqttClientManagerBridge>& mqtt_client_manager_bridge = nullptr);
     ~BaseStationImpl() override;
@@ -32,6 +33,7 @@ public:
 
 private:
     std::string sn_;
+    int session_id_;
     std::shared_ptr<message_engine::IRtcChannelManagerBridge> rtc_channel_manager_bridge_;
     std::shared_ptr<message_engine::IMqttClientManagerBridge> mqtt_client_manager_bridge_;
     std::shared_ptr<message_engine::IMessageEngine> message_engine_;

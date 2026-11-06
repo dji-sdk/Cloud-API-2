@@ -1,7 +1,7 @@
 # FH Skeleton 本地 SDK 部署 Docker Compose
 #
 # 基于 docker/docker-compose.yml（源码构建）+ deploy-compose.yml（MySQL + 完整 env）
-# 适用于本地 Apple Silicon 机器，SDK 模式连接真实 FlightHub PaaS。
+# 适用于本地 Apple Silicon 机器，SDK 模式连接真实 DJI Cloud API 2。
 #
 # 用法：
 #   cd skeleton
@@ -91,7 +91,7 @@ services:
         VITE_TIANDITU_KEY:        ${VITE_TIANDITU_KEY:-}
     container_name: fh-skeleton-web
     ports:
-      - "80:80"
+      - "80:8080"
     environment:
       VITE_FH2_ADDRESS: ${VITE_FH2_ADDRESS:-}
       VITE_FH2_PORT: ${VITE_FH2_PORT:-30812}

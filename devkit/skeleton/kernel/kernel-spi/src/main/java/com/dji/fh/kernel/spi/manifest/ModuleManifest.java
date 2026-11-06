@@ -33,7 +33,7 @@ package com.dji.fh.kernel.spi.manifest;
  * @param metadata      元数据
  * @param requires      兼容性声明
  * @param provides      对外暴露的能力（可为 {@link ModuleProvides#empty()}）
- * @param ai            AI 元数据（可空，ISV module 可省略）
+ * @param ai            AI 元数据（可空，集成商 module 可省略）
  * @param toggle        启用开关
  * @author DJI DevKit Team
  */

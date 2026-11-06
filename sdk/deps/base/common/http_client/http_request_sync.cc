@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "http_request_sync.h"
+#include <mutex>
+#include <vector>
 #include "base/common/logger.h"
 
 #include <mutex>
@@ -9,6 +11,30 @@
 namespace drc_sdk {
 namespace common {
 namespace network {
+
+// 「不打印 verbose 抓包」的 URL 片段名单。写入只发生在初始化阶段（AddQuietUrlPattern），
+// 读取发生在每个请求的 SetURL()，而请求分布在 IO 线程池上，故用锁保护。
+static std::mutex g_quiet_url_mutex;
+static std::vector<std::string> g_quiet_url_patterns;
+
+static bool IsQuietUrl(const std::string &url) {
+    std::lock_guard<std::mutex> lock(g_quiet_url_mutex);
+    for (const auto &pattern : g_quiet_url_patterns) {
+        if (url.find(pattern) != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void HttpSyncRequest::AddQuietUrlPattern(const std::string &pattern) {
+    if (pattern.empty()) {
+        LOG_WARN("[HttpSyncRequest] AddQuietUrlPattern ignored: empty pattern");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(g_quiet_url_mutex);
+    g_quiet_url_patterns.push_back(pattern);
+}
 
 // 全局 TLS 配置(进程级)。状态仅经 SetGlobalTlsConfig 变更, mutex 保护
 // 与构造函数(任意线程创建请求)的并发读取。
@@ -97,6 +123,12 @@ void HttpSyncRequest::SetURL(const std::string &url) {
     }
     curl_easy_setopt(easy_, CURLOPT_URL, url.c_str());
     url_ = url;
+    // 构造函数里 CURLOPT_VERBOSE 是默认打开的，而 libcurl 在没挂 DEBUGFUNCTION 时会把
+    // 抓包内容直接写 stderr —— 绕开 plog，连 log_to_console=false 也拦不住。对于业务层
+    // 登记过的高频后台接口，这里单独把 verbose 关掉，避免刷屏冲断宿主程序的交互界面。
+    if (IsQuietUrl(url)) {
+        CloseDebugLog();
+    }
 }
 
 void HttpSyncRequest::SetHeader(const RequestHeader &header) {
@@ -130,6 +162,14 @@ void HttpSyncRequest::OpenDebugLog() {
     }
     curl_easy_setopt(easy_, CURLOPT_VERBOSE, 1L);
     curl_easy_setopt(easy_, CURLOPT_DEBUGFUNCTION, DebugCallback);
+}
+
+void HttpSyncRequest::CloseDebugLog() {
+    if (easy_ == nullptr) {
+        LOG_ERROR("[HttpSyncRequest] CloseDebugLog failed: curl easy handle is null");
+        return;
+    }
+    curl_easy_setopt(easy_, CURLOPT_VERBOSE, 0L);
 }
 
 void HttpSyncRequest::SetSslVerify(bool enable, const std::string& ca_path) {

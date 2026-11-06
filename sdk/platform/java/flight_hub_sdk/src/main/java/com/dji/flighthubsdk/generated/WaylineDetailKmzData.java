@@ -441,6 +441,14 @@ public class WaylineDetailKmzData {
     return (cPtr == 0) ? null : new WaylineDetailSurveyAreaScope(cPtr, false);
   }
 
+  public void setMd5(String value) {
+    flighthubsdkmoduleJNI.WaylineDetailKmzData_md5_set(swigCPtr, this, value);
+  }
+
+  public String getMd5() {
+    return flighthubsdkmoduleJNI.WaylineDetailKmzData_md5_get(swigCPtr, this);
+  }
+
   public WaylineDetailKmzData() {
     this(flighthubsdkmoduleJNI.new_WaylineDetailKmzData(), true);
   }

@@ -17,10 +17,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import MarkdownIt from 'markdown-it'
+import DOMPurify, { type Config } from 'dompurify'
 import type { ChatMessage } from '@/types/chat'
 
 /** markdown-it 实例，启用安全模式（不允许原始 HTML） */
 const md = new MarkdownIt({ html: false, linkify: true, typographer: true })
+
+// markdown-it 只会产出 HTML 语义标签；显式关闭表单/样式类标签，避免后续开启插件时被利用。
+// DOMPurify v3 的 Config 字段声明为可变 string[]，因此不能用 as const（会产生 readonly 数组无法赋值）
+const SANITIZE_CONFIG: Config = {
+  USE_PROFILES: { html: true },
+  FORBID_TAGS: ['style', 'form', 'input', 'button', 'select', 'textarea', 'iframe', 'object', 'embed', 'link', 'meta', 'base'],
+  FORBID_ATTR: ['style'],
+}
 
 interface Props {
   message: ChatMessage
@@ -41,7 +50,9 @@ const renderedContent = computed<string>(() => {
   if (isUser.value) {
     return ''
   }
-  return md.render(props.message.content || '')
+  // markdown-it 的 { html: false } 是第一道防线；DOMPurify 作为与渲染器解耦的第二道防线，
+  // 兜底未来开启插件 / 放宽 html 选项时引入的危险标签与 URI
+  return DOMPurify.sanitize(md.render(props.message.content || ''), SANITIZE_CONFIG)
 })
 
 /** 是否显示工具执行状态提示（工具执行期间有 statusText 时显示，token 到达后自动清除） */

@@ -83,11 +83,12 @@ class FhDrcConnectToolTest {
 
     @Test
     void execute_shouldReturnError_whenNoControlAuthority() {
-        // session 存在但未获取控制权
-        sessionManager.createSession("uuid", "ws");
+        // session 存在但未获取控制权（confirm 放行后仍会被控制权校验拦截）
+        SessionContext session = sessionManager.createSession("uuid", "ws");
 
         Map<String, Object> result = connectTool.execute(Map.of(
-                "drone_sn", DRONE_SN
+                "drone_sn", DRONE_SN,
+                "confirm", true
         ));
 
         assertEquals(false, result.get("success"));
@@ -95,8 +96,8 @@ class FhDrcConnectToolTest {
     }
 
     @Test
-    void execute_shouldSucceedDirectly() {
-        // L0 操作无需确认，直接执行
+    void execute_shouldReturnError_whenNotConfirmed() {
+        // L2 接管级操作：无 confirm 拒绝执行
         SessionContext session = sessionManager.createSession("uuid", "ws");
         session.setActiveControlDevice(DRONE_SN);
 
@@ -104,8 +105,24 @@ class FhDrcConnectToolTest {
                 "drone_sn", DRONE_SN
         ));
 
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Confirmation required"));
+        assertFalse(session.hasDrcLinkTo(DRONE_SN));
+    }
+
+    @Test
+    void execute_shouldSucceedDirectly() {
+        // confirm=true 放行后建立 DRC 链路
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+
+        Map<String, Object> result = connectTool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "confirm", true
+        ));
+
         assertEquals(true, result.get("success"),
-                "L0 操作无需确认，直接执行成功");
+                "confirm=true 放行建立 DRC 链路");
         assertTrue(session.hasDrcLinkTo(DRONE_SN));
     }
 
@@ -117,7 +134,8 @@ class FhDrcConnectToolTest {
         session.setActiveDrcDevice(DRONE_SN);
 
         Map<String, Object> result = connectTool.execute(Map.of(
-                "drone_sn", DRONE_SN
+                "drone_sn", DRONE_SN,
+                "confirm", true
         ));
 
         assertEquals(false, result.get("success"));
@@ -127,12 +145,13 @@ class FhDrcConnectToolTest {
     @Test
     @SuppressWarnings("unchecked")
     void execute_shouldSucceed_whenMockMode() {
-        // 前置条件满足：session 存在 + 持有控制权 + 无现存 DRC 链路
+        // 前置条件满足：session 存在 + 持有控制权 + 无现存 DRC 链路 + confirm 放行
         SessionContext session = sessionManager.createSession("uuid", "ws");
         session.setActiveControlDevice(DRONE_SN);
 
         Map<String, Object> result = connectTool.execute(Map.of(
-                "drone_sn", DRONE_SN
+                "drone_sn", DRONE_SN,
+                "confirm", true
         ));
 
         assertEquals(true, result.get("success"));
@@ -154,17 +173,42 @@ class FhDrcConnectToolTest {
         session.setActiveControlDevice(DRONE_SN);
 
         connectTool.execute(Map.of(
-                "drone_sn", DRONE_SN
+                "drone_sn", DRONE_SN,
+                "confirm", true
         ));
 
         assertTrue(session.hasDrcLinkTo(DRONE_SN));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenSessionLevelIsL1() {
+        // L2 接管级操作：session 上限 L1 拒绝
+        FlightHubProperties props = new FlightHubProperties();
+        props.getSecurity().setMaxLevel(1);
+        SessionManager l1Sessions = new SessionManager(props);
+        l1Sessions.createSession("uuid", "ws");
+        SdkService mock = new SdkService() {
+            @Override
+            public boolean isMockMode() {
+                return true;
+            }
+        };
+        FhDrcConnectTool l1Tool = new FhDrcConnectTool(l1Sessions, mock);
+
+        Map<String, Object> result = l1Tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "confirm", true
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("insufficient security level"));
     }
 
     // ==================== Elicitation 人工确认测试 ====================
 
     @Test
     void execute_shouldSucceed_whenElicitationBridgePresent() {
-        // L0 操作无需确认，即使 ClientBridge 已设置也不触发 elicitation
+        // L2 接管操作：bridge 存在时触发人工弹窗，真人 ACCEPT 放行
         SessionContext session = sessionManager.createSession("uuid", "ws");
         session.setActiveControlDevice(DRONE_SN);
         ClientBridgeHolder.set(fakeBridge(ElicitResult.accept(null)));
@@ -173,13 +217,13 @@ class FhDrcConnectToolTest {
                 "drone_sn", DRONE_SN
         ));
 
-        assertEquals(true, result.get("success"), "L0 操作无需确认，直接执行");
+        assertEquals(true, result.get("success"), "真人确认通过后执行");
         assertTrue(session.hasDrcLinkTo(DRONE_SN));
     }
 
     @Test
-    void execute_shouldSucceed_evenWithElicitationDeclined() {
-        // L0 操作无需确认，elicitation decline 不影响执行
+    void execute_shouldFail_whenElicitationDeclined() {
+        // L2 接管操作：真人 DECLINE 拒绝 → 不执行
         SessionContext session = sessionManager.createSession("uuid", "ws");
         session.setActiveControlDevice(DRONE_SN);
         ClientBridgeHolder.set(fakeBridge(ElicitResult.decline()));
@@ -188,14 +232,15 @@ class FhDrcConnectToolTest {
                 "drone_sn", DRONE_SN
         ));
 
-        assertEquals(true, result.get("success"),
-                "L0 操作不触发 elicitation，decline 不影响执行");
-        assertTrue(session.hasDrcLinkTo(DRONE_SN));
+        assertEquals(false, result.get("success"),
+                "真人拒绝后操作不执行");
+        assertTrue(result.get("error_message").toString().contains("declined"));
+        assertFalse(session.hasDrcLinkTo(DRONE_SN));
     }
 
     @Test
-    void execute_shouldSucceed_evenWithElicitationTimedOut() {
-        // L0 操作无需确认，timeout 不影响执行
+    void execute_shouldFail_whenElicitationTimedOut() {
+        // L2 接管操作：真人超时未响应 → 不执行（防静默建立 DRC 链路）
         SessionContext session = sessionManager.createSession("uuid", "ws");
         session.setActiveControlDevice(DRONE_SN);
         ClientBridgeHolder.set(fakeBridge(ElicitResult.timeout()));
@@ -204,8 +249,10 @@ class FhDrcConnectToolTest {
                 "drone_sn", DRONE_SN
         ));
 
-        assertEquals(true, result.get("success"));
-        assertTrue(session.hasDrcLinkTo(DRONE_SN));
+        assertEquals(false, result.get("success"),
+                "真人超时后操作不执行");
+        assertTrue(result.get("error_message").toString().contains("timed out"));
+        assertFalse(session.hasDrcLinkTo(DRONE_SN));
     }
 
     @Test

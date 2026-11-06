@@ -4,8 +4,8 @@
 
   安全发布专项修复：
   - 原 config/settings.xml 强制 mirrorOf=* 路由到内部 Nexus，
-    ISV 外部构建 100% 失败。
-  - 现改为默认使用 Maven Central，仅供本地参考；ISV 可在此基础上添加自家私服。
+    集成商外部构建 100% 失败。
+  - 现改为默认使用 Maven Central，仅供本地参考；集成商可在此基础上添加自家私服。
   - 内部 CI 构建请使用 settings.xml.internal（不入库，由 CI 注入）。
 -->
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
@@ -13,7 +13,7 @@
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
                               https://maven.apache.org/xsd/settings-1.0.0.xsd">
     <!-- 默认不配置 mirror，使用 Maven Central（https://repo1.maven.org/maven2）。
-         ISV 如需对接自家私服，取消下方注释并替换为自有 Nexus 地址：
+         集成商如需对接自家私服，取消下方注释并替换为自有 Nexus 地址：
     <mirrors>
         <mirror>
             <id>isv-maven</id>

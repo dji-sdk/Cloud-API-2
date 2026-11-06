@@ -6,7 +6,7 @@ description: |
   知识库收录、收录到知识库、加入知识库、重建索引、同步 llms.txt、rebuild index。
   不触发：新功能开发、查询知识库内容、修改已有知识文件、问 SDK 问题。
 version: 1.1.0
-author: DJI CloudAPI2 Team
+author: DJI Cloud API 2 Team
 ---
 
 # 知识库入库助手

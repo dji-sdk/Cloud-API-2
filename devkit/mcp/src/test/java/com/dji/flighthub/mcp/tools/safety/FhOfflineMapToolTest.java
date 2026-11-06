@@ -101,18 +101,124 @@ class FhOfflineMapToolTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void execute_shouldReturnUpdateStarted_whenUpdateModelInfo() {
+    void execute_shouldReturnUpdateStarted_whenUpdateModelInfoWithModel3dItems() {
         sessionManager.createSession("uuid", "ws");
 
         Map<String, Object> result = offlineMapTool.execute(Map.of(
-                "action", "update_model_info"
+                "action", "update_model_info",
+                "request_params", Map.of(
+                        "model_3d_items", List.of(Map.of(
+                                "uuid", "model-001",
+                                "object_key", "offline-maps/model-001.b3dm",
+                                "file_type", "b3dm"
+                        ))
+                )
         ));
 
         assertEquals(true, result.get("success"));
         Map<String, Object> data = (Map<String, Object>) result.get("data");
         assertNotNull(data);
         assertEquals("update_started", data.get("status"));
+        assertEquals(1, data.get("model_3d_count"));
+        assertEquals(0, data.get("model_2d_count"));
         assertEquals(true, data.get("_mock"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldAcceptCamelCaseItemKeys_whenUpdateModelInfo() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = offlineMapTool.execute(Map.of(
+                "action", "update_model_info",
+                "request_params", Map.of(
+                        "model_2d_items", List.of(Map.of(
+                                "objectKey", "offline-maps/model-002.tif",
+                                "fileType", "tif"
+                        ))
+                )
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals(0, data.get("model_3d_count"));
+        assertEquals(1, data.get("model_2d_count"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenUpdateModelInfoMissingRequestParams() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = offlineMapTool.execute(Map.of(
+                "action", "update_model_info"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("request_params"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenUpdateModelInfoRequestParamsEmpty() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = offlineMapTool.execute(Map.of(
+                "action", "update_model_info",
+                "request_params", Map.of()
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Empty request_params"));
+        // 必须提示服务端的 225101，避免调用方再次拿到不可解释的 SDK 错误
+        assertTrue(result.get("suggestion").toString().contains("225101"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenUpdateModelInfoItemsEmptyArrays() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = offlineMapTool.execute(Map.of(
+                "action", "update_model_info",
+                "request_params", Map.of(
+                        "model_3d_items", List.of(),
+                        "model_2d_items", List.of()
+                )
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Empty request_params"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenUpdateModelInfoItemMissingObjectKey() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = offlineMapTool.execute(Map.of(
+                "action", "update_model_info",
+                "request_params", Map.of(
+                        "model_3d_items", List.of(Map.of(
+                                "uuid", "model-001",
+                                "file_type", "b3dm"
+                        ))
+                )
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("model_3d_items"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenUpdateModelInfoItemNotObject() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = offlineMapTool.execute(Map.of(
+                "action", "update_model_info",
+                "request_params", Map.of(
+                        "model_3d_items", List.of("offline-maps/model-001.b3dm")
+                )
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("model_3d_items"));
     }
 
     @Test
@@ -169,6 +275,30 @@ class FhOfflineMapToolTest {
 
         assertEquals(false, result.get("success"));
         assertTrue(result.get("error_message").toString().contains("Missing or empty device_sns"));
+    }
+
+    @Test
+    void execute_shouldDenySync_whenSessionLevelIsL0() {
+        // sync 已补 enforceSecurityLevel(REVERSIBLE)：session 上限 L0 拒绝
+        FlightHubProperties l0Props = new FlightHubProperties();
+        l0Props.getSecurity().setMaxLevel(0);
+        SessionManager l0Sessions = new SessionManager(l0Props);
+        l0Sessions.createSession("uuid", "ws");
+        SdkService l0Sdk = new SdkService() {
+            @Override
+            public boolean isMockMode() {
+                return true;
+            }
+        };
+        FhOfflineMapTool l0Tool = new FhOfflineMapTool(l0Sessions, l0Sdk);
+
+        Map<String, Object> result = l0Tool.execute(Map.of(
+                "action", "sync",
+                "device_sns", List.of("DOCK-001")
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("insufficient security level"));
     }
 
     @Test

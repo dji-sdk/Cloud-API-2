@@ -42,17 +42,27 @@ std::shared_ptr<Executor>& Executors::IO() {
 }
 
 void Executors::Shutdown() {
-    if (main_) {
-        main_->Stop();
-        main_.reset();
+    // 停止顺序必须与依赖方向一致: IO → Compute → Main。
+    // HTTP 回调链路是 IO 线程收到响应后向 Main() Post(http_runtime.cpp), 若先停 Main,
+    // IO 线程在途回调执行 Main()->Post() 时会解引用已 reset 的空指针导致 SIGSEGV。
+    // 先停 IO 并 Join 其线程, 保证不会再有新的回调 Post 到 Main; Main 最后停,
+    // 期间已入队的残留回调仍可被正常消费执行。
+    if (io_) {
+        io_->Stop();
+        io_.reset();
     }
     if (compute_) {
         compute_->Stop();
         compute_.reset();
     }
-    if (io_) {
-        io_->Stop();
-        io_.reset();
+    if (main_) {
+        // 停 Main 前先 Flush: Main 是 ThreadPoolExecutor(1,1), Flush() 投递
+        // 哨兵任务并等待, 把 IO 停掉前已 Post 进来的在途 HTTP 回调(如 beacon 上报)排空执行完,
+        // 再销毁; 否则这批残留回调会随 Stop 一起丢弃。Flush() 内部对"当前线程即工作线程"
+        // 已有直返保护, 从 Main 线程调 shutdown 也不会死锁。
+        main_->Flush();
+        main_->Stop();
+        main_.reset();
     }
 }
 

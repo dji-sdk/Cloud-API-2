@@ -39,6 +39,7 @@ public class FlightControlModule {
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> emergencyLandingActionCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> forceLandingActionCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> returnHomeCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> returnHomeToDockCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> returnHomeCancelCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
 
     private int id_counter = 0;
@@ -197,6 +198,44 @@ public class FlightControlModule {
     }
 
     /**
+     * 返航到指定机场（蛙跳/多机场任务，用于返航到非默认降落点的机场）
+     * @param targetDockSn 目标机场 SN
+     * @param callback 结果回调
+     * @implNote 链路: HTTP | POST /control/api/v1/command-bus/non-realtime-cmd (method: return_specific_home，携带 home_dock_sn)
+     */
+    public void returnHome(String targetDockSn, FlightHubCallback.ResultCallbackWithError callback) {
+        try {
+            int id = generateActionCallbackId();
+            com.dji.flighthubsdk.generated.ResultCallbackWithError swigCallback = new com.dji.flighthubsdk.generated.ResultCallbackWithError() {
+                @Override
+                public void onResult(com.dji.flighthubsdk.generated.FlightHubError err) {
+                    try {
+                        if (callback != null) {
+                            com.dji.flighthubsdk.bean.FlightHubError beanError = new com.dji.flighthubsdk.bean.FlightHubError(
+                                err.getError_code(), (int) err.getHttp_code(), (int) err.getServer_code(), err.getServer_message());
+                            callback.onResult(beanError);
+                        }
+                    } catch (Exception e) {
+                        Logger.error("FlightControlModule", "Return home(target dock) callback error: " + e.getMessage(), e);
+                    } finally {
+                        returnHomeToDockCallbackRef.remove(id);
+                    }
+                }
+            };
+            final CallbackRefContainer container = new CallbackRefContainer(swigCallback, callback);
+            synchronized (returnHomeToDockCallbackRef) {
+                returnHomeToDockCallbackRef.put(id, container);
+                this.flightControlModule.returnHomeToDockWrapper(targetDockSn, swigCallback);
+            }
+        } catch (Exception e) {
+            Logger.error("FlightControlModule", "returnHome(targetDockSn) error: " + e.getMessage(), e);
+            if (callback != null) {
+                callback.onResult(new com.dji.flighthubsdk.bean.FlightHubError(FlightHubSdkErrorCode.ERROR_OPERATION_FAILED));
+            }
+        }
+    }
+
+    /**
      * 取消返航
      * @implNote 链路: HTTP | POST /control/api/v1/command-bus/non-realtime-cmd (method: return_home_cancel)
      */
@@ -310,6 +349,22 @@ public class FlightControlModule {
      */
     public void drcSetFollowMouseParameter(int speed, FlightHubCallback.ResultCallbackWithError callback) {
         invokeDrcFlightAction(callback, cb -> this.flightControlModule.drcSetFollowMouseParameterWrapper(speed, cb));
+    }
+
+    /**
+     * 设置飞行速度
+     *
+     * <p>实时指令, 不依附于任何飞行任务。注意与两个 HTTP 任务参数区分：
+     * {@code speed_mode}(是否开启高速模式)与 {@code maxSpeed}(本次任务的速度上限)
+     * 都只用于 HTTP 接口, 与本接口无关。
+     *
+     * @param speed 飞行速度, 单位 m/s。调用方常用档位：低速 5 / 默认 15 / 高速 21;
+     *              协议接受连续值, 档位仅为参考, SDK 不做范围校验(超限由设备侧拒绝)。
+     * @param callback 结果回调
+     * @implNote 链路: DRC | method: drc_set_flying_max_speed
+     */
+    public void drcSetFlyingMaxSpeed(double speed, FlightHubCallback.ResultCallbackWithError callback) {
+        invokeDrcFlightAction(callback, cb -> this.flightControlModule.drcSetFlyingMaxSpeedWrapper(speed, cb));
     }
 
     /**
@@ -515,6 +570,59 @@ public class FlightControlModule {
             Logger.error("FlightControlModule", "cancelListenDrcParachuteInfo error: " + e.getMessage(), e);
         }
         CallbackRefContainer removed = parachuteInfoCallbackRef.remove(listenId);
+        if (removed != null) removed.release();
+    }
+
+    // ── Observe: LandingMissionState ──
+
+    private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> landingMissionStateCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * 订阅降落任务状态推送
+     *
+     * <p>landing_state: 0=初始空闲 1=等待参数同步 2=航向对齐 3=精准降落(有水平源)
+     * 4=无源降落(无水平源,继续下降) 5=悬停微调(有水平源) 6=纯悬停(无水平源)
+     * 7=备降(有源) 8=备降(无源) 9=备降(用户RC接管)。
+     *
+     * @param callback 状态回调
+     * @return 监听 ID，失败返回 -1
+     * @implNote 链路: DRC Northbound | method: drc_landing_mission_state_push
+     */
+    public int listenDrcLandingMissionState(FlightHubCallback.DrcLandingMissionStateCallback callback) {
+        try {
+            com.dji.flighthubsdk.generated.DrcLandingMissionStateCallback swigCb =
+                new com.dji.flighthubsdk.generated.DrcLandingMissionStateCallback() {
+                    @Override
+                    public void onDrcLandingMissionState(com.dji.flighthubsdk.generated.DrcLandingMissionState info) {
+                        if (callback != null) callback.onResult(info);
+                    }
+                };
+            CallbackRefContainer container = new CallbackRefContainer(swigCb, callback);
+            synchronized (landingMissionStateCallbackRef) {
+                landingMissionStateCallbackRef.put(-1, container);
+                int listenId = this.flightControlModule.listenDrcLandingMissionStateWrapper(swigCb);
+                landingMissionStateCallbackRef.remove(-1);
+                if (listenId >= 0) {
+                    landingMissionStateCallbackRef.put(listenId, container);
+                } else {
+                    container.release();
+                }
+                return listenId;
+            }
+        } catch (Exception e) {
+            Logger.error("FlightControlModule", "listenDrcLandingMissionState error: " + e.getMessage(), e);
+            return -1;
+        }
+    }
+
+    /** 取消订阅降落任务状态推送 */
+    public void cancelListenDrcLandingMissionState(int listenId) {
+        try {
+            this.flightControlModule.cancelListenDrcLandingMissionStateWrapper(listenId);
+        } catch (Exception e) {
+            Logger.error("FlightControlModule", "cancelListenDrcLandingMissionState error: " + e.getMessage(), e);
+        }
+        CallbackRefContainer removed = landingMissionStateCallbackRef.remove(listenId);
         if (removed != null) removed.release();
     }
 

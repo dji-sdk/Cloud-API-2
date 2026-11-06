@@ -100,6 +100,162 @@ class FhFlightTaskToolTest {
         assertEquals(true, data.get("_mock"));
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeList_shouldFilterBySingleStatus_whenStatusProvided() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of("action", "list", "status", 5));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        List<Map<String, Object>> tasks = (List<Map<String, Object>>) data.get("tasks");
+        assertEquals(1, tasks.size());
+        assertEquals(5, tasks.get(0).get("status_code"));
+        assertEquals(1, data.get("total"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeList_shouldFilterByStatusArray_whenStatusListProvided() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "action", "list",
+                "status", List.of(1, 5)
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        List<Map<String, Object>> tasks = (List<Map<String, Object>>) data.get("tasks");
+        assertEquals(2, tasks.size());
+        assertEquals(2, data.get("total"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeList_shouldReturnEmptyList_whenStatusMatchesNothing() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of("action", "list", "status", 6));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        List<Map<String, Object>> tasks = (List<Map<String, Object>>) data.get("tasks");
+        assertTrue(tasks.isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeList_shouldAcceptStringStatus_whenStatusIsNumericString() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of("action", "list", "status", "5"));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        List<Map<String, Object>> tasks = (List<Map<String, Object>>) data.get("tasks");
+        assertEquals(1, tasks.size());
+    }
+
+    // ==================== list_command ====================
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeListCommand_shouldReturnMockTasks() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of("action", "list_command"));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertNotNull(data.get("tasks"));
+        assertEquals(true, data.get("_mock"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeListCommand_shouldApplyFiltersInMockMode() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "list_command");
+        args.put("sn", "DOCK-001");
+        args.put("drone_sn", "DRONE-001");
+        args.put("status", List.of(0, 1));
+        args.put("page", 2);
+        args.put("page_size", 5);
+
+        Map<String, Object> result = tool.execute(args);
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals(2, data.get("page"));
+        assertEquals(5, data.get("page_size"));
+    }
+
+    @Test
+    void executeListCommand_shouldReturnError_whenBeginAtWithoutEndAt() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "list_command");
+        args.put("begin_at", 1700000000L);
+        // 故意不提供 end_at
+
+        Map<String, Object> result = tool.execute(args);
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("begin_at"));
+        assertTrue(result.get("error_message").toString().contains("end_at"));
+    }
+
+    @Test
+    void executeListCommand_shouldReturnError_whenEndAtWithoutBeginAt() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "list_command");
+        args.put("end_at", 1700000000L);
+        // 故意不提供 begin_at
+
+        Map<String, Object> result = tool.execute(args);
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("begin_at"));
+        assertTrue(result.get("error_message").toString().contains("end_at"));
+    }
+
+    // ==================== track ====================
+
+    @Test
+    void executeTrack_shouldReturnError_whenTaskUuidMissing() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of("action", "track"));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("task_uuid"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeTrack_shouldReturnMockTrack() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "action", "track",
+                "task_uuid", "task_001"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("task_001", data.get("task_uuid"));
+        assertNotNull(data.get("track_id"));
+        assertNotNull(data.get("points"));
+        assertEquals(true, data.get("_mock"));
+    }
+
     // ==================== detail ====================
 
     @Test
@@ -305,6 +461,8 @@ class FhFlightTaskToolTest {
         assertEquals("CREATED", data.get("status"));
         assertEquals("Asia/Shanghai", data.get("time_zone"));
         assertEquals(1, data.get("out_of_control_action"));
+        assertNotNull(data.get("wayline_validity_check_codes"));
+        assertTrue(((List<?>) data.get("wayline_validity_check_codes")).isEmpty());
 
         // 验证 next_steps
         assertNotNull(result.get("next_steps"));
@@ -433,6 +591,7 @@ class FhFlightTaskToolTest {
         Map<String, Object> args = new HashMap<>();
         args.put("action", "edit");
         args.put("task_uuid", "task_001");
+        args.put("name", "Renamed Task");
 
         Map<String, Object> result = tool.execute(args);
 
@@ -460,7 +619,213 @@ class FhFlightTaskToolTest {
         assertEquals(true, data.get("_mock"));
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void executeEdit_shouldReportMappedFields_whenAllTopLevelParamsProvided() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "edit");
+        args.put("task_uuid", "task_001");
+        args.put("name", "Renamed");
+        args.put("sn", "DOCK-002");
+        args.put("wayline_uuid", "wl_xyz");
+        args.put("time_zone", "UTC");
+        args.put("task_type", 2);
+        args.put("out_of_control_action", 2);
+        args.put("rth_altitude", 200.0);
+        args.put("begin_at", 1_700_000_000L);
+        args.put("end_at", 1_700_003_600L);
+        args.put("confirm", true);
+
+        Map<String, Object> result = tool.execute(args);
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        List<String> updatedFields = (List<String>) data.get("updated_fields");
+        assertThat(updatedFields).contains(
+                "name", "sn", "wayline_uuid", "time_zone", "task_type",
+                "out_of_control_action", "rth_altitude", "begin_at", "end_at");
+    }
+
+    @Test
+    void executeEdit_shouldReturnError_whenNoEditableFieldProvided() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "edit");
+        args.put("task_uuid", "task_001");
+        args.put("confirm", true);
+
+        Map<String, Object> result = tool.execute(args);
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("No editable field"));
+    }
+
+    @Test
+    void executeEdit_shouldReturnError_whenRthAltitudeOutOfRange() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "edit");
+        args.put("task_uuid", "task_001");
+        args.put("rth_altitude", 5000.0);
+        args.put("confirm", true);
+
+        Map<String, Object> result = tool.execute(args);
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("rth_altitude"));
+    }
+
+    @Test
+    void executeEdit_shouldReturnError_whenOutOfControlActionInvalid() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "edit");
+        args.put("task_uuid", "task_001");
+        args.put("out_of_control_action", 9);
+        args.put("confirm", true);
+
+        Map<String, Object> result = tool.execute(args);
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("out_of_control_action"));
+    }
+
+    @Test
+    void executeEdit_shouldReturnError_whenOnlyOneSideOfTimeWindowProvided() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "edit");
+        args.put("task_uuid", "task_001");
+        args.put("begin_at", 1_700_000_000L);
+        args.put("confirm", true);
+
+        Map<String, Object> result = tool.execute(args);
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("must be provided together"));
+    }
+
+    @Test
+    void executeEdit_shouldReturnError_whenTaskTypeScheduledWithoutWindow() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "edit");
+        args.put("task_uuid", "task_001");
+        args.put("task_type", 2);
+        args.put("confirm", true);
+
+        Map<String, Object> result = tool.execute(args);
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("begin_at and end_at"));
+    }
+
+    @Test
+    void executeEdit_shouldReturnError_whenTaskTypeInvalid() {
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "edit");
+        args.put("task_uuid", "task_001");
+        args.put("task_type", 3);
+        args.put("confirm", true);
+
+        Map<String, Object> result = tool.execute(args);
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("task_type"));
+    }
+
+    @Test
+    void executeEdit_shouldReportOutOfRange_whenRthAltitudeIsZero() {
+        // 回归：0 不能因为哨兵值判断被当成「未传」而静默丢弃
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "edit");
+        args.put("task_uuid", "task_001");
+        args.put("rth_altitude", 0.0);
+        args.put("confirm", true);
+
+        Map<String, Object> result = tool.execute(args);
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("rth_altitude must be between"));
+        assertFalse(result.get("error_message").toString().contains("No editable field"));
+        assertTrue(result.get("suggestion").toString().contains("0.0"));
+    }
+
+    @Test
+    void executeEdit_shouldReportInvalidOutOfControlAction_whenZero() {
+        // 回归：0 不能因为哨兵值判断被当成「未传」而静默丢弃
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "edit");
+        args.put("task_uuid", "task_001");
+        args.put("out_of_control_action", 0);
+        args.put("confirm", true);
+
+        Map<String, Object> result = tool.execute(args);
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Invalid out_of_control_action"));
+        assertFalse(result.get("error_message").toString().contains("No editable field"));
+        assertTrue(result.get("suggestion").toString().contains("0"));
+    }
+
+    @Test
+    void executeEdit_shouldEchoRawValue_whenTaskTypeIsNotNumeric() {
+        // 回归：无法解析的取值要报出原始值，而不是笼统的「未提供可编辑字段」
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "edit");
+        args.put("task_uuid", "task_001");
+        args.put("task_type", "immediate");
+        args.put("confirm", true);
+
+        Map<String, Object> result = tool.execute(args);
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Invalid task_type"));
+        assertTrue(result.get("suggestion").toString().contains("immediate"));
+    }
+
     // ==================== execute ====================
+
+    @Test
+    void executeExecute_shouldReturnError_whenSessionLevelIsL1() {
+        // execute 已升级为 L2（实际下发飞行任务）：session 上限 L1 拒绝
+        FlightHubProperties l1Props = new FlightHubProperties();
+        l1Props.getSecurity().setMaxLevel(1);
+        SessionManager l1Sessions = new SessionManager(l1Props);
+        l1Sessions.createSession("uuid", "ws");
+        SdkService l1Sdk = new SdkService() {
+            @Override
+            public boolean isMockMode() {
+                return true;
+            }
+        };
+        FhFlightTaskTool l1Tool = new FhFlightTaskTool(l1Sessions, l1Sdk);
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "execute");
+        args.put("task_uuid", "task_001");
+        args.put("confirm", true);
+
+        Map<String, Object> result = l1Tool.execute(args);
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("insufficient security level"));
+    }
 
     @Test
     void executeExecute_shouldRequireConfirm() {
@@ -555,6 +920,25 @@ class FhFlightTaskToolTest {
 
         assertEquals(false, result.get("success"));
         assertTrue(result.get("error_message").toString().contains("status"));
+    }
+
+    @Test
+    void executeUpdateStatus_shouldReturnError_whenStatusIsArray() {
+        // 回归：数组 form 只对 action=list 有效；若直接落到 getIntArg 会被当成「未传」，
+        // 报出与真实原因无关的缺参错误
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("action", "update_status");
+        args.put("task_uuid", "task_001");
+        args.put("status", List.of(1, 5));
+        args.put("confirm", true);
+
+        Map<String, Object> result = tool.execute(args);
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("must be a single code"));
+        assertTrue(result.get("suggestion").toString().contains("action=list"));
     }
 
     @Test

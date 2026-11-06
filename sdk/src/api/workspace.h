@@ -21,6 +21,7 @@
 #include "firmware_manage_module.h"
 #include "psdk_resource_module.h"
 #include "flash_led_module.h"
+#include "auto_record_module.h"
 #include "wayline_manage_module.h"
 #include "ai_inside_manage_module.h"
 #include "element.h"
@@ -71,6 +72,9 @@ public:
 
     /// @brief 获取爆闪灯模板库模块（HTTP flash-configs）
     virtual std::shared_ptr<IFlashLedModule> getFlashLedModule() = 0;
+
+    /// @brief 获取自动录制配置模块（项目级配置，PAAS 路径无 project_id）
+    virtual std::shared_ptr<IAutoRecordModule> getAutoRecordModule() = 0;
 
     /// @brief 获取 Terra 重建模块
     virtual std::shared_ptr<ITerraBuildModule> getTerraBuildModule() = 0;

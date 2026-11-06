@@ -382,9 +382,6 @@ public:
     /// @brief 取消订阅机场空调工作模式
     virtual void cancelListenDockAirConditionerMode(int listen_id) = 0;
 
-
-    /// @brief 获取部署/踏勘模块
-
 };
 
 }  // namespace flight_hub_sdk

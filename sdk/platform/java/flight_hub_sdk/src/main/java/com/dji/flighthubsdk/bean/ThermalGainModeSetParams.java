@@ -11,7 +11,7 @@ public class ThermalGainModeSetParams {
     /** 负载索引，格式为 {type-subtype-gimbalindex}，例如 "81-0-0" */
     private String payloadIndex = "";
     /** 取值语义同 `flight_hub_sdk::IrGainMode`（见 `value.h`） */
-    private IrGainMode thermalGainMode = IrGainMode.Auto;
+    private IrGainMode thermalGainMode = IrGainMode.LowGain;
 
     public ThermalGainModeSetParams() {
     }
@@ -25,7 +25,7 @@ public class ThermalGainModeSetParams {
     public IrGainMode getThermalGainMode() { return thermalGainMode; }
     /** @param thermalGainMode 取值语义同 `flight_hub_sdk::IrGainMode`（见 `value.h`） */
     public void setThermalGainMode(IrGainMode thermalGainMode) {
-        this.thermalGainMode = thermalGainMode != null ? thermalGainMode : IrGainMode.Auto;
+        this.thermalGainMode = thermalGainMode != null ? thermalGainMode : IrGainMode.LowGain;
     }
 
     @Override

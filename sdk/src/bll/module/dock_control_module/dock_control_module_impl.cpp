@@ -9,31 +9,39 @@
 #include "http_interface/http_interface.h"
 #include "notification_center/notification_center.h"
 #include <BusinessManager.h>
+#include "session/session_bm.h"
 
 using namespace flight_hub_sdk;
 using namespace notification_center;
 
-DockControlModuleImpl::DockControlModuleImpl(const std::string& sn)
-    : sn_(sn) {
+DockControlModuleImpl::DockControlModuleImpl(const std::string& sn, int session_id)
+    : sn_(sn), session_id_(session_id) {
     LOG_INFO("[DockControlModuleImpl] constructor, sn: %s", sn_.c_str());
     registerNotificationCenterListeners();
 }
 
 DockControlModuleImpl::~DockControlModuleImpl() {
+    auto bm = ResolveBusinessManager(session_id_);
     if (dock_air_conditioner_status_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_air_conditioner_status_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_air_conditioner_status_info_listen_id_);
+        }
         dock_air_conditioner_status_info_listen_id_ = -1;
     }
     if (dock_supplement_light_state_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(dock_supplement_light_state_listen_id_);
+        if (bm) {
+            bm->CancelObserve(dock_supplement_light_state_listen_id_);
+        }
         dock_supplement_light_state_listen_id_ = -1;
     }
 }
 
 void DockControlModuleImpl::registerNotificationCenterListeners() {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(p);
 
-    dock_air_conditioner_status_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockAirConditionerStatusInfo(
+    if (bm) {
+        dock_air_conditioner_status_info_listen_id_ = bm->ListenDockAirConditionerStatusInfo(
         [this, p](const notification_center::DockAirConditionerStatusInfo& msg) -> void {
             WeakDummyReturn(p);
             DockAirConditionerStatusInfo status_info;
@@ -51,11 +59,15 @@ void DockControlModuleImpl::registerNotificationCenterListeners() {
             }
         },
         sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     if (dock_air_conditioner_status_info_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockControlModuleImpl] ListenDockAirConditionerStatusInfo, error: %d", dock_air_conditioner_status_info_listen_id_);
     }
 
-    dock_supplement_light_state_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDockSupplementLightState(
+    if (bm) {
+        dock_supplement_light_state_listen_id_ = bm->ListenDockSupplementLightState(
         [this, p](const notification_center::DockSupplementLightState& msg) -> void {
             WeakDummyReturn(p);
             DockSupplementLightState light_state;
@@ -72,6 +84,9 @@ void DockControlModuleImpl::registerNotificationCenterListeners() {
             }
         },
         sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     if (dock_supplement_light_state_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DockControlModuleImpl] ListenDockSupplementLightState, error: %d", dock_supplement_light_state_listen_id_);
     }
@@ -82,16 +97,16 @@ void DockControlModuleImpl::changeDockCameraPosition(
     int camera_position,
     const std::string& gateway_sn,
     const std::function<void(FlightHubError err)>& callback) {
-    change_dock_camera_position(live_info, camera_position, gateway_sn, [callback](FlightHubError err) {
+    change_dock_camera_position(live_info, camera_position, gateway_sn, [callback, this](FlightHubError err) {
         // 埋点: 切换机场舱内/舱外摄像头; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DOCK_CTRL_CHANGE_DOCK_CAMERA_POSITION, err, "[DockControlModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_DOCK_CTRL_CHANGE_DOCK_CAMERA_POSITION, err, session_id_, "[DockControlModuleImpl]");
         if (callback) {
             callback(err);
         }
-    });
+    }, session_id_);
 }
 
 int DockControlModuleImpl::listenDockAirConditionerStatusInfo(const std::function<void(const DockAirConditionerStatusInfo& msg)>& callback) {
@@ -118,16 +133,17 @@ void DockControlModuleImpl::setDockSupplementLightState(bool state, const std::f
         WeakDummyReturn(weak_ptr);
         set_dock_supplement_light_state(sn_, state, [this, weak_ptr, callback](FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([callback, err]() -> void {
+            drc_sdk::common::Executors::Main()->Post([callback, err, this, weak_ptr]() -> void {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 设置机场补光灯开关; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_DOCK_CTRL_SET_DOCK_SUPPLEMENT_LIGHT_STATE, err, "[DockControlModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_DOCK_CTRL_SET_DOCK_SUPPLEMENT_LIGHT_STATE, err, session_id_, "[DockControlModuleImpl]");
                 LOG_INFO("DockControlModuleImpl: setDockSupplementLightState, err_code: %d", (int)err.error_code);
                 callback(err);
             });
-        });
+        }, session_id_);
     });
 }
 
@@ -139,16 +155,17 @@ void DockControlModuleImpl::setDockChargeState(bool state, const std::function<v
         WeakDummyReturn(weak_ptr);
         set_dock_charge_state(sn_, state, [this, weak_ptr, callback](FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([callback, err]() -> void {
+            drc_sdk::common::Executors::Main()->Post([callback, err, this, weak_ptr]() -> void {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 设置机场充电开关; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_DOCK_CTRL_SET_DOCK_CHARGE_STATE, err, "[DockControlModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_DOCK_CTRL_SET_DOCK_CHARGE_STATE, err, session_id_, "[DockControlModuleImpl]");
                 LOG_INFO("DockControlModuleImpl: setDockChargeState, err_code: %d", (int)err.error_code);
                 callback(err);
             });
-        });
+        }, session_id_);
     });
 }
 
@@ -160,16 +177,17 @@ void DockControlModuleImpl::setDockCoverState(int mode, const std::function<void
         WeakDummyReturn(weak_ptr);
         set_dock_cover_state(sn_, mode, [this, weak_ptr, callback](FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([callback, err]() -> void {
+            drc_sdk::common::Executors::Main()->Post([callback, err, this, weak_ptr]() -> void {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 设置机场舱盖开关; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_DOCK_CTRL_SET_DOCK_COVER_STATE, err, "[DockControlModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_DOCK_CTRL_SET_DOCK_COVER_STATE, err, session_id_, "[DockControlModuleImpl]");
                 LOG_INFO("DockControlModuleImpl: setDockCoverState, err_code: %d", (int)err.error_code);
                 callback(err);
             });
-        });
+        }, session_id_);
     });
 }
 
@@ -181,15 +199,16 @@ void DockControlModuleImpl::setDockAirConditionerMode(int mode, const std::funct
         WeakDummyReturn(weak_ptr);
         set_dock_air_conditioner_mode(sn_, mode, [this, weak_ptr, callback](FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([callback, err]() -> void {
+            drc_sdk::common::Executors::Main()->Post([callback, err, this, weak_ptr]() -> void {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 设置机场空调模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_DOCK_CTRL_SET_DOCK_AIR_CONDITIONER_MODE, err, "[DockControlModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_DOCK_CTRL_SET_DOCK_AIR_CONDITIONER_MODE, err, session_id_, "[DockControlModuleImpl]");
                 LOG_INFO("DockControlModuleImpl: setDockAirConditionerMode, err_code: %d", (int)err.error_code);
                 callback(err);
             });
-        });
+        }, session_id_);
     });
 }

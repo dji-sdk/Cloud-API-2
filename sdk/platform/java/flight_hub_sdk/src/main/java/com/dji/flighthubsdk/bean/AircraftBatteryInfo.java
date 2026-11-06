@@ -15,7 +15,7 @@ public final class AircraftBatteryInfo {
     private int landingPower;
     private int remainFlightTime;
     private int returnHomePower;
-    private List<BatteryInfo> batteries;
+    private List<BatteryInfo> batteries = Collections.emptyList();
     public AircraftBatteryInfo() {
     }
 
@@ -81,14 +81,14 @@ public final class AircraftBatteryInfo {
         this.returnHomePower = returnHomePower;
     }
 
-    /** 电池列表 */
+    /** 电池列表；无数据时为空列表 */
     public List<BatteryInfo> getBatteries() {
         return batteries;
     }
 
-    /** 电池列表 */
+    /** 电池列表；传 null 时归一化为空列表 */
     public void setBatteries(List<BatteryInfo> batteries) {
-        this.batteries = batteries;
+        this.batteries = batteries != null ? batteries : Collections.emptyList();
     }
 
     @Override
@@ -114,6 +114,7 @@ public final class AircraftBatteryInfo {
 
     @Override
     public String toString() {
-        return "AircraftBatteryInfo{capacityPercent=" + capacityPercent + ", batteries.size=" + batteries.size() + '}';
+        return "AircraftBatteryInfo{capacityPercent=" + capacityPercent
+                + ", batteries.size=" + (batteries != null ? batteries.size() : 0) + '}';
     }
 }

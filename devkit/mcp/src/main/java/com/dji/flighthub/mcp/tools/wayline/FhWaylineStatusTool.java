@@ -18,6 +18,7 @@ package com.dji.flighthub.mcp.tools.wayline;
 
 import com.dji.flighthub.mcp.sdk.SdkCallbackBridge;
 import com.dji.flighthub.mcp.sdk.SdkService;
+import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
@@ -63,6 +64,7 @@ public class FhWaylineStatusTool extends AbstractMcpTool {
     /** 默认分页参数 */
     private static final int DEFAULT_PAGE = 1;
     private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int MAX_PAGE_SIZE = 100;
 
     /** 有效状态过滤值 */
     private static final List<String> VALID_STATUSES = List.of(
@@ -86,6 +88,16 @@ public class FhWaylineStatusTool extends AbstractMcpTool {
      *
      * @return MCP 工具定义 Map
      */
+    /**
+     * 声明工具级静态安全等级：READ_ONLY。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.READ_ONLY;
+    }
+
     @Override
     public Map<String, Object> getToolDefinition() {
         Map<String, Object> def = new LinkedHashMap<>();
@@ -166,6 +178,10 @@ public class FhWaylineStatusTool extends AbstractMcpTool {
 
     /**
      * Mock 模式下查询任务详情。
+     *
+     * <p>字段集与 {@link #mapTaskDetailToResponse(TaskDetail)} 保持一致，
+     * 避免调用方按 mock 响应开发、到真实环境才发现字段对不上。
+     * 时间字段为示意值，仅用于演示「原始字符串」语义，不代表服务端真实格式。
      */
     private Map<String, Object> queryDetailInMockMode(String taskUuid) {
         log.info("[MOCK] Querying wayline task detail: uuid={}", taskUuid);
@@ -173,12 +189,25 @@ public class FhWaylineStatusTool extends AbstractMcpTool {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("task_uuid", taskUuid);
         data.put("task_name", "Mock-Wayline-Task");
-        data.put("drone_sn", "MOCK-DRONE-001");
+        data.put("task_type", 1);
         data.put("status", "EXECUTING");
+        data.put("drone_sn", "MOCK-DRONE-001");
+        data.put("wayline_uuid", "wl_mock_001");
+        data.put("time_zone", "Asia/Shanghai");
+        data.put("begin_at", "2025-01-20T10:00:00Z");
+        data.put("end_at", "2025-01-20T10:30:00Z");
+        data.put("current_waypoint_index", 5);
+        data.put("total_waypoints", 11);
+        data.put("rth_altitude", 120.0);
+        data.put("rth_mode", 0);
+        data.put("out_of_control_action", 1);
+        data.put("tags", List.of("mock"));
+        data.put("created_at", "2025-01-20T09:50:00Z");
+        data.put("updated_at", "2025-01-20T10:05:00Z");
+        data.put("completed_at", null);
+        data.put("deleted_at", null);
+        // mock 专属的展示字段，真实路径没有对应字段，仅用于演示进度
         data.put("progress", 45);
-        data.put("out_of_control_action", "return_home");
-        data.put("created_time", System.currentTimeMillis() - 300000L);
-        data.put("started_time", System.currentTimeMillis() - 240000L);
         data.put("_mock", true);
 
         return successResult(data, "Task detail retrieved.");
@@ -227,16 +256,32 @@ public class FhWaylineStatusTool extends AbstractMcpTool {
     }
 
     /**
-     * 将 TaskDetail 对象映射为 MCP 响应数据。
+     * 将 SDK 返回的 TaskDetail 映射为 MCP 响应数据。
+     *
+     * <p><strong>时间字段读/写不对称</strong>：写（create/edit）走 {@code CreateTaskReq}/{@code EditTaskReq}，
+     * {@code begin_at}/{@code end_at} 是 Unix 秒级时间戳（{@code Long}）；读走 {@code TaskDetail}，
+     * SDK 里 {@code beginAt}/{@code endAt} 只有 {@code String} getter，SDK 原样透传服务端返回值。
+     * 因此本方法不对时间字段做任何格式化/解析，直接把服务端原始字符串返回，
+     * 调用方需要自行按服务端实际格式解析（MCP 层无法保证是 ISO-8601）。
+     *
+     * <p>详情与列表复用同一映射，保证两处字段集一致。
+     *
+     * @param detail SDK 返回的任务详情，可能为 {@code null}
+     * @return 响应数据；{@code detail} 为 {@code null} 时返回空 Map
      */
     private Map<String, Object> mapTaskDetailToResponse(TaskDetail detail) {
         Map<String, Object> data = new LinkedHashMap<>();
+        if (detail == null) {
+            return data;
+        }
         data.put("task_uuid", detail.getUuid());
         data.put("task_name", detail.getName());
         data.put("task_type", detail.getTaskType());
         data.put("status", detail.getStatus());
         data.put("drone_sn", detail.getSn());
         data.put("wayline_uuid", detail.getWaylineUuid());
+        data.put("time_zone", detail.getTimeZone());
+        // 服务端原始字符串，不做时间戳转换（SDK 只提供 String getter，见方法注释）
         data.put("begin_at", detail.getBeginAt());
         data.put("end_at", detail.getEndAt());
         data.put("current_waypoint_index", detail.getCurrentWaypointIndex());
@@ -244,8 +289,12 @@ public class FhWaylineStatusTool extends AbstractMcpTool {
         data.put("rth_altitude", detail.getRthAltitude());
         data.put("rth_mode", detail.getRthMode());
         data.put("out_of_control_action", detail.getOutOfControlActionInFlight());
+        data.put("tags", detail.getTags());
         data.put("created_at", detail.getCreatedAt());
+        data.put("updated_at", detail.getUpdatedAt());
         data.put("completed_at", detail.getCompletedAt());
+        // 服务端执行的是软删除：已删除任务仍可查到，调用方需依据 deleted_at 自行过滤
+        data.put("deleted_at", detail.getDeletedAt());
         return data;
     }
 
@@ -262,7 +311,7 @@ public class FhWaylineStatusTool extends AbstractMcpTool {
         if (page < 1) {
             page = DEFAULT_PAGE;
         }
-        if (pageSize < 1 || pageSize > 100) {
+        if (pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
             pageSize = DEFAULT_PAGE_SIZE;
         }
 

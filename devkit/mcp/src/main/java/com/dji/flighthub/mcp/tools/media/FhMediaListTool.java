@@ -18,6 +18,7 @@ package com.dji.flighthub.mcp.tools.media;
 
 import com.dji.flighthub.mcp.sdk.SdkCallbackBridge;
 import com.dji.flighthub.mcp.sdk.SdkService;
+import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
@@ -75,7 +76,7 @@ public class FhMediaListTool extends AbstractMcpTool {
     /** 默认分页参数 */
     private static final int DEFAULT_START_INDEX = 0;
     private static final int DEFAULT_PAGE_SIZE = 50;
-    private static final int MAX_PAGE_SIZE = 500;
+    private static final int MAX_PAGE_SIZE = 200;
     private static final int MIN_PAGE_SIZE = 1;
 
     private final SdkService sdkService;
@@ -96,6 +97,16 @@ public class FhMediaListTool extends AbstractMcpTool {
      *
      * @return MCP 工具定义 Map
      */
+    /**
+     * 声明工具级静态安全等级：READ_ONLY。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.READ_ONLY;
+    }
+
     @Override
     public Map<String, Object> getToolDefinition() {
         Map<String, Object> def = new LinkedHashMap<>();
@@ -135,7 +146,7 @@ public class FhMediaListTool extends AbstractMcpTool {
         ));
         props.put(PARAM_PAGE_SIZE, Map.of(
                 "type", "integer",
-                "description", "Number of results per page (default: 50, range: 1-500)"
+                "description", "Number of results per page (default: 50, range: 1-200)"
         ));
         schema.put("properties", props);
         schema.put("required", List.of());

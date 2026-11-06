@@ -25,7 +25,7 @@ import java.lang.annotation.Target;
  * 角色鉴权注解。可注解方法或类。
  *
  * <p>由 Kernel 提供的 {@code AuthorizationAspect}（Plan A2）处理。
- * ISV 也可在自家代码内手动 {@code SecurityContextHolder.current().hasRole(...)} 判断。
+ * 集成商 也可在自家代码内手动 {@code SecurityContextHolder.current().hasRole(...)} 判断。
  *
  * @author DJI DevKit Team
  */

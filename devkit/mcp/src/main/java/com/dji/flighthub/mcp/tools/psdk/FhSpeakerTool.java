@@ -22,8 +22,11 @@ import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
+import com.dji.flighthub.mcp.tools.subscription.ListenChannelSupport;
+import com.dji.flighthub.mcp.tools.subscription.SubscriptionBuffer;
 import com.dji.flighthub.mcp.annotation.Generated;
 import com.dji.flighthubsdk.bean.PsdkSpeakerAudioPlayInfo;
+import com.dji.flighthubsdk.bean.PsdkSpeakerPlayProgressInfo;
 import com.dji.flighthubsdk.bean.PsdkSpeakerTTSPlayInfo;
 import com.dji.flighthubsdk.bean.PsdkSpeakerTTSconfig;
 import com.dji.flighthubsdk.core.Drone;
@@ -35,11 +38,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 /**
  * fh_speaker — PSDK 喊话器控制（音频播放/TTS/实时喊话/音量/模式）。
@@ -55,9 +60,13 @@ import java.util.concurrent.CompletableFuture;
  *   <li>set_volume — 设置播放音量（L1，需 confirm）</li>
  *   <li>set_mode — 设置播放模式（L1，需 confirm）</li>
  *   <li>tts_config — 配置 TTS 参数（L1，需 confirm）</li>
+ *   <li>listen_progress — 订阅播放进度事件（只读，无需 confirm）</li>
+ *   <li>events — 按游标轮询播放进度事件（只读）</li>
+ *   <li>listen_stop — 释放播放进度订阅（只读）</li>
  * </ul>
  *
- * <p>所有 action 均为设备控制操作（L1），统一需要 confirm。
+ * <p>前 9 个 action 均为设备控制操作（L1），统一需要 confirm；
+ * 后 3 个为订阅三元组（READ_ONLY），不经过 L1 硬拦截，也不需 confirm。
  * <p>支持 mock 模式（FH_MOCK=true）和真实 SDK 调用双路径。
  *
  * @author DJI FlightHub SDK Team
@@ -70,11 +79,23 @@ public class FhSpeakerTool extends AbstractMcpTool {
     /** 工具名称 */
     private static final String TOOL_NAME = "fh_speaker";
 
+    // ── 订阅类 action / channel 常量 ──
+
+    /** 订阅播放进度 */
+    private static final String ACTION_LISTEN_PROGRESS = "listen_progress";
+
+    /** 轮询已订阅 channel 的缓冲事件 */
+    private static final String ACTION_EVENTS = "events";
+
+    /** 释放订阅 */
+    private static final String ACTION_LISTEN_STOP = "listen_stop";
+
     /** 有效 action 列表（固定顺序，用于 schema enum） */
     private static final List<String> VALID_ACTIONS = List.of(
             "audio_play", "tts_play", "stop", "replay",
             "realtime_start", "realtime_stop",
-            "set_volume", "set_mode", "tts_config");
+            "set_volume", "set_mode", "tts_config",
+            ACTION_LISTEN_PROGRESS, ACTION_EVENTS, ACTION_LISTEN_STOP);
 
     /** 有效 action 集合（用于快速校验） */
     private static final Set<String> VALID_ACTIONS_SET = Set.copyOf(VALID_ACTIONS);
@@ -91,6 +112,37 @@ public class FhSpeakerTool extends AbstractMcpTool {
     private static final String PARAM_VOICE_TYPE = "voice_type";
     private static final String PARAM_LANGUAGE_TYPE = "language_type";
     private static final String PARAM_SPEED = "speed";
+    private static final String PARAM_CHANNELS = "channels";
+    private static final String PARAM_SINCE_SEQ = "since_seq";
+    private static final String PARAM_LIMIT = "limit";
+
+    // ── 订阅 channel 常量 ──
+
+    /** 播放进度 channel */
+    private static final String CHANNEL_PLAY_PROGRESS = "speaker_play_progress";
+
+    /** 订阅注册表命名空间（与 Tool 名对应） */
+    private static final String SUBSCRIBE_NAMESPACE = "speaker";
+
+    /** scopeId / 注册表 key 中 drone_sn 与 payload_index 的分隔符 */
+    private static final String SCOPE_SEPARATOR = "#";
+
+    /** 注册表 key 中 scopeId 与 channel 的分隔符（与 ListenChannelSupport 保持一致） */
+    private static final String KEY_SEPARATOR = "::";
+
+    /** 非 0 号 payload 的 stream key 后缀分隔符 */
+    private static final String STREAM_INDEX_SEPARATOR = "@";
+
+    /** events 动作每个 channel 默认读取条数 */
+    private static final int DEFAULT_EVENTS_LIMIT = 50;
+
+    /** 事件字段名：PSDK 设备索引 */
+    private static final String EVENT_KEY_PSDK_INDEX = "psdk_index";
+    private static final String EVENT_KEY_RESULT = "result";
+    private static final String EVENT_KEY_STATUS = "status";
+    private static final String EVENT_KEY_STEP_KEY = "step_key";
+    private static final String EVENT_KEY_PERCENT = "percent";
+    private static final String EVENT_KEY_MD5 = "md5";
 
     /** 音量范围 */
     private static final int VOLUME_MIN = 0;
@@ -103,16 +155,30 @@ public class FhSpeakerTool extends AbstractMcpTool {
     private static final int TEXT_TRUNCATE_LENGTH = 50;
 
     private final SdkService sdkService;
+    private final ListenChannelSupport listenSupport;
 
     /**
      * 构造函数。
      *
      * @param sessionManager session 管理器
      * @param sdkService     SDK 服务
+     * @param listenSupport  订阅 channel 通用支持组件
      */
-    public FhSpeakerTool(SessionManager sessionManager, SdkService sdkService) {
+    public FhSpeakerTool(SessionManager sessionManager, SdkService sdkService,
+                         ListenChannelSupport listenSupport) {
         super(sessionManager);
         this.sdkService = sdkService;
+        this.listenSupport = listenSupport;
+    }
+
+    /**
+     * 声明工具级静态安全等级：REVERSIBLE。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.REVERSIBLE;
     }
 
     @Override
@@ -123,7 +189,11 @@ public class FhSpeakerTool extends AbstractMcpTool {
                 "Control PSDK speaker (megaphone): play audio files, TTS text-to-speech, "
                 + "real-time announcement, volume/mode settings. "
                 + "Actions: audio_play, tts_play, stop, replay, realtime_start, realtime_stop, "
-                + "set_volume, set_mode, tts_config. All actions require confirm=true.");
+                + "set_volume, set_mode, tts_config (these control actions require confirm=true), "
+                + "plus a read-only play-progress subscription triple: listen_progress -> poll with "
+                + "events (cursor: since_seq/limit) -> release with listen_stop. "
+                + "The subscription actions are read-only, need no confirm, and never affect the "
+                + "other control actions.");
 
         Map<String, Object> schema = new LinkedHashMap<>();
         schema.put("type", "object");
@@ -132,7 +202,13 @@ public class FhSpeakerTool extends AbstractMcpTool {
         props.put(PARAM_ACTION, Map.of(
                 "type", "string",
                 "enum", VALID_ACTIONS,
-                "description", "Speaker operation to perform"
+                "description", "Speaker operation to perform. Control actions (need confirm=true): "
+                        + "audio_play | tts_play | stop | replay | realtime_start | realtime_stop | "
+                        + "set_volume | set_mode | tts_config. "
+                        + "Read-only subscription actions (no confirm): "
+                        + "listen_progress (subscribe to play progress) | "
+                        + "events (poll events by since_seq cursor) | "
+                        + "listen_stop (release subscriptions)"
         ));
         props.put(PARAM_DRONE_SN, Map.of(
                 "type", "string",
@@ -140,7 +216,8 @@ public class FhSpeakerTool extends AbstractMcpTool {
         ));
         props.put(PARAM_PAYLOAD_INDEX, Map.of(
                 "type", "integer",
-                "description", "PSDK device index (default: 0)"
+                "description", "PSDK device index (default: 0); also scopes listen_progress "
+                        + "subscriptions — different indices are independent channels"
         ));
         props.put(PARAM_AUDIO_NAME, Map.of(
                 "type", "string",
@@ -174,9 +251,28 @@ public class FhSpeakerTool extends AbstractMcpTool {
                 "type", "integer",
                 "description", "Speech speed (for tts_config)"
         ));
+        props.put(PARAM_CHANNELS, Map.of(
+                "type", "array",
+                "items", Map.of("type", "string"),
+                "description", "Channel names for events/listen_stop (optional; omitted = all active "
+                        + "channels for this drone_sn). Base channel is '" + CHANNEL_PLAY_PROGRESS + "'; "
+                        + "for a non-zero payload_index it is '" + CHANNEL_PLAY_PROGRESS
+                        + STREAM_INDEX_SEPARATOR + "<payload_index>'"
+        ));
+        props.put(PARAM_SINCE_SEQ, Map.of(
+                "type", "integer",
+                "description", "Cursor for events: only return events with _seq greater than this "
+                        + "value (default 0)"
+        ));
+        props.put(PARAM_LIMIT, Map.of(
+                "type", "integer",
+                "description", "Max events to return per channel for events action (default "
+                        + DEFAULT_EVENTS_LIMIT + ")"
+        ));
         props.put("confirm", Map.of(
                 "type", "boolean",
-                "description", "Set true to confirm the operation (required for all actions)"
+                "description", "Set true to confirm the operation (required for the 9 control actions; "
+                        + "ignored by listen_progress/events/listen_stop)"
         ));
         props.put("dry_run", Map.of(
                 "type", "boolean",
@@ -207,7 +303,12 @@ public class FhSpeakerTool extends AbstractMcpTool {
                     "Valid actions: " + VALID_ACTIONS);
         }
 
-        // 所有 speaker 操作统一 L1 硬拦截
+        // 订阅三元组为 READ_ONLY，必须在 L1 硬拦截之前分发
+        if (isSubscriptionAction(action)) {
+            return dispatchSubscription(action, args, droneSn);
+        }
+
+        // 所有 speaker 控制操作统一 L1 硬拦截
         Map<String, Object> denied = enforceSecurityLevel(SecurityLevel.REVERSIBLE);
         if (denied != null) {
             return denied;
@@ -776,6 +877,367 @@ public class FhSpeakerTool extends AbstractMcpTool {
         } catch (Exception e) {
             log.error("[{}] tts_config error: {}", TOOL_NAME, e.getMessage(), e);
             return errorResult("Failed to configure TTS: " + e.getMessage(), null);
+        }
+    }
+
+    // ==================== 订阅三元组（READ_ONLY） ====================
+
+    /**
+     * 判断是否为订阅类 action（listen_progress/events/listen_stop）。
+     *
+     * @param action 操作名
+     * @return 是订阅类返回 true
+     */
+    private boolean isSubscriptionAction(String action) {
+        return ACTION_LISTEN_PROGRESS.equals(action)
+                || ACTION_EVENTS.equals(action)
+                || ACTION_LISTEN_STOP.equals(action);
+    }
+
+    /**
+     * 订阅类 action 分发入口。
+     *
+     * @param action  操作名
+     * @param args    输入参数
+     * @param droneSn 无人机 SN
+     * @return 执行结果
+     */
+    private Map<String, Object> dispatchSubscription(String action, Map<String, Object> args, String droneSn) {
+        SessionContext session = requireSession();
+        return switch (action) {
+            case ACTION_LISTEN_PROGRESS -> handleListenProgress(session, args, droneSn);
+            case ACTION_EVENTS -> handleEvents(session, args, droneSn);
+            case ACTION_LISTEN_STOP -> handleListenStop(session, args, droneSn);
+            default -> errorResult("Unknown action: " + action, null);
+        };
+    }
+
+    /**
+     * 处理 listen_progress：订阅指定 payload 的播放进度，返回 listen_id。
+     *
+     * @param session 当前 session
+     * @param args    输入参数
+     * @param droneSn 无人机 SN
+     * @return 执行结果
+     */
+    private Map<String, Object> handleListenProgress(SessionContext session,
+                                                      Map<String, Object> args, String droneSn) {
+        int payloadIndex = getIntArg(args, PARAM_PAYLOAD_INDEX, DEFAULT_PAYLOAD_INDEX);
+        ChannelRef ref = new ChannelRef(payloadIndex, CHANNEL_PLAY_PROGRESS);
+
+        int listenId = listenSupport.startChannel(session,
+                ref.registryKey(droneSn), ref.streamKey(), ref.scope(session, droneSn),
+                ref.streamKey(), sdkService.isMockMode(),
+                () -> mockPlayProgressEvent(payloadIndex),
+                onEvent -> startRealProgressListen(droneSn, payloadIndex, onEvent),
+                listenId2 -> cancelRealProgressListen(droneSn, payloadIndex, listenId2));
+
+        if (listenId < 0) {
+            return errorResult("Failed to subscribe speaker play progress: drone_sn=" + droneSn
+                            + ", payload_index=" + payloadIndex,
+                    "Ensure drone is connected, SDK is initialized and the PSDK device index is valid.");
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_LISTEN_PROGRESS);
+        data.put("channel", ref.streamKey());
+        data.put("listen_id", listenId);
+        return successResult(data, "Subscribed to speaker play progress. Poll with action=events.");
+    }
+
+    /**
+     * 处理 events：按游标轮询一个或多个 channel 的缓冲事件。
+     *
+     * @param session 当前 session
+     * @param args    输入参数
+     * @param droneSn 无人机 SN
+     * @return 执行结果
+     */
+    private Map<String, Object> handleEvents(SessionContext session,
+                                             Map<String, Object> args, String droneSn) {
+        List<ChannelRef> refs = resolveChannelRefs(session, args, droneSn);
+        long sinceSeq = getLongArg(args, PARAM_SINCE_SEQ, 0L);
+        int limit = getIntArg(args, PARAM_LIMIT, DEFAULT_EVENTS_LIMIT);
+
+        Map<String, Object> streams = new LinkedHashMap<>();
+        for (ChannelRef ref : refs) {
+            streams.put(ref.streamKey(), listenSupport.readChannel(session,
+                    ref.registryKey(droneSn), ref.scope(session, droneSn),
+                    ref.streamKey(), sinceSeq, limit));
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_EVENTS);
+        data.put("streams", streams);
+        return successResult(data, "Polled " + streams.size() + " channel(s).");
+    }
+
+    /**
+     * 处理 listen_stop：释放一个/多个/全部已订阅的 channel。
+     *
+     * @param session 当前 session
+     * @param args    输入参数
+     * @param droneSn 无人机 SN
+     * @return 执行结果
+     */
+    private Map<String, Object> handleListenStop(SessionContext session,
+                                                 Map<String, Object> args, String droneSn) {
+        List<String> requested = getStringListArg(args, PARAM_CHANNELS);
+        List<ChannelRef> refs;
+        if (requested != null && !requested.isEmpty()) {
+            refs = new ArrayList<>();
+            for (String streamKey : requested) {
+                ChannelRef parsed = ChannelRef.parse(streamKey);
+                if (parsed == null) {
+                    return errorResult("Invalid channel: " + streamKey,
+                            "Valid channels: " + CHANNEL_PLAY_PROGRESS + " or "
+                                    + CHANNEL_PLAY_PROGRESS + STREAM_INDEX_SEPARATOR + "<payload_index>");
+                }
+                refs.add(parsed);
+            }
+        } else {
+            refs = activeChannelRefs(session, droneSn);
+        }
+
+        List<String> streamKeys = new ArrayList<>();
+        for (ChannelRef ref : refs) {
+            streamKeys.add(ref.streamKey());
+        }
+
+        ListenChannelSupport.StopResult result = listenSupport.stopChannels(session, streamKeys,
+                streamKey -> {
+                    ChannelRef ref = ChannelRef.parse(streamKey);
+                    return ref == null ? streamKey : ref.registryKey(droneSn);
+                }, log);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", ACTION_LISTEN_STOP);
+        data.put("stopped", result.stopped());
+        data.put("not_active", result.notActive());
+        data.put("failed", result.failed());
+        return successResult(data, "Stopped " + result.stopped().size() + " channel(s).");
+    }
+
+    /**
+     * 解析 events 要轮询的 channel：显式传入则用它，否则取当前 drone_sn 下全部已激活 channel。
+     *
+     * @param session 当前 session
+     * @param args    输入参数
+     * @param droneSn 无人机 SN
+     * @return channel 引用列表
+     */
+    private List<ChannelRef> resolveChannelRefs(SessionContext session,
+                                                Map<String, Object> args, String droneSn) {
+        List<String> requested = getStringListArg(args, PARAM_CHANNELS);
+        if (requested != null && !requested.isEmpty()) {
+            List<ChannelRef> refs = new ArrayList<>();
+            for (String streamKey : requested) {
+                ChannelRef ref = ChannelRef.parse(streamKey);
+                if (ref != null) {
+                    refs.add(ref);
+                }
+            }
+            return refs;
+        }
+        return activeChannelRefs(session, droneSn);
+    }
+
+    /**
+     * 列出当前 drone_sn 下所有活跃的 channel 引用。
+     *
+     * <p>注册表 key 形如 {@code speaker::<droneSn>#<payloadIndex>::<channel>}，
+     * 因此用 {@code speaker::<droneSn>#} 作前缀可精确匹配该无人机（不会误匹配 SN 前缀相同的其他无人机）。
+     *
+     * @param session 当前 session
+     * @param droneSn 无人机 SN
+     * @return channel 引用列表
+     */
+    private List<ChannelRef> activeChannelRefs(SessionContext session, String droneSn) {
+        List<ChannelRef> refs = new ArrayList<>();
+        for (String token : listenSupport.activeChannels(session, droneScopePrefix(droneSn))) {
+            ChannelRef ref = ChannelRef.parseRegistryToken(token);
+            if (ref != null) {
+                refs.add(ref);
+            }
+        }
+        return refs;
+    }
+
+    /**
+     * 该无人机订阅注册表 key 的前缀。
+     *
+     * @param droneSn 无人机 SN
+     * @return 形如 {@code speaker::<droneSn>#}
+     */
+    private String droneScopePrefix(String droneSn) {
+        return SUBSCRIBE_NAMESPACE + KEY_SEPARATOR + droneSn + SCOPE_SEPARATOR;
+    }
+
+    /**
+     * Mock — 播放进度事件（字段与 PsdkSpeakerPlayProgressInfo 对齐）。
+     *
+     * @param payloadIndex PSDK 设备索引
+     * @return mock 事件
+     */
+    private Map<String, Object> mockPlayProgressEvent(int payloadIndex) {
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put(EVENT_KEY_PSDK_INDEX, payloadIndex);
+        event.put(EVENT_KEY_RESULT, 0);
+        event.put(EVENT_KEY_STATUS, "playing");
+        event.put(EVENT_KEY_STEP_KEY, "mock-step");
+        event.put(EVENT_KEY_PERCENT, 50);
+        event.put(EVENT_KEY_MD5, "mock-md5");
+        event.put("_mock", true);
+        return event;
+    }
+
+    /**
+     * 真实 SDK listen：播放进度回调。cancel 时需要同一个 psdkIndex，故在此闭包中捕获。
+     *
+     * @param droneSn      无人机 SN
+     * @param payloadIndex PSDK 设备索引
+     * @param onEvent      事件消费回调
+     * @return SDK listenId；模块不可用时返回 -1
+     */
+    private int startRealProgressListen(String droneSn, int payloadIndex,
+                                        Consumer<Map<String, Object>> onEvent) {
+        PsdkControlModule pcm = getPsdkModule(droneSn);
+        if (pcm == null) {
+            return -1;
+        }
+        return pcm.listenDrcPsdkSpeakerPlayProgressInfo(payloadIndex,
+                info -> onEvent.accept(toMap(info)));
+    }
+
+    /**
+     * 真实 SDK cancel：停止播放进度监听。
+     *
+     * <p>SDK 的 cancel 签名为 {@code (psdkIndex, listenId)}，两参数必须与 listen 时一致。
+     *
+     * @param droneSn      无人机 SN
+     * @param payloadIndex PSDK 设备索引
+     * @param listenId     listen 返回的监听 ID
+     */
+    private void cancelRealProgressListen(String droneSn, int payloadIndex, int listenId) {
+        PsdkControlModule pcm = getPsdkModule(droneSn);
+        if (pcm == null) {
+            return;
+        }
+        pcm.cancelListenDrcPsdkSpeakerPlayProgressInfo(payloadIndex, listenId);
+    }
+
+    /**
+     * 将 PsdkSpeakerPlayProgressInfo 转换为事件 Map。
+     *
+     * @param info SDK 回调对象
+     * @return 事件 Map
+     */
+    private Map<String, Object> toMap(PsdkSpeakerPlayProgressInfo info) {
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put(EVENT_KEY_PSDK_INDEX, info.getPsdkIndex());
+        event.put(EVENT_KEY_RESULT, info.getResult());
+        event.put(EVENT_KEY_STATUS, String.valueOf(info.getStatus()));
+        event.put(EVENT_KEY_STEP_KEY, info.getStepKey());
+        event.put(EVENT_KEY_PERCENT, info.getPercent());
+        event.put(EVENT_KEY_MD5, info.getMd5());
+        return event;
+    }
+
+    /**
+     * 一个订阅 channel 的引用：PSDK 设备索引 + 基础 channel 名。
+     *
+     * <p>SDK 的 cancel 需要与 listen 相同的 {@code psdkIndex}，同一无人机上不同
+     * payload_index 的订阅互相独立，因此 scopeId 编码为 {@code <droneSn>#<payloadIndex>}。
+     * 为保持默认场景的 stream key 简洁，payload_index=0 时 stream key 就是 channel 名，
+     * 非 0 时追加 {@code @<payloadIndex>} 后缀。
+     */
+    private record ChannelRef(int payloadIndex, String channel) {
+
+        /**
+         * stream key：默认 payload 直接返回 channel 名，非 0 payload 追加索引后缀。
+         *
+         * @return 对外的 channel 名
+         */
+        String streamKey() {
+            return payloadIndex == DEFAULT_PAYLOAD_INDEX
+                    ? channel
+                    : channel + STREAM_INDEX_SEPARATOR + payloadIndex;
+        }
+
+        /**
+         * scopeId：同时编码 drone_sn 与 payload_index。
+         *
+         * @param droneSn 无人机 SN
+         * @return scopeId
+         */
+        String scopeId(String droneSn) {
+            return droneSn + SCOPE_SEPARATOR + payloadIndex;
+        }
+
+        /**
+         * 订阅注册表 key。
+         *
+         * @param droneSn 无人机 SN
+         * @return registry key
+         */
+        String registryKey(String droneSn) {
+            return ListenChannelSupport.registryKey(SUBSCRIBE_NAMESPACE, scopeId(droneSn), channel);
+        }
+
+        /**
+         * 订阅缓冲区作用域。
+         *
+         * @param session 当前 session
+         * @param droneSn 无人机 SN
+         * @return buffer scope
+         */
+        String scope(SessionContext session, String droneSn) {
+            return SubscriptionBuffer.scope(session, scopeId(droneSn));
+        }
+
+        /**
+         * 解析对外 stream key。
+         *
+         * @param streamKey channel 名（可含 {@code @<index>} 后缀）
+         * @return 引用；channel 名非法时返回 null
+         */
+        static ChannelRef parse(String streamKey) {
+            if (streamKey == null) {
+                return null;
+            }
+            int sep = streamKey.lastIndexOf(STREAM_INDEX_SEPARATOR);
+            if (sep < 0) {
+                return CHANNEL_PLAY_PROGRESS.equals(streamKey)
+                        ? new ChannelRef(DEFAULT_PAYLOAD_INDEX, streamKey) : null;
+            }
+            String channel = streamKey.substring(0, sep);
+            if (!CHANNEL_PLAY_PROGRESS.equals(channel)) {
+                return null;
+            }
+            try {
+                return new ChannelRef(Integer.parseInt(streamKey.substring(sep + 1)), channel);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+
+        /**
+         * 解析 {@link ListenChannelSupport#activeChannels} 返回的 token（{@code <payloadIndex>::<channel>}）。
+         *
+         * @param token 去掉前缀后的注册表 key 后缀
+         * @return 引用；格式不符时返回 null
+         */
+        static ChannelRef parseRegistryToken(String token) {
+            int sep = token.indexOf(KEY_SEPARATOR);
+            if (sep < 0) {
+                return null;
+            }
+            try {
+                return new ChannelRef(Integer.parseInt(token.substring(0, sep)),
+                        token.substring(sep + KEY_SEPARATOR.length()));
+            } catch (NumberFormatException e) {
+                return null;
+            }
         }
     }
 

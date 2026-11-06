@@ -6,12 +6,13 @@
 #include "api/takeoff_module.h"
 #include "common/util/async_capture_protect.h"
 #include "tool/callback_container.h"
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class TakeoffModuleImpl : public ITakeoffModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    TakeoffModuleImpl(const std::string& drone_sn, const std::string& gateway_sn);
+    TakeoffModuleImpl(const std::string& drone_sn, const std::string& gateway_sn, int session_id);
     ~TakeoffModuleImpl() override;
 
     void takeoff(
@@ -33,6 +34,7 @@ public:
     void cancelListenDroneCommanderModeLostAction(int listen_id) override;
 
 private:
+    int session_id_;
     void registerNotificationCenterListeners();
 
     std::string drone_sn_;

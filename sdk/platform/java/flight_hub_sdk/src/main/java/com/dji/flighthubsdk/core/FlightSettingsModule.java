@@ -128,7 +128,7 @@ public class FlightSettingsModule {
      * 设置飞行任务高度
      * @param height 任务高度
      */
-    public void setFlightTaskHeight(int height, FlightHubCallback.SetFlightTaskHeightCallback callback) {
+    public void setFlightTaskHeight(double height, FlightHubCallback.SetFlightTaskHeightCallback callback) {
         try {
             int id = generateActionCallbackId();
             com.dji.flighthubsdk.generated.SetFlightTaskHeightCallback swigCallback = new com.dji.flighthubsdk.generated.SetFlightTaskHeightCallback() {

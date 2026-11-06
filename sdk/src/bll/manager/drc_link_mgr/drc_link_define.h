@@ -14,10 +14,17 @@ constexpr auto DRC_DOWN_LINK_TOPIC = "thing/product/{device_sn}/drc/down";
 
 static const std::vector<message_engine::TopicInfo> publish_topics_for_mqtt_drc = {
     {"thing/product/{device_sn}/drc/down", "JsonString", 1},
+    // 上云API2: 3 个 services 下行命令经 DRC link 发布, {gateway_sn} 由 Publish() 替换为网关(机场)SN
+    {"thing/product/{gateway_sn}/services/custom_data_transmission_to_esdk", "JsonString", 1},
+    {"thing/product/{gateway_sn}/services/custom_data_transmission_to_psdk", "JsonString", 1},
+    {"thing/product/{gateway_sn}/services/upload_flighttask_media_prioritize", "JsonString", 1},
 };
 
 static const std::vector<message_engine::TopicInfo> subscribe_topics_for_mqtt_drc = {
     {"thing/product/{device_sn}/drc/up", "JsonString", 1},
+    // 上云API2: 3 个 services 下行命令的回包由网关(机场)推到 services_reply,
+    // 须订阅 {gateway_sn}/services_reply 才能收到 ({gateway_sn} 由 TopicRegister 替换为机场SN)
+    {"thing/product/{gateway_sn}/services_reply", "JsonString", 1},
 };
 
 static const std::unordered_map<std::string, std::string> topic_method_map_for_mqtt_drc = {
@@ -73,6 +80,7 @@ static const std::unordered_map<std::string, std::string> topic_method_map_for_m
     {"thing/product/{device_sn}/drc/up/drc_geo_connect_info_push", "drc_geo_connect_info_push"},
     {"thing/product/{device_sn}/drc/up/drc_follow_mouse_motion_set", "drc_follow_mouse_motion_set"},
     {"thing/product/{device_sn}/drc/up/drc_follow_mouse_parameter_set", "drc_follow_mouse_parameter_set"},
+    {"thing/product/{device_sn}/drc/up/drc_set_flying_max_speed", "drc_set_flying_max_speed"},
     {"thing/product/{device_sn}/drc/up/drc_ai_identify_set", "drc_ai_identify_set"},
     {"thing/product/{device_sn}/drc/up/drc_ai_identify_filter_set", "drc_ai_identify_filter_set"},
     {"thing/product/{device_sn}/drc/up/drc_ai_identify_score_set", "drc_ai_identify_score_set"},
@@ -146,6 +154,16 @@ static const std::unordered_map<std::string, std::string> topic_method_map_for_m
     {"thing/product/{device_sn}/drc/up/drc_ai_alarm_start", "drc_ai_alarm_start"},
     {"thing/product/{device_sn}/drc/up/drc_ai_alarm_stop", "drc_ai_alarm_stop"},
     {"thing/product/{device_sn}/drc/up/drc_ai_models_config", "drc_ai_models_config"},
+
+    // 降落任务状态上报
+    {"thing/product/{device_sn}/drc/up/landing_mission_state", "landing_mission_state"},
+
+    // 上云API2: 3 个 services 下行命令的回包 topic (网关SN). 入站时 PahoMqttmessageCallbackImpl
+    // 把网关SN 替换成 {device_sn} 占位, 故此处用 {device_sn}/services_reply/<method> 匹配, 并映射到 method,
+    // 供 OnReceivedMessage 查 topic_method_map_ 还原 method 后路由到 northbound handler.
+    {"thing/product/{device_sn}/services_reply/custom_data_transmission_to_esdk", "custom_data_transmission_to_esdk"},
+    {"thing/product/{device_sn}/services_reply/custom_data_transmission_to_psdk", "custom_data_transmission_to_psdk"},
+    {"thing/product/{device_sn}/services_reply/upload_flighttask_media_prioritize", "upload_flighttask_media_prioritize"},
 };
 
 
@@ -232,6 +250,7 @@ static std::unordered_map<message_engine::MethodType, message_engine::TransportI
     {"drc_geo_connect_info_push", message_engine::PAHO_MQTT_DRC_TRANSPORT_ID},
     {"drc_follow_mouse_motion_set", message_engine::PAHO_MQTT_DRC_TRANSPORT_ID},
     {"drc_follow_mouse_parameter_set", message_engine::PAHO_MQTT_DRC_TRANSPORT_ID},
+    {"drc_set_flying_max_speed", message_engine::PAHO_MQTT_DRC_TRANSPORT_ID},
     {"drc_ai_identify_set", message_engine::PAHO_MQTT_DRC_TRANSPORT_ID},
     {"drc_ai_spotlight_zoom_set", message_engine::PAHO_MQTT_DRC_TRANSPORT_ID},
     {"drc_ai_spotlight_zoom_track", message_engine::PAHO_MQTT_DRC_TRANSPORT_ID},
@@ -283,6 +302,14 @@ static std::unordered_map<message_engine::MethodType, message_engine::TransportI
     {"drc_ai_alarm_start", message_engine::PAHO_MQTT_DRC_TRANSPORT_ID},
     {"drc_ai_alarm_stop", message_engine::PAHO_MQTT_DRC_TRANSPORT_ID},
     {"drc_ai_models_config", message_engine::PAHO_MQTT_DRC_TRANSPORT_ID},
+
+    // 降落任务状态上报
+    {"landing_mission_state", message_engine::PAHO_MQTT_DRC_TRANSPORT_ID},
+
+    // 上云 API 2 能力补齐: ESDK/PSDK 数据透传、媒体优先上传
+    {"custom_data_transmission_to_esdk", message_engine::PAHO_MQTT_DRC_TRANSPORT_ID},
+    {"custom_data_transmission_to_psdk", message_engine::PAHO_MQTT_DRC_TRANSPORT_ID},
+    {"upload_flighttask_media_prioritize", message_engine::PAHO_MQTT_DRC_TRANSPORT_ID},
 };
 
 static std::unordered_map<message_engine::MethodType, message_engine::TransportIdType> method_router_map_v2_message_rtc_link = {
@@ -368,6 +395,7 @@ static std::unordered_map<message_engine::MethodType, message_engine::TransportI
     {"drc_geo_connect_info_push", message_engine::RTC_BASE_TRANSPORT_ID},
     {"drc_follow_mouse_motion_set", message_engine::RTC_BASE_TRANSPORT_ID},
     {"drc_follow_mouse_parameter_set", message_engine::RTC_BASE_TRANSPORT_ID},
+    {"drc_set_flying_max_speed", message_engine::RTC_BASE_TRANSPORT_ID},
     {"drc_ai_identify_set", message_engine::RTC_BASE_TRANSPORT_ID},
     {"drc_ai_spotlight_zoom_set", message_engine::RTC_BASE_TRANSPORT_ID},
     {"drc_ai_spotlight_zoom_track", message_engine::RTC_BASE_TRANSPORT_ID},
@@ -419,6 +447,11 @@ static std::unordered_map<message_engine::MethodType, message_engine::TransportI
     {"drc_ai_alarm_start", message_engine::RTC_BASE_TRANSPORT_ID},
     {"drc_ai_alarm_stop", message_engine::RTC_BASE_TRANSPORT_ID},
     {"drc_ai_models_config", message_engine::RTC_BASE_TRANSPORT_ID},
+
+    // 降落任务状态上报
+    {"landing_mission_state", message_engine::RTC_BASE_TRANSPORT_ID},
+    // 上云 API 2 的 3 条 services 命令是 V1 消息, RTC 的 OnSentV1Message 为空实现会丢弃 V1,
+    // 因此不走 RTC, 仅经上面的 paho_mqtt_drc 链路发布 (topic: thing/product/{device_sn}/services/<method>)
 };
 
 } // namespace flight_hub_sdk

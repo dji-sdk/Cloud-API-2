@@ -12,12 +12,13 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class SafetyServiceModuleImpl : public ISafetyServiceModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit SafetyServiceModuleImpl();
+    explicit SafetyServiceModuleImpl(int session_id);
 
     // 析构函数;
     ~SafetyServiceModuleImpl();
@@ -63,6 +64,11 @@ public:
     void getFlightAreasSyncStatus(
         const std::vector<std::string> &device_sns,  // 待同步设备的SN，支持网关类型设备(机场1、2、3 以及 地面站);
         const std::function<void(FlightHubError err, const GetAreasSyncStatusResults& results)>& callback) override;
+
+    // [自定义飞行区域];
+    // 获取飞行区文件下载地址;
+    void getFlightAreasUrl(
+        const std::function<void(FlightHubError err, const GetFlightAreasUrlResults& results)>& callback) override;
 
     // [地形障碍物];
     // 查询离线地图模型信息;
@@ -111,6 +117,7 @@ public:
     void cancelListenDroneOfflineMapEnable(int listen_id) override;
 
 private:
+    int session_id_;
     FlySafeManager fly_safe_mgr_;
 
     // NC listen IDs for offline map enable topic（本模块无固定绑定设备，一个 module 允许多个 drone 同时订阅，故用 map）

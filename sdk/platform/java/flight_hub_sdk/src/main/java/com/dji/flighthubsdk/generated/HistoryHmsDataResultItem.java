@@ -212,6 +212,15 @@ public class HistoryHmsDataResultItem {
     return flighthubsdkmoduleJNI.HistoryHmsDataResultItem_sn_get(swigCPtr, this);
   }
 
+  public void setSub_hms_list(HistoryHmsDataResultItemVector value) {
+    flighthubsdkmoduleJNI.HistoryHmsDataResultItem_sub_hms_list_set(swigCPtr, this, HistoryHmsDataResultItemVector.getCPtr(value), value);
+  }
+
+  public HistoryHmsDataResultItemVector getSub_hms_list() {
+    long cPtr = flighthubsdkmoduleJNI.HistoryHmsDataResultItem_sub_hms_list_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new HistoryHmsDataResultItemVector(cPtr, false);
+  }
+
   public HistoryHmsDataResultItem() {
     this(flighthubsdkmoduleJNI.new_HistoryHmsDataResultItem(), true);
   }

@@ -23,10 +23,19 @@ import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
 import com.dji.flighthub.mcp.annotation.Generated;
+import com.dji.flighthubsdk.bean.FirmwareCompatibilityConfigItemResult;
+import com.dji.flighthubsdk.bean.FirmwareCompatibilityRulesResult;
 import com.dji.flighthubsdk.bean.FirmwareInfoParam;
+import com.dji.flighthubsdk.bean.FirmwareItemResult;
+import com.dji.flighthubsdk.bean.FirmwareReleaseNoteResult;
 import com.dji.flighthubsdk.bean.FirmwareStatusItem;
+import com.dji.flighthubsdk.bean.FirmwareUpgradeAssociateDrone;
+import com.dji.flighthubsdk.bean.FirmwareUpgradeAssociateRelay;
 import com.dji.flighthubsdk.bean.FirmwareUpgradeDeviceItem;
 import com.dji.flighthubsdk.bean.FirmwareUpgradeParam;
+import com.dji.flighthubsdk.bean.FirmwareUpgradeProgressItem;
+import com.dji.flighthubsdk.bean.FirmwareUpgradeProgressOTA;
+import com.dji.flighthubsdk.bean.FirmwareUpgradeResponseDeviceItemResult;
 import com.dji.flighthubsdk.bean.FirmwareUpgradeResult;
 import com.dji.flighthubsdk.bean.UploadFileResult;
 import com.dji.flighthubsdk.core.FirmwareManageModule;
@@ -56,11 +65,11 @@ import java.nio.file.Paths;
  *   <li>query_progress — 查询升级进度（L0）</li>
  *   <li>release_note — 获取最新固件发行说明（L0）</li>
  *   <li>compatibility — 查询固件兼容性配置（L0）</li>
- *   <li>upgrade — 触发固件升级（L1，需 confirm）</li>
- *   <li>upload — 上传固件文件（L1，需 confirm）</li>
- *   <li>submit — 提交固件信息（L1，需 confirm）</li>
- *   <li>release — 发布固件（L1，需 confirm）</li>
- *   <li>unrelease — 取消发布固件（L1，需 confirm）</li>
+ *   <li>upgrade — 触发固件升级（L2，需 confirm）</li>
+ *   <li>upload — 上传固件文件（L2，需 confirm）</li>
+ *   <li>submit — 提交固件信息（L2，需 confirm）</li>
+ *   <li>release — 发布固件（L2，需 confirm）</li>
+ *   <li>unrelease — 取消发布固件（L2，需 confirm）</li>
  *   <li>delete — 删除固件（L2，需 confirm）</li>
  * </ul>
  *
@@ -122,13 +131,14 @@ public class FhFirmwareTool extends AbstractMcpTool {
     /** 允许上传的固件目录（构造时从环境变量读取，运行期间不变） */
     private final String firmwareUploadDir;
 
-    /** 各 action 要求的安全等级（未列出的 action 为 L0，不需要拦截） */
+    /** 各 action 要求的安全等级（未列出的 action 为 L0，不需要拦截）
+     *  固件写操作（upgrade/upload/submit/release/unrelease）会影响设备固件状态，按接管级操作（L2）门控。 */
     private static final Map<String, SecurityLevel> ACTION_SECURITY_LEVELS = Map.of(
-            "upgrade", SecurityLevel.REVERSIBLE,
-            "upload", SecurityLevel.REVERSIBLE,
-            "submit", SecurityLevel.REVERSIBLE,
-            "release", SecurityLevel.REVERSIBLE,
-            "unrelease", SecurityLevel.REVERSIBLE,
+            "upgrade", SecurityLevel.FLIGHT,
+            "upload", SecurityLevel.FLIGHT,
+            "submit", SecurityLevel.FLIGHT,
+            "release", SecurityLevel.FLIGHT,
+            "unrelease", SecurityLevel.FLIGHT,
             "delete", SecurityLevel.FLIGHT
     );
 
@@ -159,6 +169,16 @@ public class FhFirmwareTool extends AbstractMcpTool {
         super(sessionManager);
         this.sdkService = sdkService;
         this.firmwareUploadDir = firmwareUploadDir;
+    }
+
+    /**
+     * 声明工具级静态安全等级：REVERSIBLE。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.REVERSIBLE;
     }
 
     @Override
@@ -431,6 +451,236 @@ public class FhFirmwareTool extends AbstractMcpTool {
         return lower.contains("dock") || lower.contains("airport");
     }
 
+    // ==================== SDK bean → 结构化 Map（避免 toString 透传） ====================
+
+    /**
+     * 将固件列表 bean 映射为结构化列表，避免 {@code toString()} 透传导致输出不可解析。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param items SDK 返回的固件列表，可为 null
+     * @return 结构化固件列表，入参为 null 时返回空列表
+     */
+    List<Map<String, Object>> mapFirmwareItems(List<FirmwareItemResult> items) {
+        if (items == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> mapped = new ArrayList<>(items.size());
+        for (FirmwareItemResult item : items) {
+            if (item == null) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("file_id", item.getId());
+            row.put("created_at", item.getCreatedAt());
+            row.put("device_model_key", item.getDeviceModelKey());
+            row.put("status", item.getStatus());
+            row.put("version", item.getVersion());
+            row.put("desc", item.getDesc());
+            mapped.add(row);
+        }
+        return mapped;
+    }
+
+    /**
+     * 将固件升级进度 bean 映射为结构化列表。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param items SDK 返回的进度列表，可为 null
+     * @return 结构化进度列表，入参为 null 时返回空列表
+     */
+    List<Map<String, Object>> mapProgressItems(List<FirmwareUpgradeProgressItem> items) {
+        if (items == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> mapped = new ArrayList<>(items.size());
+        for (FirmwareUpgradeProgressItem item : items) {
+            if (item == null) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("sn", item.getSn());
+            row.put("device_code", item.getDeviceCode());
+            row.put("firmware_status", item.getFirmwareStatus());
+            row.put("working_status", item.getWorkingStatus());
+            row.put("ota", buildProgressOta(item.getOta()));
+            row.put("associate_drone", buildAssociateDrone(item.getAssociateDrone()));
+            row.put("associate_relay", buildAssociateRelay(item.getAssociateRelay()));
+            mapped.add(row);
+        }
+        return mapped;
+    }
+
+    /**
+     * 映射 OTA 进度信息。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param ota SDK OTA 进度对象，可为 null
+     * @return 结构化 OTA 进度；入参为 null 时返回 null
+     */
+    Map<String, Object> buildProgressOta(FirmwareUpgradeProgressOTA ota) {
+        if (ota == null) {
+            return null;
+        }
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("status", ota.getStatus());
+        if (ota.getProgress() != null) {
+            row.put("current_step", ota.getProgress().getCurrentStep());
+            row.put("percent", ota.getProgress().getPercent());
+        }
+        return row;
+    }
+
+    /**
+     * 映射关联无人机状态。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param drone SDK 关联无人机对象，可为 null
+     * @return 结构化状态；入参为 null 时返回 null
+     */
+    Map<String, Object> buildAssociateDrone(FirmwareUpgradeAssociateDrone drone) {
+        if (drone == null) {
+            return null;
+        }
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("sn", drone.getSn());
+        row.put("firmware_status", drone.getFirmwareStatus());
+        row.put("working_status", drone.getWorkingStatus());
+        return row;
+    }
+
+    /**
+     * 映射关联中继状态。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param relay SDK 关联中继对象，可为 null
+     * @return 结构化状态；入参为 null 时返回 null
+     */
+    Map<String, Object> buildAssociateRelay(FirmwareUpgradeAssociateRelay relay) {
+        if (relay == null) {
+            return null;
+        }
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("sn", relay.getSn());
+        row.put("firmware_status", relay.getFirmwareStatus());
+        return row;
+    }
+
+    /**
+     * 将固件发行说明 bean 映射为结构化列表。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param notes SDK 返回的发行说明列表，可为 null
+     * @return 结构化发行说明列表，入参为 null 时返回空列表
+     */
+    List<Map<String, Object>> mapReleaseNotes(List<FirmwareReleaseNoteResult> notes) {
+        if (notes == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> mapped = new ArrayList<>(notes.size());
+        for (FirmwareReleaseNoteResult note : notes) {
+            if (note == null) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("device_model_key", note.getDeviceModelKey());
+            row.put("lang", note.getLang());
+            row.put("product_version", note.getProductVersion());
+            row.put("release_note", note.getReleaseNote());
+            row.put("released_time", note.getReleasedTime());
+            mapped.add(row);
+        }
+        return mapped;
+    }
+
+    /**
+     * 将固件兼容性配置 bean 映射为结构化列表。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param configs SDK 返回的兼容性配置列表，可为 null
+     * @return 结构化配置列表，入参为 null 时返回空列表
+     */
+    List<Map<String, Object>> mapCompatibilityConfigs(List<FirmwareCompatibilityConfigItemResult> configs) {
+        if (configs == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> mapped = new ArrayList<>(configs.size());
+        for (FirmwareCompatibilityConfigItemResult config : configs) {
+            if (config == null) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("device_model_key", config.getDeviceModelKey());
+            row.put("compatible_versions", config.getCompatibleVersions());
+            FirmwareCompatibilityRulesResult rules = config.getRules();
+            if (rules != null) {
+                Map<String, Object> rulesMap = new LinkedHashMap<>();
+                rulesMap.put("min_version", rules.getMinVersion());
+                rulesMap.put("max_version", rules.getMaxVersion());
+                row.put("rules", rulesMap);
+            }
+            mapped.add(row);
+        }
+        return mapped;
+    }
+
+    /**
+     * 映射固件升级结果。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param result SDK 升级结果，可为 null
+     * @return 结构化升级结果；入参为 null 时返回 null
+     */
+    Map<String, Object> buildUpgradeResult(FirmwareUpgradeResult result) {
+        if (result == null) {
+            return null;
+        }
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("device_code", result.getDeviceCode());
+        row.put("status", result.getStatus());
+        List<Map<String, Object>> devices = new ArrayList<>();
+        if (result.getDevices() != null) {
+            for (FirmwareUpgradeResponseDeviceItemResult device : result.getDevices()) {
+                if (device == null) {
+                    continue;
+                }
+                Map<String, Object> deviceMap = new LinkedHashMap<>();
+                deviceMap.put("sn", device.getSn());
+                deviceMap.put("firmware_upgrade_type", device.getFirmwareUpgradeType());
+                deviceMap.put("product_version", device.getProductVersion());
+                devices.add(deviceMap);
+            }
+        }
+        row.put("devices", devices);
+        return row;
+    }
+
+    /**
+     * 映射固件文件上传结果。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param result SDK 上传结果，可为 null
+     * @return 结构化上传结果；入参为 null 时返回 null
+     */
+    Map<String, Object> buildUploadFileResult(UploadFileResult result) {
+        if (result == null) {
+            return null;
+        }
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("object_key", result.getObjectKey());
+        row.put("object_url", result.getObjectUrl());
+        row.put("etag", result.getEtag());
+        return row;
+    }
+
     // ==================== list（L0） ====================
 
     private Map<String, Object> executeList(Map<String, Object> args) {
@@ -479,7 +729,7 @@ public class FhFirmwareTool extends AbstractMcpTool {
                 return errorResult("FirmwareManageModule not available", "Call fh_connect first.");
             }
 
-            CompletableFuture<List<?>> future = new CompletableFuture<>();
+            CompletableFuture<List<FirmwareItemResult>> future = new CompletableFuture<>();
             fmm.queryFirmwareList(page, pageSize, (error, result) -> {
                 if (!error.isSuccess()) {
                     future.completeExceptionally(new SdkCallbackBridge.SdkException(
@@ -489,9 +739,9 @@ public class FhFirmwareTool extends AbstractMcpTool {
                 future.complete(result);
             });
 
-            List<?> result = SdkCallbackBridge.await(future);
+            List<FirmwareItemResult> result = SdkCallbackBridge.await(future);
             Map<String, Object> data = new LinkedHashMap<>();
-            data.put("firmwares", result != null ? result.toString() : List.of());
+            data.put("firmwares", mapFirmwareItems(result));
             data.put("page", page);
             data.put("page_size", pageSize);
             return successResult(data, "Firmware list retrieved.");
@@ -539,7 +789,7 @@ public class FhFirmwareTool extends AbstractMcpTool {
                 return errorResult("FirmwareManageModule not available", "Call fh_connect first.");
             }
 
-            CompletableFuture<List<?>> future = new CompletableFuture<>();
+            CompletableFuture<List<FirmwareUpgradeProgressItem>> future = new CompletableFuture<>();
             fmm.queryFirmwareUpgradeProgress(deviceSn, (error, result) -> {
                 if (!error.isSuccess()) {
                     future.completeExceptionally(new SdkCallbackBridge.SdkException(
@@ -549,10 +799,10 @@ public class FhFirmwareTool extends AbstractMcpTool {
                 future.complete(result);
             });
 
-            List<?> result = SdkCallbackBridge.await(future);
+            List<FirmwareUpgradeProgressItem> result = SdkCallbackBridge.await(future);
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("device_sn", deviceSn);
-            data.put("progress_items", result != null ? result.toString() : List.of());
+            data.put("progress_items", mapProgressItems(result));
             return successResult(data, "Upgrade progress retrieved.");
         } catch (SdkCallbackBridge.SdkTimeoutException e) {
             log.error("[{}] query_progress timeout: {}", TOOL_NAME, e.getMessage());
@@ -604,7 +854,7 @@ public class FhFirmwareTool extends AbstractMcpTool {
                 return errorResult("FirmwareManageModule not available", "Call fh_connect first.");
             }
 
-            CompletableFuture<List<?>> future = new CompletableFuture<>();
+            CompletableFuture<List<FirmwareReleaseNoteResult>> future = new CompletableFuture<>();
             fmm.getLatestFirmwareReleaseNote(modelKeys, language, (error, result) -> {
                 if (!error.isSuccess()) {
                     future.completeExceptionally(new SdkCallbackBridge.SdkException(
@@ -614,9 +864,9 @@ public class FhFirmwareTool extends AbstractMcpTool {
                 future.complete(result);
             });
 
-            List<?> result = SdkCallbackBridge.await(future);
+            List<FirmwareReleaseNoteResult> result = SdkCallbackBridge.await(future);
             Map<String, Object> data = new LinkedHashMap<>();
-            data.put("release_notes", result != null ? result.toString() : List.of());
+            data.put("release_notes", mapReleaseNotes(result));
             data.put("language", language);
             return successResult(data, "Release notes retrieved.");
         } catch (SdkCallbackBridge.SdkTimeoutException e) {
@@ -659,7 +909,7 @@ public class FhFirmwareTool extends AbstractMcpTool {
                 return errorResult("FirmwareManageModule not available", "Call fh_connect first.");
             }
 
-            CompletableFuture<List<?>> future = new CompletableFuture<>();
+            CompletableFuture<List<FirmwareCompatibilityConfigItemResult>> future = new CompletableFuture<>();
             fmm.queryFirmwareCompatibilityConfig((error, result) -> {
                 if (!error.isSuccess()) {
                     future.completeExceptionally(new SdkCallbackBridge.SdkException(
@@ -669,9 +919,9 @@ public class FhFirmwareTool extends AbstractMcpTool {
                 future.complete(result);
             });
 
-            List<?> result = SdkCallbackBridge.await(future);
+            List<FirmwareCompatibilityConfigItemResult> result = SdkCallbackBridge.await(future);
             Map<String, Object> data = new LinkedHashMap<>();
-            data.put("configs", result != null ? result.toString() : List.of());
+            data.put("configs", mapCompatibilityConfigs(result));
             return successResult(data, "Compatibility config retrieved.");
         } catch (SdkCallbackBridge.SdkTimeoutException e) {
             log.error("[{}] compatibility timeout: {}", TOOL_NAME, e.getMessage());
@@ -746,7 +996,7 @@ public class FhFirmwareTool extends AbstractMcpTool {
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("status", "upgrade_triggered");
             data.put("device_count", deviceSns.size());
-            data.put("result", result != null ? result.toString() : null);
+            data.put("result", buildUpgradeResult(result));
             return successResult(data, "Firmware upgrade triggered.");
         } catch (SdkCallbackBridge.SdkTimeoutException e) {
             log.error("[{}] upgrade timeout: {}", TOOL_NAME, e.getMessage());
@@ -844,7 +1094,7 @@ public class FhFirmwareTool extends AbstractMcpTool {
             UploadFileResult result = SdkCallbackBridge.await(future, SDK_UPLOAD_TIMEOUT_SECONDS);
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("status", "uploaded");
-            data.put("result", result != null ? result.toString() : null);
+            data.put("result", buildUploadFileResult(result));
             return successResult(data, "Firmware file uploaded.");
         } catch (SdkCallbackBridge.SdkTimeoutException e) {
             log.error("[{}] upload timeout: {}", TOOL_NAME, e.getMessage());

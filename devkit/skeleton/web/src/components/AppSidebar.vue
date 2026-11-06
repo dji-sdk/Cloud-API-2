@@ -39,7 +39,7 @@ interface NavItem {
 }
 
 const route = useRoute()
-const mockEnabled = getRuntimeConfig('MOCK_ENABLED') === 'true'
+const mockDebugPanelEnabled = getRuntimeConfig('MOCK_DEBUG_PANEL') === 'true'
 
 const navItems: NavItem[] = [
   { path: '/', label: '数据看板', icon: LayoutDashboard },
@@ -49,7 +49,6 @@ const navItems: NavItem[] = [
   { path: '/flight-tasks', label: '任务管理', icon: PlayCircle },
   { path: '/media', label: '媒体管理', icon: Camera },
   { path: '/flight-areas', label: '空域管理', icon: Globe },
-
   { path: '/models', label: '模型库', icon: Box },
 ]
 </script>
@@ -73,7 +72,7 @@ const navItems: NavItem[] = [
       </router-link>
 
       <router-link
-        v-if="mockEnabled"
+        v-if="mockDebugPanelEnabled"
         to="/mock-debug"
         class="nav-item nav-item--debug"
         :class="{ 'nav-item--active': route.path === '/mock-debug' }"

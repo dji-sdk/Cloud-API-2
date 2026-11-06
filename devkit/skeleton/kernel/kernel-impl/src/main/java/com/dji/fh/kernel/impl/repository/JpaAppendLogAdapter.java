@@ -28,7 +28,7 @@ import java.util.stream.Stream;
  * Kernel AppendLog SPI 的 JPA 默认实现基类。
  *
  * <p>要求实体含一个 {@link Instant} 类型的时间戳字段，字段名通过构造器传入。
- * ISV 在自家 module 中通过继承使用：
+ * 集成商 在自家 module 中通过继承使用：
  * <pre>
  *   &#064;Repository
  *   public class AuditLogStore extends JpaAppendLogAdapter&lt;AuditEntry&gt; {
@@ -49,7 +49,7 @@ public abstract class JpaAppendLogAdapter<T> implements AppendLog<T> {
 
     /**
      * 合法 Java 标识符的正则（用于校验 timestampFieldName，
-     * 防止 ISV 误传非法字段名导致 JPQL 注入或解析错误）。
+     * 防止集成商误传非法字段名导致 JPQL 注入或解析错误）。
      */
     private static final java.util.regex.Pattern IDENTIFIER_PATTERN =
             java.util.regex.Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");

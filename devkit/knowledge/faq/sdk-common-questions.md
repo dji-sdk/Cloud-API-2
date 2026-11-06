@@ -4,7 +4,7 @@ module: faq
 tags: [faq, listen, osd, initialize, device-management, livestream, wayline, flight-task, return-to-home]
 audience: [agent, developer]
 complexity: intermediate
-summary: "ISV 最常见的 10 个 SDK 接入问题"
+summary: "集成商最常见的 10 个 SDK 接入问题"
 last_updated: 2026-09-18
 sdk_version: "3.3.7"
 source: "skills/cloudapi2-sdk-core/references/文档检索与问答.md"
@@ -14,7 +14,7 @@ related:
   - api-reference/error-codes.md
 ---
 
-ISV 接入 DJI CloudAPI2 SDK 时最常遇到的 10 个问题，涵盖 listen 回调、设备管理、初始化、直播、Token 和航线任务控制等核心场景。
+集成商接入 DJI Cloud API 2 SDK 时最常遇到的 10 个问题，涵盖 listen 回调、设备管理、初始化、直播、Token 和航线任务控制等核心场景。
 
 ## Q1: listen 回调不触发，怎么排查？
 
@@ -55,10 +55,10 @@ public class DeviceSubscriptionManager {
 
 | 平台 | 原生库 | 说明 |
 |------|--------|------|
-| Linux x86_64 | `.so` | 生产推荐 |
-| macOS arm64 | `.dylib` | 开发环境 |
-| macOS x86_64 | `.dylib` | Intel Mac |
-| Windows x64 | `.dll` | 开发环境 |
+| Linux x86_64 | `.so` | 生产推荐（需 `libs/amd64` 包，主库 `libflighthubsdk_jni.so`） |
+| Linux aarch64 | `.so` | 生产可用（需 `libs/arm64` 包） |
+| macOS arm64 | `.dylib` | 开发调试（两个包均含） |
+| macOS x86_64 / Windows | — | 不提供原生库，只能用 Mock 模式或 Docker |
 
 ## Q4: initialize 应该在哪里调用？
 
@@ -110,7 +110,9 @@ SDK 没有内置 Token 刷新机制。推荐：
 ## Q9: 如何判断设备类型（机场 vs 无人机）？
 
 ```java
-workspace.getDeviceManageModule().getDeviceList((error, topoList) -> {
+// ⚠️ 参数顺序：getDeviceList 是 data 在前、error 在后（全仓少见的例外，见 SKILL.md 回调顺序表）
+workspace.getDeviceManageModule().getDeviceList((topoList, error) -> {
+    if (error.getErrorCode() != FlightHubSdkErrorCode.SUCCESS) return;
     for (DeviceTopo topo : topoList) {
         String dockSn = topo.getDevice().getDeviceSn();
         Dock dock = FlightHubSDK.getDockInstance(dockSn);

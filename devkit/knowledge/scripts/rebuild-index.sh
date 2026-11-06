@@ -105,9 +105,9 @@ generate_llms_txt() {
 
   # header
   cat > "$tmp" << HEADER
-# FlightHub PaaS SDK
+# DJI Cloud API 2 SDK
 
-> DJI FlightHub PaaS SDK 知识库 — 为 ISV 的 AI Agent 和编码助手提供无人机管理领域知识。
+> DJI Cloud API 2 SDK 知识库 — 为集成商的 AI Agent 和编码助手提供无人机管理领域知识。
 > SDK Version: ${sdk_version} | Last Updated: ${last_updated}
 
 ## Docs

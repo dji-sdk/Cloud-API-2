@@ -51,11 +51,11 @@ public class FlightCommanderHeightSetting {
     }
   }
 
-  public void setCommander_flight_height(int value) {
+  public void setCommander_flight_height(double value) {
     flighthubsdkmoduleJNI.FlightCommanderHeightSetting_commander_flight_height_set(swigCPtr, this, value);
   }
 
-  public int getCommander_flight_height() {
+  public double getCommander_flight_height() {
     return flighthubsdkmoduleJNI.FlightCommanderHeightSetting_commander_flight_height_get(swigCPtr, this);
   }
 

@@ -51,6 +51,7 @@ public class PsdkControlModule {
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> speakerTTSSetCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> widgetValueSetCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> widgetInputBoxTextSetCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> sendPsdkCustomDataTransmissionToPsdkCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
 
     private final IPsdkControlModule psdkControlModule;
     private final String sn;
@@ -1309,6 +1310,85 @@ public class PsdkControlModule {
             this.psdkControlModule.cancelListenDronePsdkUiResourceWrapper(listenId);
         } catch (Exception e) {
             Logger.error("PsdkControlModule", "[" + sn + "] cancelListenDronePsdkUiResource error: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 订阅 PSDK 自定义数据透传（上行，PSDK→云端）
+     * @param callback 自定义数据回调
+     * @return 监听 ID，用于取消订阅
+     * @implNote 链路: WebSocket | topic: topic_custom_data_transmission_from_psdk
+     */
+    public int listenPsdkCustomDataTransmissionFromPsdk(FlightHubCallback.PsdkCustomDataTransmissionFromPsdkCallback callback) {
+        try {
+            com.dji.flighthubsdk.generated.PsdkCustomDataTransmissionFromPsdkCallback swigCallback =
+                new com.dji.flighthubsdk.generated.PsdkCustomDataTransmissionFromPsdkCallback() {
+                    @Override
+                    public void onPsdkCustomDataTransmissionFromPsdk(com.dji.flighthubsdk.generated.PsdkCustomDataTransmission msg) {
+                        if (callback != null) {
+                            callback.onResult(FlightHubSdkConvert.toPsdkCustomDataTransmission(msg));
+                        }
+                    }
+                };
+
+            int listenId = this.psdkControlModule.listenPsdkCustomDataTransmissionFromPsdkWrapper(swigCallback);
+            if (listenId >= 0) {
+                swigCallback.swigReleaseOwnership();
+            }
+            return listenId;
+        } catch (Exception e) {
+            Logger.error("PsdkControlModule", "[" + sn + "] listenPsdkCustomDataTransmissionFromPsdk error: " + e.getMessage(), e);
+        }
+        return -1;
+    }
+
+    /**
+     * 取消订阅 PSDK 自定义数据透传
+     * @param listenId 监听 ID
+     */
+    public void cancelListenPsdkCustomDataTransmissionFromPsdk(int listenId) {
+        try {
+            this.psdkControlModule.cancelListenPsdkCustomDataTransmissionFromPsdkWrapper(listenId);
+        } catch (Exception e) {
+            Logger.error("PsdkControlModule", "[" + sn + "] cancelListenPsdkCustomDataTransmissionFromPsdk error: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 向 PSDK 下发自定义数据（云端→PSDK 下行）
+     * @param value 自定义数据内容（长度需小于 256 字节）
+     * @param callback 结果回调
+     * @implNote 链路: MQTT services | method: custom_data_transmission_to_psdk
+     */
+    public void sendPsdkCustomDataTransmissionToPsdk(String value, FlightHubCallback.ResultCallbackWithError callback) {
+        try {
+            int id = generateActionCallbackId();
+            com.dji.flighthubsdk.generated.ResultCallbackWithError swigCallback = new com.dji.flighthubsdk.generated.ResultCallbackWithError() {
+                @Override
+                public void onResult(com.dji.flighthubsdk.generated.FlightHubError err) {
+                    try {
+                        if (callback != null) {
+                            com.dji.flighthubsdk.bean.FlightHubError beanError = new com.dji.flighthubsdk.bean.FlightHubError(
+                                err.getError_code(), (int) err.getHttp_code(), (int) err.getServer_code(), (int) err.getDevice_code(), err.getServer_message());
+                            callback.onResult(beanError);
+                        }
+                    } catch (Exception e) {
+                        Logger.error("PsdkControlModule", "[" + sn + "] sendPsdkCustomDataTransmissionToPsdk callback error: " + e.getMessage(), e);
+                    } finally {
+                        sendPsdkCustomDataTransmissionToPsdkCallbackRef.remove(id);
+                    }
+                }
+            };
+            final CallbackRefContainer container = new CallbackRefContainer(swigCallback, callback);
+            synchronized (sendPsdkCustomDataTransmissionToPsdkCallbackRef) {
+                sendPsdkCustomDataTransmissionToPsdkCallbackRef.put(id, container);
+                this.psdkControlModule.sendPsdkCustomDataTransmissionToPsdkWrapper(value, swigCallback);
+            }
+        } catch (Exception e) {
+            Logger.error("PsdkControlModule", "[" + sn + "] sendPsdkCustomDataTransmissionToPsdk error: " + e.getMessage(), e);
+            if (callback != null) {
+                callback.onResult(new com.dji.flighthubsdk.bean.FlightHubError(FlightHubSdkErrorCode.ERROR_OPERATION_FAILED));
+            }
         }
     }
 

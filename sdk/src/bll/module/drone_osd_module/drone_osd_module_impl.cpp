@@ -7,177 +7,254 @@
 #include <base/common/logger.h>
 #include "notification_center/notification_center.h"
 #include <BusinessManager.h>
+#include "session/session_bm.h"
 
 using namespace flight_hub_sdk;
 using namespace notification_center;
 
-DroneOsdModuleImpl::DroneOsdModuleImpl(
-    const std::string& drone_sn,
+DroneOsdModuleImpl::DroneOsdModuleImpl(const std::string& drone_sn,
     const std::string& gateway_sn,
     const std::string& log_tag,
     std::shared_ptr<FlightCtrlMgr> flight_ctrl_mgr,
-    std::shared_ptr<PayloadCtrlMgr> payload_ctrl_mgr)
+    std::shared_ptr<PayloadCtrlMgr> payload_ctrl_mgr, int session_id)
     :
       drone_sn_(drone_sn),
       gateway_sn_(gateway_sn),
       log_tag_(log_tag),
       flight_ctrl_mgr_(std::move(flight_ctrl_mgr)),
-      payload_ctrl_mgr_(std::move(payload_ctrl_mgr)) {
+      payload_ctrl_mgr_(std::move(payload_ctrl_mgr)), session_id_(session_id) {
     registerNotificationCenterListeners();
     bindPayloadsListCallback();
 }
 
 DroneOsdModuleImpl::~DroneOsdModuleImpl() {
+    auto bm = ResolveBusinessManager(session_id_);
     if (aircraft_battery_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_battery_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_battery_info_listen_id_);
+        }
         aircraft_battery_info_listen_id_ = -1;
     }
     if (aircraft_attitude_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_attitude_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_attitude_listen_id_);
+        }
         aircraft_attitude_listen_id_ = -1;
     }
     if (aircraft_location_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_location_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_location_listen_id_);
+        }
         aircraft_location_listen_id_ = -1;
     }
     if (aircraft_mode_code_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_mode_code_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_mode_code_listen_id_);
+        }
         aircraft_mode_code_listen_id_ = -1;
     }
     if (aircraft_wind_speed_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_wind_speed_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_wind_speed_listen_id_);
+        }
         aircraft_wind_speed_listen_id_ = -1;
     }
     if (flight_task_exception_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(flight_task_exception_listen_id_);
+        if (bm) {
+            bm->CancelObserve(flight_task_exception_listen_id_);
+        }
         flight_task_exception_listen_id_ = -1;
     }
     if (aircraft_control_code_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_control_code_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_control_code_listen_id_);
+        }
         aircraft_control_code_listen_id_ = -1;
     }
     if (aircraft_speed_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_speed_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_speed_listen_id_);
+        }
         aircraft_speed_listen_id_ = -1;
     }
     if (aircraft_payloads_camera_liveview_world_region_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_payloads_camera_liveview_world_region_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_payloads_camera_liveview_world_region_listen_id_);
+        }
         aircraft_payloads_camera_liveview_world_region_listen_id_ = -1;
     }
     if (aircraft_payloads_gimbal_attitude_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_payloads_gimbal_attitude_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_payloads_gimbal_attitude_listen_id_);
+        }
         aircraft_payloads_gimbal_attitude_listen_id_ = -1;
     }
     if (control_rights_cloud_control_status_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(control_rights_cloud_control_status_listen_id_);
+        if (bm) {
+            bm->CancelObserve(control_rights_cloud_control_status_listen_id_);
+        }
         control_rights_cloud_control_status_listen_id_ = -1;
     }
     if (control_rights_device_control_status_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(control_rights_device_control_status_listen_id_);
+        if (bm) {
+            bm->CancelObserve(control_rights_device_control_status_listen_id_);
+        }
         control_rights_device_control_status_listen_id_ = -1;
     }
     if (flight_tasks_media_file_display_available_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(flight_tasks_media_file_display_available_listen_id_);
+        if (bm) {
+            bm->CancelObserve(flight_tasks_media_file_display_available_listen_id_);
+        }
         flight_tasks_media_file_display_available_listen_id_ = -1;
     }
     if (aircraft_payloads_osd_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_payloads_osd_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_payloads_osd_info_listen_id_);
+        }
         aircraft_payloads_osd_info_listen_id_ = -1;
     }
     if (aircraft_gear_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_gear_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_gear_listen_id_);
+        }
         aircraft_gear_listen_id_ = -1;
     }
     if (aircraft_home_distance_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_home_distance_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_home_distance_listen_id_);
+        }
         aircraft_home_distance_listen_id_ = -1;
     }
     if (aircraft_position_state_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_position_state_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_position_state_listen_id_);
+        }
         aircraft_position_state_listen_id_ = -1;
     }
     if (aircraft_control_source_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_control_source_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_control_source_listen_id_);
+        }
         aircraft_control_source_listen_id_ = -1;
     }
     if (aircraft_limits_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_limits_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_limits_info_listen_id_);
+        }
         aircraft_limits_info_listen_id_ = -1;
     }
     if (aircraft_battery_warning_thresholds_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_battery_warning_thresholds_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_battery_warning_thresholds_listen_id_);
+        }
         aircraft_battery_warning_thresholds_listen_id_ = -1;
     }
     if (aircraft_firmware_status_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_firmware_status_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_firmware_status_listen_id_);
+        }
         aircraft_firmware_status_listen_id_ = -1;
     }
     if (aircraft_total_flight_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_total_flight_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_total_flight_info_listen_id_);
+        }
         aircraft_total_flight_info_listen_id_ = -1;
     }
     if (aircraft_activation_time_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_activation_time_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_activation_time_listen_id_);
+        }
         aircraft_activation_time_listen_id_ = -1;
     }
     if (aircraft_maintain_status_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_maintain_status_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_maintain_status_info_listen_id_);
+        }
         aircraft_maintain_status_info_listen_id_ = -1;
     }
     if (aircraft_night_lights_state_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_night_lights_state_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_night_lights_state_listen_id_);
+        }
         aircraft_night_lights_state_listen_id_ = -1;
     }
     if (aircraft_obstacle_avoidance_state_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_obstacle_avoidance_state_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_obstacle_avoidance_state_listen_id_);
+        }
         aircraft_obstacle_avoidance_state_listen_id_ = -1;
     }
     if (aircraft_storage_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_storage_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_storage_info_listen_id_);
+        }
         aircraft_storage_info_listen_id_ = -1;
     }
     if (aircraft_track_id_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_track_id_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_track_id_listen_id_);
+        }
         aircraft_track_id_listen_id_ = -1;
     }
     if (aircraft_compliance_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_compliance_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_compliance_info_listen_id_);
+        }
         aircraft_compliance_info_listen_id_ = -1;
     }
     if (aircraft_payloads_cameras_list_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_payloads_cameras_list_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_payloads_cameras_list_listen_id_);
+        }
         aircraft_payloads_cameras_list_listen_id_ = -1;
     }
     if (aircraft_rc_lost_action_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_rc_lost_action_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_rc_lost_action_listen_id_);
+        }
         aircraft_rc_lost_action_listen_id_ = -1;
     }
     if (aircraft_rth_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_rth_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_rth_info_listen_id_);
+        }
         aircraft_rth_info_listen_id_ = -1;
     }
     if (aircraft_home_geographical_info_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_home_geographical_info_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_home_geographical_info_listen_id_);
+        }
         aircraft_home_geographical_info_listen_id_ = -1;
     }
     if (aircraft_current_rth_mode_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_current_rth_mode_listen_id_);
+        if (bm) {
+            bm->CancelObserve(aircraft_current_rth_mode_listen_id_);
+        }
         aircraft_current_rth_mode_listen_id_ = -1;
     }
     if (drone_mode_code_reason_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(drone_mode_code_reason_listen_id_);
+        if (bm) {
+            bm->CancelObserve(drone_mode_code_reason_listen_id_);
+        }
         drone_mode_code_reason_listen_id_ = -1;
     }
     if (drone_dongle_infos_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(drone_dongle_infos_listen_id_);
+        if (bm) {
+            bm->CancelObserve(drone_dongle_infos_listen_id_);
+        }
         drone_dongle_infos_listen_id_ = -1;
     }
     if (drone_flysafe_database_version_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(drone_flysafe_database_version_listen_id_);
+        if (bm) {
+            bm->CancelObserve(drone_flysafe_database_version_listen_id_);
+        }
         drone_flysafe_database_version_listen_id_ = -1;
     }
     if (drone_wpmz_version_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(drone_wpmz_version_listen_id_);
+        if (bm) {
+            bm->CancelObserve(drone_wpmz_version_listen_id_);
+        }
         drone_wpmz_version_listen_id_ = -1;
     }
 }
@@ -195,9 +272,11 @@ void DroneOsdModuleImpl::bindPayloadsListCallback() {
 }
 
 void DroneOsdModuleImpl::registerNotificationCenterListeners() {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(p);
 
-    aircraft_battery_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftBatteryInfo(
+    if (bm) {
+        aircraft_battery_info_listen_id_ = bm->ListenAircraftBatteryInfo(
         [this, p](const notification_center::AircraftBatteryInfo& msg)-> void {
             WeakDummyReturn(p);
             AircraftBatteryInfo battery_info;
@@ -227,8 +306,12 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DroneOsdModuleImpl][%s] ListenAircraftBatteryInfo, error: %d", log_tag_.c_str(), error_code);
             }
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
-    aircraft_attitude_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftAttitude(
+    if (bm) {
+        aircraft_attitude_listen_id_ = bm->ListenAircraftAttitude(
         [this, p](const notification_center::AircraftAttitude& msg)-> void {
             WeakDummyReturn(p);
             AircraftAttitude attitude;
@@ -243,8 +326,12 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_INFO("[DroneOsdModuleImpl][%s] listenAircraftAttitude, error: %d", log_tag_.c_str(), error_code);
             }
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     
-    aircraft_location_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftLocation(
+    if (bm) {
+        aircraft_location_listen_id_ = bm->ListenAircraftLocation(
         [this, p](const notification_center::AircraftLocation& msg)-> void {
             WeakDummyReturn(p);
             AircraftLocation location;
@@ -260,8 +347,12 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_INFO("[DroneOsdModuleImpl][%s] listenAircraftLocation, error: %d", log_tag_.c_str(), error_code);
             }
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
-    aircraft_mode_code_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftModeCode(
+    if (bm) {
+        aircraft_mode_code_listen_id_ = bm->ListenAircraftModeCode(
         [this, p](const notification_center::AircraftModeCode& msg)-> void {
             WeakDummyReturn(p);
             AircraftModeCode mode_code;
@@ -274,8 +365,12 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_INFO("[DroneOsdModuleImpl][%s] listenAircraftModeCode, error: %d", log_tag_.c_str(), error_code);
             }
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
-    aircraft_wind_speed_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftWindSpeed(
+    if (bm) {
+        aircraft_wind_speed_listen_id_ = bm->ListenAircraftWindSpeed(
         [this, p](const notification_center::AircraftWindSpeed& msg)-> void {
             WeakDummyReturn(p);
             AircraftWindSpeed wind_speed;
@@ -289,8 +384,12 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_INFO("[DroneOsdModuleImpl][%s] listenAircraftWindSpeed, error: %d", log_tag_.c_str(), error_code);
             }
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
-    flight_task_exception_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenFlightTasksException(
+    if (bm) {
+        flight_task_exception_listen_id_ = bm->ListenFlightTasksException(
         [this, p](const notification_center::FlightTaskException& msg)-> void {
             WeakDummyReturn(p);
             FlightTaskException flight_task_exception;
@@ -324,12 +423,16 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DroneOsdModuleImpl][%s] listenFlightTasksException, error: %d", log_tag_.c_str(), error_code);
             }
         }, gateway_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     if (flight_task_exception_listen_id_ < notification_center::NotificationCenterErrorCode::NotificationCenterErrorCode_NoError) {
         LOG_ERROR("[DroneOsdModuleImpl][%s] ListenFlightTasksException, error: %d", log_tag_.c_str(), flight_task_exception_listen_id_);
     }
 
     // 飞机控制码监听
-    aircraft_control_code_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftControlCode(
+    if (bm) {
+        aircraft_control_code_listen_id_ = bm->ListenAircraftControlCode(
         [this, p](const notification_center::AircraftControlCode& msg)-> void {
             WeakDummyReturn(p);
             AircraftControlCode control_code;
@@ -342,9 +445,13 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DroneOsdModuleImpl][%s] listenAircraftControlCode, error: %d", log_tag_.c_str(), error_code);
             }
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 飞机速度监听
-    aircraft_speed_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftSpeed(
+    if (bm) {
+        aircraft_speed_listen_id_ = bm->ListenAircraftSpeed(
         [this, p](const notification_center::AircraftSpeed& msg)-> void {
             WeakDummyReturn(p);
             AircraftSpeed speed;
@@ -358,9 +465,13 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DroneOsdModuleImpl][%s] listenAircraftSpeed, error: %d", log_tag_.c_str(), error_code);
             }
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 载荷相机实时视图世界区域监听
-    aircraft_payloads_camera_liveview_world_region_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftPayloadsCameraLiveviewWorldRegion(
+    if (bm) {
+        aircraft_payloads_camera_liveview_world_region_listen_id_ = bm->ListenAircraftPayloadsCameraLiveviewWorldRegion(
         [this, p](const notification_center::AircraftPayloadsCameraLiveviewWorldRegion& msg)-> void {
             WeakDummyReturn(p);
             AircraftPayloadsCameraLiveviewWorldRegion region;
@@ -381,10 +492,14 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DroneOsdModuleImpl][%s] listenAircraftPayloadsCameraLiveviewWorldRegion, error: %d", log_tag_.c_str(), error_code);
             }
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 载荷云台姿态监听;
     // 底层跨平台的 c++ 代码, 从跨平台/跨语言的架构上考虑, 封装时应该往 C 接口靠拢(C 拥有更好的跨平台特性支持!), 需要避免使用高级 C++ 特性;
-    aircraft_payloads_gimbal_attitude_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftPayloadsGimbalAttitude(
+    if (bm) {
+        aircraft_payloads_gimbal_attitude_listen_id_ = bm->ListenAircraftPayloadsGimbalAttitude(
         [this, p](const notification_center::AircraftPayloadsGimbalAttitude& msg)-> void {
             WeakDummyReturn(p);
 
@@ -410,13 +525,17 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DroneOsdModuleImpl][%s] listenAircraftPayloadsGimbalAttitude, error: %d", log_tag_.c_str(), error_code);
             }
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 载荷列表监听已统一到 PayloadCtrlMgr 中处理
     // PayloadCtrlMgr 会先更新内部状态，再通过回调通知用户，确保状态一致性
     // 监听在 initPayloadCtrlMgr() 中通过注册回调的方式设置
 
     // 控制权限云控制状态监听
-    control_rights_cloud_control_status_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenControlRightsCloudControlStatus(
+    if (bm) {
+        control_rights_cloud_control_status_listen_id_ = bm->ListenControlRightsCloudControlStatus(
         [this, p](const notification_center::ControlRightsCloudControlStatus& msg)-> void {
             WeakDummyReturn(p);
             ControlRightsCloudControlStatus status;
@@ -439,9 +558,13 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DroneOsdModuleImpl][%s] listenControlRightsCloudControlStatus, error: %d", log_tag_.c_str(), error_code);
             }
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 控制权限设备控制状态监听
-    control_rights_device_control_status_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenControlRightsDeviceControlStatus(
+    if (bm) {
+        control_rights_device_control_status_listen_id_ = bm->ListenControlRightsDeviceControlStatus(
         [this, p](const notification_center::ControlRightsDeviceControlStatus& msg)-> void {
             WeakDummyReturn(p);
             ControlRightsDeviceControlStatus status;
@@ -463,10 +586,14 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DroneOsdModuleImpl][%s] listenControlRightsDeviceControlStatus, error: %d", log_tag_.c_str(), error_code);
             }
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 飞机负载信息列表;
     // AircraftPayloadsOsdInfoList;
-    aircraft_payloads_osd_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftPayloadsOsdInfo(
+    if (bm) {
+        aircraft_payloads_osd_info_listen_id_ = bm->ListenAircraftPayloadsOsdInfo(
         [this, p](const notification_center::AircraftPayloadsOsdInfoList& msg)-> void {
             WeakDummyReturn(p);
 
@@ -539,11 +666,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 飞机: 档位信息(gear);
     // AircraftGear;
-    aircraft_gear_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftGear(
+    if (bm) {
+        aircraft_gear_listen_id_ = bm->ListenAircraftGear(
         [this, p](const notification_center::AircraftGear& msg)-> void {
             WeakDummyReturn(p);
 
@@ -566,11 +697,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 飞机: Home点距离(home_distance);
     // AircraftHomeDistance;
-    aircraft_home_distance_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftHomeDistance(
+    if (bm) {
+        aircraft_home_distance_listen_id_ = bm->ListenAircraftHomeDistance(
         [this, p](const notification_center::AircraftHomeDistance& msg)-> void {
             WeakDummyReturn(p);
 
@@ -593,11 +728,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 飞机: 搜星状态(position_state);
     // AircraftPositionState;
-    aircraft_position_state_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftPositionState(
+    if (bm) {
+        aircraft_position_state_listen_id_ = bm->ListenAircraftPositionState(
         [this, p](const notification_center::AircraftPositionState& msg)-> void {
             WeakDummyReturn(p);
 
@@ -626,10 +765,14 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 飞机: 当前控制源(control_source);
     // AircraftControlSource;
-    aircraft_control_source_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftControlSource(
+    if (bm) {
+        aircraft_control_source_listen_id_ = bm->ListenAircraftControlSource(
         [this, p](const notification_center::AircraftControlSource& msg)-> void {
             WeakDummyReturn(p);
 
@@ -653,11 +796,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 飞机: 限制类信息状态;
     // AircraftLimitsInfo;
-    aircraft_limits_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftLimitsInfo(
+    if (bm) {
+        aircraft_limits_info_listen_id_ = bm->ListenAircraftLimitsInfo(
         [this, p](const notification_center::AircraftLimitsInfo& msg)-> void {
             WeakDummyReturn(p);
 
@@ -702,11 +849,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 电量告警信息(用户设置的阈值);
     // AircraftBatteryWarningThresholds;
-    aircraft_battery_warning_thresholds_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftBatteryWarningThresholds(
+    if (bm) {
+        aircraft_battery_warning_thresholds_listen_id_ = bm->ListenAircraftBatteryWarningThresholds(
         [this, p](const notification_center::AircraftBatteryWarningThresholds& msg)-> void {
             WeakDummyReturn(p);
 
@@ -733,11 +884,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 固件状态信息;
     // AircraftFirmwareStatus;
-    aircraft_firmware_status_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftFirmwareStatus(
+    if (bm) {
+        aircraft_firmware_status_listen_id_ = bm->ListenAircraftFirmwareStatus(
         [this, p](const notification_center::AircraftFirmwareStatus& msg)-> void {
             WeakDummyReturn(p);
 
@@ -769,11 +924,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 累计飞行信息(total_flight_info);
     // AircraftTotalFlightInfo;
-    aircraft_total_flight_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftTotalFlightInfo(
+    if (bm) {
+        aircraft_total_flight_info_listen_id_ = bm->ListenAircraftTotalFlightInfo(
         [this, p](const notification_center::AircraftTotalFlightInfo& msg)-> void {
             WeakDummyReturn(p);
 
@@ -804,11 +963,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 飞行器激活时间(unix时间戳)(activation_time);
     // AircraftActivationTime;
-    aircraft_activation_time_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftActivationTime(
+    if (bm) {
+        aircraft_activation_time_listen_id_ = bm->ListenAircraftActivationTime(
         [this, p](const notification_center::AircraftActivationTime& msg)-> void {
             WeakDummyReturn(p);
 
@@ -835,11 +998,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 飞机：保养信息(maintain_status);
     // AircraftMaintainStatusInfo;
-    aircraft_maintain_status_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftMaintainStatusInfo(
+    if (bm) {
+        aircraft_maintain_status_info_listen_id_ = bm->ListenAircraftMaintainStatusInfo(
         [this, p](const notification_center::AircraftMaintainStatusInfo& msg)-> void {
             WeakDummyReturn(p);
 
@@ -893,10 +1060,14 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 飞行器夜航灯状态(night_lights_state);
     // AircraftNightLightsState;
-    aircraft_night_lights_state_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftNightLightsState(
+    if (bm) {
+        aircraft_night_lights_state_listen_id_ = bm->ListenAircraftNightLightsState(
         [this, p](const notification_center::AircraftNightLightsState& msg)-> void {
             WeakDummyReturn(p);
 
@@ -922,11 +1093,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 飞行器避障状态(obstacle_avoidance);
     // AircraftObstacleAvoidanceState;
-    aircraft_obstacle_avoidance_state_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftObstacleAvoidanceState(
+    if (bm) {
+        aircraft_obstacle_avoidance_state_listen_id_ = bm->ListenAircraftObstacleAvoidanceState(
         [this, p](const notification_center::AircraftObstacleAvoidanceState& msg)-> void {
             WeakDummyReturn(p);
 
@@ -957,11 +1132,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 存储容量(storage);
     // AircraftStorageInfo;
-    aircraft_storage_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftStorageInfo(
+    if (bm) {
+        aircraft_storage_info_listen_id_ = bm->ListenAircraftStorageInfo(
         [this, p](const notification_center::AircraftStorageInfo& msg)-> void {
             WeakDummyReturn(p);
 
@@ -989,11 +1168,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 航迹id(track_id);
     // AircraftTrackId;
-    aircraft_track_id_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftTrackId(
+    if (bm) {
+        aircraft_track_id_listen_id_ = bm->ListenAircraftTrackId(
         [this, p](const notification_center::AircraftTrackId& msg)-> void {
             WeakDummyReturn(p);
 
@@ -1019,11 +1202,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 合规相关信息(compliance information);
     // AircraftComplianceInfo;
-    aircraft_compliance_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftComplianceInfo(
+    if (bm) {
+        aircraft_compliance_info_listen_id_ = bm->ListenAircraftComplianceInfo(
         [this, p](const notification_center::AircraftComplianceInfo& msg)-> void {
             WeakDummyReturn(p);
 
@@ -1051,11 +1238,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 飞行器相机信息(cameras);
     // AircraftPayloadsCamerasList;
-    aircraft_payloads_cameras_list_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftPayloadsCamerasList(
+    if (bm) {
+        aircraft_payloads_cameras_list_listen_id_ = bm->ListenAircraftPayloadsCamerasList(
         [this, p](const notification_center::AircraftPayloadsCamerasList& msg)-> void {
             WeakDummyReturn(p);
 
@@ -1238,10 +1429,14 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 遥控器失控动作(rc_lost_action);
     // AircraftRcLostAction;
-    aircraft_rc_lost_action_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftRcLostAction(
+    if (bm) {
+        aircraft_rc_lost_action_listen_id_ = bm->ListenAircraftRcLostAction(
         [this, p](const notification_center::AircraftRcLostAction& msg)-> void {
             WeakDummyReturn(p);
 
@@ -1270,10 +1465,14 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 返航信息(返航模式, 返航高度);
     // AircraftRthInfo;
-    aircraft_rth_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftRthInfo(
+    if (bm) {
+        aircraft_rth_info_listen_id_ = bm->ListenAircraftRthInfo(
         [this, p](const notification_center::AircraftRthInfo& msg)-> void {
             WeakDummyReturn(p);
 
@@ -1304,11 +1503,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 飞机: Home点地理坐标信息(Home点经度, Home点纬度);
     // AircraftHomeGeographicalInfo;
-    aircraft_home_geographical_info_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftHomeGeographicalInfo(
+    if (bm) {
+        aircraft_home_geographical_info_listen_id_ = bm->ListenAircraftHomeGeographicalInfo(
         [this, p](const notification_center::AircraftHomeGeographicalInfo& msg)-> void {
             WeakDummyReturn(p);
 
@@ -1342,11 +1545,15 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 返航高度模式当前值(current_rth_mode);
     // AircraftCurrentRthMode;
-    aircraft_current_rth_mode_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftCurrentRthMode(
+    if (bm) {
+        aircraft_current_rth_mode_listen_id_ = bm->ListenAircraftCurrentRthMode(
         [this, p](const notification_center::AircraftCurrentRthMode& msg)-> void {
             WeakDummyReturn(p);
 
@@ -1375,10 +1582,14 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
 
     // 飞行任务媒体文件显示可用监听
-    flight_tasks_media_file_display_available_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenFlightTasksMediaFileDisplayAvailable(
+    if (bm) {
+        flight_tasks_media_file_display_available_listen_id_ = bm->ListenFlightTasksMediaFileDisplayAvailable(
         [this, p](const notification_center::FlightTasksMediaFileDisplayAvailable& msg)-> void {
             WeakDummyReturn(p);
             FlightTasksMediaFileDisplayAvailable available;
@@ -1399,9 +1610,13 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[DroneOsdModuleImpl][%s] listenFlightTasksMediaFileDisplayAvailable, error: %d", log_tag_.c_str(), error_code);
             }
         }, gateway_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 飞行器进入当前状态原因(mode_code_reason);
-    drone_mode_code_reason_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDroneModeCodeReason(
+    if (bm) {
+        drone_mode_code_reason_listen_id_ = bm->ListenDroneModeCodeReason(
         [this, p](const notification_center::DroneModeCodeReason& msg)-> void {
             WeakDummyReturn(p);
             flight_hub_sdk::DroneModeCodeReason res{};
@@ -1418,9 +1633,13 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 飞机4G Dongle信息(dongle_infos);
-    drone_dongle_infos_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDroneDongleInfos(
+    if (bm) {
+        drone_dongle_infos_listen_id_ = bm->ListenDroneDongleInfos(
         [this, p](const notification_center::DroneDongleInfos& msg)-> void {
             WeakDummyReturn(p);
             flight_hub_sdk::DroneDongleInfos res{};
@@ -1456,9 +1675,13 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 限飞数据库版本(flysafe_database_version);
-    drone_flysafe_database_version_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDroneFlysafeDatabaseVersion(
+    if (bm) {
+        drone_flysafe_database_version_listen_id_ = bm->ListenDroneFlysafeDatabaseVersion(
         [this, p](const notification_center::DroneFlysafeDatabaseVersion& msg)-> void {
             WeakDummyReturn(p);
             flight_hub_sdk::DroneFlysafeDatabaseVersion res{};
@@ -1475,9 +1698,13 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 航线解析库版本(wpmz_version);
-    drone_wpmz_version_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDroneWpmzVersion(
+    if (bm) {
+        drone_wpmz_version_listen_id_ = bm->ListenDroneWpmzVersion(
         [this, p](const notification_center::DroneWpmzVersion& msg)-> void {
             WeakDummyReturn(p);
             flight_hub_sdk::DroneWpmzVersion res{};
@@ -1494,6 +1721,9 @@ void DroneOsdModuleImpl::registerNotificationCenterListeners() {
         drone_sn_,
         notification_center::NotificationFrequency_OnChanged
     );
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 }
 
 int DroneOsdModuleImpl::listenAircraftBatteryInfo(const std::function<void(const AircraftBatteryInfo& battery_info)>& callback) {

@@ -14,17 +14,20 @@ namespace flight_hub_sdk {
 
 class PsdkResourceModuleImpl : public IPsdkResourceModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    PsdkResourceModuleImpl();
+    PsdkResourceModuleImpl(int session_id);
 
     void getPsdkSpeakerResourceList(std::function<void(FlightHubError err, const PsdkSpeakerResourceList& psdk_speaker_resource_list)> callback) override;
+    void getPsdkSpeakerResourceListWithFilter(const PsdkSpeakerResourceListParams& params,
+        std::function<void(FlightHubError err, const PsdkSpeakerResourceList& psdk_speaker_resource_list)> callback) override;
     void createPsdkSpeakerResource(const CreatePsdkSpeakerResourceParams& params, std::function<void(FlightHubError err, const PsdkSpeakerResource& psdk_speaker_resource)> callback) override;
     void editPsdkSpeakerResource(const EditPsdkSpeakerResourceParams& params, std::function<void(FlightHubError err, const PsdkSpeakerResource& psdk_speaker_resource)> callback) override;
-    void deletePsdkSpeakerResource(int resource_id, std::function<void(FlightHubError err)> callback) override;
+    void deletePsdkSpeakerResource(int64_t resource_id, std::function<void(FlightHubError err)> callback) override;
     void getSTS(std::function<void(FlightHubError err, const STSInfo& sts_response)> callback) override;
     void getPsdkWidgetResources(const GetPsdkWidgetResourceParams& params, std::function<void(FlightHubError err, const PsdkWidgetResourceList& psdk_widget_resource_list)> callback) override;
     void uploadSpeakerAudioFile(const std::string& file_path, const STSInfo& sts_info, std::function<void(FlightHubError err)> callback) override;
 
 private:
+    int session_id_;
     std::shared_ptr<ICloudStorageUploader> getCloudStorageUploader(const std::string& provider);
 
 };

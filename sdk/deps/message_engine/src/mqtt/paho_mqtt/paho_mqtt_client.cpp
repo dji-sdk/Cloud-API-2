@@ -74,15 +74,24 @@ extern "C" {
 
         // 查找sn，替换为uav
         auto paho_mqtt_client = (PahoMqttClient*)context;
+        // 优先用无人机SN(product_sn_)定位; 若topic 里没有(如 services_reply 走网关SN),
+        // 回退用网关SN(gateway_sn_)定位, 再不行才报错丢弃。
         auto sn_start_pos = topic.find(paho_mqtt_client->product_sn_);
+        std::string matched_sn = paho_mqtt_client->product_sn_;
         if (sn_start_pos == std::string::npos) {
-            LOG_ERROR("[PahoMqttClient] PahoMqttmessageCallbackImpl sn no find, product_sn: %s", paho_mqtt_client->product_sn_.c_str());
+            // services_reply 等由网关(机场)上行的 topic 不含无人机SN, 改用网关SN 匹配
+            sn_start_pos = topic.find(paho_mqtt_client->gateway_sn_);
+            matched_sn = paho_mqtt_client->gateway_sn_;
+        }
+        if (sn_start_pos == std::string::npos) {
+            LOG_ERROR("[PahoMqttClient] PahoMqttmessageCallbackImpl sn no find, product_sn: %s, gateway_sn: %s, topic: %s",
+                      paho_mqtt_client->product_sn_.c_str(), paho_mqtt_client->gateway_sn_.c_str(), topic.c_str());
             return -1;
         }
         
         // 组装外部认识的topic
         auto topic_name_head = topic.substr(0, sn_start_pos);
-        auto topic_name_tail = topic.substr(sn_start_pos + paho_mqtt_client->product_sn_.size());
+        auto topic_name_tail = topic.substr(sn_start_pos + matched_sn.size());
         const auto real_topic = topic_name_head + "{device_sn}" + topic_name_tail + add_method;
         // LOG_DEBUG("[PahoMqttClient] PahoMqttmessageCallbackImpl recv real_topic: %s", real_topic.c_str());
         paho_mqtt_client->MessageCallback(real_topic, body);
@@ -202,25 +211,27 @@ int PahoMqttClient::Connect() {
 void PahoMqttClient::TopicRegister() {
     // 下行消息类型：services, events_reply, requests_reply, state_reply, property/set, status_reply
     // TODO: 需要根据上下行修改topic
-    subscribe_topics_ = {
-            // {"thing/product/{device_sn}/services_reply", "JsonString", 1},
-            // {"thing/product/{device_sn}/events", "JsonString", 1},
-            // {"thing/product/{device_sn}/requests", "JsonString", 1},
-            // {"thing/product/{device_sn}/state", "JsonString", 0},
-            // {"thing/product/{device_sn}/property/set_reply", "JsonString", 1},
-            {"thing/product/{device_sn}/drc/up", "JsonString", 0},
-            // {"sys/product/{device_sn}/status", "JsonString", 1},
-    };
+    // 注意: 不能在这里硬编码重置 subscribe_topics_, 否则会覆盖构造时由 drc_link_define 注入的
+    // topics_sub (含 {gateway_sn}/services_reply 等运行时订阅)。原硬编码只订 drc/up 会丢回包。
+    // subscribe_topics_ = { {"thing/product/{device_sn}/drc/up", ...}, ... };
     real_subscribe_topics_.clear();
     for (auto subscribe : subscribe_topics_) {
         LOG_INFO("[PahoMqttClient-%s] TopicRegister subscribe: %s, type: %s, qos: %d", log_tag_.c_str(), subscribe.topic_name.c_str(), subscribe.type.c_str(), subscribe.qos);
-        auto pos = subscribe.topic_name.find("{device_sn}");
-        if (pos != std::string::npos) {
-            auto topic_name_head = subscribe.topic_name.substr(0, pos);
-            auto topic_name_tail = subscribe.topic_name.substr(pos + 11);
-            auto real_topic_name = topic_name_head + product_sn_ + topic_name_tail;
-            real_subscribe_topics_.emplace_back(TopicInfo{real_topic_name, subscribe.type, subscribe.qos});
+        std::string real_topic_name = subscribe.topic_name;
+        auto sn_pos = real_topic_name.find("{device_sn}");
+        if (sn_pos != std::string::npos) {
+            auto topic_name_head = real_topic_name.substr(0, sn_pos);
+            auto topic_name_tail = real_topic_name.substr(sn_pos + 11);
+            real_topic_name = topic_name_head + product_sn_ + topic_name_tail;
         }
+        // services_reply 等网关SN 订阅: {gateway_sn} 替换为机场SN (SetGatewaySn 注入)
+        auto gw_pos = real_topic_name.find("{gateway_sn}");
+        if (gw_pos != std::string::npos) {
+            auto topic_name_head = real_topic_name.substr(0, gw_pos);
+            auto topic_name_tail = real_topic_name.substr(gw_pos + 12);
+            real_topic_name = topic_name_head + gateway_sn_ + topic_name_tail;
+        }
+        real_subscribe_topics_.emplace_back(TopicInfo{real_topic_name, subscribe.type, subscribe.qos});
     }
     for (auto subscribe : real_subscribe_topics_) {
         MQTTAsync_responseOptions opts = MQTTAsync_responseOptions_initializer;
@@ -271,7 +282,16 @@ void PahoMqttClient::Publish(const std::string &topic, const std::string &payloa
     for (const auto& item : publish_topics_) {
         if (item.topic_name == topic) {
             real_topic_name = item.topic_name;
-            real_topic_name = real_topic_name.replace(real_topic_name.find("{device_sn}"), 11, product_sn_);
+            // 判空保护: 个别 topic 可能不含 {device_sn} 占位符, 避免 replace(npos,...) 崩溃
+            auto sn_pos = real_topic_name.find("{device_sn}");
+            if (sn_pos != std::string::npos) {
+                real_topic_name = real_topic_name.replace(sn_pos, 11, product_sn_);
+            }
+            // services 类下行命令 topic 使用网关(机场)SN, 占位符 {gateway_sn} 由 SetGatewaySn 注入的 gateway_sn_ 替换
+            auto gw_pos = real_topic_name.find("{gateway_sn}");
+            if (gw_pos != std::string::npos) {
+                real_topic_name = real_topic_name.replace(gw_pos, 12, gateway_sn_);
+            }
             qos = (MQTTQos)item.qos;
             break;
         }

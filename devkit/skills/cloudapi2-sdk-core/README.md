@@ -1,20 +1,20 @@
-# DJI CloudAPI2 SDK Skill
+# DJI Cloud API 2 SDK Skill
 
-为 AI Agent 提供 DJI CloudAPI2 Java SDK 的专业接入能力包。安装后，AI 在你编写 DJI CloudAPI2 SDK 集成代码时**自动加载**，确保生成的代码遵循 5 条核心安全规则。
+为 AI Agent 提供 DJI Cloud API 2 Java SDK 的专业接入能力包。安装后，AI 在你编写 DJI Cloud API 2 SDK 集成代码时**自动加载**，确保生成的代码遵循 6 条核心规则。
 
 ## 能力
 
 | 能力 | 说明 |
 |------|------|
-| **核心规则引导** | 5 条必须遵守的 SDK 调用规则，防止 NPE、资源泄漏、权限错误 |
+| **核心规则引导** | 6 条必须遵守的 SDK 调用规则，防止 NPE、资源泄漏、权限错误 |
 | **错误码诊断** | 通过 4 层 errorCode 结构自动定位问题 + 修复方案 |
-| **接入质量评估** | 🔴🟡🟠 三级风险检查清单，逐项检查你的接入代码 |
-| **业务场景 Prompt** | 6 个典型场景（设备列表/OSD/直播/航线/飞控/媒体）标准化范本 |
+| **接入质量评估** | 按 6 条核心规则逐条自检接入代码，标注 ✅ 已满足 / ❌ 未满足并给出修复代码 |
+| **业务场景 Prompt** | 7 个典型场景（设备列表/OSD/直播/航线/飞控/媒体/航线资产）标准化范本 |
 | **Java 代码模板** | SDK 适配器、Service 层、回调桥接工具 3 套模板 |
 
 ## 安装
 
-推荐通过 `devkit@cloud-api2` Plugin 一键安装全套 Skill（见 [skills/README.md](../README.md#安装方式)）。
+推荐通过 `cloudapi2@dji` Plugin 一键安装全套 Skill（见 [skills/README.md](../README.md#安装方式)）。
 
 单独安装本 Skill：
 
@@ -34,7 +34,7 @@ cp -r skills/cloudapi2-sdk-core .github/skills/
 ### 验证安装成功
 
 安装后在 AI 助手中输入以下任一关键词，Skill 应自动触发：
-- "集成 DJI CloudAPI2 SDK"
+- "集成 DJI Cloud API 2 SDK"
 - "初始化 FlightHubSDK"
 - "订阅无人机 OSD"
 - "让无人机返航"
@@ -50,7 +50,7 @@ cp -r skills/cloudapi2-sdk-core .github/skills/
 
 Skill 安装后**无需手动调用**。当你的对话涉及以下场景时，AI 会自动加载 Skill：
 
-- 集成 / 接入 DJI CloudAPI2 SDK（Java）
+- 集成 / 接入 DJI Cloud API 2 SDK（Java）
 - 监听无人机或机场状态
 - 控制无人机（起飞、降落、返航、急停）
 - 开始 / 停止直播流
@@ -63,7 +63,7 @@ Skill 安装后**无需手动调用**。当你的对话涉及以下场景时，A
 #### 场景 1：初始化 SDK
 
 ```
-你：帮我在 Spring Boot 项目中初始化 DJI CloudAPI2 SDK
+你：帮我在 Spring Boot 项目中初始化 DJI Cloud API 2 SDK
 
 AI：（自动加载 Skill）
 → 生成 @Configuration + @PostConstruct 代码
@@ -89,7 +89,7 @@ AI：（自动路由到错误诊断）
 你：帮我检查这段 SDK 接入代码的质量
 
 AI：（加载接入质量检查清单）
-→ 按 🔴🟡🟠 三级逐项检查
+→ 按 6 条核心规则逐条检查
 → 标注每条的 ✅ 已满足 / ❌ 未满足
 → 给出修复代码
 ```
@@ -122,20 +122,21 @@ AI：（加载 prompts/add-livestream.md）
 ```
 cloudapi2-sdk-core/
 ├── SKILL.md              ← AI 首先加载的主文件（规则 + 路由 + 反幻觉）
-├── references/           ← 按需加载的专题文档
+├── references/           ← 按需加载的专题文档（均为指向 knowledge/ 的软链）
 │   ├── 核心规则详解.md    — 每条规则的"为什么" + 完整正反例
 │   ├── 错误码诊断.md     — 4 层错误码表 + 诊断流程图
-│   ├── 接入质量检查清单.md — 🔴🟡🟠 三档 10 大检查项
+│   ├── 接入质量检查清单.md — 与 核心规则详解.md 同一份内容（自检时按 6 条规则逐条过）
 │   ├── 设备管理流程.md    — 设备发现 → 订阅 → 控制完整流
 │   ├── 飞控与权限.md     — acquire → 指令 → release 模板
-│   └── 文档检索与问答.md  — 9 个高频 FAQ
-├── prompts/             ← 6 个业务场景标准化范本
+│   └── 文档检索与问答.md  — 10 个高频 FAQ
+├── prompts/             ← 7 个业务场景标准化范本
 │   ├── add-device-list.md
 │   ├── add-osd-subscribe.md
 │   ├── add-livestream.md
 │   ├── add-flight-task.md
 │   ├── add-flight-control.md
-│   └── add-media-action.md
+│   ├── add-media-action.md
+│   └── add-wayline-management.md
 ├── templates/           ← Java 代码模板（复制即用）
 │   ├── sdk-module-adapter.java.tpl
 │   ├── spring-boot-service.java.tpl
@@ -148,10 +149,10 @@ cloudapi2-sdk-core/
 
 ## 适用版本
 
-- **SDK**: DJI CloudAPI2 Java SDK v0.8.0+
-- **框架**: Spring Boot 2.x / 3.x
+- **SDK**: DJI Cloud API 2 Java SDK 3.3.7（`libs/` 内置，非 Maven Central）
+- **框架**: Spring Boot 3.x（JDK 17）
 - **IDE**: Claude Code / Cursor / GitHub Copilot / 任何支持 Agent Skills 的工具
-- **最后更新**: 2026-06
+- **最后更新**: 2026-10
 
 ## 常见问题
 

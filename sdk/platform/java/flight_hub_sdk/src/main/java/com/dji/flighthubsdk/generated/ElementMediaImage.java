@@ -75,6 +75,46 @@ public class ElementMediaImage {
     return flighthubsdkmoduleJNI.ElementMediaImage_media_file_uuid_get(swigCPtr, this);
   }
 
+  public void setUrl(String value) {
+    flighthubsdkmoduleJNI.ElementMediaImage_url_set(swigCPtr, this, value);
+  }
+
+  public String getUrl() {
+    return flighthubsdkmoduleJNI.ElementMediaImage_url_get(swigCPtr, this);
+  }
+
+  public void setPreview_url(String value) {
+    flighthubsdkmoduleJNI.ElementMediaImage_preview_url_set(swigCPtr, this, value);
+  }
+
+  public String getPreview_url() {
+    return flighthubsdkmoduleJNI.ElementMediaImage_preview_url_get(swigCPtr, this);
+  }
+
+  public void setWebp_url(String value) {
+    flighthubsdkmoduleJNI.ElementMediaImage_webp_url_set(swigCPtr, this, value);
+  }
+
+  public String getWebp_url() {
+    return flighthubsdkmoduleJNI.ElementMediaImage_webp_url_get(swigCPtr, this);
+  }
+
+  public void setFile_type(int value) {
+    flighthubsdkmoduleJNI.ElementMediaImage_file_type_set(swigCPtr, this, value);
+  }
+
+  public int getFile_type() {
+    return flighthubsdkmoduleJNI.ElementMediaImage_file_type_get(swigCPtr, this);
+  }
+
+  public void setSub_file_type(int value) {
+    flighthubsdkmoduleJNI.ElementMediaImage_sub_file_type_set(swigCPtr, this, value);
+  }
+
+  public int getSub_file_type() {
+    return flighthubsdkmoduleJNI.ElementMediaImage_sub_file_type_get(swigCPtr, this);
+  }
+
   public ElementMediaImage() {
     this(flighthubsdkmoduleJNI.new_ElementMediaImage(), true);
   }

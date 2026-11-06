@@ -27,7 +27,7 @@ struct DrcReplyData {
 
 class DrcLinkMgr : public drc_sdk::common::AsyncCaptureProtect {
 public:
-    DrcLinkMgr(std::string sn, std::string gateway_sn, std::shared_ptr<message_engine::IMessageEngine> message_engine, int drone_instance_id);
+    DrcLinkMgr(std::string sn, std::string gateway_sn, std::shared_ptr<message_engine::IMessageEngine> message_engine, int drone_instance_id, int session_id);
     ~DrcLinkMgr();
 
     void connectDrcLink(const std::function<void(FlightHubSdkErrorCode err_code)> callback);
@@ -77,6 +77,7 @@ private:
     std::string sn_;
     std::string gateway_sn_;
     std::shared_ptr<message_engine::IMessageEngine> message_engine_;
+    int session_id_;
 
     CallbackContainer<DroneLinkState> drc_link_state_callbacks_;
     CallbackContainer<DrcDelayInfo> delay_info_callbacks_;

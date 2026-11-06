@@ -1,6 +1,11 @@
-# DRTC user 仅 Linux x86_64 有预编译；其它平台不创建目标。
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
 
-if(CLOUD_API2_OS STREQUAL "linux" AND CLOUD_API2_ARCH STREQUAL "x86_64")
+# DRTC user：Linux x86_64 / aarch64 有预编译（v0.28+，glibc >= 2.34）。
+# Ubuntu 22.04+ / 205 联调：裸机或 fhsdk-dev 容器。
+# 麒麟 V10 宿主 glibc 2.28：不走裸机，官方高 glibc 容器整栈运行。
+
+if(CLOUD_API2_OS STREQUAL "linux" AND (CLOUD_API2_ARCH STREQUAL "x86_64" OR CLOUD_API2_ARCH STREQUAL "aarch64"))
     set(_drtc "${CLOUD_API2_THIRD_PARTY}/libdrtc/lib/${CLOUD_API2_PLAT}")
     cloud_api2_require_file("${_drtc}/libdrtc_device_sdk.so")
     cloud_api2_require_file("${_drtc}/libdrpc.so")

@@ -20,19 +20,19 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
 
 /**
- * 校验请求 → 解析出 SecurityContext。ISV 实现这个 SPI 接入自家身份系统。
+ * 校验请求 → 解析出 SecurityContext。集成商 实现这个 SPI 接入自家身份系统。
  *
  * <p>Kernel 默认提供 NoOp 实现；
  * 官方 starter 提供 JWT / OAuth2 实现；
- * ISV 想接公司 SSO / LDAP / 自家 token 系统 → 实现此接口 + 注册为 Spring Bean 即可。
+ * 集成商 想接公司 SSO / LDAP / 自家 token 系统 → 实现此接口 + 注册为 Spring Bean 即可。
  *
  * <p>多个 Provider 可同时存在，按 {@link #order()} 链式尝试，第一个成功的赢。
  *
  * <p><b>v0.1 已知约束</b>：本接口绑定 Servlet {@link HttpServletRequest}，
  * 仅支持 HTTP 请求场景。WebSocket upgrade / gRPC metadata / 定时任务 / 异步 event handler
- * 等非 HTTP 身份来源在 v0.1 不被本接口表达，需走 ISV 自行 {@link SecurityContextHolder#set}
+ * 等非 HTTP 身份来源在 v0.1 不被本接口表达，需走集成商自行 {@link SecurityContextHolder#set}
  * 注入。v0.2 计划抽出 request-agnostic 的 {@code AuthenticationContext} 载体；届时本签名为
- * breaking change，ISV 实现需要适配。
+ * breaking change，集成商 实现需要适配。
  *
  * @author DJI DevKit Team
  */

@@ -82,6 +82,6 @@ spec:
             initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 5
-      # SDK 需要出网连接 FlightHub API 与通知服务；如需 NetworkPolicy 限制
+      # SDK 需要出网连接 DJI Cloud API 2 与通知服务；如需 NetworkPolicy 限制
       # egress，请按实际环境放开对 FH_SKELETON_SDK_ADDRESS 的 443 端口。
       restartPolicy: Always

@@ -13,7 +13,7 @@ related:
 
 devkit 包含两个独立可部署的服务（MCP Server + Skeleton BFF），通过 Docker Compose 滚动更新部署。
 
-# DJI CloudAPI2 DevKit 部署总览
+# DJI Cloud API 2 DevKit 部署总览
 
 > **版本**: v1.0
 > **更新日期**: 2026-08-01
@@ -21,10 +21,8 @@ devkit 包含两个独立可部署的服务（MCP Server + Skeleton BFF），通
 
 本文档是 devkit 部署的**总入口**，给出整体架构与部署顺序，具体细节引用两个子模块的部署指南：
 
-- MCP Server → [mcp/docs/部署指南.md](../mcp/docs/部署指南.md)
-- Skeleton BFF → [skeleton/docs/部署指南.md](../skeleton/docs/部署指南.md)
-
-接口协议另见 [docs/接口协议文档.md](./接口协议文档.md)。
+- MCP Server → [mcp/docs/部署指南.md](../../mcp/docs/部署指南.md)
+- Skeleton BFF → [skeleton/docs/部署指南.md](../../skeleton/docs/部署指南.md)
 
 ## 1. 仓库与服务
 
@@ -44,10 +42,10 @@ devkit 包含两个独立可部署的服务（MCP Server + Skeleton BFF），通
    (Claude Code/远程)      │  /pf-devkit/ai-plugin/mcp      │
                           │  53 个 fh_* Tool               │
                           └──────────┬─────────────────────┘
-                                     │ SDK (JNI, Linux x86_64)
+                                     │ SDK (JNI, Linux x86_64 / aarch64)
                                      ▼
                           ┌──────────────────────────┐
-                          │  DJI CloudAPI2              │
+                          │      DJI Cloud API 2     │
                           └──────────────────────────┘
 
    浏览器 ──80/443──▶ fh-ssl (可选 TLS)
@@ -68,18 +66,19 @@ devkit 包含两个独立可部署的服务（MCP Server + Skeleton BFF），通
 
 ### 3.1 平台限制
 
-两个服务都依赖 DJI CloudAPI2 SDK 的 **JNI 原生库（仅 Linux x86_64）**：
-- Linux x86_64：可直接运行 JAR。
-- macOS / Windows：必须用 Docker `--platform linux/amd64`。
+两个服务都依赖 DJI Cloud API 2 SDK 的 **JNI 原生库**，SDK 按 CPU 架构分成两个发布包（amd64 / arm64），构建时用 `--build-arg SDK_ARCH=amd64|arm64` 选包：
+- Linux x86_64：可直接运行 JAR（`SDK_ARCH=amd64`）。
+- Linux aarch64：可直接运行 JAR（`SDK_ARCH=arm64`）。
+- macOS / Windows：必须用 Docker，并让 `--platform` 与 `SDK_ARCH` 都指向同一架构。
 - Mock 模式（MCP `FH_MOCK=true` / Skeleton `FH_PROFILE=mock`）：无平台限制，跳过 SDK 初始化，返回模拟数据，仅用于开发演示。
 
 ### 3.2 私有 SDK JAR
 
-`libs/flight-hub-sdk-3.3.7.jar` 不在 Maven Central。本地 `mvn package` 前每台机器需手动安装一次（两个 Dockerfile 已内置）：
+`libs/{amd64,arm64}/flight-hub-sdk-3.3.7.jar` 不在 Maven Central。本地 `mvn package` 前每台机器需手动安装一次（两个 Dockerfile 已内置），按本机架构选包：
 
 ```bash
 mvn install:install-file \
-  -Dfile=libs/flight-hub-sdk-3.3.7.jar \
+  -Dfile=libs/amd64/flight-hub-sdk-3.3.7.jar \
   -DgroupId=com.dji.flighthubsdk \
   -DartifactId=flight-hub-sdk \
   -Dversion=3.3.7 \
@@ -130,12 +129,12 @@ CI 必填变量：`HARBOR_HOST` / `HARBOR_USER` / `HARBOR_PASSWORD` / `HARBOR_PR
 
 Skeleton 的 Chat 模块依赖 MCP Server，故建议按序部署：
 
-1. **部署 MCP Server** — 详见 [mcp/docs/部署指南.md](../mcp/docs/部署指南.md)
+1. **部署 MCP Server** — 详见 [mcp/docs/部署指南.md](../../mcp/docs/部署指南.md)
    - CI 构建镜像 → `deploy-test` 或手动 `./mcp/deploy.sh`
    - 验证：`curl http://<mcp-host>:8080/pf-devkit/ai-plugin/mcp/health` → `{"status":"UP"}`
    - 记录 `FH_SSE_AUTH_TOKEN`（Skeleton Chat 透传时若需鉴权要用）
 
-2. **部署 Skeleton BFF** — 详见 [skeleton/docs/部署指南.md](../skeleton/docs/部署指南.md)
+2. **部署 Skeleton BFF** — 详见 [skeleton/docs/部署指南.md](../../skeleton/docs/部署指南.md)
    - CI 构建后端 + 前端镜像 → `deploy-test` 或手动 `./skeleton/deploy.sh`
    - 在 `skeleton/deploy.env` 配置 `FH_CHAT_MCP_URL=http://<mcp-host>:8080`、`FH_CHAT_MCP_AUTH_TOKEN`、`FH_CHAT_ENABLED=true`
    - 验证：`curl http://<skeleton-host>:<BACKEND_PORT>/pf-devkit/ai-plugin/skeleton/actuator/health` → `{"status":"UP"}`
@@ -152,7 +151,7 @@ Skeleton 的 Chat 模块依赖 MCP Server，故建议按序部署：
 
 | 变量 | 说明 |
 |------|------|
-| `FH_SERVER_ADDRESS` | DJI CloudAPI2 服务器地址 |
+| `FH_SERVER_ADDRESS` | DJI Cloud API 2 服务器地址 |
 | `FH_ACCESS_TOKEN` | workspace-access-token |
 | `FH_WORKSPACE_UUID` | workspace-binding-uuid |
 | `FH_SSE_AUTH_TOKEN` | SSE 鉴权（`openssl rand -hex 32`，留空拒绝启动） |
@@ -212,15 +211,10 @@ Chat 流程：浏览器 → `fh-ui`(Nginx, `proxy_buffering off`) → `skeleton`
 
 | 主题 | 路径 |
 |------|------|
-| **MCP Server 部署（完整）** | [mcp/docs/部署指南.md](../mcp/docs/部署指南.md) |
-| MCP Server Docker 快速上手 | [mcp/docs/docker-deployment.md](../mcp/docs/docker-deployment.md) |
-| MCP Server 技术设计 | [mcp/docs/MCP-Server-技术设计.md](../mcp/docs/MCP-Server-技术设计.md) |
-| MCP Tool 列表 | [mcp/docs/MCP-TOOL工具列表汇总.md](../mcp/docs/MCP-TOOL工具列表汇总.md) |
-| **Skeleton BFF 部署（完整）** | [skeleton/docs/部署指南.md](../skeleton/docs/部署指南.md) |
-| Skeleton Docker 快速上手 | [skeleton/docs/docker-deploy-guide.md](../skeleton/docs/docker-deploy-guide.md) |
-| Skeleton 设计手册 | [skeleton/docs/skeleton-design-workbook.md](../skeleton/docs/skeleton-design-workbook.md) |
-| SDK Profile (ISV) 指南 | [skeleton/docs/sdk-profile-isv-guide.md](../skeleton/docs/sdk-profile-isv-guide.md) |
-| 接口协议文档 | [docs/接口协议文档.md](./接口协议文档.md) |
+| **MCP Server 部署（完整）** | [mcp/docs/部署指南.md](../../mcp/docs/部署指南.md) |
+| MCP Server Docker 快速上手 | [mcp/docs/docker-deployment.md](../../mcp/docs/docker-deployment.md) |
+| **Skeleton BFF 部署（完整）** | [skeleton/docs/部署指南.md](../../skeleton/docs/部署指南.md) |
+| SDK Profile（集成商）指南 | [skeleton/docs/sdk-profile-integrator-guide.md](../../skeleton/docs/sdk-profile-integrator-guide.md) |
 
 ## 变更记录
 

@@ -373,7 +373,7 @@ public:
     /// @endinternal
     /// @param device_sn 设备序列号
     /// @param imei 设备 IMEI
-    /// @param operator_type 运营商类型
+    /// @param operator_type 目标运营商类型，序列化为请求体字段 `esim_operator`
     /// @param device_type 设备类型
     /// @param callback 结果回调，返回错误信息和 eSIM 运营商切换结果
     virtual void esimOperatorSwitch(const std::string& device_sn, const std::string& imei, int operator_type, const std::string& device_type, const std::function<void(FlightHubError err, EsimOperatorSwitchResult result)>& callback) = 0;
@@ -453,6 +453,7 @@ public:
     /// 链路: HTTP | HTTP POST /device/api/v1/service/dongle-power-switch
     /// 请求体: {"device_sn":"...","data":{"action":0/1}}
     /// 注意: device_sn 为飞行器 SN（非机场 SN），飞机需已安装 Dongle
+    /// @note 后端成功 data 不含 status; 结果 message 取网关响应 message（成功通常为 "OK"）。
     /// @endinternal
     /// @param device_sn 飞行器序列号（非机场 SN）
     /// @param power_state 电源状态，0=关，1=开（序列化为 JSON 字段 action）

@@ -8,8 +8,8 @@
 
 using namespace flight_hub_sdk;
 
-OnboardAiModuleImpl::OnboardAiModuleImpl(std::shared_ptr<AICtrlMgr> ai_ctrl_mgr)
-    : ai_ctrl_mgr_(std::move(ai_ctrl_mgr)) {
+OnboardAiModuleImpl::OnboardAiModuleImpl(std::shared_ptr<AICtrlMgr> ai_ctrl_mgr, int session_id)
+    : ai_ctrl_mgr_(std::move(ai_ctrl_mgr)), session_id_(session_id) {
     LOG_INFO("[OnboardAiModuleImpl] constructor");
 }
 
@@ -39,7 +39,7 @@ void OnboardAiModuleImpl::AIIdentifySet(const AiIdentifySetParam& param, const s
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_AI_IDENTIFY_SET, state_err, "[OnboardAiModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_AI_IDENTIFY_SET, state_err, session_id_, "[OnboardAiModuleImpl]");
 
         if (callback) {
             callback(state_err);
@@ -59,7 +59,7 @@ void OnboardAiModuleImpl::AIIdentifyFilterSet(const AiIdentifyFilterSetParam& pa
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_AI_IDENTIFY_FILTER_SET, state_err, "[OnboardAiModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_AI_IDENTIFY_FILTER_SET, state_err, session_id_, "[OnboardAiModuleImpl]");
 
         if (callback) {
             callback(state_err);
@@ -79,7 +79,7 @@ void OnboardAiModuleImpl::AIIdentifyScoreSet(const AiIdentifyScoreSetParam& para
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_AI_IDENTIFY_SCORE_SET, state_err, "[OnboardAiModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_AI_IDENTIFY_SCORE_SET, state_err, session_id_, "[OnboardAiModuleImpl]");
 
         if (callback) {
             callback(state_err);
@@ -99,7 +99,7 @@ void OnboardAiModuleImpl::AIIdentifyScoreModeSet(const AiIdentifyScoreModeSetPar
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_AI_IDENTIFY_SCORE_MODE_SET, state_err, "[OnboardAiModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_AI_IDENTIFY_SCORE_MODE_SET, state_err, session_id_, "[OnboardAiModuleImpl]");
 
         if (callback) {
             callback(state_err);
@@ -119,7 +119,7 @@ void OnboardAiModuleImpl::AIIdentifyScoreReset(const AiIdentifyScoreResetParam& 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_AI_IDENTIFY_SCORE_RESET, state_err, "[OnboardAiModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_AI_IDENTIFY_SCORE_RESET, state_err, session_id_, "[OnboardAiModuleImpl]");
 
         if (callback) {
             callback(state_err);
@@ -139,7 +139,7 @@ void OnboardAiModuleImpl::AIModelSelect(const AiModelSelectParam& param, const s
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_AI_MODEL_SELECT, state_err, "[OnboardAiModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_AI_MODEL_SELECT, state_err, session_id_, "[OnboardAiModuleImpl]");
 
         if (callback) {
             callback(state_err);
@@ -161,7 +161,7 @@ void OnboardAiModuleImpl::DrcAISpotlightZoomSet(int on, const std::function<void
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_SPOTLIGHT_ZOOM_SET, state_err, "[OnboardAiModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_SPOTLIGHT_ZOOM_SET, state_err, session_id_, "[OnboardAiModuleImpl]");
 
         if (callback) {
             callback(state_err);
@@ -181,7 +181,7 @@ void OnboardAiModuleImpl::DrcAISpotlightZoomSelect(const AiSpotlightZoomSelectPa
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_SPOTLIGHT_ZOOM_SELECT, state_err, "[OnboardAiModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_SPOTLIGHT_ZOOM_SELECT, state_err, session_id_, "[OnboardAiModuleImpl]");
 
         if (callback) {
             callback(state_err);
@@ -201,7 +201,7 @@ void OnboardAiModuleImpl::DrcAISpotlightZoomConfirm(const std::function<void(Fli
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_SPOTLIGHT_ZOOM_CONFIRM, state_err, "[OnboardAiModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_SPOTLIGHT_ZOOM_CONFIRM, state_err, session_id_, "[OnboardAiModuleImpl]");
 
         if (callback) {
             callback(state_err);
@@ -221,7 +221,7 @@ void OnboardAiModuleImpl::DrcAISpotlightZoomStop(const std::function<void(Flight
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_SPOTLIGHT_ZOOM_STOP, state_err, "[OnboardAiModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_SPOTLIGHT_ZOOM_STOP, state_err, session_id_, "[OnboardAiModuleImpl]");
 
         if (callback) {
             callback(state_err);
@@ -241,7 +241,7 @@ void OnboardAiModuleImpl::DrcAISpotlightZoomTrack(int target_index, const std::f
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_SPOTLIGHT_ZOOM_TRACK, state_err, "[OnboardAiModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_SPOTLIGHT_ZOOM_TRACK, state_err, session_id_, "[OnboardAiModuleImpl]");
 
         if (callback) {
             callback(state_err);
@@ -263,7 +263,7 @@ void OnboardAiModuleImpl::DrcAIAlarmStart(const AiAlarmStartParams& params, cons
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_ALARM_START, state_err, "[OnboardAiModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_ALARM_START, state_err, session_id_, "[OnboardAiModuleImpl]");
 
         if (callback) {
             callback(state_err);
@@ -283,7 +283,7 @@ void OnboardAiModuleImpl::DrcAIAlarmStop(const std::function<void(FlightHubError
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_ALARM_STOP, state_err, "[OnboardAiModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_ALARM_STOP, state_err, session_id_, "[OnboardAiModuleImpl]");
 
         if (callback) {
             callback(state_err);
@@ -303,7 +303,7 @@ void OnboardAiModuleImpl::DrcAIModelsConfig(const AiModelsConfigParams& params, 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_MODELS_CONFIG, state_err, "[OnboardAiModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_ONBOARD_AI_DRC_AI_MODELS_CONFIG, state_err, session_id_, "[OnboardAiModuleImpl]");
 
         if (callback) {
             callback(state_err);

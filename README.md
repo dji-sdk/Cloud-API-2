@@ -11,7 +11,7 @@
 
 > ### 📣 活动 🆕 首届开发者工作坊 · 报名开启
 >
-> 11 月走进**南京（11/17）、成都（11/23）、北京（11/27）、深圳（11/30）**四城。大疆工程师全天现场授课，AI 编程实战 + 四大实操课题，一天上手机场应用全栈开发。
+> 11 月走进 **南京（11/17）、成都（11/23）、北京（11/27）、深圳（11/30）** 四城。大疆工程师全天现场授课，AI 编程实战 + 四大实操课题，一天上手机场应用全栈开发。
 >
 > 免费参加，席位有限（南京场最多 2 人/家，其余场最多 3 人/家）。
 >
@@ -31,23 +31,24 @@
 
 ## 🚀 快速开始
 
-1. [申请许可证](./docs/cn/01.apply-license.md)
-2. [部署上云 API 2 应用运行与设备管控底座](./docs/cn/02.deployment/00.index.md)
-3. [设备上云](./docs/cn/04.device-onboarding/00.index.md)
-4. [配置鉴权](./docs/cn/08.auth.md)
-5. [集成前端独立组件](./docs/cn/06.frontend/00.index.md)
-6. [集成 SDK](./docs/cn/07.sdk/00.index.md)
+1. [申请许可证](./docs/cn/02.apply-license.md)
+2. [部署上云 API 2 应用运行与设备管控底座](./docs/cn/03.deployment/00.index.md)
+3. [设备上云](./docs/cn/06.device-onboarding/00.index.md)
+4. [配置鉴权](./docs/cn/10.auth.md)
+5. [集成前端独立组件](./docs/cn/08.frontend/00.index.md)
+6. [集成 SDK](./docs/cn/09.sdk/00.index.md)
 
 ## 🛠 辅助开发
 
-1. [使用上云 API 2 设备模拟器](./docs/cn/03.simulator.md)
-2. [使用上云 API 2 AI Plugin 加速集成](./docs/cn/05.ai-plugin.md)
-3. [使用上云 API 2 二次开发 Demo](./docs/cn/09.demo/00.index.md)
-4. [进入学习中心了解更多](https://developer.dji.com/cn/learning-center/)
+1. [使用上云 API 2 设备模拟器](./docs/cn/04.simulator.md)
+2. [使用大疆行业工具包](./docs/cn/05.DJI-enterprise-toolkit/00.index.md)
+3. [使用上云 API 2 AI Plugin 加速集成](./docs/cn/07.ai-plugin.md)
+4. [使用上云 API 2 二次开发 Demo](./docs/cn/11.demo/00.index.md)
+5. [进入学习中心了解更多](https://developer.dji.com/cn/learning-center/)
 
 ## 📦 下载中心
 
-SDK、API 文档、软件工具等资源下载请访问[下载中心](./docs/cn/11.downloads.md)。
+SDK、API 文档、软件工具等资源下载请访问[下载中心](./docs/cn/13.downloads.md)。
 
 ## ❓ 常见问题
 

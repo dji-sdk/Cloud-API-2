@@ -99,6 +99,38 @@ public class ElementPropertiesJavaParams {
     return flighthubsdkmoduleJNI.ElementPropertiesJavaParams_icon_get(swigCPtr, this);
   }
 
+  public void setIcon_url(String value) {
+    flighthubsdkmoduleJNI.ElementPropertiesJavaParams_icon_url_set(swigCPtr, this, value);
+  }
+
+  public String getIcon_url() {
+    return flighthubsdkmoduleJNI.ElementPropertiesJavaParams_icon_url_get(swigCPtr, this);
+  }
+
+  public void setWidth(int value) {
+    flighthubsdkmoduleJNI.ElementPropertiesJavaParams_width_set(swigCPtr, this, value);
+  }
+
+  public int getWidth() {
+    return flighthubsdkmoduleJNI.ElementPropertiesJavaParams_width_get(swigCPtr, this);
+  }
+
+  public void setStart_cap(int value) {
+    flighthubsdkmoduleJNI.ElementPropertiesJavaParams_start_cap_set(swigCPtr, this, value);
+  }
+
+  public int getStart_cap() {
+    return flighthubsdkmoduleJNI.ElementPropertiesJavaParams_start_cap_get(swigCPtr, this);
+  }
+
+  public void setEnd_cap(int value) {
+    flighthubsdkmoduleJNI.ElementPropertiesJavaParams_end_cap_set(swigCPtr, this, value);
+  }
+
+  public int getEnd_cap() {
+    return flighthubsdkmoduleJNI.ElementPropertiesJavaParams_end_cap_get(swigCPtr, this);
+  }
+
   public ElementPropertiesJavaParams() {
     this(flighthubsdkmoduleJNI.new_ElementPropertiesJavaParams(), true);
   }

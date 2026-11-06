@@ -94,7 +94,7 @@ private:
  */
 class AwsS3Uploader : public ICloudStorageUploader {
 public:
-    AwsS3Uploader();
+    explicit AwsS3Uploader(const CloudStorageTlsConfig& tls = {});
     ~AwsS3Uploader() override;
 
     CloudStorageUploadResult uploadFile(
@@ -155,7 +155,7 @@ private:
      */
     std::string generateObjectUrl(const std::string& bucket, const std::string& object_key, const std::string& endpoint);
 
-    bool aws_sdk_initialized_;
+    CloudStorageTlsConfig tls_;
 #ifdef USE_AWS_SDK
     std::shared_ptr<Aws::Utils::Threading::Executor> executor_;
 #else

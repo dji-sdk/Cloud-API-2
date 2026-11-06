@@ -1,7 +1,7 @@
 # Docker Compose SSE 远程部署步骤
 
 > 来源：`mcp/docs/部署指南.md` §4、§8。AI 按此推进。
-> 适用：将 MCP Server 部署到远程 Linux x86_64 服务器，多客户端通过 SSE 共享接入。
+> 适用：将 MCP Server 部署到远程 Linux x86_64 或 Linux aarch64 服务器，多客户端通过 SSE 共享接入。
 
 ## 架构概览
 
@@ -14,18 +14,18 @@
               ▼
       <remote-server>:8080
         └── Docker: pf-devkit-mcp
-              └── DJI CloudAPI2 SDK (JNI, linux/amd64)
+              └── DJI Cloud API 2 SDK (JNI, linux/amd64 或 linux/arm64)
                     │
                     │  gRPC/HTTP
                     ▼
-              DJI CloudAPI2 平台服务
+              DJI Cloud API 2 平台服务
 ```
 
 ## 前提条件
 
-- 远程服务器：Linux x86_64、Docker 24+、docker compose v2
+- 远程服务器：Linux x86_64 或 Linux aarch64、Docker 24+、docker compose v2
 - 本地机器：有 SSH 访问远程服务器 + Docker（用于构建镜像）
-- DJI CloudAPI2 控制台已创建工作空间，获取 `access_token` + `workspace_uuid`
+- DJI Cloud API 2 控制台已创建工作空间，获取 `access_token` + `workspace_uuid`
 
 ## 步骤清单
 
@@ -48,9 +48,9 @@ AI 生成密钥并拼接完整 `.env` 内容（使用 `prompts/gen-secrets.sh` �
 必填项：
 | 变量 | 来源 |
 |---|---|
-| `FH_SERVER_ADDRESS` | DJI CloudAPI2 服务器地址（含协议） |
-| `FH_ACCESS_TOKEN` | DJI CloudAPI2 控制台 → 工作空间 → 访问令牌 |
-| `FH_WORKSPACE_UUID` | DJI CloudAPI2 控制台 → 工作空间 → UUID |
+| `FH_SERVER_ADDRESS` | DJI Cloud API 2 服务器地址（含协议） |
+| `FH_ACCESS_TOKEN` | DJI Cloud API 2 控制台 → 工作空间 → 访问令牌 |
+| `FH_WORKSPACE_UUID` | DJI Cloud API 2 控制台 → 工作空间 → UUID |
 | `FH_SSE_AUTH_TOKEN` | `openssl rand -hex 32` 生成 |
 
 ### 3. 构建并推送 Docker 镜像
@@ -58,11 +58,12 @@ AI 生成密钥并拼接完整 `.env` 内容（使用 `prompts/gen-secrets.sh` �
 ```bash
 cd mcp
 mvn clean package -DskipTests
-docker build --platform linux/amd64 -t ${REGISTRY}/paas-sdk-devkit/mcp:latest .
+docker build --build-arg SDK_ARCH=amd64 -t ${REGISTRY}/paas-sdk-devkit/mcp:latest .
 docker push ${REGISTRY}/paas-sdk-devkit/mcp:latest
 ```
 
-> Apple Silicon 必须加 `--platform linux/amd64`，否则生成 ARM 镜像在服务器报 `exec format error`。
+> `SDK_ARCH` 必须与目标服务器架构一致（x86_64 → `amd64`，aarch64 → `arm64`），漏传会直接构建失败。
+> 跨架构构建（如 Apple Silicon 上构建 amd64 镜像）需再加 `--platform linux/amd64`，二者必须指向同一架构。
 > `REGISTRY` 为 `deploy.env` 中配置的镜像仓库地址（如 Harbor），`deploy.sh` 从该仓库拉取镜像。
 
 ### 4a. 方式 A：deploy.sh 一键部署（推荐）
@@ -173,7 +174,7 @@ server {
 
 | 坑 | 检查/处理 |
 |---|---|
-| Apple Silicon 构建 exec format error | 构建时加 `--platform linux/amd64` |
+| Apple Silicon 构建 exec format error | 镜像架构与服务器不符：加 `--platform linux/amd64` 且 `--build-arg SDK_ARCH=amd64`；arm64 服务器则用 `SDK_ARCH=arm64` |
 | 启动失败 StartupAuthValidator | `FH_SSE_AUTH_TOKEN` 留空或占位值，生成 `openssl rand -hex 32` |
 | Ubuntu 26.04+ .so 加载失败 | 设置 `GLIBC_TUNABLES=glibc.rtld.execstack=2` |
 | 镜像约 500MB | SDK native lib 420MB，正常 |

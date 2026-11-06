@@ -32,7 +32,7 @@ window.addEventListener('load', async function () {
 })
 ```
 
-> **`hostUrl` 已废弃**，传入无效。替换为 `runtimeDepsBasePath` + `map.env.cesiumBaseUrl`。
+> ⚠️ **`hostUrl` 是必填字段，不是废弃字段**——`WaylineEditorOptions.hostUrl: string`（非 optional），真实接入代码（skeleton/web 的 `WaylineView.vue`）始终显式传入 `hostUrl: cfg.address`。`runtimeDepsBasePath` + `map.env.cesiumBaseUrl` 是**额外新增**的依赖资源路径配置，与 `hostUrl` **同时传入**，不是它的替代品。不要删除 `hostUrl`，否则缺少必填字段会在严格类型检查下编译报错。
 
 ---
 
@@ -154,7 +154,7 @@ new WaylineEditor(options: IWaylineEditorOptions): WaylineEditor
 | `enabledWaylineTypes` | number[] | N | 限制创建航线时可选的航线类型，不传或空数组 = 展示全部内置类型 |
 | `waylineId` | string | N | 默认航线 ID，`render()` 未显式传入时使用 |
 | `theme` | ITheme | N | 自定义主题色 |
-| `hostUrl` | string | -- | **已废弃**，传入无效，可直接删除 |
+| `hostUrl` | string | **是** | 必填，前端服务地址（如 `cfg.address`）；与 `runtimeDepsBasePath`/`map.env.cesiumBaseUrl` 同时传入，不是互斥替代关系 |
 
 ### map（地图配置）
 
@@ -455,9 +455,10 @@ editor.setTheme({ primaryColor: '#00b96b', bgBasic: '#1a1a1a' })
 
 ```javascript
 var auth = {
-  authKeys: ['user_id'],
+  authKeys: ['X-User-Token'],
   headers: function () {
-    return { user_id: 'your-user-id' }   // 占位示例，请替换为实际平台分配的鉴权值
+    return { 'X-User-Token': localStorage.getItem('x-user-token') || '' }
+    // 如平台方要求附加额外鉴权头（key 名以实际要求为准，不要凭印象写 'user_id'），在此一并返回并加进 authKeys
   },
 }
 

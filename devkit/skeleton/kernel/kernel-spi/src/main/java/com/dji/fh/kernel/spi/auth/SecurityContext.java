@@ -21,10 +21,10 @@ import java.util.Set;
 
 /**
  * 表示「当前请求是谁」。
- * 由 AuthenticationProvider 解析请求后填充，feature / ISV 通过
+ * 由 AuthenticationProvider 解析请求后填充，feature / 集成商 通过
  * {@link SecurityContextHolder#current()} 读取。
  *
- * <p>字段最小化原则 —— ISV 想加部门 / 工号等扩展字段，请通过 {@link #attributes()}
+ * <p>字段最小化原则 —— 集成商 想加部门 / 工号等扩展字段，请通过 {@link #attributes()}
  * 提供（key/value 形态，不进 Kernel SemVer 契约）。
  *
  * <p>注意：本接口<b>不含</b> tenantId —— Skeleton 明确不做多租户（见 spec §12）。
@@ -58,7 +58,7 @@ public interface SecurityContext {
      * 便捷判断方法：当前用户是否具有指定角色。
      *
      * <p>大小写不敏感匹配：角色配置来源多样
-     * （JWT claims 为小写、ISV yml 可能写 "ADMIN"），一律忽略大小写比较，
+     * （JWT claims 为小写、集成商 yml 可能写 "ADMIN"），一律忽略大小写比较，
      * 避免因大小写不一致导致误判越权或误拦截。
      *
      * @param role 待检查的角色

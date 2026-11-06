@@ -1,4 +1,4 @@
-# DJI FlightHub MCP Server 部署约束规则
+# DJI Cloud API 2 MCP Server 部署约束规则
 #
 # 部署 = 引导式半自动流程，本文件定义部署 Skill 特有的硬约束。
 # 共享约束见 _shared/constraints-common.yaml（SSOT）。
@@ -6,7 +6,7 @@
 # level: critical — 违反必导致部署失败或安全风险
 # level: warning  — 违反可能导致问题但不一定立即失败
 
-# 注意：以下约束与 skeleton-deploy 的同名约束（platform-amd64-only、semi-auto-boundary、
+# 注意：以下约束与 skeleton-deploy 的同名约束（platform-arch-match、semi-auto-boundary、
 # no-destructive-by-default、verify-health-before-done）内容相似但操作列表不同，
 # 因部署形态差异无法完全复用，各自维护。
 
@@ -14,9 +14,9 @@
 # MCP Server 部署特有约束
 # ============================================================
 
-- id: platform-amd64-only
-  rule: 真实 SDK 模式仅支持 Linux x86_64（JNI 原生库限制）；非 amd64 平台必须使用 Docker --platform linux/amd64 或降级为 Mock 模式
-  violation: SDK .so 加载失败，SDK initialize 返回错误
+- id: platform-arch-match
+  rule: 真实 SDK 模式仅支持 Linux x86_64 / Linux aarch64，且镜像使用的 SDK 包必须与运行架构一致（构建时 --build-arg SDK_ARCH=amd64|arm64）；其他平台必须降级为 Mock 模式
+  violation: SDK .so 加载失败（找不到 /lib/linux-<arch>/libflighthubsdk_jni.so），SDK initialize 返回错误
   level: critical
 
 - id: sse-auth-token-required
@@ -29,9 +29,9 @@
   violation: SDK 原生库加载失败，应用无法初始化
   level: critical
 
-- id: docker-platform-amd64
-  rule: 在 Apple Silicon / ARM64 构建/运行 MCP 镜像必须加 --platform linux/amd64，否则生成 ARM 镜像在 x86_64 服务器报 exec format error
-  violation: 容器启动失败报 exec format error
+- id: docker-platform-sdk-arch
+  rule: docker build 的 --platform 必须与 --build-arg SDK_ARCH 指向同一架构（如 Apple Silicon 上构建 amd64 镜像用 --platform linux/amd64 --build-arg SDK_ARCH=amd64）；漏传 SDK_ARCH 会直接构建失败
+  violation: 镜像架构与 SDK 包不匹配，容器启动报 exec format error 或 JNI 主库加载失败
   level: critical
 
 - id: semi-auto-boundary
@@ -60,8 +60,8 @@
   level: critical
 
 - id: private-sdk-jar-install
-  rule: 本地 Maven 构建前必须确认 ~/.m2 中已安装 flight-hub-sdk-3.3.7.jar（mvn install:install-file）；Docker 构建内部已自动处理
-  violation: mvn package 找不到 SDK 依赖，构建失败
+  rule: 本地 Maven 构建前必须确认 ~/.m2 中已安装 flight-hub-sdk-3.3.7.jar（mvn install:install-file）。SDK 分 amd64 / arm64 两个包（libs/amd64、libs/arm64），Maven 坐标相同，必须安装与本机架构匹配的那一份；Docker 构建内部已按 SDK_ARCH 自动处理
+  violation: mvn package 找不到 SDK 依赖构建失败；装了错架构的包则编译通过、运行时 JNI 主库加载失败
   level: critical
 
 - id: base-path-correct

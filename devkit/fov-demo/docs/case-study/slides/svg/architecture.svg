@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 420" role="img" aria-label="BFF architecture">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <rect width="920" height="420" fill="url(#bg)" rx="12"/>
+  <text x="460" y="36" text-anchor="middle" fill="#94a3b8" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="14">集成商自研 BFF：控制 REST / 遥测 WebSocket / 视频 WHEP</text>
+
+  <g filter="url(#shadow)">
+    <rect x="40" y="70" width="240" height="300" rx="10" fill="#1e3a5f" stroke="#38bdf8" stroke-width="2"/>
+    <text x="160" y="100" text-anchor="middle" fill="#e2e8f0" font-size="16" font-weight="700" font-family="PingFang SC, sans-serif">浏览器</text>
+    <rect x="60" y="120" width="200" height="44" rx="6" fill="#0ea5e9" fill-opacity="0.2" stroke="#0ea5e9"/>
+    <text x="160" y="148" text-anchor="middle" fill="#7dd3fc" font-size="13" font-family="PingFang SC, sans-serif">WHEP</text>
+    <rect x="60" y="178" width="200" height="44" rx="6" fill="#14b8a6" fill-opacity="0.2" stroke="#14b8a6"/>
+    <text x="160" y="206" text-anchor="middle" fill="#5eead4" font-size="13" font-family="PingFang SC, sans-serif">WebSocket</text>
+    <rect x="60" y="236" width="200" height="44" rx="6" fill="#f59e0b" fill-opacity="0.2" stroke="#f59e0b"/>
+    <text x="160" y="264" text-anchor="middle" fill="#fcd34d" font-size="13" font-family="PingFang SC, sans-serif">REST</text>
+    <text x="160" y="320" text-anchor="middle" fill="#64748b" font-size="11" font-family="PingFang SC, sans-serif">Vue 3 + Cesium</text>
+    <text x="160" y="342" text-anchor="middle" fill="#64748b" font-size="11" font-family="PingFang SC, sans-serif">不握 Token · 不连 MQTT/DRC</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="340" y="70" width="240" height="300" rx="10" fill="#1e3a5f" stroke="#a78bfa" stroke-width="2"/>
+    <text x="460" y="100" text-anchor="middle" fill="#e2e8f0" font-size="16" font-weight="700" font-family="PingFang SC, sans-serif">Java BFF</text>
+    <text x="460" y="125" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="PingFang SC, sans-serif">Spring Boot + FHSDK</text>
+    <rect x="360" y="145" width="200" height="36" rx="5" fill="#334155"/>
+    <text x="460" y="168" text-anchor="middle" fill="#cbd5e1" font-size="12" font-family="PingFang SC, sans-serif">LiveModule + FFmpeg WHIP</text>
+    <rect x="360" y="192" width="200" height="36" rx="5" fill="#334155"/>
+    <text x="460" y="215" text-anchor="middle" fill="#cbd5e1" font-size="12" font-family="PingFang SC, sans-serif">listen / subscribe to WS</text>
+    <rect x="360" y="239" width="200" height="36" rx="5" fill="#334155"/>
+    <text x="460" y="262" text-anchor="middle" fill="#cbd5e1" font-size="12" font-family="PingFang SC, sans-serif">ControlService / stick</text>
+    <rect x="360" y="286" width="200" height="36" rx="5" fill="#334155"/>
+    <text x="460" y="309" text-anchor="middle" fill="#cbd5e1" font-size="12" font-family="PingFang SC, sans-serif">SeiSubscriptionService</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="640" y="70" width="240" height="300" rx="10" fill="#1e3a5f" stroke="#34d399" stroke-width="2"/>
+    <text x="760" y="100" text-anchor="middle" fill="#e2e8f0" font-size="16" font-weight="700" font-family="PingFang SC, sans-serif">设备 / 云端</text>
+    <rect x="660" y="130" width="200" height="50" rx="6" fill="#065f46" fill-opacity="0.4" stroke="#34d399"/>
+    <text x="760" y="155" text-anchor="middle" fill="#6ee7b7" font-size="12" font-family="PingFang SC, sans-serif">MQTT OSD ~0.5Hz</text>
+    <text x="760" y="172" text-anchor="middle" fill="#6ee7b7" font-size="11" font-family="PingFang SC, sans-serif">慢通道状态</text>
+    <rect x="660" y="195" width="200" height="50" rx="6" fill="#065f46" fill-opacity="0.4" stroke="#34d399"/>
+    <text x="760" y="220" text-anchor="middle" fill="#6ee7b7" font-size="12" font-family="PingFang SC, sans-serif">DRC 快激光</text>
+    <text x="760" y="237" text-anchor="middle" fill="#6ee7b7" font-size="11" font-family="PingFang SC, sans-serif">connectDrcLink</text>
+    <rect x="660" y="260" width="200" height="50" rx="6" fill="#065f46" fill-opacity="0.4" stroke="#34d399"/>
+    <text x="760" y="285" text-anchor="middle" fill="#6ee7b7" font-size="12" font-family="PingFang SC, sans-serif">SEI in H.264</text>
+    <text x="760" y="302" text-anchor="middle" fill="#6ee7b7" font-size="11" font-family="PingFang SC, sans-serif">~30fps 开直播即有</text>
+    <rect x="660" y="325" width="200" height="32" rx="5" fill="#334155"/>
+    <text x="760" y="346" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="PingFang SC, sans-serif">Oryx WHEP out</text>
+  </g>
+
+  <path d="M280 142 L340 142" stroke="#38bdf8" stroke-width="2"/>
+  <path d="M280 200 L340 200" stroke="#14b8a6" stroke-width="2"/>
+  <path d="M340 200 L280 200" stroke="#14b8a6" stroke-width="2" stroke-dasharray="4"/>
+  <path d="M280 258 L340 258" stroke="#f59e0b" stroke-width="2"/>
+  <path d="M580 163 L640 155" stroke="#34d399" stroke-width="2"/>
+  <path d="M580 221 L640 220" stroke="#34d399" stroke-width="2"/>
+  <path d="M580 303 L640 285" stroke="#34d399" stroke-width="2"/>
+</svg>

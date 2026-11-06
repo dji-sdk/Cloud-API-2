@@ -42,6 +42,7 @@ public class SafetyServiceModule {
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> deleteCustomizedFlightAreasCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> syncCustomizedFlightAreasCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> getFlightAreasSyncStatusCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> getFlightAreasUrlCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> getOfflineMapsModelInfoCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> updateOfflineMapsModelInfoCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> cancelOfflineMapsModelInfoCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
@@ -430,6 +431,46 @@ public class SafetyServiceModule {
         } finally {
             if (nativeDeviceSns != null) {
                 nativeDeviceSns.delete();
+            }
+        }
+    }
+
+    /**
+     * 获取飞行区文件下载地址
+     * @param callback 结果回调，成功时返回飞行区文件名、签名下载地址（有效期 3600 秒）、SHA-256 校验值与文件大小
+     * @implNote 链路: HTTP | GET /safety/api/v1/flight-areas/url
+     */
+    public void getFlightAreasUrl(FlightHubCallback.GetFlightAreasUrlCallback callback) {
+        try {
+            int id = generateActionCallbackId();
+            com.dji.flighthubsdk.generated.GetFlightAreasUrlCallback swigCallback = new com.dji.flighthubsdk.generated.GetFlightAreasUrlCallback() {
+                @Override
+                public void onGetFlightAreasUrl(com.dji.flighthubsdk.generated.FlightHubError err, GetFlightAreasUrlResults result) {
+                    try {
+                        if (callback != null) {
+                            callback.onResult(FlightHubSdkConvert.toFlightHubError(err), FlightHubSdkConvert.toGetFlightAreasUrlResults(result));
+                        }
+                    } catch (Exception e) {
+                        Logger.error(TAG, "[getFlightAreasUrl] callback error: " + e.getMessage(), e);
+                    } finally {
+                        getFlightAreasUrlCallbackRef.remove(id);
+                    }
+                }
+            };
+
+            final CallbackRefContainer container = new CallbackRefContainer(swigCallback, callback);
+            synchronized (getFlightAreasUrlCallbackRef) {
+                getFlightAreasUrlCallbackRef.put(id, container);
+                this.safetyServiceModule.getFlightAreasUrlWrapper(swigCallback);
+            }
+        } catch (Exception e) {
+            Logger.error(TAG, "[getFlightAreasUrl] error: " + e.getMessage(), e);
+            if (callback != null) {
+                try {
+                    callback.onResult(new com.dji.flighthubsdk.bean.FlightHubError(FlightHubSdkErrorCode.ERROR_OPERATION_FAILED), null);
+                } catch (Exception ex) {
+                    Logger.error(TAG, "error callback threw: " + ex.getMessage(), ex);
+                }
             }
         }
     }

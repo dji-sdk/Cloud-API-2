@@ -255,11 +255,18 @@ public abstract class AbstractMcpTool {
 
     /**
      * 声明此 tool 整体的安全等级。
-     * 注解驱动模式：读取 @McpTool#securityLevel()。
-     * Legacy 模式：默认 L0（只读），L1+ 工具覆写此方法返回对应等级。
+     * 注解驱动模式：读取 {@code @McpTool#securityLevel()}。
+     * Legacy 模式：默认 L3（CRITICAL）——未显式覆写时返回 CRITICAL 标记。
      *
-     * <p>对于混合等级工具（部分 action L0，部分 L1+），
-     * 工具级保持 L0，在各 action 方法内调用 {@link #enforceSecurityLevel(SecurityLevel)}。
+     * <p><b>安全语义：CRITICAL 为「未分类/自门控」标记（fail-closed 元数据）</b>：
+     * 派发层已按 session 上限统一门控（{@code McpToolRegistry.enforceSecurityGate}），
+     * 豁免项为：未知 tool、{@code sim_*}、无活跃 session、未注入 SessionManager，
+     * 以及 CRITICAL（表示工具在 {@code execute()} 内自门控）。该返回值同时决定限流档位
+     * （CRITICAL 映射到 critical-rpm，默认不限流）。mixed-level 工具应在工具级返回最低声明等级，
+     * 各 action 内单独调用 {@link #enforceSecurityLevel(SecurityLevel)} 强制 per-action 等级检查。</p>
+     *
+     * <p>换句话说：getSecurityLevel() 的返回值不是「派发层会拒绝吗」而是
+     * 「这个工具声明的最小保护等级是多少」。CRITICAL 表示「无声明/自我防护」。</p>
      *
      * @return 此工具整体要求的安全等级
      */
@@ -269,7 +276,7 @@ public abstract class AbstractMcpTool {
         if (meta != null) {
             return meta.securityLevel();
         }
-        return SecurityLevel.READ_ONLY;
+        return SecurityLevel.CRITICAL;
     }
 
     /**
@@ -634,6 +641,10 @@ public abstract class AbstractMcpTool {
      * 确保已建立到指定设备的 DRC 链路，未建立时自动静默获取控制权并连接 DRC。
      * 可逆操作，无需人工确认。
      *
+     * <p>自愈契约的边界：只有「从未建立过链路」的场景才静默补建。
+     * 若用户显式调用了 {@code fh_drc_disconnect}，则拒绝自动重连，
+     * 必须由用户显式调用 {@code fh_drc_connect} 恢复——避免用户的断开意图被静默覆盖。
+     *
      * @param session    当前 session 上下文
      * @param droneSn    目标设备 SN
      * @param sdkService SDK 服务实例
@@ -641,6 +652,12 @@ public abstract class AbstractMcpTool {
      */
     protected Map<String, Object> ensureDrcLink(
             SessionContext session, String droneSn, SdkService sdkService) {
+        // 显式断开优先于自愈：必须先检查，避免先抢控再报错留下部分副作用
+        if (session.isDrcExplicitlyDisconnected(droneSn)) {
+            return errorResult("DRC link to " + droneSn + " was explicitly disconnected",
+                    "Call fh_drc_connect(drone_sn='" + droneSn + "') to re-establish the link "
+                            + "before sending flight commands.");
+        }
         Map<String, Object> controlError = ensureControlAuthority(session, droneSn, sdkService);
         if (controlError != null) {
             return controlError;

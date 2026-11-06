@@ -38,6 +38,9 @@ public:
     virtual MeErrorCode CleanUp() = 0;
     virtual MeErrorCode ConnectParamsConfig(const std::string& host, const std::string& username, const std::string& password, const std::string& client_id, const std::string& sn) = 0;
 
+    // 设置网关(机场)SN, 供 topic 中 {gateway_sn} 占位符替换使用; 默认空实现, 仅需该能力的链路重写
+    virtual void SetGatewaySn(const std::string& gateway_sn) {}
+
     // Enable Multi Mqtt Client
     virtual void MultiPathParamsConfig(const MqttMultiPathParams& params) = 0;
     virtual void UpdateBestLink(std::string interface_name) = 0;

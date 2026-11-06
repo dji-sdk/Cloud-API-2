@@ -11,6 +11,7 @@ import com.dji.flighthubsdk.core.RemoteController;
 import com.dji.flighthubsdk.core.Relay;
 import com.dji.flighthubsdk.core.Stream;
 import com.dji.flighthubsdk.core.Workspace;
+import com.dji.flighthubsdk.core.SessionManager;
 import com.dji.flighthubsdk.bean.FlightHubSdkConfig;
 import com.dji.flighthubsdk.bean.HeaderKeyValue;
 import com.dji.flighthubsdk.core.JniLibraryLoader;
@@ -30,6 +31,10 @@ public class FlightHubSDK {
     
     private static boolean initialized = false;
     private static final Object initLock = new Object();
+
+    /** setLogLevel 合法入参白名单（小写，比较时大小写不敏感） */
+    private static final java.util.Set<String> VALID_LOG_LEVELS =
+            java.util.Set.of("debug", "info", "warn", "error");
     
     /**
      * 私有构造函数，防止实例化
@@ -196,12 +201,18 @@ public class FlightHubSDK {
     /**
      * 设置日志级别
      *
-     * @param level 日志级别：debug / info / warn / error
+     * @param level 日志级别：debug / info / warn / error（大小写不敏感）；
+     *              白名单外的入参（含 {@code null}、空串、带空格串）将被拒绝，
+     *              返回 {@code ERROR_INVALID_PARAM}，且当前日志级别保持原值不变
      * @return SDK 层错误码；整型语义见 {@link com.dji.flighthubsdk.value.FlightHubSdkErrorCode}
      * @see com.dji.flighthubsdk.value.FlightHubSdkErrorCode
      */
     public static FlightHubSdkErrorCode setLogLevel(String level) {
         try {
+            if (level == null || !VALID_LOG_LEVELS.contains(level.toLowerCase())) {
+                Logger.warn("FlightHubSDK", "Invalid log level: " + level + ", rejected");
+                return FlightHubSdkErrorCode.ERROR_INVALID_PARAM;
+            }
             Logger.setLogLevel(level);
             return FlightHubSdkManager.setLogLevel(level);
         } catch (Exception e) {
@@ -282,63 +293,96 @@ public class FlightHubSDK {
     }
     
     /**
-     * 获取 Workspace 实例
+     * 获取 Workspace 实例（等价于 session 0）
      * @return Workspace 实例
      */
     public static Workspace getWorkspaceInstance() {
+        return getWorkspaceInstance(0);
+    }
+
+    /**
+     * 按 session_id 获取 Workspace（业务入口；不要再从 Session 对象取设备）
+     * @param sessionId Session 数字 id（0 为 initialize 后的默认 Session）
+     * @return Workspace 实例；session 不存在时返回 null
+     */
+    public static Workspace getWorkspaceInstance(int sessionId) {
         try {
-            Logger.info("FlightHubSDK", "Getting workspace instance");
-            Workspace workspace = FlightHubSdkManager.getWorkspaceInstance();
+            Logger.info("FlightHubSDK", "Getting workspace instance, sessionId=" + sessionId);
+            Workspace workspace = FlightHubSdkManager.getWorkspaceInstance(sessionId);
             if (workspace != null) {
-                Logger.info("FlightHubSDK", "Workspace instance retrieved successfully");
+                Logger.info("FlightHubSDK",
+                        "Workspace instance retrieved successfully, sessionId=" + sessionId);
             } else {
-                Logger.warn("FlightHubSDK", "Workspace instance is null");
+                Logger.warn("FlightHubSDK", "Workspace instance is null, sessionId=" + sessionId);
             }
             return workspace;
         } catch (Exception e) {
-            Logger.error("FlightHubSDK", "GetWorkspaceInstance error: " + e.getMessage(), e);
+            Logger.error("FlightHubSDK",
+                    "GetWorkspaceInstance error: sessionId=" + sessionId + ", " + e.getMessage(), e);
             return null;
         }
     }
 
     /**
-     * 获取 Drone 实例
+     * 获取 Drone 实例（session 0）
      * @param sn 飞行器序列号
      * @return Drone 实例
      */
     public static Drone getDroneInstance(String sn) {
+        return getDroneInstance(0, sn);
+    }
+
+    /**
+     * 按 session_id 获取 Drone（门面入口）
+     */
+    public static Drone getDroneInstance(int sessionId, String sn) {
         try {
-            Logger.debug("FlightHubSDK", "Getting drone instance, SN: " + sn);
-            Drone drone = FlightHubSdkManager.getDroneInstance(sn);
+            Logger.debug("FlightHubSDK",
+                    "Getting drone instance, sessionId=" + sessionId + ", SN: " + sn);
+            Drone drone = FlightHubSdkManager.getDroneInstance(sessionId, sn);
             if (drone != null) {
-                Logger.debug("FlightHubSDK", "Drone instance retrieved successfully, SN: " + sn);
+                Logger.debug("FlightHubSDK",
+                        "Drone instance retrieved successfully, sessionId=" + sessionId + ", SN: " + sn);
             } else {
-                Logger.debug("FlightHubSDK", "Drone instance is null, SN: " + sn);
+                Logger.debug("FlightHubSDK",
+                        "Drone instance is null, sessionId=" + sessionId + ", SN: " + sn);
             }
             return drone;
         } catch (Exception e) {
-            Logger.error("FlightHubSDK", "GetDroneInstance error: " + e.getMessage(), e);
+            Logger.error("FlightHubSDK",
+                    "GetDroneInstance error: sessionId=" + sessionId + ", " + e.getMessage(), e);
             return null;
         }
     }
     
     /**
-     * 获取 Dock 实例
+     * 获取 Dock 实例（session 0）
      * @param sn 机场序列号
      * @return Dock 实例
      */
     public static Dock getDockInstance(String sn) {
+        return getDockInstance(0, sn);
+    }
+
+    /**
+     * 按 session_id 获取 Dock（门面入口）
+     */
+    public static Dock getDockInstance(int sessionId, String sn) {
         try {
-            Logger.debug("FlightHubSDK", "Getting dock instance, SN: " + sn);
-            Dock dock = FlightHubSdkManager.getDockInstance(sn);
+            Logger.debug("FlightHubSDK",
+                    "Getting dock instance, sessionId=" + sessionId + ", SN: " + sn);
+            Dock dock = FlightHubSdkManager.getDockInstance(sessionId, sn);
             if (dock != null) {
-                Logger.debug("FlightHubSDK", "Dock instance retrieved successfully, SN: " + sn);
+                Logger.debug("FlightHubSDK",
+                        "Dock instance retrieved successfully, sessionId=" + sessionId + ", SN: " + sn);
             } else {
-                Logger.debug("FlightHubSDK", "Dock instance is null, SN: " + sn);
+                Logger.debug("FlightHubSDK",
+                        "Dock instance is null, sessionId=" + sessionId + ", SN: " + sn);
             }
             return dock;
         } catch (Exception e) {
-            Logger.error("FlightHubSDK", "GetDockInstance error: " + e.getMessage(), e);
+            Logger.error("FlightHubSDK",
+                    "GetDockInstance error: sessionId=" + sessionId + ", " + e.getMessage(), e);
             return null;
         }
     }
@@ -422,6 +466,40 @@ public class FlightHubSDK {
             return stream;
         } catch (Exception e) {
             Logger.error("FlightHubSDK", "GetStream error: " + e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * 获取 Cascade 全局实例（workspace 级级联管理入口）。
+     * @return CascadeModule 实例
+     */
+    public static com.dji.flighthubsdk.core.CascadeModule getCascade() {
+        try {
+            Logger.info("FlightHubSDK", "Getting cascade instance");
+            com.dji.flighthubsdk.core.CascadeModule cascade = FlightHubSdkManager.getCascadeInstance();
+            if (cascade != null) {
+                Logger.info("FlightHubSDK", "Cascade instance retrieved successfully");
+            } else {
+                Logger.warn("FlightHubSDK", "Cascade instance is null");
+            }
+            return cascade;
+        } catch (Exception e) {
+            Logger.error("FlightHubSDK", "GetCascade error: " + e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * 获取 SessionManager（唯一 Session 登记/查询入口）。
+     *
+     * @return SessionManager 包装实例；SDK 未初始化时返回 null
+     */
+    public static SessionManager getSessionManager() {
+        try {
+            return FlightHubSdkManager.getSessionManager();
+        } catch (Exception e) {
+            Logger.error("FlightHubSDK", "getSessionManager error: " + e.getMessage(), e);
             return null;
         }
     }

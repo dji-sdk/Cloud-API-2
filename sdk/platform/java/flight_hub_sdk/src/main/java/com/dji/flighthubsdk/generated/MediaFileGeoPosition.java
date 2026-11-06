@@ -75,6 +75,14 @@ public class MediaFileGeoPosition {
     return flighthubsdkmoduleJNI.MediaFileGeoPosition_abs_alt_get(swigCPtr, this);
   }
 
+  public void setRel_alt(double value) {
+    flighthubsdkmoduleJNI.MediaFileGeoPosition_rel_alt_set(swigCPtr, this, value);
+  }
+
+  public double getRel_alt() {
+    return flighthubsdkmoduleJNI.MediaFileGeoPosition_rel_alt_get(swigCPtr, this);
+  }
+
   public MediaFileGeoPosition() {
     this(flighthubsdkmoduleJNI.new_MediaFileGeoPosition(), true);
   }

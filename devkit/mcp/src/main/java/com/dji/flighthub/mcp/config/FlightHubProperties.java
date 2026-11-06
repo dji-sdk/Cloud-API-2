@@ -19,6 +19,9 @@ package com.dji.flighthub.mcp.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
  * FlightHub SDK 连接配置。
  * 从环境变量（FH_*）或 application.yml 加载。
@@ -33,14 +36,30 @@ public class FlightHubProperties {
     private Failsafe failsafe = new Failsafe();
     private Audit audit = new Audit();
     private Idempotency idempotency = new Idempotency();
+    private RateLimit rateLimit = new RateLimit();
     private Transport transport = new Transport();
     private Cockpit cockpit = new Cockpit();
+    private Output output = new Output();
 
     // --- 嵌套配置类 ---
 
     public static class Server {
         private String address;
         private int port = 443;
+        /**
+         * 是否校验 SDK 通知通道（WSS）的服务端 TLS 证书。
+         *
+         * <p>{@code null} 视为 {@code true}（安全默认）。私有化 FH2 常用自签名证书，
+         * SDK 的 libwebsockets 通知通道默认开启证书校验（注意 SDK 的 HTTP 客户端并不校验），
+         * 内网部署可设为 {@code false} 跳过校验，或保持 {@code true} 并通过
+         * {@link #sslCaPath} 指定自签 CA。
+         */
+        private Boolean verifySsl;
+        /**
+         * 通知通道（WSS）的 CA 证书文件路径；为空则沿用 SDK 默认信任库。
+         * 仅在 {@link #verifySsl} 为 {@code true} 时生效。
+         */
+        private String sslCaPath;
 
         public String getAddress() {
             return address;
@@ -56,6 +75,22 @@ public class FlightHubProperties {
 
         public void setPort(int port) {
             this.port = port;
+        }
+
+        public Boolean getVerifySsl() {
+            return verifySsl;
+        }
+
+        public void setVerifySsl(Boolean verifySsl) {
+            this.verifySsl = verifySsl;
+        }
+
+        public String getSslCaPath() {
+            return sslCaPath;
+        }
+
+        public void setSslCaPath(String sslCaPath) {
+            this.sslCaPath = sslCaPath;
         }
     }
 
@@ -211,6 +246,85 @@ public class FlightHubProperties {
         }
     }
 
+    /**
+     * 工具级限流配置 — 按 SecurityLevel 分层的拒绝式漏桶。
+     *
+     * <p>配额为每分钟调用次数（rpm），{@code 0} 表示该档位不限流。
+     * 单工具覆盖（{@link #perToolRpm}）优先级高于分层默认值。
+     */
+    public static class RateLimit {
+        /** 工具级限流总开关 */
+        private boolean enabled = true;
+        /** L0 只读工具每分钟配额 */
+        private int readOnlyRpm = 300;
+        /** L1 可逆工具每分钟配额 */
+        private int reversibleRpm = 30;
+        /** L2 飞行工具每分钟配额 */
+        private int flightRpm = 6;
+        /** L3 紧急工具每分钟配额，0 = 不限流（紧急停止必须永远可执行） */
+        private int criticalRpm = 0;
+        /** 单工具覆盖：toolName -> rpm（0 表示不限流） */
+        private Map<String, Integer> perToolRpm = new LinkedHashMap<>();
+        /** 最大跟踪键数，超限 fail-open */
+        private int maxKeys = 10000;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public int getReadOnlyRpm() {
+            return readOnlyRpm;
+        }
+
+        public void setReadOnlyRpm(int readOnlyRpm) {
+            this.readOnlyRpm = readOnlyRpm;
+        }
+
+        public int getReversibleRpm() {
+            return reversibleRpm;
+        }
+
+        public void setReversibleRpm(int reversibleRpm) {
+            this.reversibleRpm = reversibleRpm;
+        }
+
+        public int getFlightRpm() {
+            return flightRpm;
+        }
+
+        public void setFlightRpm(int flightRpm) {
+            this.flightRpm = flightRpm;
+        }
+
+        public int getCriticalRpm() {
+            return criticalRpm;
+        }
+
+        public void setCriticalRpm(int criticalRpm) {
+            this.criticalRpm = criticalRpm;
+        }
+
+        public Map<String, Integer> getPerToolRpm() {
+            return perToolRpm;
+        }
+
+        public void setPerToolRpm(Map<String, Integer> perToolRpm) {
+            this.perToolRpm = perToolRpm;
+        }
+
+        public int getMaxKeys() {
+            return maxKeys;
+        }
+
+        public void setMaxKeys(int maxKeys) {
+            this.maxKeys = maxKeys;
+        }
+    }
+
     public static class Transport {
         private String mode = "stdio"; // 传输模式：stdio | sse
         private int ssePort = 8080;
@@ -334,6 +448,52 @@ public class FlightHubProperties {
         }
     }
 
+    /**
+     * 输出体积预算配置 — 防止超大 SDK 响应直接透传给 LLM。
+     */
+    public static class Output {
+        /** 是否启用输出预算守卫 */
+        private boolean enabled = true;
+        /** 单次 tool 响应最大字节数（pretty-print 后），默认 256KB */
+        private int maxBytes = 256 * 1024;
+        /** 单个列表最多保留的条数，默认 500 */
+        private int maxArrayItems = 500;
+        /** 单个字符串最多保留的字符数，默认 8192 */
+        private int maxStringChars = 8192;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public int getMaxBytes() {
+            return maxBytes;
+        }
+
+        public void setMaxBytes(int maxBytes) {
+            this.maxBytes = maxBytes;
+        }
+
+        public int getMaxArrayItems() {
+            return maxArrayItems;
+        }
+
+        public void setMaxArrayItems(int maxArrayItems) {
+            this.maxArrayItems = maxArrayItems;
+        }
+
+        public int getMaxStringChars() {
+            return maxStringChars;
+        }
+
+        public void setMaxStringChars(int maxStringChars) {
+            this.maxStringChars = maxStringChars;
+        }
+    }
+
     // --- Getter/Setter ---
 
     public Server getServer() {
@@ -384,6 +544,14 @@ public class FlightHubProperties {
         this.idempotency = idempotency;
     }
 
+    public RateLimit getRateLimit() {
+        return rateLimit;
+    }
+
+    public void setRateLimit(RateLimit rateLimit) {
+        this.rateLimit = rateLimit;
+    }
+
     public Transport getTransport() {
         return transport;
     }
@@ -398,5 +566,13 @@ public class FlightHubProperties {
 
     public void setCockpit(Cockpit cockpit) {
         this.cockpit = cockpit;
+    }
+
+    public Output getOutput() {
+        return output;
+    }
+
+    public void setOutput(Output output) {
+        this.output = output;
     }
 }

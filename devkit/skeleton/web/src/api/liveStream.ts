@@ -17,6 +17,7 @@
 import { authFetch } from '@/api/auth'
 import { API_BASE } from './baseUrl'
 import { getRuntimeConfig } from '@/utils/runtimeConfig'
+import { buildDeviceGroups } from '@/utils/deviceGroup'
 import type { LiveDeviceInfo } from '@/types/liveStream'
 import type { DeviceState } from '@/types/api'
 
@@ -47,8 +48,12 @@ const MOCK_DEVICES: LiveDeviceInfo[] = [
 /**
  * 获取在线设备列表（用于直播大屏快速添加）。
  *
- * 后端返回 DeviceState[] 扁平列表，机场（DOCK）通过 childDevices 挂载飞行器。
- * 此处筛选在线机场，提取子设备中的飞行器信息。
+ * <p>后端返回 DeviceState[] 顶层设备列表（childDevices 为嵌套子树）。复用
+ * {@link buildDeviceGroups} 按 SDK deviceClass 解析每个在线机场分组的基站 / 机场 / 飞行器节点，
+ * 各节点保留自己的 SN —— 修复「340 拓扑下机场卡片显示基站 SN」的问题：340 机场的顶层设备是
+ * 基站（deviceType 同为 DOCK），直接取顶层 sn 会把基站 SN 当成机场 SN。
+ *
+ * <p>仅保留解析出机场节点的分组（纯基站无机场、无可直播画面时跳过）。
  */
 export async function fetchOnlineDevices(): Promise<LiveDeviceInfo[]> {
   if (isMockEnabled()) {
@@ -62,15 +67,25 @@ export async function fetchOnlineDevices(): Promise<LiveDeviceInfo[]> {
 
   const data = await res.json() as DeviceState[]
 
-  return data
-    .filter((device) => device.online && device.deviceType === 'DOCK')
-    .map((device): LiveDeviceInfo => {
-      const drone = device.childDevices?.find((child) => child.deviceType === 'DRONE')
+  return buildDeviceGroups(data)
+    .map((group): LiveDeviceInfo | null => {
+      const dock = group.dock
+      if (!dock) {
+        return null
+      }
+      const baseStation = group.baseStation
+      const drone = group.drones[0]
       return {
-        name: device.name ?? device.sn,
+        name: dock.name ?? dock.sn,
+        baseStation: baseStation
+          ? {
+              model: baseStation.model ?? 'Unknown',
+              sn: baseStation.sn,
+            }
+          : undefined,
         dock: {
-          model: device.model ?? 'Unknown',
-          sn: device.sn,
+          model: dock.model ?? 'Unknown',
+          sn: dock.sn,
         },
         drone: drone
           ? {
@@ -80,4 +95,5 @@ export async function fetchOnlineDevices(): Promise<LiveDeviceInfo[]> {
           : undefined,
       }
     })
+    .filter((info): info is LiveDeviceInfo => info !== null)
 }

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 set(_paho_root "${CLOUD_API2_THIRD_PARTY}/paho_mqtt_c")
 if(CLOUD_API2_OS STREQUAL "macosx")
     set(_paho_lib "${_paho_root}/lib/${CLOUD_API2_PLAT}/libpaho-mqtt3as.1.dylib")

@@ -66,7 +66,7 @@ public class IFlightSettingsModule {
     flighthubsdkmoduleJNI.IFlightSettingsModule_setOutOfControlActionWrapper(swigCPtr, this, device_sn, action, SetOutOfControlActionCallback.getCPtr(callback), callback);
   }
 
-  public void setFlightTaskHeightWrapper(String device_sn, int height, SetFlightTaskHeightCallback callback) {
+  public void setFlightTaskHeightWrapper(String device_sn, double height, SetFlightTaskHeightCallback callback) {
     flighthubsdkmoduleJNI.IFlightSettingsModule_setFlightTaskHeightWrapper(swigCPtr, this, device_sn, height, SetFlightTaskHeightCallback.getCPtr(callback), callback);
   }
 

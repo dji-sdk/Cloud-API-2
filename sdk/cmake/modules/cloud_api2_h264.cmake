@@ -1,3 +1,6 @@
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 set(BUILD_H264_ANALYZE_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory("${CLOUD_API2_DEPS}/h264_analyze" "${CMAKE_BINARY_DIR}/_h264_analyze")
 

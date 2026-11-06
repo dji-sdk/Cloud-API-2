@@ -21,7 +21,7 @@ import com.dji.fh.kernel.spi.event.KernelEvent;
 /**
  * Bridge 错误回调（可选实现）。
  * Kernel 检测到 {@link EventBridge#send(KernelEvent)} 抛异常时调用，
- * 便于 ISV 统一监控所有 bridge 的 outbound 失败。
+ * 便于集成商统一监控所有 bridge 的 outbound 失败。
  *
  * <p>未提供实现时，Kernel 走默认行为（日志记录）。
  *

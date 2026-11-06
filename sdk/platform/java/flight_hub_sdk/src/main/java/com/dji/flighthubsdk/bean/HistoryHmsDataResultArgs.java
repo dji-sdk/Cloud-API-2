@@ -15,9 +15,9 @@ public final class HistoryHmsDataResultArgs {
     private long createTimestamp;
     /** 设备 ID */
     private String deviceId;
-    /** 显示场景 */
+    /** 显示场景：0=正式错误码（用户、研发都显示）, 1=调试错误码（仅研发态显示，用于排障） */
     private int displayScene;
-    /** 是否忽略 */
+    /** 是否忽略：0=不忽略, 1=忽略 */
     private int ignore;
     /** 发送方主机 ID */
     private String senderHostId;
@@ -33,8 +33,8 @@ public final class HistoryHmsDataResultArgs {
      * @param componentIndex 组件索引
      * @param createTimestamp 创建时间戳
      * @param deviceId 设备 ID
-     * @param displayScene 显示场景
-     * @param ignore 是否忽略
+     * @param displayScene 显示场景：0=正式错误码（用户、研发都显示）, 1=调试错误码（仅研发态显示，用于排障）
+     * @param ignore 是否忽略：0=不忽略, 1=忽略
      * @param senderHostId 发送者主机 ID
      * @param sensorIndex 传感器索引
      */
@@ -65,9 +65,9 @@ public final class HistoryHmsDataResultArgs {
     public long getCreateTimestamp() { return createTimestamp; }
     /** 设备 ID */
     public String getDeviceId() { return deviceId; }
-    /** 显示场景 */
+    /** 显示场景：0=正式错误码（用户、研发都显示）, 1=调试错误码（仅研发态显示，用于排障） */
     public int getDisplayScene() { return displayScene; }
-    /** 是否忽略 */
+    /** 是否忽略：0=不忽略, 1=忽略 */
     public int getIgnore() { return ignore; }
     /** 发送方主机 ID */
     public String getSenderHostId() { return senderHostId; }
@@ -94,12 +94,12 @@ public final class HistoryHmsDataResultArgs {
         this.deviceId = deviceId;
     }
 
-    /** 显示场景 */
+    /** 显示场景：0=正式错误码（用户、研发都显示）, 1=调试错误码（仅研发态显示，用于排障） */
     public void setDisplayScene(int displayScene) {
         this.displayScene = displayScene;
     }
 
-    /** 是否忽略 */
+    /** 是否忽略：0=不忽略, 1=忽略 */
     public void setIgnore(int ignore) {
         this.ignore = ignore;
     }

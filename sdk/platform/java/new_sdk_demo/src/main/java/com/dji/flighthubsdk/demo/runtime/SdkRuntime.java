@@ -15,12 +15,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * SDK 运行时门面：封装「初始化 → 注入鉴权头 → 获取 Workspace → shutdown」全生命周期。
+ * SDK 运行时门面: 封装「初始化 → 注入鉴权头 → 获取 Workspace → shutdown」全生命周期。
  *
  * <p>本身实现 {@link AutoCloseable}, 配合 try-with-resources 保证 {@link FlightHubSDK#shutdown()}
  * 一定被调用, 避免散落且易漏的手动 shutdown。
  *
- * <p>鉴权采用「gateway header 注入」模型(本 SDK 版本无 setToken) ：
+ * <p>鉴权采用「gateway header 注入」模型 (本 SDK 版本无 setToken) :
  * 把 {@code auth.auth_key_values} 解析出的一组 key/value 同时注入 HTTP 与 WebSocket 头。
  *
  * <pre>{@code
@@ -35,17 +35,26 @@ public final class SdkRuntime implements AutoCloseable {
     private static final String TAG = "SdkRuntime";
 
     /**
-     * {@link FlightHubSDK#shutdown()} 的看门狗超时(ms)。用过 RTC 直播后, native shutdown 可能
-     * 阻塞/死锁在 RTC 链路 teardown;超过此时长仍未返回, 则放弃等待(由入口兜底强制退出进程),
+     * {@link FlightHubSDK#shutdown()} 的看门狗超时 (ms)。用过 RTC 直播后, native shutdown 可能
+     * 阻塞/死锁在 RTC 链路 teardown; 超过此时长仍未返回, 则放弃等待 (由入口兜底强制退出进程),
      * 避免用户请求退出后整个进程「卡住无反应」。
      */
     private static final long SHUTDOWN_TIMEOUT_MS = 5000L;
 
+    /**
+     * shutdown 前的排空等待(ms)。SDK 3.3.0.0 存在竞态：{@code shutdown()} 会销毁 drc_sdk 的
+     * executors, 但不会取消在途 HTTP 请求;若此时还有请求(如 API 失败后 SDK 自动上报的 beacon)
+     * 未收到响应, 响应回来时其回调会去取已销毁的 {@code Executors::Main()} 并解引用空指针,
+     * 导致 native SIGSEGV(hs_err, 崩在 libflighthubsdk_jni.so 的 Network::Post 回调里)。
+     * 故先等一段时间让在途请求跑完/超时再 shutdown。SDK 修复后可移除。
+     */
+    private static final long SHUTDOWN_DRAIN_MS = 15000L;
+
     private final DemoConfig config;
     /**
-     * volatile：demo 自身在主线程串行使用(close 由入口 try-with-resources 调用), 但本类是参考实现,
+     * volatile: demo 自身在主线程串行使用 (close 由入口 try-with-resources 调用), 但本类是参考实现,
      * 集成方可能从关闭线程/shutdown 钩子调 {@link #close()} 而工作线程仍在读 {@link #ensureStarted()},
-     * volatile 保证这种跨线程使用下的可见性(防御性加固)。
+     * volatile 保证这种跨线程使用下的可见性 (防御性加固)。
      */
     private volatile boolean started;
 
@@ -61,10 +70,10 @@ public final class SdkRuntime implements AutoCloseable {
     }
 
     private void doStart() {
-        // JNI 必须先显式加载：下面的 setHttpHeaders/setWebSocketAuthHeaders 会走 native,
+        // JNI 必须先显式加载: 下面的 setHttpHeaders/setWebSocketAuthHeaders 会走 native,
         // 而 native 未加载时二者只会返回 ERROR_NOT_INITIALIZED(见 FlightHubSdkManager)。
         // JNI 只在 initialize() 内部才自动加载, 但鉴权头要在 initialize 之前注入, 故此处先加载。
-        // loadLibrary() 幂等(内部 libraryLoaded 标志), initialize() 内会再次校验, 不会重复加载。
+        // loadLibrary() 幂等 (内部 libraryLoaded 标志), initialize() 内会再次校验, 不会重复加载。
         loadNativeLibrary();
 
         FlightHubSdkConfig cfg = new FlightHubSdkConfig();
@@ -75,14 +84,25 @@ public final class SdkRuntime implements AutoCloseable {
         // 否则 WSS/HTTPS 证书链校验失败会触发「连接错误回调 + shutdown」竞态崩溃路径。
         cfg.setVerifySsl(config.verifySsl());
         cfg.setSslCaPath(config.sslCaPath());
-        cfg.setDrtcConfigPath(config.drtcConfigPath());
-        cfg.setLogLevel(config.logLevel());
+        // 归一后再传: SDK 的 parseLogLevel 只认 DEBUG/INFO/WARN/ERROR 且无法识别时回退 INFO,
+        // 直接透传会让「trace」在 demo 侧生效为 DEBUG、在 SDK 侧却降成 INFO(两套级别),
+        // 「fatal」更会被 SDK 静默降到 INFO 而非 ERROR。见 DemoLog.canonicalLevelName。
+        String sdkLogLevel = DemoLog.canonicalLevelName(config.logLevel());
+        cfg.setLogLevel(sdkLogLevel);
+        if (!sdkLogLevel.equalsIgnoreCase(config.logLevel())) {
+            DemoLog.info(TAG, "sdk.log_level=\"" + config.logLevel() + "\" 已归一为 " + sdkLogLevel + " 传给 SDK");
+        }
         cfg.setLogToConsole(config.logToConsole());
         cfg.setLogFilePath(config.logFilePath());
         cfg.setLogMaxFileSize(config.logMaxFileSize());
         cfg.setLogMaxFiles(config.logMaxFiles());
+        // 飞机 DRTC 拉流必需：把 sdk.drtc_config_path 传给 native, 否则 libdrtc 无配置, 飞机拉流会失败。
+        if (config.drtcConfigPath() != null && !config.drtcConfigPath().isEmpty()) {
+            cfg.setDrtcConfigPath(config.drtcConfigPath());
+            DemoLog.info(TAG, "已设置 DRTC 配置: " + config.drtcConfigPath());
+        }
 
-        // 鉴权头必须在 initialize 之前注入(HTTP + WebSocket 两个平面) 。
+        // 鉴权头必须在 initialize 之前注入 (HTTP + WebSocket 两个平面) 。
         if (config.hasAuth()) {
             List<HeaderKeyValue> headers = new ArrayList<HeaderKeyValue>();
             StringBuilder keys = new StringBuilder();
@@ -98,7 +118,7 @@ public final class SdkRuntime implements AutoCloseable {
             DemoLog.info(TAG, "已注入鉴权头(" + headers.size() + " 个): " + keys + "=*******");
         } else {
             // 空鉴权直接拒绝启动: 未鉴权即 initialize 会让后续接口以匿名身份触达网关,
-            // 属于 P1 级安全风险(SDK-P1-11)。生产环境必须通过 auth.auth_key_values 或
+            // 属于 P1 级安全风险 (SDK-P1-11)。生产环境必须通过 auth.auth_key_values 或
             // 环境变量 FLIGHTHUB_AUTH_VALUE 注入鉴权令牌。
             throw new IllegalStateException(
                 "拒绝在无鉴权状态下启动 SDK: auth.auth_key_values 未配置任何有效键值对, 且环境变量 "
@@ -110,10 +130,8 @@ public final class SdkRuntime implements AutoCloseable {
         FlightHubSdkErrorCode rc = FlightHubSDK.initialize(cfg);
         check(rc, "initialize");
         started = true;
-        DemoLog.info(
-            TAG, "SDK 初始化成功: " + config.address() + ":" + config.port()
-            + " version=" + safeVersion()
-        );
+        DemoLog.info(TAG, "SDK 初始化成功: version=" + safeVersion());
+        DemoLog.debug(TAG, "SDK 初始化地址: " + config.address() + ":" + config.port());
     }
 
     /** 获取全局 Workspace 实例。 */
@@ -140,14 +158,30 @@ public final class SdkRuntime implements AutoCloseable {
             return;
         }
         started = false;
+
+        // 等在途 HTTP 请求跑完再 shutdown, 规避 SDK 的 shutdown 竞态(见 SHUTDOWN_DRAIN_MS)。
+        DemoLog.info(TAG, "shutdown 前等待在途请求收尾: " + SHUTDOWN_DRAIN_MS + "ms ...");
+        long drainStart = System.currentTimeMillis();
+        try {
+            Thread.sleep(SHUTDOWN_DRAIN_MS);
+            DemoLog.info(TAG, "等待结束(" + (System.currentTimeMillis() - drainStart) + "ms), 开始 shutdown");
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            DemoLog.warn(
+                TAG, "等待被中断(" + (System.currentTimeMillis() - drainStart)
+                + "ms), 提前开始 shutdown"
+            );
+        }
         // 用过 RTC 直播(LiveModule)后, FlightHubSDK.shutdown() 的 native 实现可能阻塞/死锁在
         // RTC 链路 teardown, 直接同步调用会把退出流程整个卡死(表现为退出后输入 q「无反应」)。
         // 故放到守护线程里带超时执行：正常路径它很快返回并记日志;若超时(native 卡住)则记录并返回,
         // 让 close() 不再无限阻塞, 由入口(DemoEntry.main 末尾)兜底强制结束进程。
+
         Thread worker = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
+                    // 实际业务代码里面不推荐调用 shutdown(此处仅用于 demo 演示);
                     FlightHubSdkErrorCode rc = FlightHubSDK.shutdown();
                     DemoLog.info(TAG, "SDK 已 shutdown: " + rc);
                 } catch (Throwable t) {
@@ -179,7 +213,7 @@ public final class SdkRuntime implements AutoCloseable {
     /**
      * 显式加载 JNI 原生库, 把各类加载失败统一收敛成 {@link FlightHubException}。
      *
-     * <p>{@link JniLibraryLoader#loadLibrary()} 的失败面较杂：平台不支持抛
+     * <p>{@link JniLibraryLoader#loadLibrary()} 的失败面较杂: 平台不支持抛
      * {@code UnsupportedOperationException}、依赖库/IO 失败包成 {@code RuntimeException},
      * 而主库那句 {@code System.load(...)} 抛的是 {@code UnsatisfiedLinkError}(属 {@code Error},
      * 不是 {@code Exception}, 上层 {@code catch(Exception)} 接不住会直接崩)。故这里连同
@@ -190,14 +224,14 @@ public final class SdkRuntime implements AutoCloseable {
         try {
             JniLibraryLoader.loadLibrary();
         } catch (Exception | LinkageError t) {
-            // 附上当前平台与已内置原生库的平台矩阵：SDK jar 官方交付只内置 linux-x86_64 的原生库,
-            // 其它平台(Windows / macOS / linux-aarch64)会在此加载失败。给出可读提示, 而非裸的
+            // 附上当前平台与已内置原生库的平台矩阵: SDK jar 内置 linux-x86_64、linux-aarch64 与 macOS arm64
+            // 的原生库, 其它平台 (Windows / macOS x86_64)会在此加载失败。给出可读提示, 而非裸的
             // UnsatisfiedLinkError, 让集成者一眼定位是"平台不支持"而非配置错误。
             String platform = System.getProperty("os.name") + "/" + System.getProperty("os.arch");
             throw new FlightHubException(
                 "加载 JNI 原生库失败: " + Utils.describe(t)
                 + " [当前平台=" + platform
-                + "; 本 SDK 官方交付包仅内置原生库: linux-x86_64]", t);
+                + "; 本 SDK 仅内置原生库: linux-x86_64、linux-aarch64、macOS arm64]", t);
         }
     }
 

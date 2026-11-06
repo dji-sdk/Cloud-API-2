@@ -198,6 +198,7 @@ function handleNameUpdate(value: string): void {
               :smart-rth-enabled="form.smartRthEnabled"
               :rth-altitude="form.rthAltitude"
               :out-of-control-action="form.outOfControlAction"
+              :is-edit="initialTaskUuid !== null"
               @update:resumable-enabled="form.resumableEnabled = $event"
               @update:smart-rth-enabled="form.smartRthEnabled = $event"
               @update:rth-altitude="form.rthAltitude = $event"

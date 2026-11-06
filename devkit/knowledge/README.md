@@ -1,6 +1,6 @@
-# DJI CloudAPI2 Knowledge Base
+# DJI Cloud API 2 Knowledge Base
 
-DJI CloudAPI2 SDK 的领域知识库 —— 整个 AI 辅助接入生态的**知识单一源头（SSOT）**。
+DJI Cloud API 2 SDK 的领域知识库 —— 整个 AI 辅助接入生态的**知识单一源头（SSOT）**。
 
 当前已建成的消费通道（llms.txt、Skills）从这里取内容，而非各自维护副本。规划中的通道（MCP Resources、静态文档站、向量检索）同样以此为源。
 
@@ -33,7 +33,7 @@ DJI CloudAPI2 SDK 的领域知识库 —— 整个 AI 辅助接入生态的**知
 
 ### Claude Code 用户
 
-安装 `devkit@cloud-api2` Skills 即可。Skills 自动引用本知识库内容，无需单独操作。
+安装 `cloudapi2@dji` Skills 即可。Skills 自动引用本知识库内容，无需单独操作。
 
 ### 人类开发者
 

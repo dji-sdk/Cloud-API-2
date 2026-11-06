@@ -1,4 +1,4 @@
-# DJI FlightHub SEI/OSD 遥测数据约束规则
+# DJI Cloud API 2 SEI/OSD 遥测数据约束规则
 #
 # 共享约束见 _shared/constraints-common.yaml（SSOT），本文件只定义 SEI/OSD Skill 特有的规则。
 # 共享约束包括：initialize-check, error-code-check, listen-cancel-pairing,
@@ -34,13 +34,13 @@
   level: critical
 
 - id: device-model-adaptation
-  rule: SEI 解析协议因机型不同（M10E/M3T 走 UTF8 JSON，M4D/M4T/M4E 走二进制），角度需乘 CAM_COEFFICIENT（M10E=1e-7, M4E=1）
-  violation: 解析出乱码或数值偏差 7 个数量级
+  rule: SEI 解析协议因机型不同而不同（M10E/M3T 走 UTF8 JSON，M4D/M4T/M4E 走二进制），具体字段换算以官方文档/实际协议解析结果为准——没有证据支持存在统一的 CAM_COEFFICIENT 角度换算系数，不要编造该常量或具体机型系数
+  violation: 编造的换算系数导致解析出的角度/坐标数值错误
   level: critical
 
 - id: sei-open-switch
-  rule: 设备不会默认发送 SEI，需调用 openDroneSeiMessageSend（ar_info_switch:1）开启
-  violation: 直播正常但 SEI 回调不触发
+  rule: openDroneSeiMessageSend（ar_info_switch:1）是前端 PaaS 组件（uranus-cockpit-app）调用的设备影子 REST API，不是 Java SDK 方法；纯 Java SDK 用户是否也需要触发它尚无官方文档确认，不要把它当作 Java SDK 的固定开启步骤写入代码
+  violation: 误将前端组件接口当作 Java SDK 必经步骤，生成不存在的 SDK 方法调用
   level: warning
 
 - id: browser-webrtc-limit
@@ -49,8 +49,8 @@
   level: warning
 
 - id: coordinate-system-ned
-  rule: SEI 中 camera_pos 为 NED（北东地）坐标系，单位米，原点为起飞点/机场位置
-  violation: 坐标转换错误导致地图标注偏移
+  rule: ArSeiInfo 的相机位置字段（getCameraPosX/Y/Z）单位是毫米（mm），不是米；生成代码时注意单位换算，不要默认当成米处理
+  violation: 单位搞错导致坐标偏移 1000 倍
   level: warning
 
 - id: height-datum-confusion

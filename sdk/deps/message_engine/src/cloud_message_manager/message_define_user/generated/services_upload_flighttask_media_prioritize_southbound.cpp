@@ -8,7 +8,7 @@
 using namespace message_engine;
 
 ServicesUploadFlighttaskMediaPrioritizeSouthbound::ServicesUploadFlighttaskMediaPrioritizeSouthbound() {
-    this->topic_ = "thing/product/gnd/services/upload_flighttask_media_prioritize";
+    this->topic_ = "thing/product/{gateway_sn}/services/upload_flighttask_media_prioritize";
     this->method_ = "upload_flighttask_media_prioritize";
 }
 

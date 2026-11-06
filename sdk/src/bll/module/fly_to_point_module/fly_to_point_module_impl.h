@@ -7,15 +7,19 @@
 #include "tool/callback_container.h"
 #include "i_message_engine.h"
 #include "common/util/async_capture_protect.h"
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class FlyToPointModuleImpl : public IFlyToPointModule, public drc_sdk::common::AsyncCaptureProtect{
 public:
-    explicit FlyToPointModuleImpl(std::shared_ptr<message_engine::IMessageEngine> message_engine, const std::string& drone_sn, const std::string& gateway_sn);
+    explicit FlyToPointModuleImpl(std::shared_ptr<message_engine::IMessageEngine> message_engine, const std::string& drone_sn, const std::string& gateway_sn, int session_id);
     ~FlyToPointModuleImpl();
 
     void start(const FlyToPointParams& params, const std::function<void(FlightHubError err, std::string fly_to_id)> callback) override;
+
+    void startWithResult(const FlyToPointParams& params,
+        const std::function<void(FlightHubError err, const FlyToPointStartResult& result)> callback) override;
     void drcStop(const std::function<void(FlightHubError err)> callback) override;
     void updateTargetPoints(const FlyToUpdateTargetPointsParams& params, const std::function<void(FlightHubError err)>& callback) override;
     int listenFlyToTaskEvent(const std::function<void(const FlyToTaskEvent& msg)>& callback) override;
@@ -26,6 +30,7 @@ public:
     void unsubscribeFlyToPointProgress(int listen_id) override;
 
 private:
+    int session_id_;
     std::shared_ptr<message_engine::IMessageEngine> message_engine_;
     std::string drone_sn_;
     std::string gateway_sn_;

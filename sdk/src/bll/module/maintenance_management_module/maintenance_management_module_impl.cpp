@@ -12,8 +12,7 @@
 namespace flight_hub_sdk {
 
 
-MaintenanceManagementModuleImpl::MaintenanceManagementModuleImpl()
-    {
+MaintenanceManagementModuleImpl::MaintenanceManagementModuleImpl(int session_id) : session_id_(session_id) {
     LOG_INFO("[MaintenanceManagementModuleImpl] constructor");
 }
 
@@ -39,7 +38,7 @@ void MaintenanceManagementModuleImpl::getRepairConfigs(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_MAINTENANCE_GET_REPAIR_CONFIGS, param_err, "[MaintenanceManagementModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_MAINTENANCE_GET_REPAIR_CONFIGS, param_err, session_id_, "[MaintenanceManagementModuleImpl]");
         callback(param_err, {});
         return;
     }
@@ -53,17 +52,18 @@ void MaintenanceManagementModuleImpl::getRepairConfigs(
     request.device_sn = params.device_sns;
 
     // Send request;
-    obtain_maintenance_orders_repair_config(request, [weak_ptr, callback](const ObtainRepairConfigResponse& response, FlightHubError err) {
+    obtain_maintenance_orders_repair_config(request, [weak_ptr, callback, this](const ObtainRepairConfigResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
             // 埋点: 获取设备报修配置; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_MAINTENANCE_GET_REPAIR_CONFIGS, err, "[MaintenanceManagementModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_MAINTENANCE_GET_REPAIR_CONFIGS, err, session_id_, "[MaintenanceManagementModuleImpl]");
             // 检查 err;
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
-                LOG_ERROR("obtain_maintenance_orders_repair_config(): err: %d", (int)err.error_code);
+                LOG_ERROR("obtain_maintenance_orders_repair_config(): err: %d", (int)err.error_code, session_id_);
                 callback(err, {});
 
                 return;
@@ -91,7 +91,7 @@ void MaintenanceManagementModuleImpl::getRepairConfigs(
             // When succeed, transfer the response to the callback;
             callback(err, results);
         });
-    });
+    }, session_id_);
 }
 
 
@@ -111,7 +111,7 @@ void MaintenanceManagementModuleImpl::createMaintenanceOrder(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_MAINTENANCE_CREATE_ORDER, param_err, "[MaintenanceManagementModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_MAINTENANCE_CREATE_ORDER, param_err, session_id_, "[MaintenanceManagementModuleImpl]");
         callback(param_err, {});
         return;
     }
@@ -195,16 +195,17 @@ void MaintenanceManagementModuleImpl::createMaintenanceOrder(
     }
 
     // http 请求;
-    create_maintenance_orders(std::move(request), [weak_ptr, callback](const CreateMaintenanceOrdersResponse& response, FlightHubError err) {
+    create_maintenance_orders(std::move(request), [weak_ptr, callback, this](const CreateMaintenanceOrdersResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
             // 埋点: 创建报修订单; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_MAINTENANCE_CREATE_ORDER, err, "[MaintenanceManagementModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_MAINTENANCE_CREATE_ORDER, err, session_id_, "[MaintenanceManagementModuleImpl]");
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
-                LOG_ERROR("create_maintenance_orders(): err: %d", (int)err.error_code);
+                LOG_ERROR("create_maintenance_orders(): err: %d", (int)err.error_code, session_id_);
                 callback(err, {});
                 return;
             }
@@ -224,7 +225,7 @@ void MaintenanceManagementModuleImpl::createMaintenanceOrder(
 
             callback(err, results);
         });
-    });
+    }, session_id_);
 }
 
 
@@ -245,23 +246,24 @@ void MaintenanceManagementModuleImpl::getMaintenanceOrderDetail(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_MAINTENANCE_GET_ORDER_DETAIL, param_err, "[MaintenanceManagementModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_MAINTENANCE_GET_ORDER_DETAIL, param_err, session_id_, "[MaintenanceManagementModuleImpl]");
         callback(param_err, {});
         return;
     }
 
     WeakDummy(weak_ptr);
 
-    get_maintenance_order_detail(order_number, [weak_ptr, callback](const MaintenanceOrderDetailResponse& response, FlightHubError err) {
+    get_maintenance_order_detail(order_number, [weak_ptr, callback, this](const MaintenanceOrderDetailResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
             // 埋点: 查询单个报修订单详情; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_MAINTENANCE_GET_ORDER_DETAIL, err, "[MaintenanceManagementModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_MAINTENANCE_GET_ORDER_DETAIL, err, session_id_, "[MaintenanceManagementModuleImpl]");
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
-                LOG_ERROR("get_maintenance_order_detail(): err: %d", (int)err.error_code);
+                LOG_ERROR("get_maintenance_order_detail(): err: %d", (int)err.error_code, session_id_);
                 callback(err, {});
                 return;
             }
@@ -340,7 +342,7 @@ void MaintenanceManagementModuleImpl::getMaintenanceOrderDetail(
 
             callback(err, result);
         });
-    });
+    }, session_id_);
 }
 
 
@@ -369,16 +371,17 @@ void MaintenanceManagementModuleImpl::getMaintenanceOrdersList(
     request.sort_column = params.sort_column;
     request.sort_type = params.sort_type;
 
-    get_maintenance_orders_list(request, [weak_ptr, callback](const MaintenanceOrdersListResponse& response, FlightHubError err) {
+    get_maintenance_orders_list(request, [weak_ptr, callback, this](const MaintenanceOrdersListResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
             // 埋点: 分页查询报修订单列表; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_MAINTENANCE_GET_ORDERS_LIST, err, "[MaintenanceManagementModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_MAINTENANCE_GET_ORDERS_LIST, err, session_id_, "[MaintenanceManagementModuleImpl]");
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
-                LOG_ERROR("get_maintenance_orders_list(): err: %d", (int)err.error_code);
+                LOG_ERROR("get_maintenance_orders_list(): err: %d", (int)err.error_code, session_id_);
                 callback(err, {});
                 return;
             }
@@ -461,7 +464,7 @@ void MaintenanceManagementModuleImpl::getMaintenanceOrdersList(
 
             callback(err, results);
         });
-    });
+    }, session_id_);
 }
 
 

@@ -50,8 +50,9 @@ public @interface McpTool {
     /** Tool 描述（MCP 协议中的 description 字段） */
     String description();
 
-    /** 安全等级，默认 L0（只读） */
-    SecurityLevel securityLevel() default SecurityLevel.READ_ONLY;
+    /** 安全等级（fail-closed 默认 L3/CRITICAL，表示「未分类/自门控」——派发层按 session
+     * 上限门控时对 CRITICAL 放行（CRITICAL 视为自门控或未分类工具），四档限流档位依赖该值） */
+    SecurityLevel securityLevel() default SecurityLevel.CRITICAL;
 
     /** 前置条件列表，按声明顺序执行 */
     Prerequisite[] prerequisites() default {Prerequisite.SESSION};

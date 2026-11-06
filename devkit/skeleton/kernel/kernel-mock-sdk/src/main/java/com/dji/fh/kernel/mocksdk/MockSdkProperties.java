@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * Mock SDK 的可调配置。
  *
- * <p>对应配置前缀 {@code fh.skeleton.mock.*}。ISV 可在 application.yml / application-mock.yml
+ * <p>对应配置前缀 {@code fh.skeleton.mock.*}。集成商 可在 application.yml / application-mock.yml
  * 通过该前缀覆盖任意字段。
  *
  * <p>默认值面向 v0.1 开发态：1 虚拟 drone + 1 虚拟 dock + 1Hz OSD + 启动后 3s 设备上线脚本。

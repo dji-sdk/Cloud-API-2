@@ -643,7 +643,7 @@ class FlightTaskRestControllerTest {
     @Test
     @SuppressWarnings("unchecked")
     void create_shouldTrimNameBeforeDuplicateCheck() {
-        // 未 trim 时 "巡检 " 能绕过 "巡检" 的唯一性校验，直接调 API 的 ISV 即可复现重名
+        // 未 trim 时 "巡检 " 能绕过 "巡检" 的唯一性校验，直接调 API 的集成商即可复现重名
         stubQueryService.conflictingName = "巡检";
 
         ResponseEntity<?> response = controller.create(dtoWithName("  巡检  "));
@@ -691,8 +691,8 @@ class FlightTaskRestControllerTest {
     @Test
     @SuppressWarnings("unchecked")
     void create_shouldAllow_whenNameQueryUnsupported() {
-        // 存量 ISV 未实现 existsTaskWithName 时走 default 抛 UnsupportedOperationException，
-        // 必须 fail-open，否则存量 ISV 的创建功能整体不可用
+        // 存量集成商未实现 existsTaskWithName 时走 default 抛 UnsupportedOperationException，
+        // 必须 fail-open，否则存量集成商的创建功能整体不可用
         stubQueryService.nameQueryExceptionToThrow =
                 new UnsupportedOperationException("未实现任务名称唯一性查询");
 

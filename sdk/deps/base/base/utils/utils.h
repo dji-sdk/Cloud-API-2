@@ -41,9 +41,17 @@ typedef _off_t off64_t;
 namespace drc_sdk {
 inline int vasprintf(char **strp, const char *fmt, va_list ap) {
 #ifdef __WIN32__
-  int len = _vscprintf(fmt, ap) + 1;
-  *strp = new char[len];
-  return vsprintf_s(*strp, len, fmt, ap);
+  int len = _vscprintf(fmt, ap);
+  if (len < 0) {
+    *strp = nullptr;
+    return -1;
+  }
+  size_t size = static_cast<size_t>(len) + 1;
+  *strp = static_cast<char *>(malloc(size));
+  if (!*strp) {
+    return -1;
+  }
+  return vsprintf_s(*strp, size, fmt, ap);
 #else
   return ::vasprintf(strp, fmt, ap);
 #endif

@@ -14,13 +14,14 @@ public final class DeviceDetailInfo {
     private String deviceSn;
     private String nickname;
     private ModelInfo modelInfo;
-    private int deviceAddTime;
+    private long deviceAddTime;
     private boolean online;
     private String deviceFirmwareVersion;
     private int deviceFirmwareStatus;
     private int deviceWorkingStatus;
     private String completeMachineSn;
     private List<SubDeviceInfo> subDevices;
+    private String deviceState = "";
     public DeviceDetailInfo() {
     }
 
@@ -42,7 +43,7 @@ public final class DeviceDetailInfo {
             String deviceSn,
             String nickname,
             ModelInfo modelInfo,
-            int deviceAddTime,
+            long deviceAddTime,
             boolean online,
             String deviceFirmwareVersion,
             int deviceFirmwareStatus,
@@ -92,12 +93,12 @@ public final class DeviceDetailInfo {
     }
 
     /** 设备添加时间 */
-    public int getDeviceAddTime() {
+    public long getDeviceAddTime() {
         return deviceAddTime;
     }
 
     /** 设备添加时间 */
-    public void setDeviceAddTime(int deviceAddTime) {
+    public void setDeviceAddTime(long deviceAddTime) {
         this.deviceAddTime = deviceAddTime;
     }
 
@@ -161,6 +162,16 @@ public final class DeviceDetailInfo {
         this.subDevices = subDevices;
     }
 
+    /** 设备状态（raw JSON） */
+    public String getDeviceState() {
+        return deviceState;
+    }
+
+    /** 设备状态（raw JSON） */
+    public void setDeviceState(String deviceState) {
+        this.deviceState = deviceState != null ? deviceState : "";
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -179,7 +190,8 @@ public final class DeviceDetailInfo {
                 && Objects.equals(modelInfo, that.modelInfo)
                 && Objects.equals(deviceFirmwareVersion, that.deviceFirmwareVersion)
                 && Objects.equals(completeMachineSn, that.completeMachineSn)
-                && Objects.equals(subDevices, that.subDevices);
+                && Objects.equals(subDevices, that.subDevices)
+                && Objects.equals(deviceState, that.deviceState);
     }
 
     @Override
@@ -194,7 +206,8 @@ public final class DeviceDetailInfo {
                 deviceFirmwareStatus,
                 deviceWorkingStatus,
                 completeMachineSn,
-                subDevices);
+                subDevices,
+                deviceState);
     }
 
     @Override
@@ -210,6 +223,7 @@ public final class DeviceDetailInfo {
                 + ", deviceWorkingStatus=" + deviceWorkingStatus
                 + ", completeMachineSn='" + completeMachineSn + '\''
                 + ", subDevices=" + subDevices
+                + ", deviceState='" + deviceState + '\''
                 + '}';
     }
 }

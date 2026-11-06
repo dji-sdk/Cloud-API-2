@@ -20,7 +20,7 @@ package com.dji.fh.feature.dashboard.spi;
  * 人员计数 mock 实现。
  *
  * <p>默认返回 0，表示未接入人员管理系统。
- * ISV 可通过声明自有 {@link PersonnelCountService} bean 覆盖。
+ * 集成商 可通过声明自有 {@link PersonnelCountService} bean 覆盖。
  *
  * @author DJI DevKit Team
  */

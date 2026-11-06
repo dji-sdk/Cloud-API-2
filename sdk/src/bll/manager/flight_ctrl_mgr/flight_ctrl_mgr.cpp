@@ -7,12 +7,12 @@
 #include "http_interface/request_message.h"
 #include "http_interface/http_interface.h"
 #include "api/flight_hub_sdk.h"
-#include "notification_center/notification_center.h"
+#include "session/session_bm.h"
 
 namespace flight_hub_sdk {
 
-FlightCtrlMgr::FlightCtrlMgr(const std::string& drone_sn, const std::string& gateway_sn, const std::shared_ptr<message_engine::IMessageEngine>& message_engine, int drone_instance_id)
-    : drone_sn_(drone_sn), gateway_sn_(gateway_sn), message_engine_(message_engine) {
+FlightCtrlMgr::FlightCtrlMgr(const std::string& drone_sn, const std::string& gateway_sn, const std::shared_ptr<message_engine::IMessageEngine>& message_engine, int drone_instance_id, int session_id)
+    : drone_sn_(drone_sn), gateway_sn_(gateway_sn), message_engine_(message_engine), session_id_(session_id) {
     instance_id_ = drone_instance_id;
     log_tag_ = drone_sn_ + "#" + std::to_string(instance_id_);
     LOG_INFO("[FlightCtrlMgr] constructor, instance_id: %d, drone_sn: %s", instance_id_, drone_sn_.c_str());
@@ -22,12 +22,16 @@ FlightCtrlMgr::FlightCtrlMgr(const std::string& drone_sn, const std::string& gat
     initBatteriesInfoListening();
     initParachuteInfoListening();
     initFlashLedListening();
+    initLandingMissionStateListening();
 }
 
 FlightCtrlMgr::~FlightCtrlMgr() {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("[FlightCtrlMgr][%s] dtor", log_tag_.c_str());
     if (flight_control_authority_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(flight_control_authority_listen_id_);
+        if (bm) {
+            bm->CancelObserve(flight_control_authority_listen_id_);
+        }
         flight_control_authority_listen_id_ = -1;
     }
     if (hsi_info_listen_id_ != -1) {
@@ -50,11 +54,17 @@ FlightCtrlMgr::~FlightCtrlMgr() {
         message_engine_->getCloudMessageManager()->CancelObserveMessage(flash_led_listen_id_);
         flash_led_listen_id_ = -1;
     }
+    if (landing_mission_state_listen_id_ != -1) {
+        message_engine_->getCloudMessageManager()->CancelObserveMessage(landing_mission_state_listen_id_);
+        landing_mission_state_listen_id_ = -1;
+    }
 }
 
 void FlightCtrlMgr::initFlightControlAuthorityListening() {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
-    flight_control_authority_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenControlRightsCloudControlStatus(
+    if (bm) {
+        flight_control_authority_listen_id_ = bm->ListenControlRightsCloudControlStatus(
         [this, weak_ptr](const notification_center::ControlRightsCloudControlStatus& msg) -> void {
             WeakDummyReturn(weak_ptr);
             onReceiveFlightControlAuthority(msg);
@@ -64,6 +74,9 @@ void FlightCtrlMgr::initFlightControlAuthorityListening() {
             LOG_INFO("[FlightCtrlMgr][%s] ListenControlRightsCloudControlStatus, listen result: %d", log_tag_.c_str(), error_code);
         },
         drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     if (flight_control_authority_listen_id_ < 0) {
         LOG_ERROR("[FlightCtrlMgr][%s] ListenControlRightsCloudControlStatus failed, flight_control_authority_listen_id_ %d",
             log_tag_.c_str(), flight_control_authority_listen_id_);
@@ -79,22 +92,7 @@ void FlightCtrlMgr::onReceiveFlightControlAuthority(const notification_center::C
 }
 
 void FlightCtrlMgr::acquireFlightControlAuthority(const std::function<void(FlightHubError)>& callback) {
-    LOG_INFO("[FlightCtrlMgr][%s] acquireFlightControlAuthority", log_tag_.c_str());
-    AcquireCtrlAuthorityRequest request;
-    request.drone_sn = drone_sn_;
-    request.control_keys = {"flight"};
-    request.gateway_sn = gateway_sn_;
-    WeakDummy(p);
-    acquire_ctrl_authority(request, [callback, p, this](const AcquireCtrlAuthorityResponse& response, FlightHubError err) {
-        WeakDummyReturn(p);
-
-        // 埋点: 抢夺飞行控制权; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
-        // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
-        // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
-        // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_ACQUIRE_FLIGHT_CONTROL_AUTHORITY, err, "[FlightCtrlMgr]");
-
-        LOG_INFO("[FlightCtrlMgr][%s] acquireFlightControlAuthority, err_code: %d", log_tag_.c_str(), static_cast<int>(err.error_code));
+    acquireFlightControlAuthorityWithResult([callback](FlightHubError err, const ControlAuthResult&) {
         if (callback) {
             callback(err);
         }
@@ -102,7 +100,56 @@ void FlightCtrlMgr::acquireFlightControlAuthority(const std::function<void(Fligh
 }
 
 void FlightCtrlMgr::releaseFlightControlAuthority(const std::function<void(FlightHubError)>& callback) {
-    LOG_INFO("[FlightCtrlMgr][%s] releaseFlightControlAuthority", log_tag_.c_str());
+    releaseFlightControlAuthorityWithResult([callback](FlightHubError err, const ControlAuthResult&) {
+        if (callback) {
+            callback(err);
+        }
+    });
+}
+
+void FlightCtrlMgr::acquireFlightControlAuthorityWithResult(
+    const std::function<void(FlightHubError, const ControlAuthResult&)>& callback) {
+    LOG_INFO("[FlightCtrlMgr][%s] acquireFlightControlAuthorityWithResult", log_tag_.c_str());
+    AcquireCtrlAuthorityRequest request;
+    request.drone_sn = drone_sn_;
+    request.control_keys = {"flight"};
+    request.gateway_sn = gateway_sn_;
+    WeakDummy(p);
+    acquire_ctrl_authority(request, [callback, p, this](const AcquireCtrlAuthorityResponse& response, FlightHubError err) {
+        WeakDummyReturn(p);
+        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_ACQUIRE_FLIGHT_CONTROL_AUTHORITY, err, session_id_, "[FlightCtrlMgr]");
+        LOG_INFO("[FlightCtrlMgr][%s] acquireFlightControlAuthorityWithResult, err_code: %d", log_tag_.c_str(), static_cast<int>(err.error_code));
+
+        ControlAuthResult result;
+        result.drone_sn = response.drone_sn.empty() ? drone_sn_ : response.drone_sn;
+        result.bid = response.bid;
+        for (const auto& item : response.controls) {
+            ControlAuthController controller;
+            controller.key = item.key;
+            controller.type = item.type;
+            controller.version = item.version;
+            controller.gateway.sn = item.gateway.sn;
+            controller.gateway.id = item.gateway.id;
+            controller.gateway.auth_control_keys = item.gateway.auth_control_keys;
+            controller.gateway.device_model_class = item.gateway.device_model_class;
+            controller.user.call_sign = item.user.call_sign;
+            controller.user.user_id = item.user.user_id;
+            controller.user.type = item.user.type;
+            controller.spec.is_locked = item.spec.is_locked;
+            controller.spec.payload_index = item.spec.payload_index;
+            controller.spec.is_cloud_control_auth = item.spec.is_cloud_control_auth;
+            controller.spec.waiting_for_auth_user = item.spec.waiting_for_auth_user;
+            result.controls.push_back(controller);
+        }
+        if (callback) {
+            callback(err, result);
+        }
+    }, session_id_);
+}
+
+void FlightCtrlMgr::releaseFlightControlAuthorityWithResult(
+    const std::function<void(FlightHubError, const ControlAuthResult&)>& callback) {
+    LOG_INFO("[FlightCtrlMgr][%s] releaseFlightControlAuthorityWithResult", log_tag_.c_str());
     ReleaseCtrlAuthorityRequest request;
     request.drone_sn = drone_sn_;
     request.control_keys = {"flight"};
@@ -110,18 +157,34 @@ void FlightCtrlMgr::releaseFlightControlAuthority(const std::function<void(Fligh
     WeakDummy(p);
     release_ctrl_authority(request, [callback, p, this](const ReleaseCtrlAuthorityResponse& response, FlightHubError err) {
         WeakDummyReturn(p);
+        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_RELEASE_FLIGHT_CONTROL_AUTHORITY, err, session_id_, "[FlightCtrlMgr]");
+        LOG_INFO("[FlightCtrlMgr][%s] releaseFlightControlAuthorityWithResult, err_code: %d", log_tag_.c_str(), static_cast<int>(err.error_code));
 
-        // 埋点: 释放飞行控制权; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
-        // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
-        // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
-        // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_RELEASE_FLIGHT_CONTROL_AUTHORITY, err, "[FlightCtrlMgr]");
-
-        LOG_INFO("[FlightCtrlMgr][%s] releaseFlightControlAuthority, err_code: %d", log_tag_.c_str(), static_cast<int>(err.error_code));
-        if (callback) {
-            callback(err);
+        ControlAuthResult result;
+        result.drone_sn = response.drone_sn.empty() ? drone_sn_ : response.drone_sn;
+        result.bid = response.bid;
+        for (const auto& item : response.controls) {
+            ControlAuthController controller;
+            controller.key = item.key;
+            controller.type = item.type;
+            controller.version = item.version;
+            controller.gateway.sn = item.gateway.sn;
+            controller.gateway.id = item.gateway.id;
+            controller.gateway.auth_control_keys = item.gateway.auth_control_keys;
+            controller.gateway.device_model_class = item.gateway.device_model_class;
+            controller.user.call_sign = item.user.call_sign;
+            controller.user.user_id = item.user.user_id;
+            controller.user.type = item.user.type;
+            controller.spec.is_locked = item.spec.is_locked;
+            controller.spec.payload_index = item.spec.payload_index;
+            controller.spec.is_cloud_control_auth = item.spec.is_cloud_control_auth;
+            controller.spec.waiting_for_auth_user = item.spec.waiting_for_auth_user;
+            result.controls.push_back(controller);
         }
-    });
+        if (callback) {
+            callback(err, result);
+        }
+    }, session_id_);
 }
 
 int FlightCtrlMgr::listenFlightControlAuthority(const std::function<void(bool)>& callback) {
@@ -203,7 +266,7 @@ void FlightCtrlMgr::drcSetDroneHover(int duration, const std::function<void(Flig
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_DRONE_HOVER, drc_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_DRONE_HOVER, drc_err, session_id_, "[FlightCtrlMgr]");
 
             callback(drc_err);
         } else if (!msg || msg->msg.result != 0) {
@@ -213,7 +276,7 @@ void FlightCtrlMgr::drcSetDroneHover(int duration, const std::function<void(Flig
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_DRONE_HOVER, reply_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_DRONE_HOVER, reply_err, session_id_, "[FlightCtrlMgr]");
 
             callback(reply_err);
         } else {
@@ -223,7 +286,7 @@ void FlightCtrlMgr::drcSetDroneHover(int duration, const std::function<void(Flig
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_DRONE_HOVER, success_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_DRONE_HOVER, success_err, session_id_, "[FlightCtrlMgr]");
 
             callback(success_err);
         }
@@ -235,7 +298,7 @@ void FlightCtrlMgr::drcSetDroneHover(int duration, const std::function<void(Flig
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DRC_SET_DRONE_HOVER, link_err, "[FlightCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_DRC_SET_DRONE_HOVER, link_err, session_id_, "[FlightCtrlMgr]");
 
         callback(link_err);
     }
@@ -256,7 +319,7 @@ void FlightCtrlMgr::drcSetFollowMouseParameter(int speed, const std::function<vo
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FOLLOW_MOUSE_PARAMETER, drc_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FOLLOW_MOUSE_PARAMETER, drc_err, session_id_, "[FlightCtrlMgr]");
 
             callback(drc_err);
         } else if (!msg || msg->msg.result != 0) {
@@ -266,7 +329,7 @@ void FlightCtrlMgr::drcSetFollowMouseParameter(int speed, const std::function<vo
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FOLLOW_MOUSE_PARAMETER, reply_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FOLLOW_MOUSE_PARAMETER, reply_err, session_id_, "[FlightCtrlMgr]");
 
             callback(reply_err);
         } else {
@@ -276,7 +339,7 @@ void FlightCtrlMgr::drcSetFollowMouseParameter(int speed, const std::function<vo
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FOLLOW_MOUSE_PARAMETER, success_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FOLLOW_MOUSE_PARAMETER, success_err, session_id_, "[FlightCtrlMgr]");
 
             callback(success_err);
         }
@@ -288,7 +351,60 @@ void FlightCtrlMgr::drcSetFollowMouseParameter(int speed, const std::function<vo
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FOLLOW_MOUSE_PARAMETER, link_err, "[FlightCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FOLLOW_MOUSE_PARAMETER, link_err, session_id_, "[FlightCtrlMgr]");
+
+        callback(link_err);
+    }
+}
+
+void FlightCtrlMgr::drcSetFlyingMaxSpeed(double speed, const std::function<void(FlightHubError err)>& callback) {
+    LOG_INFO("[FlightCtrlMgr][%s] drcSetFlyingMaxSpeed, speed: %f", log_tag_.c_str(), speed);
+    auto msg = std::make_shared<message_engine::DrcDrcSetFlyingMaxSpeedSouthbound>();
+    msg->msg.speed = speed;
+    WeakDummy(p);
+    auto err = message_engine_->getCloudMessageManager()->SendDrcDrcSetFlyingMaxSpeedSouthbound(msg, [callback, this, p](int error_code, const std::shared_ptr<message_engine::DrcReplyDrcSetFlyingMaxSpeedNorthbound>& msg) {
+        WeakDummyReturn(p);
+        LOG_INFO("FlightCtrlMgr drcSetFlyingMaxSpeed callback, error_code: %d, result: %d", error_code, msg ? msg->msg.result : -1);
+        if (error_code != 0) {
+            auto drc_err = FlightHubError::from_drc(error_code);
+
+            // 埋点: 设置飞行速度; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
+            // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
+            // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
+            // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FLYING_MAX_SPEED, drc_err, session_id_, "[FlightCtrlMgr]");
+
+            callback(drc_err);
+        } else if (!msg || msg->msg.result != 0) {
+            auto reply_err = FlightHubError::from_drc(0, msg ? msg->msg.result : -1);
+
+            // 埋点: 设置飞行速度; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
+            // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
+            // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
+            // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FLYING_MAX_SPEED, reply_err, session_id_, "[FlightCtrlMgr]");
+
+            callback(reply_err);
+        } else {
+            auto success_err = FlightHubError::success();
+
+            // 埋点: 设置飞行速度; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
+            // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
+            // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
+            // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FLYING_MAX_SPEED, success_err, session_id_, "[FlightCtrlMgr]");
+
+            callback(success_err);
+        }
+    });
+    if (err != message_engine::MeErrorCode::ME_NO_ERROR) {
+        auto link_err = FlightHubError::from_drc(err);
+
+        // 埋点: 设置飞行速度(DRC 链路异常, 指令未发出); 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
+        // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
+        // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
+        // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
+        report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FLYING_MAX_SPEED, link_err, session_id_, "[FlightCtrlMgr]");
 
         callback(link_err);
     }
@@ -309,7 +425,7 @@ void FlightCtrlMgr::drcSetNightLightsState(int night_lights_state, const std::fu
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_NIGHT_LIGHTS_STATE, drc_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_NIGHT_LIGHTS_STATE, drc_err, session_id_, "[FlightCtrlMgr]");
 
             callback(drc_err);
         } else if (!msg || msg->msg.result != 0) {
@@ -319,7 +435,7 @@ void FlightCtrlMgr::drcSetNightLightsState(int night_lights_state, const std::fu
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_NIGHT_LIGHTS_STATE, reply_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_NIGHT_LIGHTS_STATE, reply_err, session_id_, "[FlightCtrlMgr]");
 
             callback(reply_err);
         } else {
@@ -329,7 +445,7 @@ void FlightCtrlMgr::drcSetNightLightsState(int night_lights_state, const std::fu
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_NIGHT_LIGHTS_STATE, success_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_NIGHT_LIGHTS_STATE, success_err, session_id_, "[FlightCtrlMgr]");
 
             callback(success_err);
         }
@@ -341,7 +457,7 @@ void FlightCtrlMgr::drcSetNightLightsState(int night_lights_state, const std::fu
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DRC_SET_NIGHT_LIGHTS_STATE, link_err, "[FlightCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_DRC_SET_NIGHT_LIGHTS_STATE, link_err, session_id_, "[FlightCtrlMgr]");
 
         callback(link_err);
     }
@@ -362,7 +478,7 @@ void FlightCtrlMgr::drcSetStealthState(int stealth_state, const std::function<vo
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_STEALTH_STATE, drc_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_STEALTH_STATE, drc_err, session_id_, "[FlightCtrlMgr]");
 
             callback(drc_err);
         } else if (!msg || msg->msg.result != 0) {
@@ -372,7 +488,7 @@ void FlightCtrlMgr::drcSetStealthState(int stealth_state, const std::function<vo
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_STEALTH_STATE, reply_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_STEALTH_STATE, reply_err, session_id_, "[FlightCtrlMgr]");
 
             callback(reply_err);
         } else {
@@ -382,7 +498,7 @@ void FlightCtrlMgr::drcSetStealthState(int stealth_state, const std::function<vo
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_STEALTH_STATE, success_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_STEALTH_STATE, success_err, session_id_, "[FlightCtrlMgr]");
 
             callback(success_err);
         }
@@ -394,7 +510,7 @@ void FlightCtrlMgr::drcSetStealthState(int stealth_state, const std::function<vo
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DRC_SET_STEALTH_STATE, link_err, "[FlightCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_DRC_SET_STEALTH_STATE, link_err, session_id_, "[FlightCtrlMgr]");
 
         callback(link_err);
     }
@@ -415,7 +531,7 @@ void FlightCtrlMgr::drcOpenParachute(int force, const std::function<void(FlightH
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_OPEN_PARACHUTE, drc_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_OPEN_PARACHUTE, drc_err, session_id_, "[FlightCtrlMgr]");
 
             callback(drc_err);
         } else if (!msg || msg->msg.result != 0) {
@@ -425,7 +541,7 @@ void FlightCtrlMgr::drcOpenParachute(int force, const std::function<void(FlightH
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_OPEN_PARACHUTE, reply_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_OPEN_PARACHUTE, reply_err, session_id_, "[FlightCtrlMgr]");
 
             callback(reply_err);
         } else {
@@ -435,7 +551,7 @@ void FlightCtrlMgr::drcOpenParachute(int force, const std::function<void(FlightH
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_OPEN_PARACHUTE, success_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_OPEN_PARACHUTE, success_err, session_id_, "[FlightCtrlMgr]");
 
             callback(success_err);
         }
@@ -447,7 +563,7 @@ void FlightCtrlMgr::drcOpenParachute(int force, const std::function<void(FlightH
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DRC_OPEN_PARACHUTE, link_err, "[FlightCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_DRC_OPEN_PARACHUTE, link_err, session_id_, "[FlightCtrlMgr]");
 
         callback(link_err);
     }
@@ -477,7 +593,7 @@ void FlightCtrlMgr::drcSetFlashLed(const FlashLedParams& params, const std::func
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FLASH_LED, drc_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FLASH_LED, drc_err, session_id_, "[FlightCtrlMgr]");
 
             callback(drc_err);
         } else if (!msg || msg->msg.result != 0) {
@@ -487,7 +603,7 @@ void FlightCtrlMgr::drcSetFlashLed(const FlashLedParams& params, const std::func
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FLASH_LED, reply_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FLASH_LED, reply_err, session_id_, "[FlightCtrlMgr]");
 
             callback(reply_err);
         } else {
@@ -497,7 +613,7 @@ void FlightCtrlMgr::drcSetFlashLed(const FlashLedParams& params, const std::func
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FLASH_LED, success_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FLASH_LED, success_err, session_id_, "[FlightCtrlMgr]");
 
             callback(success_err);
         }
@@ -509,7 +625,7 @@ void FlightCtrlMgr::drcSetFlashLed(const FlashLedParams& params, const std::func
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FLASH_LED, link_err, "[FlightCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_DRC_SET_FLASH_LED, link_err, session_id_, "[FlightCtrlMgr]");
 
         callback(link_err);
     }
@@ -534,7 +650,7 @@ void FlightCtrlMgr::drcCameraLookAt(const CameraLookAtParams& params, const std:
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_CAMERA_LOOK_AT, drc_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_CAMERA_LOOK_AT, drc_err, session_id_, "[FlightCtrlMgr]");
 
             callback(drc_err);
         } else if (!msg || msg->msg.result != 0) {
@@ -544,7 +660,7 @@ void FlightCtrlMgr::drcCameraLookAt(const CameraLookAtParams& params, const std:
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_CAMERA_LOOK_AT, reply_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_CAMERA_LOOK_AT, reply_err, session_id_, "[FlightCtrlMgr]");
 
             callback(reply_err);
         } else {
@@ -554,7 +670,7 @@ void FlightCtrlMgr::drcCameraLookAt(const CameraLookAtParams& params, const std:
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_DRC_CAMERA_LOOK_AT, success_err, "[FlightCtrlMgr]");
+            report_beacon_event_helper(kBeaconReportEvent_DRC_CAMERA_LOOK_AT, success_err, session_id_, "[FlightCtrlMgr]");
 
             callback(success_err);
         }
@@ -566,7 +682,7 @@ void FlightCtrlMgr::drcCameraLookAt(const CameraLookAtParams& params, const std:
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_DRC_CAMERA_LOOK_AT, link_err, "[FlightCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_DRC_CAMERA_LOOK_AT, link_err, session_id_, "[FlightCtrlMgr]");
 
         callback(link_err);
     }
@@ -750,6 +866,45 @@ int FlightCtrlMgr::listenDrcFlashLed(const std::function<void(const FlashLedStat
 void FlightCtrlMgr::cancelListenDrcFlashLed(int listen_id) {
     LOG_INFO("[FlightCtrlMgr][%s] cancelListenDrcFlashLed listen_id: %d", log_tag_.c_str(), listen_id);
     flash_led_callback_container_.removeCallback(listen_id);
+}
+
+void FlightCtrlMgr::initLandingMissionStateListening() {
+    WeakDummy(p);
+    landing_mission_state_listen_id_ = message_engine_->getCloudMessageManager()->ObserveDrcLandingMissionStateNorthbound(
+        [this, p](const std::shared_ptr<message_engine::DrcLandingMissionStateNorthbound>& msg) {
+            WeakDummyReturn(p);
+            onReceiveLandingMissionState(msg);
+        }
+    );
+    if (landing_mission_state_listen_id_ < 0) {
+        LOG_ERROR("[FlightCtrlMgr][%s] ObserveDrcLandingMissionStateNorthbound failed, landing_mission_state_listen_id_ %d",
+            log_tag_.c_str(), landing_mission_state_listen_id_);
+    }
+    LOG_INFO("[FlightCtrlMgr][%s] ObserveDrcLandingMissionStateNorthbound, landing_mission_state_listen_id_ %d",
+        log_tag_.c_str(), landing_mission_state_listen_id_);
+}
+
+void FlightCtrlMgr::onReceiveLandingMissionState(const std::shared_ptr<message_engine::DrcLandingMissionStateNorthbound>& msg) {
+    if (!msg) return;
+    DrcLandingMissionState info;
+    info.landing_state = msg->msg.landing_state;
+    info.pause_reason = msg->msg.pause_reason;
+    // ↓ 唯一一处两侧字段名不一致: 协议层拼作 precent(协议设计如此, 必须与 JSON key 逐字一致),
+    //   对外 API 更正为 percent。此处是刻意的转换点, 不是笔误, 两侧都别改。
+    info.cover_percent = msg->msg.cover_precent;
+    info.cover_error_code = msg->msg.cover_error_code;
+    landing_mission_state_callback_container_.notifyCallbackIfChanged(info);
+}
+
+int FlightCtrlMgr::listenDrcLandingMissionState(const std::function<void(const DrcLandingMissionState& info)>& callback) {
+    auto listen_id = landing_mission_state_callback_container_.addCallback(callback);
+    LOG_INFO("[FlightCtrlMgr][%s] listenDrcLandingMissionState listen_id: %d", log_tag_.c_str(), listen_id);
+    return listen_id;
+}
+
+void FlightCtrlMgr::cancelListenDrcLandingMissionState(int listen_id) {
+    LOG_INFO("[FlightCtrlMgr][%s] cancelListenDrcLandingMissionState listen_id: %d", log_tag_.c_str(), listen_id);
+    landing_mission_state_callback_container_.removeCallback(listen_id);
 }
 
 }  // namespace flight_hub_sdk

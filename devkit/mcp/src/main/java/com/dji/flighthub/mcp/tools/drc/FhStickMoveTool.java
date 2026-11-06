@@ -68,14 +68,44 @@ public class FhStickMoveTool extends AbstractMcpTool {
     /** duration_ms 参数名 */
     private static final String PARAM_DURATION_MS = "duration_ms";
 
+    /** mode 参数名 */
+    private static final String PARAM_MODE = "mode";
+
+    /** roll 参数名（raw_axis 模式） */
+    private static final String PARAM_ROLL = "roll";
+
+    /** pitch 参数名（raw_axis 模式） */
+    private static final String PARAM_PITCH = "pitch";
+
+    /** yaw 参数名（raw_axis 模式） */
+    private static final String PARAM_YAW = "yaw";
+
+    /** throttle 参数名（raw_axis 模式） */
+    private static final String PARAM_THROTTLE = "throttle";
+
+    /** gimbal_pitch 参数名（raw_axis 模式，可选） */
+    private static final String PARAM_GIMBAL_PITCH = "gimbal_pitch";
+
+    /** 方向语义模式标识 */
+    private static final String MODE_DIRECTION = "direction";
+
+    /** 原始轴模式标识 */
+    private static final String MODE_RAW_AXIS = "raw_axis";
+
     /** 操作标识，用于 requireConfirm 提示 */
     private static final String ACTION_STICK_MOVE = "stick_move";
+
+    /** 原始轴操作标识，用于 requireConfirm 提示 */
+    private static final String ACTION_STICK_RAW_AXIS = "stick_raw_axis";
 
     /** 默认速度百分比 */
     private static final int DEFAULT_SPEED_PERCENT = 30;
 
     /** 默认持续时间（毫秒） */
     private static final int DEFAULT_DURATION_MS = 1000;
+
+    /** raw_axis 必填通道参数缺失哨兵值 —— getIntArg 无法区分"未传参"与"传了该默认值"，用此值兜底判断 */
+    private static final int MISSING_AXIS_VALUE = Integer.MIN_VALUE;
 
     /** 有效方向列表（小写，不可变） */
     private static final List<String> VALID_DIRECTIONS = Arrays.stream(StickDirection.values())
@@ -120,9 +150,12 @@ public class FhStickMoveTool extends AbstractMcpTool {
         Map<String, Object> def = new LinkedHashMap<>();
         def.put("name", TOOL_NAME);
         def.put("description",
-                "Move drone by direction and duration (internally sends stick control at 50ms intervals). "
-                        + "Safer than raw stick values — AI specifies intent, not raw radio data. "
-                        + "Requires DRC link.");
+                "Move drone by direction and duration (internally sends stick control at 50ms intervals), "
+                        + "or send raw axis values directly via mode=raw_axis. "
+                        + "Direction mode is safer — AI specifies intent, not raw radio data. "
+                        + "Raw axis mode gives AI direct control of roll/pitch/yaw/throttle channels. "
+                        + "The DRC link is auto-established on first use; after an explicit "
+                        + "fh_drc_disconnect you must call fh_drc_connect first.");
 
         Map<String, Object> schema = new LinkedHashMap<>();
         schema.put("type", "object");
@@ -132,10 +165,17 @@ public class FhStickMoveTool extends AbstractMcpTool {
                 "type", "string",
                 "description", "Target drone serial number (SN)"
         ));
+        props.put(PARAM_MODE, Map.of(
+                "type", "string",
+                "enum", List.of(MODE_DIRECTION, MODE_RAW_AXIS),
+                "description", "Control mode: 'direction' (semantic direction+speed, default) or "
+                        + "'raw_axis' (direct roll/pitch/yaw/throttle channel values)"
+        ));
         props.put(PARAM_DIRECTION, Map.of(
                 "type", "string",
                 "enum", VALID_DIRECTIONS,
-                "description", "Movement direction: forward/backward/left/right/up/down/rotate_cw/rotate_ccw"
+                "description", "Movement direction (mode=direction only): "
+                        + "forward/backward/left/right/up/down/rotate_cw/rotate_ccw"
         ));
         props.put(PARAM_CONFIRM, Map.of(
                 "type", "boolean",
@@ -143,7 +183,27 @@ public class FhStickMoveTool extends AbstractMcpTool {
         ));
         props.put(PARAM_SPEED_PERCENT, Map.of(
                 "type", "integer",
-                "description", "Speed as percentage of max (10~100, default: 30)"
+                "description", "Speed as percentage of max (10~100, default: 30, mode=direction only)"
+        ));
+        props.put(PARAM_ROLL, Map.of(
+                "type", "integer",
+                "description", "Raw roll channel value, 364~1684 (mode=raw_axis, required)"
+        ));
+        props.put(PARAM_PITCH, Map.of(
+                "type", "integer",
+                "description", "Raw pitch channel value, 364~1684 (mode=raw_axis, required)"
+        ));
+        props.put(PARAM_YAW, Map.of(
+                "type", "integer",
+                "description", "Raw yaw channel value, 364~1684 (mode=raw_axis, required)"
+        ));
+        props.put(PARAM_THROTTLE, Map.of(
+                "type", "integer",
+                "description", "Raw throttle channel value, 364~1684 (mode=raw_axis, required)"
+        ));
+        props.put(PARAM_GIMBAL_PITCH, Map.of(
+                "type", "integer",
+                "description", "Raw gimbal pitch channel value, 364~1684 (mode=raw_axis, optional, default: center 1024)"
         ));
         props.put(PARAM_DURATION_MS, Map.of(
                 "type", "integer",
@@ -154,7 +214,7 @@ public class FhStickMoveTool extends AbstractMcpTool {
                 "description", "If true, validate parameters and prerequisites without executing. Returns preview of what would happen."
         ));
         schema.put("properties", props);
-        schema.put("required", List.of(PARAM_DRONE_SN, PARAM_DIRECTION, PARAM_CONFIRM));
+        schema.put("required", List.of(PARAM_DRONE_SN, PARAM_CONFIRM));
 
         def.put("inputSchema", schema);
         return def;
@@ -163,6 +223,7 @@ public class FhStickMoveTool extends AbstractMcpTool {
     /**
      * 执行受限摇杆移动操作。
      * 前置条件：持有控制权 + DRC 链路 + confirm。安全等级 L2。
+     * 按 mode 参数分派到 direction（语义方向）或 raw_axis（原始轴值）模式。
      *
      * @param args 输入参数
      * @return 执行结果
@@ -188,6 +249,26 @@ public class FhStickMoveTool extends AbstractMcpTool {
                     "Provide drone_sn. Use fh_device_list to get available drone SNs.");
         }
 
+        // 3. 按 mode 分派
+        String mode = getStringArg(args, PARAM_MODE, MODE_DIRECTION);
+        return switch (mode) {
+            case MODE_DIRECTION -> executeDirectionMode(session, droneSn, args);
+            case MODE_RAW_AXIS -> executeRawAxisMode(session, droneSn, args);
+            default -> errorResult("Invalid mode: " + mode,
+                    "mode must be one of: " + MODE_DIRECTION + ", " + MODE_RAW_AXIS);
+        };
+    }
+
+    /**
+     * direction 模式：按方向语义 + 速度百分比移动。
+     *
+     * @param session 当前 session
+     * @param droneSn 目标无人机 SN
+     * @param args    输入参数
+     * @return 执行结果
+     */
+    private Map<String, Object> executeDirectionMode(SessionContext session, String droneSn,
+                                                      Map<String, Object> args) {
         // 3. 飞行操作前置人工确认：摇杆控制先确认再抢控
         //    dry_run 模式无需确认（见 step 6）
         if (!isDryRun(args)) {
@@ -198,13 +279,7 @@ public class FhStickMoveTool extends AbstractMcpTool {
             }
         }
 
-        // 4. 确保 DRC 链路就绪（自动获取控制权 + 连接 DRC）— 确认通过后才执行
-        Map<String, Object> drcError = ensureDrcLink(session, droneSn, sdkService);
-        if (drcError != null) {
-            return drcError;
-        }
-
-        // 5. 解析并校验 direction 参数
+        // 4. 解析并校验 direction 参数
         String dirStr = getStringArg(args, PARAM_DIRECTION, null);
         if (dirStr == null) {
             return errorResult("Missing required parameter: direction",
@@ -217,22 +292,31 @@ public class FhStickMoveTool extends AbstractMcpTool {
                     "direction must be one of: " + VALID_DIRECTIONS);
         }
 
-        // 6. 读取可选参数（使用默认值）
+        // 5. 读取可选参数（使用默认值）
         int speedPercent = getIntArg(args, PARAM_SPEED_PERCENT, DEFAULT_SPEED_PERCENT);
         int durationMs = getIntArg(args, PARAM_DURATION_MS, DEFAULT_DURATION_MS);
 
         log.info("Stick move: drone={}, direction={}, speed={}%, duration={}ms",
                 droneSn, direction, speedPercent, durationMs);
 
-        // 7. dry_run 模式：参数校验通过，返回预览（无需 confirm）
+        // 6. dry_run 模式：参数校验通过，返回预览（无需 confirm）
+        //    必须在 ensureDrcLink 之前返回，保证干跑不抢控、不建立 DRC 链路；
+        //    因此预览中的前置条件只列已实际检查的项，不能声明 drc_linked
         if (isDryRun(args)) {
             return dryRunResult(
                     "Would move drone " + droneSn + " " + dirStr
                             + " at " + speedPercent + "% speed for " + durationMs + "ms",
                     buildDryRunPreview(TOOL_NAME, ACTION_STICK_MOVE, droneSn,
                             Map.of("direction", dirStr, "speed_percent", speedPercent, "duration_ms", durationMs),
-                            List.of("session_active", "security_level_allowed", "drc_linked", "params_valid"),
+                            List.of("session_active", "security_level_allowed", "params_valid"),
                             getSecurityLevel(), requiresHumanConfirmation()));
+        }
+
+        // 7. 确保 DRC 链路就绪（自动获取控制权 + 连接 DRC）— 确认通过后才执行
+        //    若用户此前显式断开，ensureDrcLink 会拒绝静默重连并要求 fh_drc_connect
+        Map<String, Object> drcError = ensureDrcLink(session, droneSn, sdkService);
+        if (drcError != null) {
+            return drcError;
         }
 
         // 8. 人工确认已在 step 3 完成
@@ -244,6 +328,77 @@ public class FhStickMoveTool extends AbstractMcpTool {
 
         // 9. 真实 SDK 调用（生产路径，需要真实 SDK 环境）
         return executeWithRealSdk(session, droneSn, direction, speedPercent, durationMs);
+    }
+
+    /**
+     * raw_axis 模式：AI 直接指定 roll/pitch/yaw/throttle（gimbal_pitch 可选）绝对通道值。
+     *
+     * @param session 当前 session
+     * @param droneSn 目标无人机 SN
+     * @param args    输入参数
+     * @return 执行结果
+     */
+    private Map<String, Object> executeRawAxisMode(SessionContext session, String droneSn,
+                                                    Map<String, Object> args) {
+        // 1. 飞行操作前置人工确认（dry_run 模式无需确认）
+        if (!isDryRun(args)) {
+            Map<String, Object> preConfirmError = requireHumanConfirm(args, ACTION_STICK_RAW_AXIS, droneSn,
+                    buildRawAxisConfirmMessage(droneSn, args));
+            if (preConfirmError != null) {
+                return preConfirmError;
+            }
+        }
+
+        // 2. 确保 DRC 链路就绪
+        Map<String, Object> drcError = ensureDrcLink(session, droneSn, sdkService);
+        if (drcError != null) {
+            return drcError;
+        }
+
+        // 3. 校验必填通道参数（roll/pitch/yaw/throttle 必填，gimbal_pitch 可选默认中位值）
+        int roll = getIntArg(args, PARAM_ROLL, MISSING_AXIS_VALUE);
+        int pitch = getIntArg(args, PARAM_PITCH, MISSING_AXIS_VALUE);
+        int yaw = getIntArg(args, PARAM_YAW, MISSING_AXIS_VALUE);
+        int throttle = getIntArg(args, PARAM_THROTTLE, MISSING_AXIS_VALUE);
+        int gimbalPitch = getIntArg(args, PARAM_GIMBAL_PITCH, StickControlExecutor.STICK_CENTER);
+
+        if (roll == MISSING_AXIS_VALUE || pitch == MISSING_AXIS_VALUE
+                || yaw == MISSING_AXIS_VALUE || throttle == MISSING_AXIS_VALUE) {
+            return errorResult("Missing required parameters for raw_axis mode",
+                    "mode=raw_axis requires roll, pitch, yaw, throttle "
+                            + "(gimbal_pitch optional, default: center 1024).");
+        }
+
+        // 4. 校验通道值范围
+        Map<String, Object> rangeError = validateRawAxisRange(roll, pitch, yaw, throttle, gimbalPitch);
+        if (rangeError != null) {
+            return rangeError;
+        }
+
+        // 5. 读取可选参数
+        int durationMs = getIntArg(args, PARAM_DURATION_MS, DEFAULT_DURATION_MS);
+
+        log.info("Stick raw_axis: drone={}, roll={}, pitch={}, yaw={}, throttle={}, gimbal={}, duration={}ms",
+                droneSn, roll, pitch, yaw, throttle, gimbalPitch, durationMs);
+
+        // 6. dry_run 模式：参数校验通过，返回预览（无需 confirm）
+        if (isDryRun(args)) {
+            return dryRunResult(
+                    "Would send raw axis stick control to drone " + droneSn + " for " + durationMs + "ms",
+                    buildDryRunPreview(TOOL_NAME, ACTION_STICK_RAW_AXIS, droneSn,
+                            Map.of("roll", roll, "pitch", pitch, "yaw", yaw, "throttle", throttle,
+                                    "gimbal_pitch", gimbalPitch, "duration_ms", durationMs),
+                            List.of("session_active", "security_level_allowed", "drc_linked", "params_valid"),
+                            getSecurityLevel(), requiresHumanConfirmation()));
+        }
+
+        // 7. Mock 模式：使用空操作 sender 执行
+        if (sdkService.isMockMode()) {
+            return executeRawAxisInMockMode(droneSn, roll, pitch, yaw, throttle, gimbalPitch, durationMs);
+        }
+
+        // 8. 真实 SDK 调用（生产路径，需要真实 SDK 环境）
+        return executeRawAxisWithRealSdk(session, droneSn, roll, pitch, yaw, throttle, gimbalPitch, durationMs);
     }
 
     /**
@@ -260,6 +415,58 @@ public class FhStickMoveTool extends AbstractMcpTool {
         return String.format(
                 "⚠️ 无人机 %s 即将执行摇杆飞行：方向=%s，速度=%d%%，持续=%dms。是否确认？",
                 droneSn, direction, speedPercent, durationMs);
+    }
+
+    /**
+     * 构建原始轴摇杆控制人工确认提示。
+     *
+     * @param droneSn 目标无人机 SN
+     * @param args    输入参数（读取 roll/pitch/yaw/throttle/duration）
+     * @return 面向真人的确认提示
+     */
+    private String buildRawAxisConfirmMessage(String droneSn, Map<String, Object> args) {
+        int roll = getIntArg(args, PARAM_ROLL, MISSING_AXIS_VALUE);
+        int pitch = getIntArg(args, PARAM_PITCH, MISSING_AXIS_VALUE);
+        int yaw = getIntArg(args, PARAM_YAW, MISSING_AXIS_VALUE);
+        int throttle = getIntArg(args, PARAM_THROTTLE, MISSING_AXIS_VALUE);
+        int durationMs = getIntArg(args, PARAM_DURATION_MS, DEFAULT_DURATION_MS);
+        return String.format(
+                "⚠️ 无人机 %s 即将执行原始轴摇杆控制：roll=%d，pitch=%d，yaw=%d，throttle=%d，持续=%dms。是否确认？",
+                droneSn, roll, pitch, yaw, throttle, durationMs);
+    }
+
+    /**
+     * 校验原始轴通道值是否均在合法范围内。
+     *
+     * @param roll        横滚通道值
+     * @param pitch       俯仰通道值
+     * @param yaw         偏航通道值
+     * @param throttle    油门通道值
+     * @param gimbalPitch 云台俯仰通道值
+     * @return null 表示全部合法；非 null 为首个越界通道的错误响应
+     */
+    private Map<String, Object> validateRawAxisRange(int roll, int pitch, int yaw, int throttle, int gimbalPitch) {
+        int[] values = {roll, pitch, yaw, throttle, gimbalPitch};
+        String[] names = {"roll", "pitch", "yaw", "throttle", "gimbal_pitch"};
+        for (int i = 0; i < values.length; i++) {
+            if (!isValidStickValue(values[i])) {
+                return errorResult(
+                        names[i] + " value " + values[i] + " out of range",
+                        "Value must be between " + StickControlExecutor.STICK_MIN
+                                + " and " + StickControlExecutor.STICK_MAX + ".");
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 判断摇杆通道值是否在合法范围内。
+     *
+     * @param value 通道值
+     * @return true 表示合法
+     */
+    private static boolean isValidStickValue(int value) {
+        return value >= StickControlExecutor.STICK_MIN && value <= StickControlExecutor.STICK_MAX;
     }
 
     /**
@@ -291,6 +498,42 @@ public class FhStickMoveTool extends AbstractMcpTool {
         return successResult(data,
                 "[MOCK] Drone " + droneSn + " moved " + direction.name().toLowerCase()
                         + " for " + durationMs + "ms at " + speedPercent + "% speed"
+                        + " (" + ticksSent + " ticks).");
+    }
+
+    /**
+     * Mock 模式下执行原始轴摇杆控制指令（使用空操作 sender）。
+     *
+     * @param droneSn     目标无人机 SN
+     * @param roll        横滚通道值
+     * @param pitch       俯仰通道值
+     * @param yaw         偏航通道值
+     * @param throttle    油门通道值
+     * @param gimbalPitch 云台俯仰通道值
+     * @param durationMs  持续时间
+     * @return 成功响应
+     */
+    private Map<String, Object> executeRawAxisInMockMode(String droneSn, int roll, int pitch, int yaw,
+                                                          int throttle, int gimbalPitch, int durationMs) {
+        int ticksSent = stickExecutor.executeRaw(
+                (r, p, t, y, g) -> { },
+                roll, pitch, throttle, yaw, gimbalPitch, durationMs);
+
+        log.info("[MOCK] Stick raw_axis completed: drone={}, ticks={}", droneSn, ticksSent);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("drone_sn", droneSn);
+        data.put("roll", roll);
+        data.put("pitch", pitch);
+        data.put("yaw", yaw);
+        data.put("throttle", throttle);
+        data.put("gimbal_pitch", gimbalPitch);
+        data.put("duration_ms", durationMs);
+        data.put("ticks_sent", ticksSent);
+        data.put("_mock", true);
+
+        return successResult(data,
+                "[MOCK] Drone " + droneSn + " raw_axis stick control sent for " + durationMs + "ms"
                         + " (" + ticksSent + " ticks).");
     }
 
@@ -368,6 +611,75 @@ public class FhStickMoveTool extends AbstractMcpTool {
             return StickDirection.valueOf(dirStr.toUpperCase());
         } catch (IllegalArgumentException e) {
             return null;
+        }
+    }
+
+    /**
+     * 真实 SDK 模式下执行原始轴摇杆控制指令。
+     * 使用 drone.sendStickControl(StickControlData) 同步发送摇杆数据。
+     * 通过 executeWithDrcRetry 实现 DRC 链路故障时自动重连重试。
+     *
+     * @param session     当前 session
+     * @param droneSn     目标无人机 SN
+     * @param roll        横滚通道值
+     * @param pitch       俯仰通道值
+     * @param yaw         偏航通道值
+     * @param throttle    油门通道值
+     * @param gimbalPitch 云台俯仰通道值
+     * @param durationMs  持续时间
+     * @return 执行结果
+     */
+    @Generated
+    private Map<String, Object> executeRawAxisWithRealSdk(SessionContext session, String droneSn,
+                                                           int roll, int pitch, int yaw, int throttle,
+                                                           int gimbalPitch, int durationMs) {
+        try {
+            return executeWithDrcRetry(session, droneSn, sdkService, () -> {
+                Drone drone = sdkService.getDrone(droneSn);
+                if (drone == null) {
+                    return errorResult("Drone instance not found: " + droneSn,
+                            "Ensure drone is online. Use fh_device_list to check.");
+                }
+
+                StickControlExecutor.StickSender sender = (r, p, t, y, g) -> {
+                    StickControlData data = new StickControlData();
+                    data.setRoll(r);
+                    data.setPitch(p);
+                    data.setThrottle(t);
+                    data.setYaw(y);
+                    data.setGimbalPitch(g);
+                    drone.getFlightControlModule().drcSendStickControl(data);
+                };
+
+                int ticksSent = stickExecutor.executeRaw(sender, roll, pitch, throttle, yaw, gimbalPitch, durationMs);
+
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("drone_sn", droneSn);
+                data.put("roll", roll);
+                data.put("pitch", pitch);
+                data.put("yaw", yaw);
+                data.put("throttle", throttle);
+                data.put("gimbal_pitch", gimbalPitch);
+                data.put("duration_ms", durationMs);
+                data.put("ticks_sent", ticksSent);
+
+                return successResult(data,
+                        "Drone " + droneSn + " raw_axis stick control sent for " + durationMs + "ms"
+                                + " (" + ticksSent + " ticks).");
+            });
+        } catch (SdkCallbackBridge.SdkTimeoutException e) {
+            log.error("fh_stick_move raw_axis timeout for drone {}: {}", droneSn, e.getMessage());
+            return errorResult("SDK timeout: " + e.getMessage(),
+                    "Device may be unreachable. Retry or check connectivity.");
+        } catch (SdkCallbackBridge.SdkException e) {
+            log.error("fh_stick_move raw_axis SDK error for drone {}: [{}] {}",
+                    droneSn, e.getErrorCode(), e.getMessage());
+            return errorResult("SDK error [" + e.getErrorCode() + "]: " + e.getMessage(),
+                    "Check drone state and DRC link, then try again.");
+        } catch (Exception e) {
+            log.error("fh_stick_move raw_axis error for drone {}: {}", droneSn, e.getMessage(), e);
+            return errorResult("SDK error: " + e.getMessage(),
+                    "Check drone connectivity and DRC link, then try again.");
         }
     }
 }

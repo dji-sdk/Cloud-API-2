@@ -12,7 +12,7 @@
     <artifactId>fh-skeleton-app</artifactId>
 
     <name>FH Skeleton App</name>
-    <description>v0.1 Spring Boot 应用启动入口。含 main class + application.yml 默认 + NoOpSecurityFilter。ISV fork 起点。</description>
+    <description>v0.1 Spring Boot 应用启动入口。含 main class + application.yml 默认 + NoOpSecurityFilter。集成商 fork 起点。</description>
 
     <dependencies>
         <dependency>
@@ -150,7 +150,7 @@
     </build>
 
     <!-- Maven profile sdk-real：激活后才把 kernel-real-sdk + flight-hub-sdk jar 拼入。
-         默认不激活 → mock-only ISV 不拉 SDK 181MB jar。
+         默认不激活 → mock-only 集成商不拉 SDK 181MB jar。
          启用方式：mvn package -Psdk-real -->
     <profiles>
         <profile>

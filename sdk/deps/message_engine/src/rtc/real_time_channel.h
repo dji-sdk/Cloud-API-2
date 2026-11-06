@@ -9,7 +9,7 @@
 
 #include <message_scheduler.h>
 
-// RealTime Channel的抽象类，抹平自研 RTC SDK 和 三方SDK（例如火山）的接口区别
+// RealTime Channel 的抽象类，抹平自研 RTC SDK 和三方 RTC SDK 的接口区别
 // 可以比较方便的通过工厂方法来创建对应的实例
 namespace message_engine {
 

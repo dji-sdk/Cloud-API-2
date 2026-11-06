@@ -19,6 +19,14 @@ public final class TerraShowOnMapParams {
     private Boolean showOnMap;
     /** 是否已分发（可选，null 表示不传） */
     private Boolean isDistributed;
+    /** 恢复 */
+    private boolean restore;
+    /** 是否显示（可选） */
+    private Boolean isDisplayed;
+    /** 等高模式（可选） */
+    private Boolean inUniformHeight;
+    /** 显示模式（可选） */
+    private Integer modelDisplayMod;
     /** 全选过滤条件（可选，null 表示不传） */
     private TerraSelectFilterParams selectFilter;
 
@@ -43,6 +51,18 @@ public final class TerraShowOnMapParams {
     public Boolean getIsDistributed() { return isDistributed; }
     public void setIsDistributed(Boolean isDistributed) { this.isDistributed = isDistributed; }
 
+    public boolean isRestore() { return restore; }
+    public void setRestore(boolean restore) { this.restore = restore; }
+
+    public Boolean getIsDisplayed() { return isDisplayed; }
+    public void setIsDisplayed(Boolean isDisplayed) { this.isDisplayed = isDisplayed; }
+
+    public Boolean getInUniformHeight() { return inUniformHeight; }
+    public void setInUniformHeight(Boolean inUniformHeight) { this.inUniformHeight = inUniformHeight; }
+
+    public Integer getModelDisplayMod() { return modelDisplayMod; }
+    public void setModelDisplayMod(Integer modelDisplayMod) { this.modelDisplayMod = modelDisplayMod; }
+
     public TerraSelectFilterParams getSelectFilter() { return selectFilter; }
     public void setSelectFilter(TerraSelectFilterParams selectFilter) { this.selectFilter = selectFilter; }
 
@@ -54,12 +74,17 @@ public final class TerraShowOnMapParams {
         return Objects.equals(ids, that.ids)
                 && Objects.equals(showOnMap, that.showOnMap)
                 && Objects.equals(isDistributed, that.isDistributed)
+                && restore == that.restore
+                && Objects.equals(isDisplayed, that.isDisplayed)
+                && Objects.equals(inUniformHeight, that.inUniformHeight)
+                && Objects.equals(modelDisplayMod, that.modelDisplayMod)
                 && Objects.equals(selectFilter, that.selectFilter);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(ids, showOnMap, isDistributed, selectFilter);
+        return Objects.hash(ids, showOnMap, isDistributed, restore, isDisplayed,
+                inUniformHeight, modelDisplayMod, selectFilter);
     }
 
     @Override
@@ -68,6 +93,10 @@ public final class TerraShowOnMapParams {
                 + "ids=" + ids
                 + ", showOnMap=" + showOnMap
                 + ", isDistributed=" + isDistributed
+                + ", restore=" + restore
+                + ", isDisplayed=" + isDisplayed
+                + ", inUniformHeight=" + inUniformHeight
+                + ", modelDisplayMod=" + modelDisplayMod
                 + ", selectFilter=" + selectFilter
                 + '}';
     }

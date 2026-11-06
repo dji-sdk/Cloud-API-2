@@ -76,11 +76,11 @@ public class OfflineMapsModelData {
     return (cPtr == 0) ? null : new OfflineMapsModelInfoDataVector(cPtr, false);
   }
 
-  public void setPercent(int value) {
+  public void setPercent(double value) {
     flighthubsdkmoduleJNI.OfflineMapsModelData_percent_set(swigCPtr, this, value);
   }
 
-  public int getPercent() {
+  public double getPercent() {
     return flighthubsdkmoduleJNI.OfflineMapsModelData_percent_get(swigCPtr, this);
   }
 

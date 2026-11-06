@@ -202,6 +202,18 @@ public class IPsdkControlModule {
     flighthubsdkmoduleJNI.IPsdkControlModule_cancelListenDronePsdkUiResourceWrapper(swigCPtr, this, listen_id);
   }
 
+  public int listenPsdkCustomDataTransmissionFromPsdkWrapper(PsdkCustomDataTransmissionFromPsdkCallback callback) {
+    return flighthubsdkmoduleJNI.IPsdkControlModule_listenPsdkCustomDataTransmissionFromPsdkWrapper(swigCPtr, this, PsdkCustomDataTransmissionFromPsdkCallback.getCPtr(callback), callback);
+  }
+
+  public void cancelListenPsdkCustomDataTransmissionFromPsdkWrapper(int listen_id) {
+    flighthubsdkmoduleJNI.IPsdkControlModule_cancelListenPsdkCustomDataTransmissionFromPsdkWrapper(swigCPtr, this, listen_id);
+  }
+
+  public void sendPsdkCustomDataTransmissionToPsdkWrapper(String value, ResultCallbackWithError callback) {
+    flighthubsdkmoduleJNI.IPsdkControlModule_sendPsdkCustomDataTransmissionToPsdkWrapper(swigCPtr, this, value, ResultCallbackWithError.getCPtr(callback), callback);
+  }
+
   public IPsdkControlModule() {
     this(flighthubsdkmoduleJNI.new_IPsdkControlModule(), true);
     flighthubsdkmoduleJNI.IPsdkControlModule_director_connect(this, swigCPtr, true, true);

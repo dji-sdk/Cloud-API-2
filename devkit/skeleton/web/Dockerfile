@@ -43,7 +43,9 @@ COPY --from=builder --chown=nginx:nginx /app/web/dist /usr/share/nginx/html
 COPY --chown=nginx:nginx web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY web/docker-entrypoint.sh /docker-entrypoint.sh
 USER root
-RUN chmod +x /docker-entrypoint.sh && chown nginx:nginx /docker-entrypoint.sh
+# 安装 CA 证书，供 FH2_PROXY_SSL_VERIFY=on（默认）时反代校验上游证书（内部 CA 可用 FH2_PROXY_SSL_CA 覆盖）
+RUN chmod +x /docker-entrypoint.sh && chown nginx:nginx /docker-entrypoint.sh \
+    && apk add --no-cache ca-certificates
 USER nginx
 EXPOSE 8080
 ENTRYPOINT ["/docker-entrypoint.sh"]

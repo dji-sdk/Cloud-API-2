@@ -35,7 +35,7 @@ import java.util.Collection;
  *
  * <p>私有化部署的对象存储常用自签名证书（非公共 CA 签发），JVM 默认信任库不认得它，
  * {@code MediaProxyController} 回源时会在证书校验阶段失败
- * （{@code SSLHandshakeException: PKIX path building failed}）。ISV 可通过
+ * （{@code SSLHandshakeException: PKIX path building failed}）。集成商 可通过
  * {@code fh.skeleton.feature.media.proxy-trusted-cert-path} 配置该证书文件路径，
  * 本类据此构造一个在 JDK 默认信任链之外<b>追加</b>信任该证书的 {@link SSLContext}
  * —— 不是 trust-all，默认信任链对公共 CA 证书的校验不受影响。

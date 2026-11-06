@@ -54,6 +54,40 @@ void CloudMessageManager::BuildReplyMessage(const std::shared_ptr<MessageWrapper
 }
 
 ///------ 用户自定义接口实现 start ------
+ListenIdCode CloudMessageManager::ObserveDrcLandingMissionStateNorthbound(const std::function<void(const std::shared_ptr<DrcLandingMissionStateNorthbound>& msg)>& observe_callback, const std::shared_ptr<drc_sdk::Executor>& user_define_executor) {
+    if (observe_callback == nullptr) {
+        return MeErrorCode::ERROR_PARAM_OBSERVE_WITHOUT_CALLBACK;
+    }
+    auto observe_message = std::make_shared<DrcLandingMissionStateNorthbound>();
+    auto error_code_or_listen_id = transport_manager_->Observe(observe_message->GetMethod(), [observe_callback](const std::shared_ptr<MessageWrapper>& message) -> void {
+        if (message->GetMessageProtocolType() != MessageProtocolType::V2) {
+            LOG_ERROR("[CloudMessageManager] ObserveDrcLandingMissionStateNorthbound, protocol type error, need: %d -> recv: %d", MessageProtocolType::V2, message->GetMessageProtocolType());
+            return;
+        }
+        auto message_v2 = std::dynamic_pointer_cast<MessageV2>(message);
+        if (message_v2 == nullptr) {
+            LOG_ERROR("[CloudMessageManager] ObserveDrcLandingMissionStateNorthbound, convert MessageWrapper to V1/V2/V3 message failed");
+            return;
+        }
+        auto user_message = std::make_shared<DrcLandingMissionStateNorthbound>(message_v2);
+        observe_callback(user_message);
+    }, user_define_executor);
+
+    return error_code_or_listen_id;
+}
+
+// MeErrorCode CloudMessageManager::SendCompressedSticksControlSouthbound(const std::shared_ptr<CompressedSticksControlSouthbound>& msg, const std::shared_ptr<Executor>& user_define_executor) {
+//     if (msg == nullptr) {
+//         return MeErrorCode::ERROR_PARAM_SEND_WITHOUT_INPUT_MESSAGE;
+//     }
+//     auto transport_ptr = transport_manager_->GetTransportByMethod(msg->GetMethod());
+//     if (transport_ptr == nullptr) {
+//         LOG_ERROR("[CloudMessageManager] SendCompressedSticksControlSouthbound, transport_ptr is nullptr");
+//         return MeErrorCode::ERROR_TRANSPORT_NOT_FOUND;
+//     }
+//     return transport_ptr->Send(msg);
+// }
+
 MeErrorCode CloudMessageManager::SendCompressedSticksControlSouthbound(const std::shared_ptr<CompressedSticksControlSouthbound>& msg, const std::shared_ptr<drc_sdk::Executor>& user_define_executor) {
     if (msg == nullptr) {
         return MeErrorCode::ERROR_PARAM_SEND_WITHOUT_INPUT_MESSAGE;
@@ -68,7 +102,114 @@ MeErrorCode CloudMessageManager::SendCompressedSticksControlSouthbound(const std
     return transport_ptr->Send(msg);
 }
 
-// MeErrorCode CloudMessageManager::SendOsdNorthbound(const std::shared_ptr<OsdNorthbound>& msg, const std::shared_ptr<Executor>& user_define_executor) {
+MeErrorCode CloudMessageManager::SendServicesCustomDataTransmissionToEsdkSouthbound(const std::shared_ptr<ServicesCustomDataTransmissionToEsdkSouthbound>& msg, const std::function<void(int error_code, const std::shared_ptr<ServicesReplyCustomDataTransmissionToEsdkNorthbound>& msg)>& southbound_msg_callback, const std::shared_ptr<drc_sdk::Executor>& user_define_executor) {
+    if (msg == nullptr) {
+        return MeErrorCode::ERROR_PARAM_SEND_WITHOUT_INPUT_MESSAGE;
+    }
+    auto transport_ptr = transport_manager_->GetTransportByMethod(msg->GetMethod());
+    if (transport_ptr == nullptr) {
+        LOG_ERROR("[CloudMessageManager] SendServicesCustomDataTransmissionToEsdkSouthbound, transport_ptr is nullptr");
+        return MeErrorCode::ERROR_TRANSPORT_NOT_FOUND;
+    }
+    if (southbound_msg_callback == nullptr) {
+        return transport_ptr->Send(msg);
+    }
+    auto error_code = transport_ptr->Send(msg, [southbound_msg_callback](MeErrorCode error_code, const std::shared_ptr<MessageWrapper>& message) -> void {
+        if (error_code != MeErrorCode::ME_NO_ERROR) {
+            LOG_ERROR("[CloudMessageManager] SendServicesCustomDataTransmissionToEsdkSouthbound transport Send() error_code: %lld.", static_cast<long long>(error_code));
+            southbound_msg_callback(MeErrorCode::ERROR_TRANSPORT_ERROR, nullptr);
+            return;
+        }
+        if (message->GetMessageProtocolType() != MessageProtocolType::V1) {
+            LOG_ERROR("[CloudMessageManager] SendServicesCustomDataTransmissionToEsdkSouthbound response, protocol type error, need: %d -> recv: %d", MessageProtocolType::V1, message->GetMessageProtocolType());
+            return;
+        }
+        auto message_v1 = std::dynamic_pointer_cast<MessageV1>(message);
+        if (message_v1 == nullptr) {
+            LOG_ERROR("[CloudMessageManager] SendServicesCustomDataTransmissionToEsdkSouthbound response, convert MessageWrapper to V1 message failed");
+            return;
+        }
+        auto user_message = std::make_shared<ServicesReplyCustomDataTransmissionToEsdkNorthbound>(message_v1);
+        southbound_msg_callback(MeErrorCode::ME_NO_ERROR, user_message);
+    }, user_define_executor);
+    return error_code;
+}
+
+ListenIdCode CloudMessageManager::ObserveServicesReplyCustomDataTransmissionToEsdkNorthbound(const std::function<void(const std::shared_ptr<ServicesReplyCustomDataTransmissionToEsdkNorthbound>& msg)>& observe_callback, const std::shared_ptr<drc_sdk::Executor>& user_define_executor) {
+    if (observe_callback == nullptr) {
+        return MeErrorCode::ERROR_PARAM_OBSERVE_WITHOUT_CALLBACK;
+    }
+    auto observe_message = std::make_shared<ServicesReplyCustomDataTransmissionToEsdkNorthbound>();
+    auto error_code_or_listen_id = transport_manager_->Observe(observe_message->GetMethod(), [observe_callback](const std::shared_ptr<MessageWrapper>& message) -> void {
+        if (message->GetMessageProtocolType() != MessageProtocolType::V1) {
+            LOG_ERROR("[CloudMessageManager] ObserveServicesReplyCustomDataTransmissionToEsdkNorthbound, protocol type error, need: %d -> recv: %d", MessageProtocolType::V1, message->GetMessageProtocolType());
+            return;
+        }
+        auto message_v1 = std::dynamic_pointer_cast<MessageV1>(message);
+        if (message_v1 == nullptr) {
+            LOG_ERROR("[CloudMessageManager] ObserveServicesReplyCustomDataTransmissionToEsdkNorthbound, convert MessageWrapper to V1 message failed");
+            return;
+        }
+        auto user_message = std::make_shared<ServicesReplyCustomDataTransmissionToEsdkNorthbound>(message_v1);
+        observe_callback(user_message);
+    }, user_define_executor);
+    return error_code_or_listen_id;
+}
+
+MeErrorCode CloudMessageManager::SendServicesCustomDataTransmissionToPsdkSouthbound(const std::shared_ptr<ServicesCustomDataTransmissionToPsdkSouthbound>& msg, const std::function<void(int error_code, const std::shared_ptr<ServicesReplyCustomDataTransmissionToPsdkNorthbound>& msg)>& southbound_msg_callback, const std::shared_ptr<drc_sdk::Executor>& user_define_executor) {
+    if (msg == nullptr) {
+        return MeErrorCode::ERROR_PARAM_SEND_WITHOUT_INPUT_MESSAGE;
+    }
+    auto transport_ptr = transport_manager_->GetTransportByMethod(msg->GetMethod());
+    if (transport_ptr == nullptr) {
+        LOG_ERROR("[CloudMessageManager] SendServicesCustomDataTransmissionToPsdkSouthbound, transport_ptr is nullptr");
+        return MeErrorCode::ERROR_TRANSPORT_NOT_FOUND;
+    }
+    if (southbound_msg_callback == nullptr) {
+        return transport_ptr->Send(msg);
+    }
+    auto error_code = transport_ptr->Send(msg, [southbound_msg_callback](MeErrorCode error_code, const std::shared_ptr<MessageWrapper>& message) -> void {
+        if (error_code != MeErrorCode::ME_NO_ERROR) {
+            LOG_ERROR("[CloudMessageManager] SendServicesCustomDataTransmissionToPsdkSouthbound transport Send() error_code: %lld.", static_cast<long long>(error_code));
+            southbound_msg_callback(MeErrorCode::ERROR_TRANSPORT_ERROR, nullptr);
+            return;
+        }
+        if (message->GetMessageProtocolType() != MessageProtocolType::V1) {
+            LOG_ERROR("[CloudMessageManager] SendServicesCustomDataTransmissionToPsdkSouthbound response, protocol type error, need: %d -> recv: %d", MessageProtocolType::V1, message->GetMessageProtocolType());
+            return;
+        }
+        auto message_v1 = std::dynamic_pointer_cast<MessageV1>(message);
+        if (message_v1 == nullptr) {
+            LOG_ERROR("[CloudMessageManager] SendServicesCustomDataTransmissionToPsdkSouthbound response, convert MessageWrapper to V1 message failed");
+            return;
+        }
+        auto user_message = std::make_shared<ServicesReplyCustomDataTransmissionToPsdkNorthbound>(message_v1);
+        southbound_msg_callback(MeErrorCode::ME_NO_ERROR, user_message);
+    }, user_define_executor);
+    return error_code;
+}
+
+ListenIdCode CloudMessageManager::ObserveServicesReplyCustomDataTransmissionToPsdkNorthbound(const std::function<void(const std::shared_ptr<ServicesReplyCustomDataTransmissionToPsdkNorthbound>& msg)>& observe_callback, const std::shared_ptr<drc_sdk::Executor>& user_define_executor) {
+    if (observe_callback == nullptr) {
+        return MeErrorCode::ERROR_PARAM_OBSERVE_WITHOUT_CALLBACK;
+    }
+    auto observe_message = std::make_shared<ServicesReplyCustomDataTransmissionToPsdkNorthbound>();
+    auto error_code_or_listen_id = transport_manager_->Observe(observe_message->GetMethod(), [observe_callback](const std::shared_ptr<MessageWrapper>& message) -> void {
+        if (message->GetMessageProtocolType() != MessageProtocolType::V1) {
+            LOG_ERROR("[CloudMessageManager] ObserveServicesReplyCustomDataTransmissionToPsdkNorthbound, protocol type error, need: %d -> recv: %d", MessageProtocolType::V1, message->GetMessageProtocolType());
+            return;
+        }
+        auto message_v1 = std::dynamic_pointer_cast<MessageV1>(message);
+        if (message_v1 == nullptr) {
+            LOG_ERROR("[CloudMessageManager] ObserveServicesReplyCustomDataTransmissionToPsdkNorthbound, convert MessageWrapper to V1 message failed");
+            return;
+        }
+        auto user_message = std::make_shared<ServicesReplyCustomDataTransmissionToPsdkNorthbound>(message_v1);
+        observe_callback(user_message);
+    }, user_define_executor);
+    return error_code_or_listen_id;
+}
+
 //     if (msg == nullptr) {
 //         return MeErrorCode::ERROR_PARAM_SEND_WITHOUT_INPUT_MESSAGE;
 //     }

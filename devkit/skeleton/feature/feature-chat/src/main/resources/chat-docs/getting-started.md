@@ -1,7 +1,7 @@
-# DJI CloudAPI2 快速入门
+# DJI Cloud API 2 快速入门
 
 ## 设备管理
-DJI CloudAPI2 支持管理多种 DJI 设备：
+DJI Cloud API 2 支持管理多种 DJI 设备：
 - 无人机（Drone）：M30T、M3D、Mavic 3E 等
 - 机场（Dock）：机场 2、机场 2S
 - 遥控器（Remote Controller）

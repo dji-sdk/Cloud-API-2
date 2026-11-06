@@ -85,7 +85,7 @@ public class RealSdkAdapter {
      * <p>data 内是 {@code List<DeviceChange>}，每个 {@code DeviceChange} 内是
      * {@code List<String> sn}。model / name / deviceType 在 workspace 级 callback
      * 不可得：上线事件 model / name 传 null，type 默认 DRONE；下线事件 type 默认 DRONE，
-     * reason 标 "ws-change"。ISV 需要详情可调 {@code Workspace.getDeviceDetailInfo}。
+     * reason 标 "ws-change"。集成商 需要详情可调 {@code Workspace.getDeviceDetailInfo}。
      */
     public void onWorkspaceDeviceChange(WorkspaceDeviceChange data) {
         if (data == null || data.getDeviceChanges() == null) {
@@ -154,7 +154,7 @@ public class RealSdkAdapter {
      *
      * <p>SDK HMS 告警的人类可读 message 需要二次查询翻译表（{@code Workspace.queryHmsTrans}），
      * v0.1 不做翻译，message 字段传 null。{@link HmsAlertEvent#alertCode()} 字段已含 code，
-     * ISV 可根据 code 自行查询翻译。
+     * 集成商 可根据 code 自行查询翻译。
      *
      * <p>level int 映射：1 / NOTICE → INFO；2 / WARN → WARNING；3 / ERROR → ERROR；
      * 4 / FATAL → CRITICAL；其他 → WARNING 兜底。
@@ -185,7 +185,7 @@ public class RealSdkAdapter {
      * <p>SDK 实际 level 值的语义（推测 1=NOTICE, 2=WARN, 3=ERROR, 4=FATAL）需 SDK 文档确认；
      * 不在此范围的值兜底 WARNING。
      *
-     * <p>DEBUG 日志打印 sdkLevel 原始值，让 ISV 运行时可反推 SDK 真实编码语义。
+     * <p>DEBUG 日志打印 sdkLevel 原始值，让集成商运行时可反推 SDK 真实编码语义。
      */
     private HmsAlertLevel mapHmsLevel(int sdkLevel) {
         HmsAlertLevel mapped = switch (sdkLevel) {

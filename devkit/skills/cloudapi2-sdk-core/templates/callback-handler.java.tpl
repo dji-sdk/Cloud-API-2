@@ -1,6 +1,8 @@
 package com.example.dji.sdk;
 
-import com.dji.flighthub.sdk.*;
+import com.dji.flighthubsdk.FlightHubCallback.ResultCallbackWithError;
+import com.dji.flighthubsdk.bean.FlightHubError;
+import com.dji.flighthubsdk.generated.FlightHubSdkErrorCode;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.CompletableFuture;

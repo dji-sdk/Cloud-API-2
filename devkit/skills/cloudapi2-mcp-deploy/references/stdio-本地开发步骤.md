@@ -7,8 +7,8 @@
 
 | 模式 | 适用场景 | 需要 Docker | 需要 Java | 平台限制 |
 |------|----------|-------------|-----------|----------|
-| B1: Mock JAR | Prompt 调试、功能演示、无 DJI CloudAPI2 环境 | 否 | 是（JDK 17+） | 任意平台 |
-| B2: Docker stdio | 需要真实 SDK（连接 DJI CloudAPI2 平台） | 是 | 否 | Docker 可跑 amd64 |
+| B1: Mock JAR | Prompt 调试、功能演示、无 DJI Cloud API 2 环境 | 否 | 是（JDK 17+） | 任意平台 |
+| B2: Docker stdio | 需要真实 SDK（连接 DJI Cloud API 2 平台） | 是 | 否 | Docker 内需 Linux，按架构选 SDK 包 |
 
 ## B1: Mock 模式（本地 JAR 直接跑）
 
@@ -21,10 +21,12 @@
 
 **1. 安装私有 SDK JAR（首次）**
 
+SDK 分 amd64 / arm64 两个包，Maven 坐标相同，按本机架构选一个安装（详见 `libs/README.md`）：
+
 ```bash
 cd <repo-root>
 mvn install:install-file \
-  -Dfile=libs/flight-hub-sdk-3.3.7.jar \
+  -Dfile=libs/amd64/flight-hub-sdk-3.3.7.jar \
   -DgroupId=com.dji.flighthubsdk \
   -DartifactId=flight-hub-sdk \
   -Dversion=3.3.7 \
@@ -102,7 +104,7 @@ FH_MOCK=true ./run-mcp-local.sh
 ### 前提条件
 
 - Docker Desktop（macOS/Windows）或 Docker Engine（Linux）
-- 已有 DJI CloudAPI2 服务器凭证（`FH_SERVER_ADDRESS` / `FH_ACCESS_TOKEN` / `FH_WORKSPACE_UUID`）
+- 已有 DJI Cloud API 2 服务器凭证（`FH_SERVER_ADDRESS` / `FH_ACCESS_TOKEN` / `FH_WORKSPACE_UUID`）
 
 ### 步骤
 
@@ -111,7 +113,7 @@ FH_MOCK=true ./run-mcp-local.sh
 ```bash
 cd mcp
 mvn clean package -DskipTests
-docker build --platform linux/amd64 -t dji/flighthub-mcp:latest .
+docker build --platform linux/amd64 --build-arg SDK_ARCH=amd64 -t dji/flighthub-mcp:latest .
 ```
 
 **2. 配置 Claude Code**
@@ -139,7 +141,8 @@ docker build --platform linux/amd64 -t dji/flighthub-mcp:latest .
 ```
 
 > 注意 `--rm -i`：容器在 Claude Code 关闭 stdin 后自动清理。
-> Apple Silicon 必须保留 `--platform linux/amd64`。
+> Apple Silicon 上以 amd64 运行时，`--platform linux/amd64` 必须与构建时的 `SDK_ARCH=amd64` 成对使用；
+> 若改用 `SDK_ARCH=arm64` 构建原生 arm64 镜像，则这一行去掉 `--platform`。
 
 **3. 验证**
 
@@ -154,10 +157,10 @@ docker build --platform linux/amd64 -t dji/flighthub-mcp:latest .
 | 维度 | Mock 模式 | 真实模式 |
 |------|-----------|----------|
 | 启动速度 | 2-3 秒 | 10-15 秒 |
-| 数据来源 | 固定模拟数据 | DJI CloudAPI2 真实平台 |
+| 数据来源 | 固定模拟数据 | DJI Cloud API 2 真实平台 |
 | 设备操控 | 模拟成功响应 | 真实下发指令 |
 | 适用场景 | Prompt 调试、演示、CI | 生产运维、真实飞行 |
-| 依赖 | 无外部依赖 | DJI CloudAPI2 服务器 + 凭证 |
+| 依赖 | 无外部依赖 | DJI Cloud API 2 服务器 + 凭证 |
 
 ## 常见坑
 

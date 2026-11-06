@@ -12,7 +12,7 @@ namespace flight_hub_sdk {
 
 class DrcModuleImpl : public IDrcModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    DrcModuleImpl(std::shared_ptr<DrcLinkMgr> drc_link_mgr, const std::string& log_tag);
+    DrcModuleImpl(std::shared_ptr<DrcLinkMgr> drc_link_mgr, const std::string& log_tag, int session_id);
     ~DrcModuleImpl() override;
 
     int listenLinkStatus(const std::function<void(const LinkStatus& status)>& callback) override;
@@ -29,6 +29,7 @@ public:
     void cancelListenDrcCountDownInfo(int listen_id) override;
 
 private:
+    int session_id_;
     void registerDrcLinkStateListener();
 
     std::shared_ptr<DrcLinkMgr> drc_link_mgr_;

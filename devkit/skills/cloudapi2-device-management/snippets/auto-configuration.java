@@ -25,10 +25,10 @@ import org.springframework.context.annotation.Bean;
 /**
  * [模块名] feature 的 AutoConfiguration。
  *
- * <p>默认启用（{@code matchIfMissing = true}）；ISV 设
+ * <p>默认启用（{@code matchIfMissing = true}）；集成商设
  * {@code fh.skeleton.feature.xxx.enabled=false} 可完全禁用。
  *
- * <p>所有 Bean 通过 {@code @ConditionalOnMissingBean} 允许 ISV 覆盖。
+ * <p>所有 Bean 通过 {@code @ConditionalOnMissingBean} 允许集成商覆盖。
  *
  * @author TODO
  */

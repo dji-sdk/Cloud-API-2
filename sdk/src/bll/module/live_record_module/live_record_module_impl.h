@@ -13,7 +13,7 @@ namespace flight_hub_sdk {
 
 class LiveRecordModuleImpl : public ILiveRecordModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit LiveRecordModuleImpl(const LiveInfo& live_info);
+    explicit LiveRecordModuleImpl(const LiveInfo& live_info, int session_id);
     ~LiveRecordModuleImpl() override;
 
     void startLiveRecord(const std::string& time_zone, const std::function<void(FlightHubError err)>& callback) override;
@@ -28,6 +28,7 @@ public:
     const LiveInfo& getLiveInfo() const { return live_info_; }
 
 private:
+    int session_id_;
     LiveInfo live_info_;
     CallbackContainer<LiveRecordStateInfo, false> record_state_callbacks_;
 };

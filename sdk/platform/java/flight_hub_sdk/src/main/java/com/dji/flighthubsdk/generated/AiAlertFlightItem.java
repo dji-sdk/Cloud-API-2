@@ -91,6 +91,22 @@ public class AiAlertFlightItem {
     return flighthubsdkmoduleJNI.AiAlertFlightItem_start_time_get(swigCPtr, this);
   }
 
+  public void setFlight_task_type(int value) {
+    flighthubsdkmoduleJNI.AiAlertFlightItem_flight_task_type_set(swigCPtr, this, value);
+  }
+
+  public int getFlight_task_type() {
+    return flighthubsdkmoduleJNI.AiAlertFlightItem_flight_task_type_get(swigCPtr, this);
+  }
+
+  public void setIs_commented(boolean value) {
+    flighthubsdkmoduleJNI.AiAlertFlightItem_is_commented_set(swigCPtr, this, value);
+  }
+
+  public boolean getIs_commented() {
+    return flighthubsdkmoduleJNI.AiAlertFlightItem_is_commented_get(swigCPtr, this);
+  }
+
   public AiAlertFlightItem() {
     this(flighthubsdkmoduleJNI.new_AiAlertFlightItem(), true);
   }

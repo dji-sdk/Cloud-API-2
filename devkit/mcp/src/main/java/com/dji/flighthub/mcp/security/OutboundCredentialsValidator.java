@@ -30,7 +30,7 @@ import java.util.Set;
  * <p>与 {@link StartupAuthValidator} 不同，本校验器只做 WARN 级提醒、不阻断启动：
  * {@code FH_SERVER_ADDRESS}/{@code FH_ACCESS_TOKEN}/{@code FH_WORKSPACE_UUID}
  * 在 Mock 模式下本就允许保持示例占位值，fail-fast 会破坏合法的本地/演示场景，
- * 因此仅在检测到 docker-compose.yml 默认占位值时输出提醒，帮助 ISV 在切换到
+ * 因此仅在检测到 docker-compose.yml 默认占位值时输出提醒，帮助集成商在切换到
  * 真实环境前发现"忘记替换默认值"的配置疏漏。
  *
  * @author DJI FlightHub SDK Team

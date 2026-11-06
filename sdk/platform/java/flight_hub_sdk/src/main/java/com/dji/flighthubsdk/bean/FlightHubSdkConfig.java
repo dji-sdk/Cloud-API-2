@@ -32,9 +32,9 @@ public class FlightHubSdkConfig {
     private String notificationServerAddress = "";
     /** DRTC Native SDK 配置文件路径（drtc_config_node.json，文件路径非目录）；仅 Linux BUILD_WITH_DRTC_USER 场景需要，为空时飞机 DRTC 拉流 Init 会失败 */
     private String drtcConfigPath = "";
-    /** WSS/HTTPS 证书验证开关（安全默认开启）；校验服务器证书链与主机名/IP；私有化自签名部署须配 sslCaPath 指向 CA 文件；显式置 false 会产生 WARN 日志，仅限受控测试环境 */
+    /** WSS/HTTPS 及 S3 直传证书验证开关（安全默认开启）；校验服务器证书链与主机名/IP；私有化自签名部署须配 sslCaPath 指向 CA 文件；显式置 false 会产生 WARN 日志，仅限受控测试环境 */
     private boolean verifySsl = true;
-    /** 私有 CA 证书文件路径（PEM 格式）；为空时使用系统 CA 信任库，私有化自签名部署应指向自有 CA 文件 */
+    /** WSS/HTTPS/S3 直传私有 CA 证书文件路径（PEM 格式）；为空时使用系统 CA 信任库，私有化自签名部署应指向自有 CA 文件 */
     private String sslCaPath = "";
 
     public FlightHubSdkConfig() {
@@ -107,16 +107,16 @@ public class FlightHubSdkConfig {
         this.drtcConfigPath = drtcConfigPath != null ? drtcConfigPath : "";
     }
 
-    /** WSS/HTTPS 证书验证开关（安全默认开启）；校验服务器证书链与主机名/IP；私有化自签名部署须配 sslCaPath 指向 CA 文件；显式置 false 会产生 WARN 日志，仅限受控测试环境 */
+    /** WSS/HTTPS 及 S3 直传证书验证开关（安全默认开启）；校验服务器证书链与主机名/IP；私有化自签名部署须配 sslCaPath 指向 CA 文件；显式置 false 会产生 WARN 日志，仅限受控测试环境 */
     public boolean isVerifySsl() { return verifySsl; }
 
-    /** @param verifySsl WSS/HTTPS 证书验证开关（安全默认开启）；校验服务器证书链与主机名/IP；私有化自签名部署须配 sslCaPath 指向 CA 文件；显式置 false 会产生 WARN 日志，仅限受控测试环境 */
+    /** @param verifySsl WSS/HTTPS 及 S3 直传证书验证开关（安全默认开启）；校验服务器证书链与主机名/IP；私有化自签名部署须配 sslCaPath 指向 CA 文件；显式置 false 会产生 WARN 日志，仅限受控测试环境 */
     public void setVerifySsl(boolean verifySsl) { this.verifySsl = verifySsl; }
 
-    /** 私有 CA 证书文件路径（PEM 格式）；为空时使用系统 CA 信任库，私有化自签名部署应指向自有 CA 文件 */
+    /** WSS/HTTPS/S3 直传私有 CA 证书文件路径（PEM 格式）；为空时使用系统 CA 信任库，私有化自签名部署应指向自有 CA 文件 */
     public String getSslCaPath() { return sslCaPath; }
 
-    /** @param sslCaPath 私有 CA 证书文件路径（PEM 格式）；为空时使用系统 CA 信任库，私有化自签名部署应指向自有 CA 文件 */
+    /** @param sslCaPath WSS/HTTPS/S3 直传私有 CA 证书文件路径（PEM 格式）；为空时使用系统 CA 信任库，私有化自签名部署应指向自有 CA 文件 */
     public void setSslCaPath(String sslCaPath) {
         this.sslCaPath = sslCaPath != null ? sslCaPath : "";
     }

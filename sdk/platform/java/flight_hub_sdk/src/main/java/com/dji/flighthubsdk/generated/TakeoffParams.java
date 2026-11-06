@@ -155,6 +155,30 @@ public class TakeoffParams {
     return flighthubsdkmoduleJNI.TakeoffParams_need_verify_flight_control_get(swigCPtr, this);
   }
 
+  public void setSpeed_mode(int value) {
+    flighthubsdkmoduleJNI.TakeoffParams_speed_mode_set(swigCPtr, this, value);
+  }
+
+  public int getSpeed_mode() {
+    return flighthubsdkmoduleJNI.TakeoffParams_speed_mode_get(swigCPtr, this);
+  }
+
+  public void setReal_height_cap_enabled(int value) {
+    flighthubsdkmoduleJNI.TakeoffParams_real_height_cap_enabled_set(swigCPtr, this, value);
+  }
+
+  public int getReal_height_cap_enabled() {
+    return flighthubsdkmoduleJNI.TakeoffParams_real_height_cap_enabled_get(swigCPtr, this);
+  }
+
+  public void setReal_height_cap_limit(int value) {
+    flighthubsdkmoduleJNI.TakeoffParams_real_height_cap_limit_set(swigCPtr, this, value);
+  }
+
+  public int getReal_height_cap_limit() {
+    return flighthubsdkmoduleJNI.TakeoffParams_real_height_cap_limit_get(swigCPtr, this);
+  }
+
   public TakeoffParams() {
     this(flighthubsdkmoduleJNI.new_TakeoffParams(), true);
   }

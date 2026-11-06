@@ -12,6 +12,8 @@ public final class MediaUploadStsCredentials {
     private String accessKeySecret;
     private int expire;
     private String securityToken;
+    private String expiration;
+    private int platform;
     public MediaUploadStsCredentials() {
     }
 
@@ -28,10 +30,32 @@ public final class MediaUploadStsCredentials {
             String accessKeySecret,
             int expire,
             String securityToken) {
+        this(accessKeyId, accessKeySecret, expire, securityToken, "", 0);
+    }
+
+    /**
+     * 构造 MediaUploadStsCredentials。
+     *
+     * @param accessKeyId AccessKeyId
+     * @param accessKeySecret AccessKeySecret
+     * @param expire 凭证有效期（秒）
+     * @param securityToken 安全令牌
+     * @param expiration 凭证绝对过期时间
+     * @param platform 平台标识
+     */
+    public MediaUploadStsCredentials(
+            String accessKeyId,
+            String accessKeySecret,
+            int expire,
+            String securityToken,
+            String expiration,
+            int platform) {
         this.accessKeyId = accessKeyId != null ? accessKeyId : "";
         this.accessKeySecret = accessKeySecret != null ? accessKeySecret : "";
         this.expire = expire;
         this.securityToken = securityToken != null ? securityToken : "";
+        this.expiration = expiration != null ? expiration : "";
+        this.platform = platform;
     }
 
     /** AccessKeyId */
@@ -66,6 +90,22 @@ public final class MediaUploadStsCredentials {
         this.securityToken = securityToken;
     }
 
+    /** 凭证绝对过期时间 */
+    public String getExpiration() { return expiration; }
+
+    /** 凭证绝对过期时间 */
+    public void setExpiration(String expiration) {
+        this.expiration = expiration;
+    }
+
+    /** 平台标识 */
+    public int getPlatform() { return platform; }
+
+    /** 平台标识 */
+    public void setPlatform(int platform) {
+        this.platform = platform;
+    }
+
 
     @Override
     public boolean equals(Object o) {
@@ -73,14 +113,16 @@ public final class MediaUploadStsCredentials {
         if (o == null || getClass() != o.getClass()) return false;
         MediaUploadStsCredentials that = (MediaUploadStsCredentials) o;
         return expire == that.expire
+                && platform == that.platform
                 && Objects.equals(accessKeyId, that.accessKeyId)
                 && Objects.equals(accessKeySecret, that.accessKeySecret)
-                && Objects.equals(securityToken, that.securityToken);
+                && Objects.equals(securityToken, that.securityToken)
+                && Objects.equals(expiration, that.expiration);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(accessKeyId, accessKeySecret, expire, securityToken);
+        return Objects.hash(accessKeyId, accessKeySecret, expire, securityToken, expiration, platform);
     }
 
     @Override
@@ -90,6 +132,8 @@ public final class MediaUploadStsCredentials {
                 + ", accessKeySecret='" + accessKeySecret + '\''
                 + ", expire=" + expire
                 + ", securityToken='" + securityToken + '\''
+                + ", expiration='" + expiration + '\''
+                + ", platform=" + platform
                 + '}';
     }
 }

@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 从 message.h 提取 struct 字段注释，同步到手写 Java bean。
 补三处：字段声明、getter、setter。

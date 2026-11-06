@@ -25,14 +25,22 @@ import com.dji.flighthub.mcp.security.OperatorTokenAuthenticator;
 import com.dji.flighthub.mcp.session.FlightPhase;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
+import com.dji.flighthubsdk.FlightHubCallback.ResultCallbackWithError;
+import com.dji.flighthubsdk.bean.FlightHubError;
+import com.dji.flighthubsdk.core.Drone;
+import com.dji.flighthubsdk.core.FlightControlModule;
+import com.dji.flighthubsdk.generated.FlightHubSdkErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import java.util.List;
 import java.util.Map;
 
 import static com.dji.flighthub.mcp.elicit.ElicitTestSupport.fakeBridge;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 /**
  * FhEmergencyStopTool 单元测试。
@@ -122,7 +130,8 @@ class FhEmergencyStopToolTest {
 
     @Test
     void execute_shouldSucceed_whenNoDrcLink() {
-        // 持有控制权但未建立 DRC 链路 — 紧急停机应走管理通道，仍然成功
+        // 持有控制权但未建立 DRC 链路 — 本工具故意不做 DRC 前置校验，
+        // 链路缺失交由 SDK 返回错误，避免紧急场景被本地前置条件拦下
         SessionContext session = sessionManager.createSession("uuid", "ws");
         session.setActiveControlDevice(DRONE_SN);
         // 故意不设置 DRC：session.setActiveDrcDevice(DRONE_SN);
@@ -135,7 +144,7 @@ class FhEmergencyStopToolTest {
         ));
 
         assertEquals(true, result.get("success"),
-                "Emergency stop should succeed without DRC link (uses management channel)");
+                "Emergency action should not be blocked locally when DRC link is absent");
     }
 
     @Test
@@ -318,7 +327,9 @@ class FhEmergencyStopToolTest {
         Map<String, Object> data = (Map<String, Object>) result.get("data");
         assertNotNull(data);
         assertEquals("landing", data.get("mode"));
-        assertEquals(FlightPhase.EMERGENCY, session.getFlightPhase());
+        // landing 与 force_landing 同为降落语义，phase/status 必须一致
+        assertEquals("landing", data.get("status"));
+        assertEquals(FlightPhase.LANDING, session.getFlightPhase());
     }
 
     @Test
@@ -337,6 +348,345 @@ class FhEmergencyStopToolTest {
 
         assertEquals(false, result.get("success"));
         assertTrue(result.get("error_message").toString().contains("Invalid mode"));
+    }
+
+    // ==================== 真实 SDK 路径：mode 分派 ====================
+
+    /**
+     * 构造走真实 SDK 路径的工具实例，SDK 回调立即返回成功。
+     *
+     * @param module 被 mock 的 FlightControlModule
+     * @return 配置为真实模式的工具
+     */
+    private FhEmergencyStopTool realToolWith(FlightControlModule module) {
+        Drone drone = mock(Drone.class);
+        when(drone.getFlightControlModule()).thenReturn(module);
+        SdkService realSdk = new SdkService() {
+            @Override
+            public boolean isMockMode() {
+                return false;
+            }
+
+            @Override
+            public Drone getDrone(String sn) {
+                return drone;
+            }
+        };
+        FlightHubProperties properties = new FlightHubProperties();
+        properties.getSecurity().setMaxLevel(3);
+        properties.getSecurity().setOperatorToken(OPERATOR_TOKEN);
+        return new FhEmergencyStopTool(sessionManager, realSdk, new OperatorTokenAuthenticator(properties));
+    }
+
+    /**
+     * 让 mock 的 SDK 方法以成功回调应答。
+     *
+     * @param module 被 mock 的 FlightControlModule
+     */
+    private void stubSuccessCallbacks(FlightControlModule module) {
+        doAnswer(inv -> {
+            ResultCallbackWithError cb = inv.getArgument(0);
+            cb.onResult(new FlightHubError(FlightHubSdkErrorCode.SUCCESS));
+            return null;
+        }).when(module).drcEmergencyStop(any(ResultCallbackWithError.class));
+        doAnswer(inv -> {
+            ResultCallbackWithError cb = inv.getArgument(0);
+            cb.onResult(new FlightHubError(FlightHubSdkErrorCode.SUCCESS));
+            return null;
+        }).when(module).drcEmergencyLanding(any(ResultCallbackWithError.class));
+        doAnswer(inv -> {
+            ResultCallbackWithError cb = inv.getArgument(0);
+            cb.onResult(new FlightHubError(FlightHubSdkErrorCode.SUCCESS));
+            return null;
+        }).when(module).drcForceLanding(any(ResultCallbackWithError.class));
+        doAnswer(inv -> {
+            ResultCallbackWithError cb = inv.getArgument(1);
+            cb.onResult(new FlightHubError(FlightHubSdkErrorCode.SUCCESS));
+            return null;
+        }).when(module).drcOpenParachute(anyInt(), any(ResultCallbackWithError.class));
+        doAnswer(inv -> {
+            ResultCallbackWithError cb = inv.getArgument(1);
+            cb.onResult(new FlightHubError(FlightHubSdkErrorCode.SUCCESS));
+            return null;
+        }).when(module).drcSetDroneHover(anyInt(), any(ResultCallbackWithError.class));
+    }
+
+    @Test
+    void execute_shouldCallDrcEmergencyLanding_whenModeLanding() {
+        // 缺陷回归：mode=landing 必须调用 drcEmergencyLanding，而不是一刀切 drcEmergencyStop
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        FlightControlModule module = mock(FlightControlModule.class);
+        stubSuccessCallbacks(module);
+
+        Map<String, Object> result = realToolWith(module).execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "operator_token", OPERATOR_TOKEN,
+                "confirm", true,
+                "reason", "Force landing requested",
+                "mode", "landing"
+        ));
+
+        assertEquals(true, result.get("success"));
+        verify(module).drcEmergencyLanding(any(ResultCallbackWithError.class));
+        verify(module, never()).drcEmergencyStop(any(ResultCallbackWithError.class));
+    }
+
+    @Test
+    void execute_shouldCallDrcEmergencyStop_whenModeHover() {
+        // mode=hover 仍应走切电机的 drcEmergencyStop
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        FlightControlModule module = mock(FlightControlModule.class);
+        stubSuccessCallbacks(module);
+
+        Map<String, Object> result = realToolWith(module).execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "operator_token", OPERATOR_TOKEN,
+                "confirm", true,
+                "reason", "Cut motors now",
+                "mode", "hover"
+        ));
+
+        assertEquals(true, result.get("success"));
+        verify(module).drcEmergencyStop(any(ResultCallbackWithError.class));
+        verify(module, never()).drcEmergencyLanding(any(ResultCallbackWithError.class));
+    }
+
+    @Test
+    void execute_shouldCallDrcEmergencyStop_whenModeOmitted() {
+        // 未指定 mode 时默认 hover → drcEmergencyStop
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        FlightControlModule module = mock(FlightControlModule.class);
+        stubSuccessCallbacks(module);
+
+        Map<String, Object> result = realToolWith(module).execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "operator_token", OPERATOR_TOKEN,
+                "confirm", true,
+                "reason", "Default mode path"
+        ));
+
+        assertEquals(true, result.get("success"));
+        verify(module).drcEmergencyStop(any(ResultCallbackWithError.class));
+        verify(module, never()).drcEmergencyLanding(any(ResultCallbackWithError.class));
+    }
+
+    // ==================== 真实 SDK 路径：强制降落 / 开伞 / 悬停保活 ====================
+
+    @Test
+    void execute_shouldCallDrcForceLanding_whenModeForceLanding() {
+        // mode=force_landing → drcForceLanding（无参数）
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        FlightControlModule module = mock(FlightControlModule.class);
+        stubSuccessCallbacks(module);
+
+        Map<String, Object> result = realToolWith(module).execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "operator_token", OPERATOR_TOKEN,
+                "confirm", true,
+                "reason", "Drone drifting toward crowd",
+                "mode", "force_landing"
+        ));
+
+        assertEquals(true, result.get("success"));
+        verify(module).drcForceLanding(any(ResultCallbackWithError.class));
+        verify(module, never()).drcEmergencyStop(any(ResultCallbackWithError.class));
+        verify(module, never()).drcEmergencyLanding(any(ResultCallbackWithError.class));
+        assertEquals(FlightPhase.LANDING, session.getFlightPhase());
+    }
+
+    @Test
+    void execute_shouldCallDrcOpenParachuteWithNormalForce_whenParachuteForceOmitted() {
+        // 开伞默认非强制模式，SDK 入参必须是 int 0（不是 boolean）
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        FlightControlModule module = mock(FlightControlModule.class);
+        stubSuccessCallbacks(module);
+
+        Map<String, Object> result = realToolWith(module).execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "operator_token", OPERATOR_TOKEN,
+                "confirm", true,
+                "reason", "Motor failure detected",
+                "mode", "parachute"
+        ));
+
+        assertEquals(true, result.get("success"));
+        verify(module).drcOpenParachute(eq(0), any(ResultCallbackWithError.class));
+        verify(module, never()).drcForceLanding(any(ResultCallbackWithError.class));
+    }
+
+    @Test
+    void execute_shouldCallDrcOpenParachuteWithForcedForce_whenParachuteForceTrue() {
+        // parachute_force=true → SDK force=1（强制开伞）
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        FlightControlModule module = mock(FlightControlModule.class);
+        stubSuccessCallbacks(module);
+
+        Map<String, Object> result = realToolWith(module).execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "operator_token", OPERATOR_TOKEN,
+                "confirm", true,
+                "reason", "Drone falling",
+                "mode", "parachute",
+                "parachute_force", true
+        ));
+
+        assertEquals(true, result.get("success"));
+        verify(module).drcOpenParachute(eq(1), any(ResultCallbackWithError.class));
+    }
+
+    @Test
+    void execute_shouldCallDrcSetDroneHover_whenModeHoverHold() {
+        // mode=hover_hold → drcSetDroneHover(duration_ms)，与切电机的 mode=hover 完全区分
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        FlightControlModule module = mock(FlightControlModule.class);
+        stubSuccessCallbacks(module);
+
+        Map<String, Object> result = realToolWith(module).execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "operator_token", OPERATOR_TOKEN,
+                "confirm", true,
+                "reason", "Extend hover keep-alive",
+                "mode", "hover_hold",
+                "duration_ms", 60000
+        ));
+
+        assertEquals(true, result.get("success"));
+        verify(module).drcSetDroneHover(eq(60000), any(ResultCallbackWithError.class));
+        verify(module, never()).drcEmergencyStop(any(ResultCallbackWithError.class));
+        assertEquals(FlightPhase.HOVERING, session.getFlightPhase());
+    }
+
+    @Test
+    void execute_shouldAcceptUpperBound_whenHoverHoldDurationIsMax() {
+        // SDK 上限 1800000ms（30 分钟），边界值必须放行
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        FlightControlModule module = mock(FlightControlModule.class);
+        stubSuccessCallbacks(module);
+
+        Map<String, Object> result = realToolWith(module).execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "operator_token", OPERATOR_TOKEN,
+                "confirm", true,
+                "reason", "Max keep-alive",
+                "mode", "hover_hold",
+                "duration_ms", 1800000
+        ));
+
+        assertEquals(true, result.get("success"));
+        verify(module).drcSetDroneHover(eq(1800000), any(ResultCallbackWithError.class));
+    }
+
+    @Test
+    void execute_shouldRejectDurationAboveMax_whenHoverHold() {
+        // SDK 对超范围值静默截断且不报错，必须在 MCP 层拦截，否则操作员以为设了 31 分钟
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        FlightControlModule module = mock(FlightControlModule.class);
+        stubSuccessCallbacks(module);
+
+        Map<String, Object> result = realToolWith(module).execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "operator_token", OPERATOR_TOKEN,
+                "confirm", true,
+                "reason", "Too long",
+                "mode", "hover_hold",
+                "duration_ms", 1800001
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("duration_ms"));
+        verify(module, never()).drcSetDroneHover(anyInt(), any(ResultCallbackWithError.class));
+        assertNotEquals(FlightPhase.HOVERING, session.getFlightPhase());
+    }
+
+    @Test
+    void execute_shouldRejectNegativeDuration_whenHoverHold() {
+        // 负数同样必须拦截
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        FlightControlModule module = mock(FlightControlModule.class);
+        stubSuccessCallbacks(module);
+
+        Map<String, Object> result = realToolWith(module).execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "operator_token", OPERATOR_TOKEN,
+                "confirm", true,
+                "reason", "Negative duration",
+                "mode", "hover_hold",
+                "duration_ms", -1
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("duration_ms"));
+        verify(module, never()).drcSetDroneHover(anyInt(), any(ResultCallbackWithError.class));
+    }
+
+    @Test
+    void execute_shouldRejectMissingDuration_whenHoverHold() {
+        // hover_hold 必须显式给出 duration_ms，不能默认 0（0 表示取消保活定时器）
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "operator_token", OPERATOR_TOKEN,
+                "confirm", true,
+                "reason", "No duration",
+                "mode", "hover_hold"
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("duration_ms"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldSetLandingPhase_whenForceLandingInMockMode() {
+        // mock 模式的飞行阶段也应正确反映动作语义
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "operator_token", OPERATOR_TOKEN,
+                "confirm", true,
+                "reason", "Force land in mock",
+                "mode", "force_landing"
+        ));
+
+        assertEquals(true, result.get("success"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals("force_landing", data.get("mode"));
+        assertEquals(FlightPhase.LANDING, session.getFlightPhase());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getToolDefinition_shouldDeclareDrcBasedActionsAndTheirParams() {
+        Map<String, Object> def = tool.getToolDefinition();
+        Map<String, Object> schema = (Map<String, Object>) def.get("inputSchema");
+        Map<String, Object> props = (Map<String, Object>) schema.get("properties");
+
+        Map<String, Object> modeProp = (Map<String, Object>) props.get("mode");
+        List<?> modes = (List<?>) modeProp.get("enum");
+        assertTrue(modes.containsAll(List.of("hover", "landing", "force_landing", "parachute", "hover_hold")),
+                "mode 枚举必须含五种动作，且 hover 不得被复用为保活悬停");
+
+        assertTrue(props.containsKey("duration_ms"), "hover_hold 需要 duration_ms 参数");
+        assertTrue(props.containsKey("parachute_force"), "parachute 需要 parachute_force 参数");
+
+        // 描述必须讲清三类新动作依赖 DRC 链路
+        String description = def.get("description").toString();
+        assertTrue(description.contains("DRC"), "description 必须说明 DRC 链路要求");
+        assertTrue(description.contains("Dock 4"), "description 必须标注悬停保活仅支持 Dock 4");
     }
 
     @Test

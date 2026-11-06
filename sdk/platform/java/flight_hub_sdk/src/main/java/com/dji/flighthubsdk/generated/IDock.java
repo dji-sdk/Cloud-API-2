@@ -78,11 +78,6 @@ public class IDock {
     return (cPtr == 0) ? null : new IDockOsdModule(cPtr, true);
   }
 
-  public IDeployModule getDeployModule() {
-    long cPtr = flighthubsdkmoduleJNI.IDock_getDeployModule(swigCPtr, this);
-    return (cPtr == 0) ? null : new IDeployModule(cPtr, true);
-  }
-
   public IDockControlModule getDockControlModule() {
     long cPtr = flighthubsdkmoduleJNI.IDock_getDockControlModule(swigCPtr, this);
     return (cPtr == 0) ? null : new IDockControlModule(cPtr, true);

@@ -14,9 +14,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Demo 连接配置：服务器地址 / 端口 / 通知地址 / SDK 日志配置 / gateway 鉴权头。
+ * Demo 连接配置: 服务器地址 / 端口 / 通知地址 / SDK 日志配置 / gateway 鉴权头。
  *
- * <p>来源：config.json(不入库, 见 .gitignore)。鉴权值支持环境变量覆盖,
+ * <p>来源: config.json(不入库, 见 .gitignore)。鉴权值支持环境变量覆盖,
  * 避免把明文 token/uuid 提交到仓库。
  *
  * <ul>
@@ -28,7 +28,7 @@ public final class DemoConfig {
 
     public static final String ENV_AUTH_VALUE = "FLIGHTHUB_AUTH_VALUE";
 
-    /** 单个 gateway 鉴权头(key/value), 对应 {@code auth.auth_key_values} 数组中的一项。 */
+    /** 单个 gateway 鉴权头 (key/value), 对应 {@code auth.auth_key_values} 数组中的一项。 */
     public static final class AuthHeader {
         private final String key;
         private final String value;
@@ -61,7 +61,7 @@ public final class DemoConfig {
         String logLevel, boolean logToConsole, String logFilePath,
         long logMaxFileSize, int logMaxFiles,
         List<AuthHeader> authHeaders) {
-        // 私有构造：仅由 load(...) 解析 config.json 后调用, 逐字段赋值给不可变成员。
+        // 私有构造: 仅由 load(...) 解析 config.json 后调用, 逐字段赋值给不可变成员。
         this.address = address;
         this.port = port;
         this.notificationServer = notificationServer;
@@ -107,7 +107,7 @@ public final class DemoConfig {
                 server.str("notification_server", ""),
                 server.bool("verify_ssl", false),
                 server.str("ssl_ca_path", ""),
-                server.str("drtc_config_path", ""),
+                sdk.str("drtc_config_path", ""),
                 sdk.str("log_level", "info"),
                 sdk.bool("log_to_console", true),
                 sdk.str("log_file_path", "flight_hub_sdk_demo.log"),
@@ -118,7 +118,7 @@ public final class DemoConfig {
     }
 
     /**
-     * 解析 {@code auth.auth_key_values}：形如 {@code [{"key1": "value1"}, {"key2": "value2"}]} 的
+     * 解析 {@code auth.auth_key_values}: 形如 {@code [{"key1": "value1"}, {"key2": "value2"}]} 的
      * 单键值对象数组, 逐项转换为 {@link AuthHeader}。任一项 value 为空则回退环境变量
      * {@value #ENV_AUTH_VALUE}(便于把真实鉴权值留空提交, 运行时再注入);
      * key/value 两者皆非空才纳入结果, 避免注入空鉴权头。
@@ -179,7 +179,7 @@ public final class DemoConfig {
     public String logFilePath() { return logFilePath; }
     public long logMaxFileSize() { return logMaxFileSize; }
     public int logMaxFiles() { return logMaxFiles; }
-    /** 已解析且有效(key/value 均非空)的鉴权头列表, 对应 {@code auth.auth_key_values}。 */
+    /** 已解析且有效 (key/value 均非空)的鉴权头列表, 对应 {@code auth.auth_key_values}。 */
     public List<AuthHeader> authHeaders() { return authHeaders; }
 
     public boolean hasAuth() {

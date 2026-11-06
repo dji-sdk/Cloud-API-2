@@ -26,6 +26,8 @@ defineProps<{
   smartRthEnabled: boolean
   rthAltitude: number
   outOfControlAction: LostControlAction
+  /** 是否为编辑模式（仅影响提示文案，不影响字段可选性） */
+  isEdit?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -39,6 +41,15 @@ const LOST_CONTROL_OPTIONS = [
   { value: 'return_home', label: '返航' },
   { value: 'continue', label: '继续执行' },
 ]
+
+/** 「自动断点续飞」语义说明：与「断点续飞任务」标识（isBreakPointResume）不是一回事 */
+const RESUMABLE_TIP =
+  '开启后任务中断时自动从断点续飞。该开关对应续飞策略（resumable_status），' +
+  '与「断点续飞任务」是两回事：后者是任务类型标识，此类任务不可编辑。'
+
+/** 编辑态提示：SDK 编辑接口没有 resumable_status 承载位，保存不会改变已下发的策略 */
+const RESUMABLE_EDIT_HINT =
+  '自动续飞策略仅在创建任务时下发，当前 SDK 编辑接口无该字段，保存不会改变原有策略'
 </script>
 
 <template>
@@ -47,13 +58,14 @@ const LOST_CONTROL_OPTIONS = [
       <div class="toggle-label-row">
         <span class="field-label">
           自动断点续飞
-          <Info :size="14" class="info-icon" />
+          <Info :size="14" class="info-icon" :title="RESUMABLE_TIP" />
         </span>
         <ToggleSwitch
           :model-value="resumableEnabled"
           @update:model-value="emit('update:resumableEnabled', $event)"
         />
       </div>
+      <p v-if="isEdit" class="field-hint">{{ RESUMABLE_EDIT_HINT }}</p>
     </div>
 
     <div class="toggle-field">
@@ -132,5 +144,12 @@ const LOST_CONTROL_OPTIONS = [
 .info-icon {
   color: var(--app-text-muted);
   cursor: help;
+}
+
+/* 与 StrategySection 的编辑态提示保持一致：弱化色，不抢主流程注意力 */
+.field-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--app-text-muted);
 }
 </style>

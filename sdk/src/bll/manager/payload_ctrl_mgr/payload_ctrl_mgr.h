@@ -10,12 +10,13 @@
 #include <string>
 #include "tool/callback_container.h"
 #include "camera_abs.h"
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class PayloadCtrlMgr : public drc_sdk::common::AsyncCaptureProtect {
 public:
-    PayloadCtrlMgr(const std::string& drone_sn, const std::string& gateway_sn, const std::shared_ptr<message_engine::IMessageEngine>& message_engine, int drone_instance_id);
+    PayloadCtrlMgr(const std::string& drone_sn, const std::string& gateway_sn, const std::shared_ptr<message_engine::IMessageEngine>& message_engine, int drone_instance_id, int session_id);
     ~PayloadCtrlMgr() override;
 
     /// SN accessors（供 module impl 订阅 NC 时构造 topic）
@@ -24,6 +25,8 @@ public:
 
     void acquirePayloadControlAuthority(const std::string& payload_index, const std::function<void(FlightHubError)>& callback);
     void releasePayloadControlAuthority(const std::string& payload_index, const std::function<void(FlightHubError)>& callback);
+    void acquirePayloadControlAuthorityWithResult(const std::string& payload_index, const std::function<void(FlightHubError, const ControlAuthResult&)>& callback);
+    void releasePayloadControlAuthorityWithResult(const std::string& payload_index, const std::function<void(FlightHubError, const ControlAuthResult&)>& callback);
     int listenPayloadControlAuthority(const std::string& payload_index, const std::function<void(bool)>& callback);
     void cancelListenPayloadControlAuthority(const std::string& payload_index, int listen_id);
 
@@ -211,6 +214,7 @@ private:
     /// params
     std::string drone_sn_;
     std::string gateway_sn_;
+    int session_id_;
 
     // listen id
     int aircraft_payloads_list_listen_id_ = -1;

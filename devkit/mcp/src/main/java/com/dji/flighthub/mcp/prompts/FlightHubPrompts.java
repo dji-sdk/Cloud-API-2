@@ -199,9 +199,10 @@ public class FlightHubPrompts {
 
             ### Emergency
             ```
-            fh_emergency_stop(drone_sn="{drone_sn}")
+            fh_emergency_stop(drone_sn="{drone_sn}", mode="hover", reason="<why: e.g. imminent collision>", confirm=true)
             ```
-            - ⚠️ L3 — IMMEDIATE motor stop, drone will fall
+            - ⚠️ L3 — `mode="hover"` = IMMEDIATE motor stop, drone will fall
+            - `reason` and `operator_token` are required; use `mode="landing"` to land with power kept
             - Use ONLY when collision is imminent and no other option exists
 
             ### Error Handling

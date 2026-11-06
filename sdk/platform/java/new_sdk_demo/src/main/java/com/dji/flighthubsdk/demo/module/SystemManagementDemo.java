@@ -7,6 +7,7 @@ import com.dji.flighthubsdk.FlightHubCallback;
 import com.dji.flighthubsdk.FlightHubSDK;
 import com.dji.flighthubsdk.bean.CreateDeviceLogReportRequestParam;
 import com.dji.flighthubsdk.bean.CreateDeviceLogReportResult;
+import com.dji.flighthubsdk.bean.Device;
 import com.dji.flighthubsdk.bean.DeviceLogListResult;
 import com.dji.flighthubsdk.bean.DeviceLogListResultFileItem;
 import com.dji.flighthubsdk.bean.DeviceLogListResultLogItem;
@@ -16,9 +17,12 @@ import com.dji.flighthubsdk.bean.DeviceLogReportDeviceTopoParam;
 import com.dji.flighthubsdk.bean.DeviceLogReportLogItemParam;
 import com.dji.flighthubsdk.bean.DeviceLogReportLogListItemParam;
 import com.dji.flighthubsdk.bean.DeviceOtaProgress;
+import com.dji.flighthubsdk.bean.CommonPaginationData;
 import com.dji.flighthubsdk.bean.FirmwareCompatibilityConfigItemResult;
+import com.dji.flighthubsdk.bean.FirmwareCompatibilityValidateResult;
 import com.dji.flighthubsdk.bean.FirmwareInfoParam;
 import com.dji.flighthubsdk.bean.FirmwareItemResult;
+import com.dji.flighthubsdk.bean.FirmwareListResult;
 import com.dji.flighthubsdk.bean.FirmwareReleaseNoteResult;
 import com.dji.flighthubsdk.bean.FirmwareStatusItem;
 import com.dji.flighthubsdk.bean.FirmwareUpgradeDeviceItem;
@@ -33,6 +37,7 @@ import com.dji.flighthubsdk.bean.LogReportListResultItem;
 import com.dji.flighthubsdk.bean.UploadFileResult;
 import com.dji.flighthubsdk.core.FirmwareManageModule;
 import com.dji.flighthubsdk.core.LogManagementModule;
+import com.dji.flighthubsdk.demo.base.Menu;
 import com.dji.flighthubsdk.demo.base.ModuleDemo;
 import com.dji.flighthubsdk.demo.runtime.Await;
 import com.dji.flighthubsdk.demo.runtime.DemoLog;
@@ -47,64 +52,64 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * 系统管理 Demo(菜单驱动)：日志管理 + 固件管理两个功能域, 多级子菜单。
+ * 系统管理 Demo(菜单驱动): 日志管理 + 固件管理两个功能域, 多级子菜单。
  *
- * <p>主菜单分为两个功能域：
+ * <p>主菜单分为两个功能域:
  * <pre>
  * 主菜单
- * ├── [1] 日志管理(LogManagementModule)
+ * ├── [1] 日志管理 (LogManagementModule)
  * │   ├── [1] 查询设备日志文件列表    queryDeviceLogList
  * │   ├── [2] 创建日志报告           createDeviceLogReport(串联 [1] 的日志文件)
  * │   ├── [3] 查询日志报告列表        logReportList
  * │   ├── [4] 日志报告操作           logReportOperation(取消/删除)
  * │   ├── [5] 上传附加文件           uploadLogAppendFile
  * │   └── [6] 订阅文件上传进度       listenDeviceFileUploadProgress(WS, 推送只落日志)
- * └── [2] 固件管理(FirmwareManageModule)
+ * └── [2] 固件管理 (FirmwareManageModule)
  *     ├── [1]  查询固件列表           queryFirmwareList
  *     ├── [2]  获取最新固件说明        getLatestFirmwareReleaseNote
  *     ├── [3]  检查设备固件状态        checkFirmwareStatus
  *     ├── [4]  触发固件升级           invokeFirmwareUpgrade
- *     ├── [5]  查询升级进度(HTTP)    queryFirmwareUpgradeProgress
- *     ├── [6]  订阅升级进度(WS)      listenDeviceOtaProgress(推送只落日志)
+ *     ├── [5]  查询升级进度 (HTTP)    queryFirmwareUpgradeProgress
+ *     ├── [6]  订阅升级进度 (WS)      listenDeviceOtaProgress(推送只落日志)
  *     ├── [7]  上传固件文件           uploadFirmwareFile
  *     ├── [8]  提交固件信息           submitFirmwareInfo(串联 [7] 的 objectKey)
  *     ├── [9]  发布/取消发布/删除固件  releaseFirmware / unReleaseFirmware / deleteFirmware
  *     └── [10] 查询固件兼容性配置     queryFirmwareCompatibilityConfig
  * </pre>
  *
- * <p><b>接口串联设计：</b>
+ * <p><b>接口串联设计: </b>
  * <ul>
- *   <li>日志：[1] 查文件列表 → [2] 创建报告(自动填充)；</li>
- *   <li>固件升级：[3] 检查状态 → [4] 触发升级 → [5]/[6] 查询/订阅进度；</li>
- *   <li>固件上传发布：[7] 上传缓存 objectKey → [8] 提交信息 → [9] 发布。</li>
+ *   <li>日志: [1] 查文件列表 → [2] 创建报告 (自动填充); </li>
+ *   <li>固件升级: [3] 检查状态 → [4] 触发升级 → [5]/[6] 查询/订阅进度; </li>
+ *   <li>固件上传发布: [7] 上传缓存 objectKey → [8] 提交信息 → [9] 发布。</li>
  * </ul>
  *
- * <p><b>SDK 入口：</b>{@code session.workspace().getLogManagementModule()} /
+ * <p><b>SDK 入口: </b>{@code session.workspace().getLogManagementModule()} /
  * {@code session.workspace().getFirmwareManageModule()}(均挂在 Workspace 上)。
  *
- * <p><b>设计要点：</b>
+ * <p><b>设计要点: </b>
  * <ul>
- *   <li>覆盖 {@code LogManagementModule} 全部 7 个公开接口(5 个动作 + 上传进度 listen/cancel 一对)
- *       与 {@code FirmwareManageModule} 全部 13 个公开接口(11 个动作 + OTA 进度 listen/cancel 一对)；</li>
- *   <li>三态结果回显(SUCCESS/TIMEOUT/FAILED), 超时与失败明确区分；</li>
- *   <li>结果解析只在 SUCCESS 内进行(convert 层对 null 输入会造成非 null 空 bean, 失败时判空守卫失效)；</li>
+ *   <li>覆盖 {@code LogManagementModule} 全部 7 个公开接口 (5 个动作 + 上传进度 listen/cancel 一对)
+ *       与 {@code FirmwareManageModule} 全部 13 个公开接口 (11 个动作 + OTA 进度 listen/cancel 一对); </li>
+ *   <li>三态结果回显 (SUCCESS/TIMEOUT/FAILED), 超时与失败明确区分; </li>
+ *   <li>结果解析只在 SUCCESS 内进行 (convert 层对 null 输入会造成非 null 空 bean, 失败时判空守卫失效); </li>
  *   <li>订阅经基类 {@code subscribe} 登记到会话 registry(demo 结束兜底退订), 正常路径按 Enter 即退订,
- *       推送只落日志文件不刷控制台；</li>
- *   <li>危险动作(删除固件)执行前须输入 {@code yes} 二次确认；</li>
- *   <li>会话级缓存串联：日志 [1] 查询结果 → [2] 创建报告; 固件 [7] objectKey → [8] 提交;
+ *       推送只落日志文件不刷控制台; </li>
+ *   <li>危险动作 (删除固件)执行前须输入 {@code yes} 二次确认; </li>
+ *   <li>会话级缓存串联: 日志 [1] 查询结果 → [2] 创建报告; 固件 [7] objectKey → [8] 提交;
  *       固件 [1] 列表首条 fileId → [9] 发布/取消/删除。</li>
  * </ul>
  */
 public class SystemManagementDemo extends ModuleDemo {
 
-    /** 日志 [1]：本次会话查到的日志文件, 供 [2] 创建报告时自动填充。 */
+    /** 日志 [1]: 本次会话查到的日志文件, 供 [2] 创建报告时自动填充。 */
     private List<DeviceLogListResultFileItem> lastQueryLogFiles = null;
-    /** 日志 [1]：查询时用的设备 SN。 */
+    /** 日志 [1]: 查询时用的设备 SN。 */
     private String lastLogQueryDeviceSn = null;
 
-    /** 固件 [7]：本次会话上传成功后的 objectKey, 供 [8] 提交信息时自动填充。 */
+    /** 固件 [7]: 本次会话上传成功后的 objectKey, 供 [8] 提交信息时自动填充。 */
     private String lastUploadedObjectKey = null;
-    /** 固件 [1]：本次会话自动缓存的固件列表第一条 fileId(int id 转字符串), 供 [9] 发布/取消/删除操作使用。 */
+    /** 固件 [1]: 本次会话自动缓存的固件列表第一条 fileId(int id 转字符串), 供 [9] 发布/取消/删除操作使用。 */
     private String lastSelectedFirmwareId = null;
 
     @Override
@@ -128,59 +133,38 @@ public class SystemManagementDemo extends ModuleDemo {
             return;
         }
 
-        final long actionTimeout = timeout("default_callback_timeout_ms");
+        final long actionTimeout = defaultTimeout();
         DemoLog.info(name(), "actionTimeout=" + actionTimeout + "ms");
 
         console("SDK 版本: " + FlightHubSDK.getVersion());
 
-        while (true) {
-            Utils.printTitle("执行 " + name());
-            System.out.print(mainMenu());
-            int choice = Utils.readIntInRange(input, "请选择(1-2, q 退出): ", 1, 2);
-            if (choice == Utils.QUIT) {
-                DemoLog.info(name(), "退出系统管理菜单");
-                break;
-            }
-            try {
-                switch (choice) {
-                    case 1: menuLogManagement(logModule, actionTimeout); break;
-                    case 2: menuFirmwareManage(fwModule, actionTimeout); break;
-                    default: break;
-                }
-            } catch (Exception e) {
-                console("   结果 -> [异常] " + Utils.describe(e));
-                DemoLog.error(name(), "菜单动作异常: " + Utils.describe(e), e);
-            }
-        }
+        Menu.of(this, "执行 " + name())
+                .banner("=== 系统管理 (System Management) ===")
+                .item("日志管理    (LogManagementModule)", () -> menuLogManagement(logModule, actionTimeout))
+                .item("固件管理    (FirmwareManageModule)", () -> menuFirmwareManage(fwModule, actionTimeout))
+                .exitLog("退出系统管理菜单")
+                .run();
     }
 
-    // ==================== 子菜单 [1]：日志管理 (LogManagementModule) ====================
+    // ==================== 子菜单 [1]: 日志管理 (LogManagementModule) ====================
 
     private void menuLogManagement(LogManagementModule module, long timeout) {
-        while (true) {
-            Utils.printTitle("日志管理 (Log Management)");
-            if (lastQueryLogFiles != null) {
-                console("(已查询到日志文件 " + lastQueryLogFiles.size()
-                    + " 条, [2] 创建报告将自动填充)");
-            }
-            System.out.print(logMenu());
-            int c = Utils.readIntInRange(input, "请选择(1-6, q 返回): ", 1, 6);
-            if (c == Utils.QUIT) return;
-            try {
-                switch (c) {
-                    case 1: logQueryDeviceLogList(module, timeout); break;
-                    case 2: logCreateReport(module, timeout);       break;
-                    case 3: logReportList(module, timeout);         break;
-                    case 4: logReportOperation(module, timeout);    break;
-                    case 5: logUploadAppendFile(module, timeout);   break;
-                    case 6: logListenUploadProgress(module);        break;
-                    default: break;
-                }
-            } catch (Exception e) {
-                console("   结果 -> [异常] " + Utils.describe(e));
-                DemoLog.error(name(), "日志操作异常: " + Utils.describe(e), e);
-            }
-        }
+        Menu.of(this, "日志管理 (Log Management)")
+                .banner("--- 日志管理 ---")
+                .header(() -> {
+                    if (lastQueryLogFiles != null) {
+                        console("(已查询到日志文件 " + lastQueryLogFiles.size()
+                            + " 条, [2] 创建报告将自动填充)");
+                    }
+                })
+                .item("查询设备日志文件列表  (queryDeviceLogList)", () -> logQueryDeviceLogList(module, timeout))
+                .item("创建日志报告          (createDeviceLogReport, 自动填充 [1] 的日志文件)", () -> logCreateReport(module, timeout))
+                .item("查询日志报告列表      (logReportList)", () -> logReportList(module, timeout))
+                .item("日志报告操作          (logReportOperation: 取消/删除)", () -> logReportOperation(module, timeout))
+                .item("上传附加文件          (uploadLogAppendFile)", () -> logUploadAppendFile(module, timeout))
+                .item("订阅文件上传进度      (listenDeviceFileUploadProgress: WS, 推送只落日志)", () -> logListenUploadProgress(module))
+                .quitWord("返回")
+                .run();
     }
 
     private void logQueryDeviceLogList(LogManagementModule module, long timeout) {
@@ -190,7 +174,7 @@ public class SystemManagementDemo extends ModuleDemo {
             return;
         }
         // module 过滤取值: 0=飞机 3=机场 6=中继 9=机库(出处: 旧 demo FlightHubSDKDemo 注释"对齐司空前端
-        // module_list"; SDK bean/message.h 未给出枚举定义)。空列表=不传过滤条件。
+        // module_list"; SDK bean/message.h 未给出枚举定义)。不传 module_list 参数时 API 返回空列表。
         List<Object> rawModules = params.node("log_management").list("module_list");
         List<Integer> moduleList = new ArrayList<>();
         for (Object o : rawModules) {
@@ -218,9 +202,9 @@ public class SystemManagementDemo extends ModuleDemo {
         for (DeviceLogListResultFileItem item : files) {
             List<DeviceLogListResultLogItem> logs =
                     item.getList() != null ? item.getList() : Collections.emptyList();
-            console("     SN=" + item.getDeviceSn() + " module=" + item.getModule()
+            consoleDebug("     SN=" + item.getDeviceSn() + " module=" + item.getModule()
                 + " logType=" + item.getLogType() + " files=" + logs.size());
-            DemoLog.info(name(), "logFileItem: sn=" + item.getDeviceSn()
+            DemoLog.debug(name(), "logFileItem: sn=" + item.getDeviceSn()
                 + " module=" + item.getModule() + " files=" + logs.size());
         }
         if (!files.isEmpty()) {
@@ -277,9 +261,9 @@ public class SystemManagementDemo extends ModuleDemo {
             hint("未找到已查询的日志文件(请先执行 [1]), 将创建空日志报告(logList 为空)");
         }
 
-        // error_start_time 为 Unix 秒级时间戳(出处: C++ message.h CreateDeviceLogReportRequestParam
-        // "错误开始时间, Unix 时间戳(秒)"; Java bean javadoc 未标单位)。配置为 0/缺省时按「当前时间前 1h」兜底。
-        // 迁移留痕: 旧 demo 缺省为毫秒纪元(单位错大 1000 倍), 已修正为秒, 且 0/负值现统一走兜底(有意修正)。
+        // error_start_time 为 Unix 秒级时间戳 (出处: C++ message.h CreateDeviceLogReportRequestParam
+        // "错误开始时间, Unix 时间戳 (秒)"; Java bean javadoc 未标单位)。配置为 0/缺省时按「当前时间前 1h」兜底。
+        // 迁移留痕: 旧 demo 缺省为毫秒纪元 (单位错大 1000 倍), 已修正为秒, 且 0/负值现统一走兜底 (有意修正)。
         long errorStartTime = cfg.longVal("error_start_time", 0L);
         if (errorStartTime <= 0) {
             errorStartTime = System.currentTimeMillis() / 1000 - 3600;
@@ -325,6 +309,10 @@ public class SystemManagementDemo extends ModuleDemo {
     private void logReportList(LogManagementModule module, long timeout) {
         Node cfg = params.node("log_management");
         String deviceSn = resolveLogDeviceSn();
+        if (deviceSn.isEmpty()) {
+            hint("无法确定设备 SN, 请配置 log_management.device_sn");
+            return;
+        }
         int page = cfg.intVal("list_page", 1);
         int pageSize = cfg.intVal("list_page_size", 10);
         console("\n   查询日志报告列表: sn=" + deviceSn + " page=" + page + " pageSize=" + pageSize);
@@ -453,41 +441,33 @@ public class SystemManagementDemo extends ModuleDemo {
         hint("文件上传进度订阅已退订");
     }
 
-    // ==================== 子菜单 [2]：固件管理 (FirmwareManageModule) ====================
+    // ==================== 子菜单 [2]: 固件管理 (FirmwareManageModule) ====================
 
     private void menuFirmwareManage(FirmwareManageModule module, long timeout) {
-        while (true) {
-            Utils.printTitle("固件管理 (Firmware Management)");
-            if (lastSelectedFirmwareId != null) {
-                console("(已选固件 fileId=" + lastSelectedFirmwareId
-                    + ", [9] 发布/取消/删除将使用此 ID)");
-            }
-            if (lastUploadedObjectKey != null) {
-                console("(已上传固件 objectKey=" + lastUploadedObjectKey
-                    + ", [8] 提交固件信息将自动填充)");
-            }
-            System.out.print(fwMenu());
-            int c = Utils.readIntInRange(input, "请选择(1-10, q 返回): ", 1, 10);
-            if (c == Utils.QUIT) return;
-            try {
-                switch (c) {
-                    case 1:  fwQueryList(module, timeout);                break;
-                    case 2:  fwGetReleaseNote(module, timeout);           break;
-                    case 3:  fwCheckStatus(module, timeout);              break;
-                    case 4:  fwInvokeUpgrade(module, timeout);            break;
-                    case 5:  fwQueryUpgradeProgress(module, timeout);     break;
-                    case 6:  fwListenOtaProgress(module);                 break;
-                    case 7:  fwUploadFile(module, timeout);               break;
-                    case 8:  fwSubmitInfo(module, timeout);               break;
-                    case 9:  fwReleaseOperations(module, timeout);        break;
-                    case 10: fwQueryCompatibilityConfig(module, timeout); break;
-                    default: break;
-                }
-            } catch (Exception e) {
-                console("   结果 -> [异常] " + Utils.describe(e));
-                DemoLog.error(name(), "固件操作异常: " + Utils.describe(e), e);
-            }
-        }
+        Menu.of(this, "固件管理 (Firmware Management)")
+                .banner("--- 固件管理 (建议顺序: 1 查列表 → 3 检查状态 → 4 触发升级 → 5/6 跟踪进度) ---")
+                .header(() -> {
+                    if (lastSelectedFirmwareId != null) {
+                        console("(已选固件 fileId=" + lastSelectedFirmwareId
+                            + ", [9] 发布/取消/删除将使用此 ID)");
+                    }
+                    if (lastUploadedObjectKey != null) {
+                        console("(已上传固件 objectKey=" + lastUploadedObjectKey
+                            + ", [8] 提交固件信息将自动填充)");
+                    }
+                })
+                .item("查询固件列表          (queryFirmwareList, 缓存 fileId 供 [9] 使用)", () -> fwQueryList(module, timeout))
+                .item("获取最新固件说明      (getLatestFirmwareReleaseNote)", () -> fwGetReleaseNote(module, timeout))
+                .item("检查设备固件状态      (checkFirmwareStatus)", () -> fwCheckStatus(module, timeout))
+                .item("触发固件升级          (invokeFirmwareUpgrade)", () -> fwInvokeUpgrade(module, timeout))
+                .item("查询升级进度(HTTP)    (queryFirmwareUpgradeProgress)", () -> fwQueryUpgradeProgress(module, timeout))
+                .item("订阅升级进度(WS)      (listenDeviceOtaProgress, 推送只落日志)", () -> fwListenOtaProgress(module))
+                .item("上传固件文件          (uploadFirmwareFile, 缓存 objectKey 供 [8] 使用)", () -> fwUploadFile(module, timeout))
+                .item("提交固件信息          (submitFirmwareInfo, 自动填充 [7] 的 objectKey)", () -> fwSubmitInfo(module, timeout))
+                .item("发布/取消发布/删除    (releaseFirmware / unReleaseFirmware / deleteFirmware)", () -> fwReleaseOperations(module, timeout))
+                .item("查询固件兼容性配置    (queryFirmwareCompatibilityConfig)", () -> fwQueryCompatibilityConfig(module, timeout))
+                .quitWord("返回")
+                .run();
     }
 
     private void fwQueryList(FirmwareManageModule module, long timeout) {
@@ -497,19 +477,26 @@ public class SystemManagementDemo extends ModuleDemo {
         console("\n   查询固件列表: page=" + page + " pageSize=" + pageSize);
 
         final Await<FlightHubError> await = new Await<>(name() + ".queryFirmwareList");
-        final AtomicReference<List<FirmwareItemResult>> ref = new AtomicReference<>();
+        final AtomicReference<FirmwareListResult> ref = new AtomicReference<>();
         Outcome o = runOutcome("查询固件列表", timeout, await, () ->
-            module.queryFirmwareList(page, pageSize, new FlightHubCallback.QueryFirmwareListCallback() {
+            module.queryFirmwareListWithPagination(page, pageSize, new FlightHubCallback.QueryFirmwareListWithPaginationCallback() {
                 @Override
-                public void onResult(FlightHubError error, List<FirmwareItemResult> items) {
-                    ref.set(items);
+                public void onResult(FlightHubError error, FirmwareListResult result) {
+                    ref.set(result);
                     await.set(error);
                 }
             })
         );
         if (o != Outcome.SUCCESS) return;
 
-        List<FirmwareItemResult> items = ref.get() != null ? ref.get() : Collections.emptyList();
+        FirmwareListResult pageResult = ref.get();
+        List<FirmwareItemResult> items = pageResult != null && pageResult.getList() != null
+                ? pageResult.getList() : Collections.emptyList();
+        CommonPaginationData pagination = pageResult != null ? pageResult.getPagination() : null;
+        if (pagination != null) {
+            console("   分页: page=" + pagination.getPage() + " pageSize=" + pagination.getPageSize()
+                + " total=" + pagination.getTotal());
+        }
         console("   固件列表(共 " + items.size() + " 条):");
         for (FirmwareItemResult item : items) {
             console("     id=" + item.getId() + " version=" + item.getVersion()
@@ -521,6 +508,9 @@ public class SystemManagementDemo extends ModuleDemo {
         if (!items.isEmpty()) {
             lastSelectedFirmwareId = String.valueOf(items.get(0).getId());
             hint("已缓存第一条固件 fileId=" + lastSelectedFirmwareId + ", [9] 发布/取消/删除将使用此 ID");
+        } else {
+            // 空列表复位缓存: 避免上一轮查询残留的 fileId 被后续 [9] 误用(对齐 FlySafeUnlockDemo 先复位范式)。
+            lastSelectedFirmwareId = null;
         }
     }
 
@@ -594,11 +584,11 @@ public class SystemManagementDemo extends ModuleDemo {
         List<FirmwareStatusItem> items = ref.get() != null ? ref.get() : Collections.emptyList();
         console("   设备固件状态(共 " + items.size() + " 条):");
         for (FirmwareStatusItem item : items) {
-            console("     sn=" + item.getSn() + " modelKey=" + item.getDeviceModelKey()
+            consoleDebug("     sn=" + item.getSn() + " modelKey=" + item.getDeviceModelKey()
                 + " currentVersion=" + item.getFirmwareVersion()
                 + " status=" + item.getFirmwareStatus()
                 + describeFirmwareStatus(item.getFirmwareStatus()));
-            DemoLog.info(name(), "firmwareStatus: sn=" + item.getSn()
+            DemoLog.debug(name(), "firmwareStatus: sn=" + item.getSn()
                 + " status=" + item.getFirmwareStatus());
         }
         if (!items.isEmpty()) hint("可进入 [4] 触发固件升级");
@@ -610,14 +600,14 @@ public class SystemManagementDemo extends ModuleDemo {
         String deviceModelKey = cfg.str("upgrade_device_model_key", "");
         if (deviceSn.isEmpty() && session.hasDock()) {
             deviceSn = session.dockSn();
-            hint("upgrade_device_sn 未配置, 自动使用机场 SN: " + deviceSn);
+            hintDebug("upgrade_device_sn 未配置, 自动使用机场 SN: " + deviceSn);
         }
         if (deviceSn == null || deviceSn.isEmpty()) {
             hint("firmware_manage.upgrade_device_sn 未配置, 无法触发升级。");
             return;
         }
 
-        // 缺省值 1(普通升级): 旧 demo 缺省 0 不在枚举(1=普通升级 2=一致性升级)内, 迁移时修正为 1 ——
+        // 缺省值 1(普通升级): 旧 demo 缺省 0 不在枚举 (1=普通升级 2=一致性升级)内, 迁移时修正为 1 ——
         // 未配置 upgrade_type 时实际下发的 firmware_upgrade_type 随之由 0 变 1(有意修正, 非笔误)
         int upgradeType = cfg.intVal("upgrade_type", 1);
         if (upgradeType != 1 && upgradeType != 2) {
@@ -656,7 +646,8 @@ public class SystemManagementDemo extends ModuleDemo {
 
         FirmwareUpgradeResult result = ref.get();
         if (result != null) {
-            console("     status=" + result.getStatus() + " deviceCode=" + result.getDeviceCode());
+            console("     bid=" + result.getBid() + " status=" + result.getStatus()
+                + " deviceCode=" + result.getDeviceCode());
         }
         hint("升级已触发, 建议用 [5] 查询或 [6] 订阅跟踪进度");
     }
@@ -688,13 +679,27 @@ public class SystemManagementDemo extends ModuleDemo {
         List<FirmwareUpgradeProgressItem> items = ref.get() != null ? ref.get() : Collections.emptyList();
         console("   升级进度(共 " + items.size() + " 条):");
         for (FirmwareUpgradeProgressItem item : items) {
-            String percent = (item.getOta() != null && item.getOta().getProgress() != null)
-                    ? " percent=" + item.getOta().getProgress().getPercent() + "%" : "";
-            console("     sn=" + item.getSn() + " firmwareStatus=" + item.getFirmwareStatus()
+            String percent = "";
+            String serviceInfo = "";
+            if (item.getServices() != null) {
+                if (item.getServices().getProgress() != null) {
+                    percent = " percent=" + item.getServices().getProgress().getPercent() + "%"
+                            + " currentStep=" + item.getServices().getProgress().getCurrentStep();
+                }
+                serviceInfo = " serviceStatus=" + item.getServices().getStatus()
+                        + " bid=" + item.getServices().getBid();
+            } else if (item.getOta() != null && item.getOta().getProgress() != null) {
+                percent = " percent=" + item.getOta().getProgress().getPercent() + "%";
+            }
+            consoleDebug("     sn=" + item.getSn()
+                + " firmwareVersion=" + item.getFirmwareVersion()
+                + " deviceModelKey=" + item.getDeviceModelKey()
+                + " firmwareStatus=" + item.getFirmwareStatus()
                 + describeFirmwareStatus(item.getFirmwareStatus())
-                + " workingStatus=" + item.getWorkingStatus() + percent);
-            DemoLog.info(name(), "upgradeProgress: sn=" + item.getSn()
-                + " status=" + item.getFirmwareStatus() + percent);
+                + " workingStatus=" + item.getWorkingStatus() + percent + serviceInfo);
+            DemoLog.debug(name(), "upgradeProgress: sn=" + item.getSn()
+                + " firmwareVersion=" + item.getFirmwareVersion()
+                + " status=" + item.getFirmwareStatus() + percent + serviceInfo);
         }
     }
 
@@ -887,48 +892,61 @@ public class SystemManagementDemo extends ModuleDemo {
                 ref.get() != null ? ref.get() : Collections.emptyList();
         console("   兼容性配置(共 " + items.size() + " 条):");
         for (FirmwareCompatibilityConfigItemResult item : items) {
-            String rules = item.getRules() != null
-                    ? " rules=[" + item.getRules().getMinVersion() + "~" + item.getRules().getMaxVersion() + "]" : "";
-            console("     modelKey=" + item.getDeviceModelKey()
-                + " compatibleVersions=" + item.getCompatibleVersions() + rules);
-            DemoLog.info(name(), "compatibilityConfig: " + item.getDeviceModelKey());
+            console("     key=" + item.getKey()
+                + " userType=" + item.getUserType()
+                + " description=" + item.getDescription());
+            for (FirmwareCompatibilityValidateResult validate : item.getValidates()) {
+                console("       validate field=" + validate.getField()
+                    + " compare=" + validate.getCompare()
+                    + " description=" + validate.getDescription()
+                    + " value=" + validate.getValue());
+            }
+            DemoLog.info(name(), "compatibilityConfig: key=" + item.getKey()
+                + " userType=" + item.getUserType()
+                + " description=" + item.getDescription()
+                + " validates=" + item.getValidates());
         }
     }
 
     // ==================== 辅助方法 ====================
 
-    /** 解析日志设备 SN：配置 {@code log_management.device_sn} 优先, 未配置时回退 session 机场/飞机 SN。 */
+    /** 解析日志设备 SN：配置 {@code log_management.device_sn} 优先, 未配置时回退拓扑主设备 SN, 再回退 session dock/飞机 SN。 */
     private String resolveLogDeviceSn() {
         String sn = params.node("log_management").str("device_sn", "");
         if (!sn.isEmpty()) return sn;
+        // base_station 拓扑下 dock 为子设备, 日志查询需主设备 SN
+        Device mainDevice = session.topo().getDevice();
+        if (mainDevice != null && mainDevice.getDeviceSn() != null && !mainDevice.getDeviceSn().isEmpty()) {
+            hintDebug("log_management.device_sn 未配置, 自动使用拓扑主设备 SN: " + mainDevice.getDeviceSn());
+            return mainDevice.getDeviceSn();
+        }
         if (session.hasDock() && session.dockSn() != null && !session.dockSn().isEmpty()) {
-            hint("log_management.device_sn 未配置, 自动使用机场 SN: " + session.dockSn());
+            hintDebug("log_management.device_sn 未配置, 自动使用机场 SN: " + session.dockSn());
             return session.dockSn();
         }
         if (session.hasDrone() && session.droneSn() != null && !session.droneSn().isEmpty()) {
-            hint("log_management.device_sn 未配置, 自动使用飞机 SN: " + session.droneSn());
+            hintDebug("log_management.device_sn 未配置, 自动使用飞机 SN: " + session.droneSn());
             return session.droneSn();
         }
         return "";
     }
 
     /**
-     * 固件状态枚举描述。映射(0=无需升级 1=待升级 2=升级中 3=升级完成 4=升级失败)来自联调观察;
-     * 仓库内 bean {@code FirmwareStatusItem}/{@code FirmwareUpgradeProgressItem} 与 C++ message.h
-     * 均只声明 {@code int firmware_status} 未给出枚举定义, 以实际为准。
+     * 固件状态枚举描述。映射(1=无需升级 2=待升级 3=一致性升级 4=固件升级中)对齐 OTA 协议,
+     * 与 C++ message.h FirmwareStatusItem.firmware_status 及 bean Javadoc 一致;
+     * 两个调用点(FirmwareStatusItem / FirmwareUpgradeProgressItem)共用该套取值。
      */
     private static String describeFirmwareStatus(int status) {
         switch (status) {
-            case 0: return "(无需升级)";
-            case 1: return "(待升级)";
-            case 2: return "(升级中)";
-            case 3: return "(升级完成)";
-            case 4: return "(升级失败)";
+            case 1: return "(无需升级)";
+            case 2: return "(待升级)";
+            case 3: return "(一致性升级)";
+            case 4: return "(固件升级中)";
             default: return "";
         }
     }
 
-    /** 固件升级类型枚举描述(出处: bean {@code FirmwareUpgradeDeviceItem} javadoc "枚举：1=普通升级, 2=一致性升级")。 */
+    /** 固件升级类型枚举描述 (出处: bean {@code FirmwareUpgradeDeviceItem} javadoc "枚举: 1=普通升级, 2=一致性升级")。 */
     private static String describeUpgradeType(int type) {
         switch (type) {
             case 1: return "(普通升级)";
@@ -937,74 +955,4 @@ public class SystemManagementDemo extends ModuleDemo {
         }
     }
 
-    /** 纯控制台输出(不落日志文件), 用于菜单文案与结果回显。 */
-    private void console(String line) {
-        System.out.println(line);
-    }
-
-    /** 提示信息双写：既落日志文件(带 demo 名 tag)又回显控制台, 用于前置条件不满足、取消等需留痕的提示。 */
-    private void hint(String msg) {
-        DemoLog.info(name(), msg);
-        console("   " + msg);
-    }
-
-    /** 监听推送专用：只落日志文件不刷控制台, 避免推送打断菜单交互。 */
-    private void pushLog(String line) {
-        DemoLog.info(name(), line);
-    }
-
-    // ==================== 菜单文案 ====================
-
-    /**
-     * 主菜单文案：2 个功能域子菜单(日志管理/固件管理, 见类 Javadoc 菜单树)。
-     * 增删菜单项时须同步 {@link #run()} 中的 switch 分支与 {@code readIntInRange} 的取值上界。
-     */
-    private String mainMenu() {
-        return "\n"
-            + "  === 系统管理 (System Management) ===\n"
-            + "  1.  日志管理    (LogManagementModule)\n"
-            + "  2.  固件管理    (FirmwareManageModule)\n"
-            + "\n"
-            + "  q.  返回上级菜单\n";
-    }
-
-    /**
-     * 日志管理子菜单文案：6 个菜单项与 {@code LogManagementModule} 同名接口一一对应(见类 Javadoc 菜单树)。
-     * 增删菜单项时须同步 {@link #menuLogManagement} 中的 switch 分支与 {@code readIntInRange} 的取值上界。
-     */
-    private String logMenu() {
-        return "\n"
-            + "  --- 日志管理 ---\n"
-            + "  1.  查询设备日志文件列表  (queryDeviceLogList)\n"
-            + "  2.  创建日志报告          (createDeviceLogReport, 自动填充 [1] 的日志文件)\n"
-            + "  3.  查询日志报告列表      (logReportList)\n"
-            + "  4.  日志报告操作          (logReportOperation: 取消/删除)\n"
-            + "  5.  上传附加文件          (uploadLogAppendFile)\n"
-            + "  6.  订阅文件上传进度      (listenDeviceFileUploadProgress: WS, 推送只落日志)\n"
-            + "\n"
-            + "  q.  返回上级菜单\n";
-    }
-
-    /**
-     * 固件管理子菜单文案：10 个菜单项覆盖 {@code FirmwareManageModule} 全部 13 个公开接口(见类 Javadoc 菜单树)：
-     * [9] 一项覆盖 releaseFirmware/unReleaseFirmware/deleteFirmware 三个发布类接口,
-     * [6] 覆盖 OTA 进度 listen/cancel 一对, 其余 8 项与同名接口一一对应。
-     * 增删菜单项时须同步 {@link #menuFirmwareManage} 中的 switch 分支与 {@code readIntInRange} 的取值上界。
-     */
-    private String fwMenu() {
-        return "\n"
-            + "  --- 固件管理 (建议顺序: 1 查列表 → 3 检查状态 → 4 触发升级 → 5/6 跟踪进度) ---\n"
-            + "  1.  查询固件列表          (queryFirmwareList, 缓存 fileId 供 [9] 使用)\n"
-            + "  2.  获取最新固件说明      (getLatestFirmwareReleaseNote)\n"
-            + "  3.  检查设备固件状态      (checkFirmwareStatus)\n"
-            + "  4.  触发固件升级          (invokeFirmwareUpgrade)\n"
-            + "  5.  查询升级进度(HTTP)    (queryFirmwareUpgradeProgress)\n"
-            + "  6.  订阅升级进度(WS)      (listenDeviceOtaProgress, 推送只落日志)\n"
-            + "  7.  上传固件文件          (uploadFirmwareFile, 缓存 objectKey 供 [8] 使用)\n"
-            + "  8.  提交固件信息          (submitFirmwareInfo, 自动填充 [7] 的 objectKey)\n"
-            + "  9.  发布/取消发布/删除    (releaseFirmware / unReleaseFirmware / deleteFirmware)\n"
-            + " 10.  查询固件兼容性配置    (queryFirmwareCompatibilityConfig)\n"
-            + "\n"
-            + "  q.  返回上级菜单\n";
-    }
 }

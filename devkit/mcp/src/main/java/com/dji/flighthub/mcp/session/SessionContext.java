@@ -18,6 +18,7 @@ package com.dji.flighthub.mcp.session;
 
 import java.time.Instant;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -91,9 +92,28 @@ public class SessionContext {
     private volatile Instant drcConnectedAt;
 
     /**
+     * 被用户显式调用 fh_drc_disconnect 主动断开 DRC 链路的设备 SN 集合。
+     *
+     * <p>用于区分两种「当前无 DRC 链路」的情形：
+     * <ul>
+     *   <li>从未连接过 — 允许 ensureDrcLink() 静默自愈（见 device-control.md）</li>
+     *   <li>用户明确断开 — 不得静默重连，必须由用户显式调用 fh_drc_connect 恢复</li>
+     * </ul>
+     * 调用 {@link #setActiveDrcDevice(String)} 成功建链时会从集合中移除对应 SN。
+     */
+    private final Set<String> explicitlyDisconnectedDrcDevices = ConcurrentHashMap.newKeySet();
+
+    /**
      * 活跃的订阅 ID 集合
      */
     private final Set<Integer> activeListenIds = ConcurrentHashMap.newKeySet();
+
+    /**
+     * 带取消动作的订阅注册表。
+     * key=订阅 key, value=注册信息（标签 + 取消动作）。
+     */
+    private final ConcurrentHashMap<String, ListenRegistration> listenRegistry =
+            new ConcurrentHashMap<>();
 
     /**
      * 最后活跃时间（用于超时检测）
@@ -227,11 +247,47 @@ public class SessionContext {
     public void setActiveDrcDevice(String sn) {
         this.activeDrcDeviceSn = sn;
         this.drcConnectedAt = (sn != null) ? Instant.now() : null;
+        if (sn != null) {
+            // 建链成功即视为用户已恢复链路，解除「显式断开」标记
+            this.explicitlyDisconnectedDrcDevices.remove(sn);
+        }
     }
 
     public void clearDrcDevice() {
         this.activeDrcDeviceSn = null;
         this.drcConnectedAt = null;
+    }
+
+    /**
+     * 返回指定设备是否被用户显式断开了 DRC 链路。
+     *
+     * @param deviceSn 设备 SN
+     * @return true 表示用户主动断开且尚未重新建链
+     */
+    public boolean isDrcExplicitlyDisconnected(String deviceSn) {
+        return deviceSn != null && explicitlyDisconnectedDrcDevices.contains(deviceSn);
+    }
+
+    /**
+     * 记录用户显式断开指定设备的 DRC 链路，并清理本地链路状态。
+     * 自动重连（{@code reconnectDrc}）与会话释放不走此方法，因此不会被误标记。
+     *
+     * <p>该方法是幂等的：即便本地已无该设备的链路（例如链路已在 SDK 侧掉线），
+     * 仍然要留下「用户显式断开」标记。否则用户显式调用 {@code fh_drc_disconnect}
+     * 后，后续飞行指令会被 {@code ensureDrcLink} 静默重新建链，覆盖用户的断开意图。
+     * 内部清理路径（{@link #clearDrcDevice()}）不走此方法，因此不会误标记。
+     *
+     * @param deviceSn 设备 SN
+     */
+    public void markDrcExplicitlyDisconnected(String deviceSn) {
+        if (deviceSn == null) {
+            return;
+        }
+        if (hasDrcLinkTo(deviceSn)) {
+            this.activeDrcDeviceSn = null;
+            this.drcConnectedAt = null;
+        }
+        this.explicitlyDisconnectedDrcDevices.add(deviceSn);
     }
 
     // ==================== Payload Control Authority ====================
@@ -275,6 +331,61 @@ public class SessionContext {
 
     public Set<Integer> getActiveListenIds() {
         return Collections.unmodifiableSet(activeListenIds);
+    }
+
+    /**
+     * 订阅注册信息。
+     *
+     * @param label        可读标签（如 "ai_data:DRONE-001"）
+     * @param cancelAction 取消动作（SDK cancel 方法引用）
+     */
+    public record ListenRegistration(String label, Runnable cancelAction) {
+    }
+
+    /**
+     * 注册一个带取消动作的订阅。
+     * key 由调用方保证在 session 内唯一（SDK 的 listenId 不保证跨模块唯一，不能直接作 key）。
+     * 同一 key 已存在时直接覆盖，调用方需先 cancelListen 旧订阅。
+     *
+     * @param key          订阅 key（如 "DRONE-001::ai_data"）
+     * @param label        可读标签
+     * @param cancelAction 取消时执行的动作
+     */
+    public void registerListen(String key, String label, Runnable cancelAction) {
+        listenRegistry.put(key, new ListenRegistration(label, cancelAction));
+    }
+
+    /**
+     * 取消并移除一个订阅：先从注册表移除，再执行其取消动作。
+     *
+     * @param key 订阅 key
+     * @return 该 key 已注册并已执行取消动作返回 true；未注册返回 false
+     */
+    public boolean cancelListen(String key) {
+        ListenRegistration registration = listenRegistry.remove(key);
+        if (registration == null) {
+            return false;
+        }
+        registration.cancelAction().run();
+        return true;
+    }
+
+    /**
+     * 获取所有已注册订阅（不可变视图）。
+     *
+     * @return 订阅 key → 注册信息的映射
+     */
+    public Map<String, ListenRegistration> getListenRegistry() {
+        return Collections.unmodifiableMap(listenRegistry);
+    }
+
+    /**
+     * 当前活跃订阅总数（旧版 listenId 集合 + 带取消动作的注册表）。
+     *
+     * @return 订阅数量
+     */
+    public int getActiveListenCount() {
+        return activeListenIds.size() + listenRegistry.size();
     }
 
     // ==================== Getters ====================

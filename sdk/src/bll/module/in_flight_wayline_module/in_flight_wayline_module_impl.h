@@ -5,15 +5,15 @@
 
 #include "api/in_flight_wayline_module.h"
 #include "common/util/async_capture_protect.h"
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class InFlightWaylineModuleImpl : public IInFlightWaylineModule,
                                   public drc_sdk::common::AsyncCaptureProtect {
 public:
-    InFlightWaylineModuleImpl(
-                              const std::string& gateway_sn,
-                              const std::string& drone_sn);
+    InFlightWaylineModuleImpl(const std::string& gateway_sn,
+                              const std::string& drone_sn, int session_id);
     ~InFlightWaylineModuleImpl() override;
 
     void createInFlightWaylineTask(
@@ -33,6 +33,7 @@ public:
     void cancelListenInFlightWaylineProgress(int listen_id) override;
 
 private:
+    int session_id_;
     std::string gateway_sn_;
     std::string drone_sn_;
 };

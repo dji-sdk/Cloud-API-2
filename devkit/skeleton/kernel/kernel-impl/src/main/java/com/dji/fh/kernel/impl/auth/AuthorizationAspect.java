@@ -38,7 +38,7 @@ import java.util.Objects;
  * <p>支持方法级与类级注解。类级注解作用于该类所有 public 方法；方法级覆盖类级。
  * 方法级 {@link PublicEndpoint} 可覆盖类级 {@link RequireAuthenticated}，标记登录/注册等公开入口。
  *
- * <p>校验失败抛 {@link AccessDeniedException}（unchecked）。ISV 可在 {@code @ControllerAdvice}
+ * <p>校验失败抛 {@link AccessDeniedException}（unchecked）。集成商 可在 {@code @ControllerAdvice}
  * 中捕获映射为 HTTP 403。
  *
  * <p>当前 {@link SecurityContext} 通过 {@link SecurityContextHolder#current()} 获取

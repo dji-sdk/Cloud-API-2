@@ -31,6 +31,8 @@ public class AiAlertModule {
     private final ConcurrentHashMap<Integer, CallbackRefContainer> getAlgorithmSettingRef  = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, CallbackRefContainer> getFlightsRef           = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, CallbackRefContainer> getRecordsRef           = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, CallbackRefContainer> listenAiAlertRecordsRef = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, CallbackRefContainer> deleteAiAlertRecordRef  = new ConcurrentHashMap<>();
 
     private int id_counter = 0;
 
@@ -50,7 +52,8 @@ public class AiAlertModule {
     public void destroy() {
         List<ConcurrentHashMap<Integer, CallbackRefContainer>> allMaps = Arrays.asList(
                 postDeviceSettingRef, getDeviceSettingRef, postAlgorithmSettingRef,
-                getAlgorithmSettingRef, getFlightsRef, getRecordsRef);
+                getAlgorithmSettingRef, getFlightsRef, getRecordsRef, listenAiAlertRecordsRef,
+                deleteAiAlertRecordRef);
         for (ConcurrentHashMap<Integer, CallbackRefContainer> map : allMaps) {
             map.clear();
         }
@@ -350,6 +353,104 @@ public class AiAlertModule {
                 callback.onResult(
                     new com.dji.flighthubsdk.bean.FlightHubError(com.dji.flighthubsdk.generated.FlightHubSdkErrorCode.ERROR_OPERATION_FAILED),
                     FlightHubSdkConvert.toGetAiAlertRecordsResult(null));
+            }
+        } finally {
+            if (np != null) np.delete();
+        }
+    }
+
+    /**
+     * 监听告警记录推送（增量更新 + 未读通知）。
+     *
+     * @implNote WebSocket | topic: alert_records.alert_records_notify
+     * @param deviceSn 设备序列号（网关 SN）
+     * @param callback 收到推送时的回调
+     * @return listen_id，用于 {@link #cancelListenAiAlertRecords} 取消监听；< 0 表示订阅失败
+     */
+    public int listenAiAlertRecords(String deviceSn, FlightHubCallback.AiAlertRecordsNotifyCallback callback) {
+        try {
+            com.dji.flighthubsdk.generated.AiAlertRecordsNotifyCallback swigCb =
+                new com.dji.flighthubsdk.generated.AiAlertRecordsNotifyCallback() {
+                    @Override
+                    public void onAiAlertRecordsNotify(
+                            com.dji.flighthubsdk.generated.AiAlertRecordsNotifyResult result) {
+                        try {
+                            if (callback != null) {
+                                callback.onResult(
+                                    FlightHubSdkConvert.toAiAlertRecordsNotifyResult(result));
+                            }
+                        } catch (Exception e) {
+                            Logger.error(TAG, "[listenAiAlertRecords] cb error: " + e.getMessage(), e);
+                        }
+                    }
+                };
+            synchronized (listenAiAlertRecordsRef) {
+                swigCb.swigReleaseOwnership();
+                int listenId = module.listenAiAlertRecordsWrapper(deviceSn, swigCb);
+                if (listenId >= 0) {
+                    listenAiAlertRecordsRef.put(listenId, new CallbackRefContainer(swigCb, callback));
+                }
+                return listenId;
+            }
+        } catch (Exception e) {
+            Logger.error(TAG, "[listenAiAlertRecords] error: " + e.getMessage(), e);
+            return -1;
+        }
+    }
+
+    /**
+     * 取消监听告警记录推送。
+     *
+     * @param listenId 由 {@link #listenAiAlertRecords} 返回的订阅 ID
+     */
+    public void cancelListenAiAlertRecords(int listenId) {
+        try {
+            module.cancelListenAiAlertRecordsWrapper(listenId);
+            listenAiAlertRecordsRef.remove(listenId);
+        } catch (Exception e) {
+            Logger.error(TAG, "[cancelListenAiAlertRecords] error: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 删除告警记录：alert_uuid 非空时精确删除单条（优先）；为空时按 flight_id 批量删除该架次全部记录。
+     *
+     * @implNote DELETE /drc/api/v2/ai-alert-record（proto 生成路由，与本模块其余接口所在的 /drc/paas/v2/ai-alert/* 手写路由不同源）
+     * @param param    请求参数（alert_uuid、flight_id）
+     * @param callback 结果回调，在主线程触发
+     */
+    public void deleteAiAlertRecord(
+            com.dji.flighthubsdk.bean.DeleteAiAlertRecordParam param,
+            FlightHubCallback.ResultCallbackWithError callback) {
+        com.dji.flighthubsdk.generated.DeleteAiAlertRecordParam np = null;
+        try {
+            np = FlightHubSdkConvert.toNativeDeleteAiAlertRecordParam(param);
+            int id = generateActionCallbackId();
+            com.dji.flighthubsdk.generated.ResultCallbackWithError swigCb =
+                new com.dji.flighthubsdk.generated.ResultCallbackWithError() {
+                    @Override
+                    public void onResult(com.dji.flighthubsdk.generated.FlightHubError err) {
+                        try {
+                            if (callback != null) {
+                                callback.onResult(FlightHubSdkConvert.toFlightHubError(err));
+                            }
+                        } catch (Exception e) {
+                            Logger.error(TAG, "[deleteAiAlertRecord] cb error: " + e.getMessage(), e);
+                        } finally {
+                            removeActionCallbackRef(deleteAiAlertRecordRef, id);
+                        }
+                    }
+                };
+            synchronized (deleteAiAlertRecordRef) {
+                deleteAiAlertRecordRef.put(id, new CallbackRefContainer(swigCb, callback));
+                swigCb.swigReleaseOwnership();
+                module.deleteAiAlertRecordWrapper(np, swigCb);
+            }
+        } catch (Exception e) {
+            Logger.error(TAG, "[deleteAiAlertRecord] error: " + e.getMessage(), e);
+            if (callback != null) {
+                callback.onResult(
+                    new com.dji.flighthubsdk.bean.FlightHubError(com.dji.flighthubsdk.generated.FlightHubSdkErrorCode.ERROR_OPERATION_FAILED));
             }
         } finally {
             if (np != null) np.delete();

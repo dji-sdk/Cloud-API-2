@@ -9,36 +9,48 @@
 #include "notification_center/notification_center.h"
 #include <BusinessManager.h>
 #include <string>
+#include "session/session_bm.h"
 
 using namespace flight_hub_sdk;
 
 
 
-TakeoffModuleImpl::TakeoffModuleImpl(const std::string& drone_sn, const std::string& gateway_sn)
-    : drone_sn_(drone_sn), gateway_sn_(gateway_sn) {
+TakeoffModuleImpl::TakeoffModuleImpl(const std::string& drone_sn, const std::string& gateway_sn, int session_id)
+    : drone_sn_(drone_sn), gateway_sn_(gateway_sn), session_id_(session_id) {
     LOG_INFO("[TakeoffModuleImpl] constructor, drone_sn: %s, gateway_sn: %s",
         drone_sn_.c_str(), gateway_sn_.c_str());
     registerNotificationCenterListeners();
 }
 
 TakeoffModuleImpl::~TakeoffModuleImpl() {
+    auto bm = ResolveBusinessManager(session_id_);
     if (command_task_event_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(command_task_event_listen_id_);
+        if (bm) {
+            bm->CancelObserve(command_task_event_listen_id_);
+        }
     }
     if (drone_commander_flight_mode_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(drone_commander_flight_mode_listen_id_);
+        if (bm) {
+            bm->CancelObserve(drone_commander_flight_mode_listen_id_);
+        }
     }
     if (drone_current_commander_flight_mode_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(drone_current_commander_flight_mode_listen_id_);
+        if (bm) {
+            bm->CancelObserve(drone_current_commander_flight_mode_listen_id_);
+        }
     }
     if (drone_commander_mode_lost_action_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(drone_commander_mode_lost_action_listen_id_);
+        if (bm) {
+            bm->CancelObserve(drone_commander_mode_lost_action_listen_id_);
+        }
     }
 }
 
 void TakeoffModuleImpl::registerNotificationCenterListeners() {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(p);
-    command_task_event_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenCommandTaskEvent(
+    if (bm) {
+        command_task_event_listen_id_ = bm->ListenCommandTaskEvent(
         [this, p](const notification_center::CommandTaskEvent& msg) -> void {
             WeakDummyReturn(p);
             CommandTaskEvent event;
@@ -74,9 +86,13 @@ void TakeoffModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[TakeoffModuleImpl][%s] listenCommandTaskEvent, error: %d", gateway_sn_.c_str(), error_code);
             }
         }, gateway_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 指点飞行模式设置值(commander_flight_mode);
-    drone_commander_flight_mode_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDroneCommanderFlightMode(
+    if (bm) {
+        drone_commander_flight_mode_listen_id_ = bm->ListenDroneCommanderFlightMode(
         [this, p](const notification_center::DroneCommanderFlightMode& msg) -> void {
             WeakDummyReturn(p);
             DroneCommanderFlightMode res{};
@@ -90,9 +106,13 @@ void TakeoffModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[TakeoffModuleImpl][%s] listenDroneCommanderFlightMode, error: %d", drone_sn_.c_str(), error_code);
             }
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 指点飞行模式当前值(current_commander_flight_mode);
-    drone_current_commander_flight_mode_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDroneCurrentCommanderFlightMode(
+    if (bm) {
+        drone_current_commander_flight_mode_listen_id_ = bm->ListenDroneCurrentCommanderFlightMode(
         [this, p](const notification_center::DroneCurrentCommanderFlightMode& msg) -> void {
             WeakDummyReturn(p);
             DroneCurrentCommanderFlightMode res{};
@@ -106,9 +126,13 @@ void TakeoffModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[TakeoffModuleImpl][%s] listenDroneCurrentCommanderFlightMode, error: %d", drone_sn_.c_str(), error_code);
             }
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     // 指点飞行失控动作(commander_mode_lost_action);
-    drone_commander_mode_lost_action_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenDroneCommanderModeLostAction(
+    if (bm) {
+        drone_commander_mode_lost_action_listen_id_ = bm->ListenDroneCommanderModeLostAction(
         [this, p](const notification_center::DroneCommanderModeLostAction& msg) -> void {
             WeakDummyReturn(p);
             DroneCommanderModeLostAction res{};
@@ -122,6 +146,9 @@ void TakeoffModuleImpl::registerNotificationCenterListeners() {
                 LOG_ERROR("[TakeoffModuleImpl][%s] listenDroneCommanderModeLostAction, error: %d", drone_sn_.c_str(), error_code);
             }
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 }
 
 void TakeoffModuleImpl::takeoff(
@@ -182,18 +209,28 @@ void TakeoffModuleImpl::takeoff(
     if (params.need_verify_flight_control != -1) {
         request.need_verify_flight_control = params.need_verify_flight_control != 0;
     }
+    if (params.speed_mode != -1) {
+        request.speed_mode = params.speed_mode;
+    }
+    if (params.real_height_cap_enabled != -1) {
+        request.real_height_cap_enabled = params.real_height_cap_enabled != 0;
+    }
+    if (params.real_height_cap_limit != -1) {
+        request.real_height_cap_limit = params.real_height_cap_limit;
+    }
 
     WeakDummy(weak_ptr);
     drc_sdk::common::Executors::IO()->Post([this, weak_ptr, request, callback]() -> void {
         WeakDummyReturn(weak_ptr);
         drone_takeoff(request, [this, weak_ptr, callback](const DroneTakeoffResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response, gateway_sn = gateway_sn_]() -> void {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, gateway_sn = gateway_sn_, this, weak_ptr]() -> void {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 一键起飞; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_TAKE_OFF, err, "[TakeoffModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_TAKE_OFF, err, session_id_, "[TakeoffModuleImpl]");
 
                 LOG_INFO("[TakeoffModuleImpl] takeoff response: flight_id=%s, fly_to_id=%s",
                     response.flight_id.c_str(), response.fly_to_id.c_str());
@@ -206,7 +243,7 @@ void TakeoffModuleImpl::takeoff(
                     callback(err, result);
                 }
             });
-        });
+        }, session_id_);
     });
 }
 

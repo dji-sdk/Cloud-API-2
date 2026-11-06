@@ -55,6 +55,8 @@ detect_platform() {
     local arch=$(uname -m)
     if [[ "$os" == "linux" && "$arch" == "x86_64" ]]; then
         echo "linux/x86_64"
+    elif [[ "$os" == "linux" && "$arch" == "aarch64" ]]; then
+        echo "linux/aarch64"
     else
         echo "unsupported"
     fi
@@ -146,9 +148,12 @@ setup_platform_config() {
         "linux/x86_64")
             CONFIG_OPTS="linux-x86_64"
             ;;
+        "linux/aarch64")
+            CONFIG_OPTS="linux-aarch64"
+            ;;
         *)
             print_error "Unsupported platform: $platform"
-            print_error "This directory only ships linux/x86_64. macOS: brew install openssl@3"
+            print_error "This directory only ships linux/x86_64 and linux/aarch64. macOS: brew install openssl@3"
             exit 1
             ;;
     esac
@@ -324,8 +329,8 @@ main() {
     local platform=$(detect_platform)
     
     # Validate platform
-    if [[ "$platform" != "linux/x86_64" ]]; then
-        print_error "Could not detect linux/x86_64 (got: $platform). macOS uses Homebrew openssl@3."
+    if [[ "$platform" != "linux/x86_64" && "$platform" != "linux/aarch64" ]]; then
+        print_error "Could not detect linux/x86_64 or linux/aarch64 (got: $platform). macOS uses Homebrew openssl@3."
         exit 1
     fi
     

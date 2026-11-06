@@ -23,8 +23,8 @@
 
 using namespace flight_hub_sdk;
 
-LiveModuleImpl::LiveModuleImpl(const LiveInfo& live_info_, std::shared_ptr<message_engine::IRtcChannelManager> rtc_channel_manager, const std::string& gateway_sn)
- : live_info_(live_info_), gateway_sn_(gateway_sn), rtc_channel_manager_(rtc_channel_manager) {
+LiveModuleImpl::LiveModuleImpl(const LiveInfo& live_info_, std::shared_ptr<message_engine::IRtcChannelManager> rtc_channel_manager, int session_id, const std::string& gateway_sn, AiCapabilityProvider ai_capability_provider)
+ : live_info_(live_info_), gateway_sn_(gateway_sn), rtc_channel_manager_(rtc_channel_manager), ai_capability_provider_(ai_capability_provider), session_id_(session_id) {
     LOG_INFO("LiveModuleImpl: LiveModuleImpl, live_info_: %s, %s, %s, gateway_sn: %s", live_info_.device_sn.c_str(), live_info_.payload_index.c_str(), live_info_.video_id.c_str(), gateway_sn_.c_str());
  }
 
@@ -63,7 +63,7 @@ void LiveModuleImpl::start(const std::function<void(FlightHubError result)>& cal
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, param_err, "[LiveModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, param_err, session_id_, "[LiveModuleImpl]");
 
         callback(param_err);
         return;
@@ -79,7 +79,7 @@ void LiveModuleImpl::start(const std::function<void(FlightHubError result)>& cal
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, err, "[LiveModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, err, session_id_, "[LiveModuleImpl]");
 
             callback(err);
             return;
@@ -95,7 +95,7 @@ void LiveModuleImpl::start(const std::function<void(FlightHubError result)>& cal
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, resp_err, "[LiveModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, resp_err, session_id_, "[LiveModuleImpl]");
 
             callback(resp_err);
             return;
@@ -119,7 +119,7 @@ void LiveModuleImpl::start(const std::function<void(FlightHubError result)>& cal
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, provider_err, "[LiveModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, provider_err, session_id_, "[LiveModuleImpl]");
 
             callback(provider_err);
             return;
@@ -169,7 +169,7 @@ void LiveModuleImpl::start(const std::function<void(FlightHubError result)>& cal
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, provider_err, "[LiveModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, provider_err, session_id_, "[LiveModuleImpl]");
 
             callback(provider_err);
             return;
@@ -222,7 +222,7 @@ void LiveModuleImpl::start(const std::function<void(FlightHubError result)>& cal
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, provider_err, "[LiveModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, provider_err, session_id_, "[LiveModuleImpl]");
 
             callback(provider_err);
             return;
@@ -288,7 +288,7 @@ void LiveModuleImpl::start(const std::function<void(FlightHubError result)>& cal
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, FlightHubError::success(), "[LiveModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, FlightHubError::success(), session_id_, "[LiveModuleImpl]");
 
                 callback(FlightHubError::success());
                 subscribeLiveStreamInternal();
@@ -302,7 +302,7 @@ void LiveModuleImpl::start(const std::function<void(FlightHubError result)>& cal
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, channel_err, "[LiveModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, channel_err, session_id_, "[LiveModuleImpl]");
 
                 callback(channel_err);
             }
@@ -313,7 +313,7 @@ void LiveModuleImpl::start(const std::function<void(FlightHubError result)>& cal
                     LOG_ERROR("LiveModuleImpl: update_live_stream_state error: %d, sn: %s, camera: %s",
                         (int)err.error_code, live_info_.device_sn.c_str(), live_info_.payload_index.c_str());
                 }
-            });
+            }, session_id_);
         }, live_info_.video_id);
         if (!ret) {
             LOG_ERROR("LiveModuleImpl: AddChannel call failed, sn: %s, camera: %s, video: %s",
@@ -325,12 +325,12 @@ void LiveModuleImpl::start(const std::function<void(FlightHubError result)>& cal
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, add_channel_err, "[LiveModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_START_LIVE_STREAM, add_channel_err, session_id_, "[LiveModuleImpl]");
 
             callback(add_channel_err);
             return;
         }
-    }, gateway_sn_);
+    }, session_id_, gateway_sn_);
 }
 
 void LiveModuleImpl::startWithURL(const std::function<void(FlightHubError err, const LiveStreamStartResult& result)>& callback) {
@@ -350,7 +350,7 @@ void LiveModuleImpl::startWithURL(const std::function<void(FlightHubError err, c
         result.publish_uid = response.publish_uid;
         result.provider_url = response.provider_url;
         callback(FlightHubError::success(), result);
-    }, gateway_sn_);
+    }, session_id_, gateway_sn_);
 }
 
 void LiveModuleImpl::stop() {
@@ -391,7 +391,7 @@ void LiveModuleImpl::stopWithURL(const std::function<void(FlightHubError err)>& 
     stop_live_stream(live_info_, [callback, p](FlightHubError err) {
         WeakDummyReturn(p);
         callback(err);
-    }, gateway_sn_);
+    }, session_id_, gateway_sn_);
 }
 
 int LiveModuleImpl::subscribeLiveStream(const std::function<void(const std::vector<uint8_t>& data, const FrameInfo& frame_info)>& callback) {
@@ -402,7 +402,69 @@ void LiveModuleImpl::unSubscribeLiveStream(int listen_id) {
     live_stream_callback_container_.removeCallback(listen_id);
 }
 
+int LiveModuleImpl::resolveAiStreamType() const {
+    if (live_info_.video_id == "zoom-0") {
+        return 2;
+    }
+    if (live_info_.video_id.find("ir") != std::string::npos ||
+        live_info_.video_id.find("thermal") != std::string::npos) {
+        return 3;
+    }
+    for (int lens_type : live_info_.switchable_lens_types) {
+        if (lens_type == static_cast<int>(CameraLensType::CameraLensType_IR) ||
+            lens_type == static_cast<int>(CameraLensType::CameraLensType_THERMAL)) {
+            return 3;
+        }
+    }
+    for (int lens_type : live_info_.switchable_lens_types) {
+        if (lens_type == static_cast<int>(CameraLensType::CameraLensType_WIDE)) {
+            return 1;
+        }
+    }
+    for (int lens_type : live_info_.switchable_lens_types) {
+        if (lens_type == static_cast<int>(CameraLensType::CameraLensType_ZOOM)) {
+            return 2;
+        }
+    }
+    return 0;
+}
+
+int LiveModuleImpl::checkAiSupport() const {
+    if (!ai_capability_provider_) {
+        // 非无人机（Dock/BaseStation）没有 AI 状态来源，保持原有行为。
+        return 0;
+    }
+
+    AiDataInfo info;
+    if (!ai_capability_provider_(&info)) {
+        // AI 状态尚未推送，无法判定；先返回“无生效模型”，调用方可在开启模型后重试。
+        return static_cast<int>(FlightHubSdkErrorCode::ERROR_AI_MODEL_NOT_AVAILABLE);
+    }
+
+    if (info.identify_on == 0 || info.ai_models_config.empty()) {
+        return static_cast<int>(FlightHubSdkErrorCode::ERROR_AI_MODEL_NOT_AVAILABLE);
+    }
+
+    const int stream_type = resolveAiStreamType();
+    for (const auto& config : info.ai_models_config) {
+        if (config.stream_type == stream_type && !config.models.empty()) {
+            return 0;
+        }
+    }
+    return static_cast<int>(FlightHubSdkErrorCode::ERROR_AI_NOT_SUPPORTED);
+}
+
 int LiveModuleImpl::subscribeAiSeiInfo(const std::function<void(const AiSeiInfo& ai_sei_info)>& callback) {
+    const int support = checkAiSupport();
+    if (support < 0) {
+        LOG_WARN("LiveModuleImpl: subscribeAiSeiInfo rejected, sn: %s, payload: %s, video: %s, stream_type: %d, error: %d",
+                 live_info_.device_sn.c_str(),
+                 live_info_.payload_index.c_str(),
+                 live_info_.video_id.c_str(),
+                 resolveAiStreamType(),
+                 support);
+        return support;
+    }
     return ai_sei_info_callback_container_.addCallback(callback);
 }
 
@@ -812,7 +874,7 @@ void LiveModuleImpl::handleTokenExpiration() {
             } else {
                 LOG_ERROR("[LiveModuleImpl] Token 更新失败, channel_name: %s", channel_info_.channel_name_.c_str());
             }
-        });
+        }, session_id_);
 }
 
 message_engine::ChannelProviderType LiveModuleImpl::getChannelProviderType(const LiveStreamStartResponse& response) {
@@ -836,6 +898,13 @@ message_engine::ChannelProviderType LiveModuleImpl::getChannelProviderType(const
 #endif
     } else if (response.url_type == "drtc") {
         return message_engine::ChannelProviderType::DRTC;
+    } else if (response.url_type == "srs") {
+        // SRS 媒体服务返回的是标准 WHEP 地址，走内置 WebRTC（与 agora+whep 一致）。
+        if (response.url.find("whep") != std::string::npos) {
+            return message_engine::ChannelProviderType::WebRTC;
+        }
+        LOG_ERROR("LiveModuleImpl: url_type=srs but url is not a WHEP address: %s", response.url.c_str());
+        return message_engine::ChannelProviderType::UNKNOWN;
     }
     // TODO: 其他类型
     return message_engine::ChannelProviderType::UNKNOWN;
@@ -936,17 +1005,18 @@ void LiveModuleImpl::setLiveQuality(const LiveQualitySettingParams& params, cons
         WeakDummyReturn(weak_ptr);
         set_live_quality(request, [this, weak_ptr, callback](FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback]()->void {
+            drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]()->void {
+                WeakDummyReturn(weak_ptr);
                 LOG_INFO("LiveModuleImpl: setLiveQuality(), err_code = %d", (int)err.error_code);
 
                 // 埋点: 设置直播画质; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_SET_LIVE_QUALITY, err, "[LiveModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_SET_LIVE_QUALITY, err, session_id_, "[LiveModuleImpl]");
 
                 if (callback) callback(err);
             });
-        });
+        }, session_id_);
     });
 }

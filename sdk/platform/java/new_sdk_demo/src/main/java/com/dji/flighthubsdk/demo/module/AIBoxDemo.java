@@ -25,6 +25,7 @@ import com.dji.flighthubsdk.bean.InstallAppResult;
 import com.dji.flighthubsdk.bean.OperateAppResult;
 import com.dji.flighthubsdk.bean.UploadFileResult;
 import com.dji.flighthubsdk.core.AIBoxModule;
+import com.dji.flighthubsdk.demo.base.Menu;
 import com.dji.flighthubsdk.demo.base.ModuleDemo;
 import com.dji.flighthubsdk.demo.runtime.Await;
 import com.dji.flighthubsdk.demo.runtime.DemoLog;
@@ -36,20 +37,20 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * AI Box 管理模块 Demo(菜单驱动)：盒子信息、应用管理、文件操作。
+ * AI Box 管理模块 Demo(菜单驱动): 盒子信息、应用管理、文件操作。
  *
- * <p>接口串联：
+ * <p>接口串联:
  * <pre>
  * [1] 查询 AI Box 信息          fetchAIBoxInfo → 缓存 boxSn 供后续使用
- * [2] 获取应用列表(下发+进度)    fetchAppList → 缓存 bid → fetchAppListProgress
- * [3] 安装应用(下发+进度)        uploadAIBoxFile → 缓存 objectKey
+ * [2] 获取应用列表 (下发+进度)    fetchAppList → 缓存 bid → fetchAppListProgress
+ * [3] 安装应用 (下发+进度)        uploadAIBoxFile → 缓存 objectKey
  *                                → installApp → 缓存 bid → installAppProgress
- * [4] 操作应用(启动/停止等)      operateApp(需配置 appId)
- * [5] 导出文件(下发+进度)        exportFile → 缓存 bid → exportFileProgress
+ * [4] 操作应用 (启动/停止等)      operateApp(需配置 appId)
+ * [5] 导出文件 (下发+进度)        exportFile → 缓存 bid → exportFileProgress
  * [6] 获取文件下载链接           fetchFileDownloadUrl(需配置 objectKeys)
  * </pre>
  *
- * <p><b>前置条件：</b>AI Box 安装在飞机上, SDK 入口为
+ * <p><b>前置条件: </b>AI Box 安装在飞机上, SDK 入口为
  * {@code session.drone().getAIBoxModule()}。
  * 所有接口均需 {@code deviceSn}(飞机 SN)和 {@code boxSn}(AI Box SN)。
  * {@code boxSn} 优先取自 [1] 查询结果自动缓存, 也可直接在配置 {@code ai_box.box_sn} 中指定。
@@ -90,30 +91,24 @@ public class AIBoxDemo extends ModuleDemo {
             return;
         }
 
-        final String deviceSn = session.droneSn();
-        DemoLog.info(name(), "AIBoxDemo: droneSn=" + deviceSn);
+        // AI Box 查询信息用飞行器 SN, 下发操作需用网关 SN(拓扑主设备)
+        final String droneSn = session.droneSn();
+        final String gatewaySn = session.topo().getDevice().getDeviceSn();
+        DemoLog.debug(name(), "AIBoxDemo: gatewaySn=" + gatewaySn + " droneSn=" + droneSn);
 
-        while (true) {
-            Utils.printTitle("执行 " + name() + "  (飞机 SN: " + deviceSn + ")");
-            if (lastBoxSn != null) console("(已缓存 boxSn=" + lastBoxSn + ")");
-            System.out.print(menu());
-            int c = Utils.readIntInRange(input, "请选择(1-6, q 退出): ", 1, 6);
-            if (c == Utils.QUIT) break;
-            try {
-                switch (c) {
-                    case 1: fetchBoxInfo(module, deviceSn);     break;
-                    case 2: menuFetchAppList(module, deviceSn); break;
-                    case 3: menuInstallApp(module, deviceSn);   break;
-                    case 4: operateApp(module, deviceSn);       break;
-                    case 5: menuExportFile(module, deviceSn);   break;
-                    case 6: fetchFileDownloadUrl(module, deviceSn); break;
-                    default: break;
-                }
-            } catch (Exception e) {
-                console("   结果 -> [异常] " + Utils.describe(e));
-                DemoLog.error(name(), "操作异常: " + Utils.describe(e), e);
-            }
-        }
+        Menu.of(this, "执行 " + name() + "  (网关 SN: " + gatewaySn + ", 飞机 SN: " + droneSn + ")")
+                .banner("=== AI Box 管理 ===")
+                .header(() -> {
+                    if (lastBoxSn != null) consoleDebug("(已缓存 boxSn=" + lastBoxSn + ")");
+                })
+                .item("查询 AI Box 信息    (fetchAIBoxInfo, 缓存 boxSn)", () -> fetchBoxInfo(module, droneSn))
+                .item("获取应用列表        (fetchAppList + fetchAppListProgress)", () -> menuFetchAppList(module, gatewaySn))
+                .item("安装应用            (uploadAIBoxFile → installApp → installAppProgress)", () -> menuInstallApp(module, gatewaySn))
+                .item("操作应用            (operateApp: start/stop/restart)", () -> operateApp(module, gatewaySn))
+                .item("导出文件            (exportFile + exportFileProgress)", () -> menuExportFile(module, gatewaySn))
+                .item("获取文件下载链接    (fetchFileDownloadUrl)", () -> fetchFileDownloadUrl(module, gatewaySn))
+                .exitLog("退出 AI Box 菜单")
+                .run();
     }
 
     // ==================== [1] 查询 AI Box 信息 ====================
@@ -124,11 +119,11 @@ public class AIBoxDemo extends ModuleDemo {
      */
     private void fetchBoxInfo(AIBoxModule module, String deviceSn) {
         long timeout = defaultTimeout();
-        console("\n   查询 AI Box 信息: droneSn=" + deviceSn);
+        consoleDebug("\n   查询 AI Box 信息: droneSn=" + deviceSn);
 
         final Await<FlightHubError> await = new Await<>(name() + ".fetchAIBoxInfo");
         final AtomicReference<AIBoxInfoListResult> ref = new AtomicReference<>();
-        // 门控范式(全文件统一): 仅在 Outcome.SUCCESS 时解析/缓存结果——SDK 失败路径可能触发
+        // 门控范式 (全文件统一): 仅在 Outcome.SUCCESS 时解析/缓存结果——SDK 失败路径可能触发
         // callback(err, 空结构体), 不门控会缓存脏值, 污染后续串联操作。对齐 MaintenanceDemo 等既定写法。
         Outcome o = runOutcome("查询 AI Box 信息", timeout, await, () ->
             module.fetchAIBoxInfo(deviceSn, new FlightHubCallback.FetchAIBoxInfoCallback() {
@@ -144,18 +139,18 @@ public class AIBoxDemo extends ModuleDemo {
             List<AIBoxInfoResult> boxes = result.getAiBoxes();
             console("   AI Box 列表(共 " + boxes.size() + " 个):");
             for (AIBoxInfoResult box : boxes) {
-                console("     index=" + box.getIndex() + " sn=" + box.getSn()
+                consoleDebug("     index=" + box.getIndex() + " sn=" + box.getSn()
                     + " type=" + box.getType()
                     + " firmware=" + box.getFirmwareVersion()
                     + " storage=" + box.getStorageUsed() + "/" + box.getStorageTotal() + "GB");
 
-                DemoLog.info(name(), "aiBox: sn=" + box.getSn()
+                DemoLog.debug(name(), "aiBox: sn=" + box.getSn()
                     + " fw=" + box.getFirmwareVersion());
             }
 
-            if (!boxes.isEmpty() && boxes.get(0).getSn() != null) {
+            if (!boxes.isEmpty() && boxes.get(0).getSn() != null && !boxes.get(0).getSn().isEmpty()) {
                 lastBoxSn = boxes.get(0).getSn();
-                hint("已缓存 boxSn=" + lastBoxSn + ", 后续操作将自动使用");
+                hintDebug("已缓存 boxSn=" + lastBoxSn + ", 后续操作将自动使用");
             }
         }
     }
@@ -177,7 +172,7 @@ public class AIBoxDemo extends ModuleDemo {
             AIBoxFetchAppListParam param = new AIBoxFetchAppListParam();
             param.setDeviceSn(deviceSn);
             param.setBoxSn(boxSn);
-            console("   下发获取应用列表: boxSn=" + boxSn);
+            consoleDebug("   下发获取应用列表: boxSn=" + boxSn);
 
             final Await<FlightHubError> await = new Await<>(name() + ".fetchAppList");
             final AtomicReference<FetchAppListResult> ref = new AtomicReference<>();
@@ -193,8 +188,15 @@ public class AIBoxDemo extends ModuleDemo {
             FetchAppListResult r = ref.get();
             if (o == Outcome.SUCCESS && r != null) {
                 console("     bid=" + r.getBid() + " status=" + r.getStatus());
-                lastFetchAppBid = r.getBid();
-                hint("bid 已缓存, 可选 [2] 查询进度");
+                // 服务端 SUCCESS 但回填空 bid(回调契约异常)时不下发脏缓存——下游 [2] 查询进度
+                // 会以空 bid 打到服务端; 保留 null 让 :193 的判空回退到"请先执行"提示, 文案虽不精确
+                // 但不会发出无效请求。
+                if (r.getBid() != null && !r.getBid().isEmpty()) {
+                    lastFetchAppBid = r.getBid();
+                    hint("bid 已缓存, 可选 [2] 查询进度");
+                } else {
+                    hint("下发成功但服务端未返回 bid, 无法查询进度(SDK 回调契约异常)");
+                }
             }
         } else {
             // 查询进度
@@ -223,7 +225,7 @@ public class AIBoxDemo extends ModuleDemo {
             if (o == Outcome.SUCCESS && r != null) {
                 console("     bid=" + r.getBid() + " status=" + r.getStatus()
                     + " percent=" + r.getPercent() + "%");
-                DemoLog.info(name(), "fetchAppListProgress: " + r);
+                DemoLog.debug(name(), "fetchAppListProgress: " + r);
             }
         }
     }
@@ -268,8 +270,14 @@ public class AIBoxDemo extends ModuleDemo {
                 if (o == Outcome.SUCCESS && r != null) {
                     console("     objectKey=" + r.getObjectKey()
                         + " etag=" + r.getEtag());
-                    lastUploadObjectKey = r.getObjectKey();
-                    hint("objectKey 已缓存, 可选 [3-2] 安装应用");
+                    // objectKey 空串缓存会覆盖配置项: :269 三目 `lastUploadObjectKey != null ? lastUploadObjectKey : cfg`
+                    // 在空串时命中前者, 导致用户配置的 app_object_key 被忽略。空则不缓存, 让下游回退到配置。
+                    if (r.getObjectKey() != null && !r.getObjectKey().isEmpty()) {
+                        lastUploadObjectKey = r.getObjectKey();
+                        hint("objectKey 已缓存, 可选 [3-2] 安装应用");
+                    } else {
+                        hint("上传成功但服务端未返回 objectKey, 请配置 ai_box.app_object_key 以安装应用");
+                    }
                 }
                 break;
             }
@@ -284,7 +292,7 @@ public class AIBoxDemo extends ModuleDemo {
                 param.setDeviceSn(deviceSn);
                 param.setBoxSn(boxSn);
                 param.setObjectKey(objectKey);
-                console("   安装应用: boxSn=" + boxSn + " objectKey=" + objectKey);
+                    consoleDebug("   安装应用: boxSn=" + boxSn + " objectKey=" + objectKey);
 
                 final Await<FlightHubError> await = new Await<>(name() + ".installApp");
                 final AtomicReference<InstallAppResult> ref = new AtomicReference<>();
@@ -300,8 +308,12 @@ public class AIBoxDemo extends ModuleDemo {
                 InstallAppResult r = ref.get();
                 if (o == Outcome.SUCCESS && r != null) {
                     console("     bid=" + r.getBid() + " status=" + r.getStatus());
-                    lastInstallAppBid = r.getBid();
-                    hint("bid 已缓存, 可选 [3-3] 查询安装进度");
+                    if (r.getBid() != null && !r.getBid().isEmpty()) {
+                        lastInstallAppBid = r.getBid();
+                        hint("bid 已缓存, 可选 [3-3] 查询安装进度");
+                    } else {
+                        hint("安装下发成功但服务端未返回 bid, 无法查询进度(SDK 回调契约异常)");
+                    }
                 }
                 break;
             }
@@ -332,7 +344,7 @@ public class AIBoxDemo extends ModuleDemo {
                 if (o == Outcome.SUCCESS && r != null) {
                     console("     bid=" + r.getBid() + " status=" + r.getStatus()
                         + " percent=" + r.getPercent() + "%");
-                    DemoLog.info(name(), "installAppProgress: " + r);
+                        DemoLog.debug(name(), "installAppProgress: " + r);
                 }
                 break;
             }
@@ -412,7 +424,7 @@ public class AIBoxDemo extends ModuleDemo {
             param.setBoxSn(boxSn);
             param.setAppId(appId);
             param.setExportType(exportType);
-            console("   下发导出文件: boxSn=" + boxSn + " appId=" + appId
+            consoleDebug("   下发导出文件: boxSn=" + boxSn + " appId=" + appId
                 + " exportType=" + exportType);
 
             final Await<FlightHubError> await = new Await<>(name() + ".exportFile");
@@ -429,8 +441,12 @@ public class AIBoxDemo extends ModuleDemo {
             ExportFileResult r = ref.get();
             if (o == Outcome.SUCCESS && r != null) {
                 console("     bid=" + r.getBid() + " status=" + r.getStatus());
-                lastExportBid = r.getBid();
-                hint("bid 已缓存, 可选 [5-2] 查询导出进度");
+                if (r.getBid() != null && !r.getBid().isEmpty()) {
+                    lastExportBid = r.getBid();
+                    hint("bid 已缓存, 可选 [5-2] 查询导出进度");
+                } else {
+                    hint("导出下发成功但服务端未返回 bid, 无法查询进度(SDK 回调契约异常)");
+                }
             }
         } else {
             if (lastExportBid == null || lastExportBid.isEmpty()) {
@@ -458,7 +474,7 @@ public class AIBoxDemo extends ModuleDemo {
             if (o == Outcome.SUCCESS && r != null) {
                 console("     bid=" + r.getBid() + " status=" + r.getStatus()
                     + " percent=" + r.getPercent() + "%");
-                DemoLog.info(name(), "exportFileProgress: " + r);
+                DemoLog.debug(name(), "exportFileProgress: " + r);
             }
         }
     }
@@ -512,14 +528,14 @@ public class AIBoxDemo extends ModuleDemo {
     // ==================== 辅助方法 ====================
 
     /**
-     * 解析 boxSn：优先使用 [1] 缓存, 否则取配置 {@code ai_box.box_sn}。
+     * 解析 boxSn: 优先使用 [1] 缓存, 否则取配置 {@code ai_box.box_sn}。
      * 两者均为空时提示用户先执行 [1] 查询。
      */
     private String resolveBoxSn() {
         if (lastBoxSn != null && !lastBoxSn.isEmpty()) return lastBoxSn;
         String sn = params.node("ai_box").str("box_sn", "");
         if (!sn.isEmpty()) {
-            hint("使用配置 ai_box.box_sn=" + sn);
+            hintDebug("使用配置 ai_box.box_sn=" + sn);
             return sn;
         }
 
@@ -527,27 +543,4 @@ public class AIBoxDemo extends ModuleDemo {
         return null;
     }
 
-    /** 统一输出到控制台。 */
-    private void console(String line) {
-        System.out.println(line);
-    }
-
-    /** 同时记录日志并输出到控制台(带缩进), 用于关键提示信息。 */
-    private void hint(String msg) {
-        DemoLog.info(name(), msg);
-        console("   " + msg);
-    }
-
-    /** 构造主菜单文本。 */
-    private String menu() {
-        return "\n"
-            + "  === AI Box 管理 ===\n"
-            + "  1.  查询 AI Box 信息    (fetchAIBoxInfo, 缓存 boxSn)\n"
-            + "  2.  获取应用列表        (fetchAppList + fetchAppListProgress)\n"
-            + "  3.  安装应用            (uploadAIBoxFile → installApp → installAppProgress)\n"
-            + "  4.  操作应用            (operateApp: start/stop/restart)\n"
-            + "  5.  导出文件            (exportFile + exportFileProgress)\n"
-            + "  6.  获取文件下载链接    (fetchFileDownloadUrl)\n"
-            + "\n  q.  返回上级菜单\n";
-    }
 }

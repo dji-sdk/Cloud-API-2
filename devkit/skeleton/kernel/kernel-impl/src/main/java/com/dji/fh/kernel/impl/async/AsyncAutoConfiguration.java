@@ -32,7 +32,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * <p>提供一个 Spring 标准命名的 {@code applicationTaskExecutor} bean，
  * 供 {@code @Async} 注解与 {@link org.springframework.context.event.EventListener} 异步派发共享。
  *
- * <p>ISV 可通过自家 {@code @Bean(name = "applicationTaskExecutor") TaskExecutor} 完全覆盖；
+ * <p>集成商 可通过自家 {@code @Bean(name = "applicationTaskExecutor") TaskExecutor} 完全覆盖；
  * 或通过 {@code fh.skeleton.async.*} 微调默认池参数。
  *
  * <p>装配优先级最高（HIGHEST_PRECEDENCE），保证后续 AutoConfiguration 拿到的是 Kernel 调优过的池。

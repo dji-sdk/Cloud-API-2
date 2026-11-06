@@ -9,12 +9,13 @@
 #include <BusinessManager.h>
 #include <base/common/logger.h>
 #include <vector>
+#include "session/session_bm.h"
 
 namespace flight_hub_sdk {
 
-SafetyServiceModuleImpl::SafetyServiceModuleImpl()
+SafetyServiceModuleImpl::SafetyServiceModuleImpl(int session_id)
     :
-      fly_safe_mgr_() {
+      fly_safe_mgr_(session_id), session_id_(session_id) {
     LOG_INFO("[SafetyServiceModuleImpl] constructor");
 }
 
@@ -40,14 +41,15 @@ void SafetyServiceModuleImpl::searchSignalMaps(
     request.data_types = data_types;
 
     // Send request;
-    search_signal_maps(request, [weak_ptr, callback](const SignalMapsResponse& response, FlightHubError err) {
+    search_signal_maps(request, [weak_ptr, callback, this](const SignalMapsResponse& response, FlightHubError err) {
         WeakDummyReturn(weak_ptr);
-        drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+            WeakDummyReturn(weak_ptr);
             // 埋点: 获取信号地图; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-            report_beacon_event_helper(kBeaconReportEvent_SAFETY_SEARCH_SIGNAL_MAPS, err, "[SafetyServiceModuleImpl]");
+            report_beacon_event_helper(kBeaconReportEvent_SAFETY_SEARCH_SIGNAL_MAPS, err, session_id_, "[SafetyServiceModuleImpl]");
             // 检查 err;
             if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                 LOG_ERROR("searchSignalMaps(): err: %d", (int)err.error_code);
@@ -86,7 +88,7 @@ void SafetyServiceModuleImpl::searchSignalMaps(
             // When succeed, transfer the response to the callback;
             callback(err, results);
         });
-    });
+    }, session_id_);
 }
 
 
@@ -122,14 +124,15 @@ void SafetyServiceModuleImpl::createCustomizedFlightAreas(
     // Send request;
     create_customized_flight_areas(
         request,
-        [weak_ptr, callback](const CreateFlightAreasResponse& response, FlightHubError err) {
+        [weak_ptr, callback, this](const CreateFlightAreasResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 创建自定义飞行区域; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_SAFETY_CREATE_CUSTOMIZED_FLIGHT_AREAS, err, "[SafetyServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_SAFETY_CREATE_CUSTOMIZED_FLIGHT_AREAS, err, session_id_, "[SafetyServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("createCustomizedFlightAreas(): err: %d", (int)err.error_code);
@@ -147,7 +150,7 @@ void SafetyServiceModuleImpl::createCustomizedFlightAreas(
                 callback(err, results);
             });
         }
-    );
+    , session_id_);
 }
 
 
@@ -171,14 +174,15 @@ void SafetyServiceModuleImpl::getCustomizedFlightAreas(
         request_params.ids,
         request_params.page_index,
         request_params.page_size,
-        [weak_ptr, callback](const GetFlightAreasResponse& response, FlightHubError err) {
+        [weak_ptr, callback, this](const GetFlightAreasResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 获取自定义飞行区域; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_SAFETY_GET_CUSTOMIZED_FLIGHT_AREAS, err, "[SafetyServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_SAFETY_GET_CUSTOMIZED_FLIGHT_AREAS, err, session_id_, "[SafetyServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("getCustomizedFlightAreas(): err: %d", (int)err.error_code);
@@ -232,7 +236,7 @@ void SafetyServiceModuleImpl::getCustomizedFlightAreas(
                 callback(err, results);
             });
         }
-    );
+    , session_id_);
 }
 
 
@@ -254,7 +258,7 @@ void SafetyServiceModuleImpl::updateCustomizedFlightAreas(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPDATE_CUSTOMIZED_FLIGHT_AREAS, param_err, "[SafetyServiceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPDATE_CUSTOMIZED_FLIGHT_AREAS, param_err, session_id_, "[SafetyServiceModuleImpl]");
         callback(param_err, {});
         return;
     }
@@ -264,7 +268,8 @@ void SafetyServiceModuleImpl::updateCustomizedFlightAreas(
 
     UpdateCustomizedFlightAreasRequest request;
     request.name = request_params.name;
-    request.update_by = request_params.update_by;
+    request.status = request_params.status;
+    request.type = request_params.type;
 
     request.content.type = request_params.content.type;
 
@@ -284,14 +289,15 @@ void SafetyServiceModuleImpl::updateCustomizedFlightAreas(
     update_customized_flight_areas(
         request_params.flight_area_id,
         request,
-        [weak_ptr, callback](const UpdateFlightAreasResponse& response, FlightHubError err) {
+        [weak_ptr, callback, this](const UpdateFlightAreasResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 更新自定义飞行区域; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPDATE_CUSTOMIZED_FLIGHT_AREAS, err, "[SafetyServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPDATE_CUSTOMIZED_FLIGHT_AREAS, err, session_id_, "[SafetyServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("updateCustomizedFlightAreas(): err: %d", (int)err.error_code);
@@ -329,7 +335,7 @@ void SafetyServiceModuleImpl::updateCustomizedFlightAreas(
                 callback(err, results);
             });
         }
-    );
+    , session_id_);
 }
 
 
@@ -351,7 +357,7 @@ void SafetyServiceModuleImpl::deleteCustomizedFlightAreas(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_SAFETY_DELETE_CUSTOMIZED_FLIGHT_AREAS, param_err, "[SafetyServiceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_SAFETY_DELETE_CUSTOMIZED_FLIGHT_AREAS, param_err, session_id_, "[SafetyServiceModuleImpl]");
         callback(param_err);
         return;
     }
@@ -362,14 +368,15 @@ void SafetyServiceModuleImpl::deleteCustomizedFlightAreas(
     // Send request;
     delete_customized_flight_areas(
         flight_area_id,
-        [weak_ptr, callback](FlightHubError err) {
+        [weak_ptr, callback, this](FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 删除自定义飞行区域; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_SAFETY_DELETE_CUSTOMIZED_FLIGHT_AREAS, err, "[SafetyServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_SAFETY_DELETE_CUSTOMIZED_FLIGHT_AREAS, err, session_id_, "[SafetyServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("deleteCustomizedFlightAreas(): err: %d", (int)err.error_code);
@@ -379,7 +386,7 @@ void SafetyServiceModuleImpl::deleteCustomizedFlightAreas(
                 callback(err);
             });
         }
-    );
+    , session_id_);
 }
 
 
@@ -401,7 +408,7 @@ void SafetyServiceModuleImpl::syncCustomizedFlightAreas(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_SAFETY_SYNC_CUSTOMIZED_FLIGHT_AREAS, param_err, "[SafetyServiceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_SAFETY_SYNC_CUSTOMIZED_FLIGHT_AREAS, param_err, session_id_, "[SafetyServiceModuleImpl]");
         callback(param_err, {});
         return;
     }
@@ -413,14 +420,15 @@ void SafetyServiceModuleImpl::syncCustomizedFlightAreas(
     // Send request;
     sync_customized_flight_areas(
         device_sns,
-        [weak_ptr, callback](const SyncFlightAreasResponse& response, FlightHubError err) {
+        [weak_ptr, callback, this](const SyncFlightAreasResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 同步自定义飞行区域; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_SAFETY_SYNC_CUSTOMIZED_FLIGHT_AREAS, err, "[SafetyServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_SAFETY_SYNC_CUSTOMIZED_FLIGHT_AREAS, err, session_id_, "[SafetyServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("syncCustomizedFlightAreas(): err: %d", (int)err.error_code);
@@ -444,7 +452,7 @@ void SafetyServiceModuleImpl::syncCustomizedFlightAreas(
                 callback(err, syncs);
             });
         }
-    );
+    , session_id_);
 }
 
 
@@ -466,7 +474,7 @@ void SafetyServiceModuleImpl::getFlightAreasSyncStatus(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_SAFETY_GET_FLIGHT_AREAS_SYNC_STATUS, param_err, "[SafetyServiceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_SAFETY_GET_FLIGHT_AREAS_SYNC_STATUS, param_err, session_id_, "[SafetyServiceModuleImpl]");
         callback(param_err, {});
         return;
     }
@@ -477,14 +485,15 @@ void SafetyServiceModuleImpl::getFlightAreasSyncStatus(
     // Send request;
     get_flight_areas_sync_status(
         device_sns,
-        [weak_ptr, callback](const GetAreasSyncStatusResponse& response, FlightHubError err) {
+        [weak_ptr, callback, this](const GetAreasSyncStatusResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 获取自定义飞行区域同步状态; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_SAFETY_GET_FLIGHT_AREAS_SYNC_STATUS, err, "[SafetyServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_SAFETY_GET_FLIGHT_AREAS_SYNC_STATUS, err, session_id_, "[SafetyServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("getFlightAreasSyncStatus(): err: %d", (int)err.error_code);
@@ -509,7 +518,49 @@ void SafetyServiceModuleImpl::getFlightAreasSyncStatus(
                 callback(err, results);
             });
         }
-    );
+    , session_id_);
+}
+
+
+// [自定义飞行区域];
+// 获取飞行区文件下载地址;
+void SafetyServiceModuleImpl::getFlightAreasUrl(
+    const std::function<void(FlightHubError err, const GetFlightAreasUrlResults& result)>& callback) {
+    // callback 检查;
+    if (!callback) {
+        LOG_ERROR("getFlightAreasUrl(): callback is NULL !");
+        return;
+    }
+
+    // protection use dummy weak_ptr;
+    WeakDummy(weak_ptr);
+
+    // Send request;
+    get_flight_areas_url(
+        [weak_ptr, callback, this](const GetFlightAreasUrlResponse& response, FlightHubError err) {
+            WeakDummyReturn(weak_ptr);
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
+                // 检查 err;
+                if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
+                    LOG_ERROR("getFlightAreasUrl(): err: %d", (int)err.error_code);
+                    callback(err, {});
+
+                    return;
+                }
+
+                // 组装 results;
+                GetFlightAreasUrlResults results;
+                results.name = response.name;
+                results.url = response.url;
+                results.checksum = response.checksum;
+                results.size = response.size;
+
+                // When succeed, transfer the response to the callback;
+                callback(err, results);
+            });
+        }
+    , session_id_);
 }
 
 
@@ -529,14 +580,15 @@ void SafetyServiceModuleImpl::getOfflineMapsModelInfo(
 
     // Send request;
     get_offline_maps_model_info(
-        [weak_ptr, callback](const GetOfflineMapsModelInfoResponse& response, FlightHubError err) {
+        [weak_ptr, callback, this](const GetOfflineMapsModelInfoResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 查询离线地图模型信息; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_SAFETY_GET_OFFLINE_MAPS_MODEL_INFO, err, "[SafetyServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_SAFETY_GET_OFFLINE_MAPS_MODEL_INFO, err, session_id_, "[SafetyServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("getOfflineMapsModelInfo(): err: %d", (int)err.error_code);
@@ -569,7 +621,7 @@ void SafetyServiceModuleImpl::getOfflineMapsModelInfo(
                 callback(err, results);
             });
         }
-    );
+    , session_id_);
 }
 
 
@@ -610,14 +662,15 @@ void SafetyServiceModuleImpl::updateOfflineMapsModelInfo(
     // Send request;
     update_offline_maps_model_info(
         request,
-        [weak_ptr, callback](FlightHubError err) {
+        [weak_ptr, callback, this](FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 创建/更新离线地图模型; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPDATE_OFFLINE_MAPS_MODEL_INFO, err, "[SafetyServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_SAFETY_UPDATE_OFFLINE_MAPS_MODEL_INFO, err, session_id_, "[SafetyServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("updateOfflineMapsModelInfo(): err: %d", (int)err.error_code);
@@ -627,7 +680,7 @@ void SafetyServiceModuleImpl::updateOfflineMapsModelInfo(
                 callback(err);
             });
         }
-    );
+    , session_id_);
 }
 
 
@@ -646,14 +699,15 @@ void SafetyServiceModuleImpl::cancelOfflineMapsModelInfo(
 
     // Send request;
     cancel_offline_maps_model_info(
-        [weak_ptr, callback](FlightHubError err) {
+        [weak_ptr, callback, this](FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 取消离线地图生成; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_SAFETY_CANCEL_OFFLINE_MAPS_MODEL_INFO, err, "[SafetyServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_SAFETY_CANCEL_OFFLINE_MAPS_MODEL_INFO, err, session_id_, "[SafetyServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("cancelOfflineMapsModelInfo(): err: %d", (int)err.error_code);
@@ -663,7 +717,7 @@ void SafetyServiceModuleImpl::cancelOfflineMapsModelInfo(
                 callback(err);
             });
         }
-    );
+    , session_id_);
 }
 
 
@@ -687,14 +741,15 @@ void SafetyServiceModuleImpl::setOfflineMaps(
     // Send request;
     set_offline_maps(
         request,
-        [weak_ptr, callback](FlightHubError err) {
+        [weak_ptr, callback, this](FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 修改离线地图（开启/关闭）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_SAFETY_SET_OFFLINE_MAPS, err, "[SafetyServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_SAFETY_SET_OFFLINE_MAPS, err, session_id_, "[SafetyServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("setOfflineMaps(): err: %d", (int)err.error_code);
@@ -704,7 +759,7 @@ void SafetyServiceModuleImpl::setOfflineMaps(
                 callback(err);
             });
         }
-    );
+    , session_id_);
 }
 
 
@@ -727,7 +782,7 @@ void SafetyServiceModuleImpl::syncOfflineMaps(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_SAFETY_SYNC_OFFLINE_MAPS, param_err, "[SafetyServiceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_SAFETY_SYNC_OFFLINE_MAPS, param_err, session_id_, "[SafetyServiceModuleImpl]");
         callback(param_err, {});
         return;
     }
@@ -738,14 +793,15 @@ void SafetyServiceModuleImpl::syncOfflineMaps(
     // Send request;
     sync_offline_maps(
         device_sns,
-        [weak_ptr, callback](const OfflineMapsSyncResponse& response, FlightHubError err) {
+        [weak_ptr, callback, this](const OfflineMapsSyncResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 离线地图同步; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_SAFETY_SYNC_OFFLINE_MAPS, err, "[SafetyServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_SAFETY_SYNC_OFFLINE_MAPS, err, session_id_, "[SafetyServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("syncOfflineMaps(): err: %d", (int)err.error_code);
@@ -772,7 +828,7 @@ void SafetyServiceModuleImpl::syncOfflineMaps(
                 callback(err, syncs);
             });
         }
-    );
+    , session_id_);
 }
 
 
@@ -795,7 +851,7 @@ void SafetyServiceModuleImpl::getOfflineMapsSyncStatus(
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_SAFETY_GET_OFFLINE_MAPS_SYNC_STATUS, param_err, "[SafetyServiceModuleImpl]");
+        report_beacon_event_helper(kBeaconReportEvent_SAFETY_GET_OFFLINE_MAPS_SYNC_STATUS, param_err, session_id_, "[SafetyServiceModuleImpl]");
         callback(param_err, {});
         return;
     }
@@ -806,14 +862,15 @@ void SafetyServiceModuleImpl::getOfflineMapsSyncStatus(
     // Send request;
     get_offline_maps_sync_status(
         device_sns,
-        [weak_ptr, callback](const GetOfflineMapsSyncStatusResponse& response, FlightHubError err) {
+        [weak_ptr, callback, this](const GetOfflineMapsSyncStatusResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([err, callback, response]() {
+            drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]() {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 获取设备同步状态; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_SAFETY_GET_OFFLINE_MAPS_SYNC_STATUS, err, "[SafetyServiceModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_SAFETY_GET_OFFLINE_MAPS_SYNC_STATUS, err, session_id_, "[SafetyServiceModuleImpl]");
                 // 检查 err;
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     LOG_ERROR("getOfflineMapsSyncStatus(): err: %d", (int)err.error_code);
@@ -839,7 +896,7 @@ void SafetyServiceModuleImpl::getOfflineMapsSyncStatus(
                 callback(err, results);
             });
         }
-    );
+    , session_id_);
 }
 
 void SafetyServiceModuleImpl::getUnlockLicenseList(const QueryDeviceUnlockLicenseListParam& param, std::function<void(FlightHubError err, QueryDeviceUnlockLicenseListResult result)> callback) {
@@ -869,10 +926,13 @@ void SafetyServiceModuleImpl::uploadUnlockLicenseFile(const std::string& file_pa
 int SafetyServiceModuleImpl::listenDroneOfflineMapEnable(
     const std::string& drone_sn,
     const std::function<void(const DroneOfflineMapEnable& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
     int user_listen_id = offline_map_enable_next_id_++;
 
-    auto nc_listen_id = NotificationCenter::getInstance()->getBusinessManager()->ListenDroneOfflineMapEnable(
+    auto nc_listen_id = -1;
+    if (bm) {
+        nc_listen_id = bm->ListenDroneOfflineMapEnable(
         [this, weak_ptr, callback](const notification_center::DroneOfflineMapEnable& msg) -> void {
             WeakDummyReturn(weak_ptr);
             DroneOfflineMapEnable res{};
@@ -887,6 +947,9 @@ int SafetyServiceModuleImpl::listenDroneOfflineMapEnable(
                 LOG_ERROR("[SafetyServiceModuleImpl] ListenDroneOfflineMapEnable, error: %d", error_code);
             }
         }, drone_sn, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
     offline_map_enable_nc_listen_ids_[user_listen_id] = nc_listen_id;
     LOG_INFO("[SafetyServiceModuleImpl] listenDroneOfflineMapEnable listen_id: %d, nc_listen_id: %lld", user_listen_id, (long long)nc_listen_id);
@@ -894,10 +957,13 @@ int SafetyServiceModuleImpl::listenDroneOfflineMapEnable(
 }
 
 void SafetyServiceModuleImpl::cancelListenDroneOfflineMapEnable(int listen_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("[SafetyServiceModuleImpl] cancelListenDroneOfflineMapEnable listen_id: %d", listen_id);
     auto it = offline_map_enable_nc_listen_ids_.find(listen_id);
     if (it != offline_map_enable_nc_listen_ids_.end()) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(it->second);
+        if (bm) {
+            bm->CancelObserve(it->second);
+        }
         offline_map_enable_nc_listen_ids_.erase(it);
     }
 }

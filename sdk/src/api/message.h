@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <climits>
 #include <cmath>
+#include <map>
 #include <unordered_map>
 #include "value.h"
 
@@ -310,6 +311,46 @@ public:
     }
 };
 
+// 控制权网关信息
+struct ControlAuthGateway {
+    std::string sn;
+    std::string id;
+    std::vector<std::string> auth_control_keys;
+    std::string device_model_class;
+};
+
+// 控制权用户信息
+struct ControlAuthUser {
+    std::string call_sign;
+    std::string user_id;
+    std::string type;  // cloud / rc
+};
+
+// 控制权扩展信息
+struct ControlAuthSpec {
+    bool is_locked = false;
+    std::string payload_index;
+    bool is_cloud_control_auth = false;
+    std::string waiting_for_auth_user;
+};
+
+// 单个控制权条目
+struct ControlAuthController {
+    std::string key;
+    std::string type;
+    long long version = 0;
+    ControlAuthGateway gateway;
+    ControlAuthUser user;
+    ControlAuthSpec spec;
+};
+
+// acquire/release 控制权结果
+struct ControlAuthResult {
+    std::string drone_sn;
+    std::string bid;  // 手飞机型授权 bid
+    std::vector<ControlAuthController> controls;
+};
+
 // 飞行任务断点恢复事件信息
 class FlightTaskEventBreakPointResume {
 public:
@@ -401,13 +442,13 @@ class DockNetworkState {
 public:
     int type = -1;     // int, "网络类型", { 1: 4G, 2: 以太网 };  默认无效值: -1;
     int quality = -1;  // int, "网络质量(当网络类型为4G时才具有网络质量信息)", { 0: 差, 1: 中, 2: 好 }; 默认无效值: -1;
-    int rate = 0;      // int, "网络速率(单位KB/秒)"; 默认值: 0;
+    double rate = 0.0;  // double, "网络速率(单位KB/秒)"; 默认值: 0.0;
 
     bool operator==(const DockNetworkState &rhs) const {
         return
             (type == rhs.type) &&
             (quality == rhs.quality) &&
-            (rate == rhs.rate);
+            floatEqual(rate, rhs.rate);
     }
 };
 
@@ -936,8 +977,8 @@ struct FlightHubSdkConfig {
     std::string port;                        ///< FlightHub 服务端口
     std::string notification_server_address;  ///< 消息通知 WebSocket 服务地址（完整 URL，含鉴权参数时需自行拼接）
     std::string drtc_config_path;            ///< DRTC Native SDK 配置文件路径（drtc_config_node.json，文件路径非目录）；仅 Linux BUILD_WITH_DRTC_USER 场景需要，为空时飞机 DRTC 拉流 Init 会失败
-    bool verify_ssl = true;                  ///< WSS/HTTPS 证书验证开关（安全默认开启）；校验服务器证书链与主机名/IP；私有化自签名部署须配 ssl_ca_path 指向 CA 文件；显式置 false 会产生 WARN 日志，仅限受控测试环境
-    std::string ssl_ca_path;                 ///< WSS 私有 CA 证书文件路径（PEM 格式）；为空时使用系统 CA 信任库，私有化自签名部署应指向自有 CA 文件
+    bool verify_ssl = true;                  ///< WSS/HTTPS 及 S3 直传证书验证开关（安全默认开启）；校验服务器证书链与主机名/IP；私有化自签名部署须配 ssl_ca_path 指向 CA 文件；显式置 false 会产生 WARN 日志，仅限受控测试环境
+    std::string ssl_ca_path;                 ///< WSS/HTTPS/S3 直传私有 CA 证书文件路径（PEM 格式）；为空时使用系统 CA 信任库，私有化自签名部署应指向自有 CA 文件
     bool operator==(const FlightHubSdkConfig& other) const {
         return
             log_level == other.log_level &&
@@ -1138,11 +1179,11 @@ struct FlightTaskListParams {
 struct GetCommandTaskListParams {
     int page = 1;                        ///< 页码，从 1 开始（必填）
     int page_size = 10;                  ///< 每页数量，1~100（必填）
-    std::string sn;                      ///< 设备 SN 过滤（网关 SN），与 drone_sn 至少传一个
-    std::string drone_sn;                ///< 飞机 SN 过滤，与 sn 至少传一个
-    long long begin_at = -1;             ///< 开始时间（秒级时间戳），-1 表示不过滤，需与 end_at 配对
-    long long end_at = -1;               ///< 结束时间（秒级时间戳），-1 表示不过滤，需与 begin_at 配对
-    std::vector<int> status;             ///< 任务状态过滤列表。枚举：0=待执行, 1=执行中, 2=已完成, 3=失败, 4=超时
+    std::string sn;                      ///< 设备 SN（网关 SN，必填）
+    std::string drone_sn;                ///< 【已废弃】后端当前不支持，SDK 不再上送
+    long long begin_at = -1;             ///< 【已废弃】后端当前不支持，SDK 不再上送
+    long long end_at = -1;               ///< 【已废弃】后端当前不支持，SDK 不再上送
+    std::vector<int> status;             ///< 【已废弃】后端当前不支持，SDK 不再上送
 
     bool operator==(const GetCommandTaskListParams& o) const {
         return page == o.page && page_size == o.page_size
@@ -1258,6 +1299,44 @@ struct GetFlightTaskTrackResults {
 };
 
 
+/// 查询飞行安全风险请求参数
+struct GetFlightRisksParams {
+    std::string task_uuid;               ///< 任务 UUID（必填）
+
+    bool operator==(const GetFlightRisksParams& o) const {
+        return task_uuid == o.task_uuid;
+    }
+};
+
+/// 单条飞行安全风险
+struct FlightRiskItem {
+    int risk_type = 0;                   ///< 风险类型，取值见 FlightRiskType
+    double latitude = 0.0;               ///< 触发位置纬度
+    double longitude = 0.0;              ///< 触发位置经度
+    double height = 0.0;                 ///< 触发位置高度（米）
+
+    bool operator==(const FlightRiskItem& o) const {
+        return risk_type == o.risk_type
+            && floatEqual(latitude, o.latitude)
+            && floatEqual(longitude, o.longitude)
+            && floatEqual(height, o.height);
+    }
+};
+
+/// 查询飞行安全风险响应
+struct GetFlightRisksResults {
+    std::vector<FlightRiskItem> list;    ///< 风险列表；任务未完成飞行时为空
+
+    bool operator==(const GetFlightRisksResults& o) const {
+        return list == o.list;
+    }
+
+    bool operator!=(const GetFlightRisksResults& o) const {
+        return !(*this == o);
+    }
+};
+
+
 /// 断点续飞信息
 struct WaylineBreakPoint {
     int index = 0;                           ///< 断点索引
@@ -1337,6 +1416,8 @@ struct TaskDetail {
     std::vector<WaylineObstacle> obstacles; ///< 避障信息列表
     std::string run_at;              ///< 实际执行时间（ISO 8601）
     std::vector<std::string> tags;   ///< 任务标签列表
+    std::string cloud_to_cloud_id;   ///< 云云对接存储桶 ID
+    bool fast_reconstruction = false;///< 是否有快速建模任务
     std::string updated_at;          ///< 更新时间（ISO 8601）
     double wayline_duration = 0;     ///< 航线预估时长，单位：秒
 
@@ -1458,10 +1539,20 @@ struct DeviceRecommendationResp {
     std::vector<RecommendedDevice> devices; ///< 推荐设备列表
 };
 
+/// TCAS 起降区域状态
+struct TCAZoneStatus {
+    int status = 0;      ///< 区域状态
+    std::string sn;      ///< 设备序列号
+    int radius = 0;      ///< 半径
+};
+
 /// TCAS（防碰撞）信息
 struct TCAInfo {
     std::string center_sn;           ///< 中心设备 SN
-    std::string data_json;           ///< TCAS 数据 JSON
+    std::vector<TCAZoneStatus> tca;  ///< 起降区域状态列表
+    std::string tca_status;          ///< TCA 状态
+    long long version = 0;           ///< 版本号
+    std::string data_json;           ///< TCAS 数据 JSON（历史字段）
 };
 
 /// 获取 TCAS 信息列表响应
@@ -1617,6 +1708,9 @@ struct AiDetectionTarget {
     int target_w;           ///< 目标宽度
     int target_h;           ///< 目标高度
     long target_distance;   ///< 目标距离
+    int model_index = -1;   ///< AI 模型索引；0=官方模型，1=三方模型，-1=未知
+    int frame_source = -1;  ///< 图源/镜头来源（固件协议原始值，具体取值以固件协议为准）；-1=未知
+    int model_info_type = 0;///< v4 model info 类型；0=无，1=base info（含 model_index + frame_source）
 
     bool operator==(const AiDetectionTarget& other) const {
         return
@@ -1627,7 +1721,10 @@ struct AiDetectionTarget {
             target_cy == other.target_cy &&
             target_w == other.target_w &&
             target_h == other.target_h &&
-            target_distance == other.target_distance;
+            target_distance == other.target_distance &&
+            model_index == other.model_index &&
+            frame_source == other.frame_source &&
+            model_info_type == other.model_info_type;
     }
 };
 
@@ -1722,29 +1819,51 @@ struct EisSeiInfo {
     }
 };
 
-/// 指点飞行参数
-struct FlyToPointParams {
-    double latitude;    ///< 目标点纬度，单位：度
-    double longitude;   ///< 目标点经度，单位：度
-    double height;      ///< 目标点高度，单位：米
-    int max_speed;      ///< 最大飞行速度，单位：m/s
-
-    // TODO(apifox): need_verify_flight_control (是否需要验证飞行控制权，默认 true)
-
-    bool operator==(const FlyToPointParams& other) const {
-        return
-            floatEqual(latitude, other.latitude) &&
-            floatEqual(longitude, other.longitude) &&
-            floatEqual(height, other.height) &&
-            max_speed == other.max_speed;
-    }
-};
-
 /// 指点飞行目标点坐标
 struct FlyToTargetPoint {
     double latitude  = 0.0;   ///< 纬度，单位：度
     double longitude = 0.0;   ///< 经度，单位：度
     double height    = 0.0;   ///< 高度，单位：米
+
+    bool operator==(const FlyToTargetPoint& other) const {
+        return
+            floatEqual(latitude, other.latitude) &&
+            floatEqual(longitude, other.longitude) &&
+            floatEqual(height, other.height);
+    }
+};
+
+/// 指点飞行参数
+///
+/// `start_point` 与 `points` 是**两个不同的坐标**：前者是飞机当前位置（航段起点），
+/// 后者是要飞往的目标点。二者不可混用，填成同一个点会让服务端把航段起点误判为目标点。
+/// 指点飞行启动结果
+struct FlyToPointStartResult {
+    std::string fly_to_id;   ///< 指点飞行任务 ID
+    std::string flight_id;   ///< 飞行任务 ID
+};
+
+struct FlyToPointParams {
+    FlyToTargetPoint               start_point;   ///< 起始点坐标（当前飞机位置，必填）
+    std::vector<FlyToTargetPoint>  points;        ///< 目标点坐标数组（至少 1 个）
+    int                            max_speed = 0; ///< 最大飞行速度，单位：m/s
+
+    // --- 可选（未设置则不传，服务端保持设备当前设置）---
+    int speed_mode = -1;              ///< 速度模式：0-低速，1-高速。-1 表示未设置。参见 `SpeedMode`（`value.h`）
+    int real_height_cap_enabled = -1; ///< 高度上限开关。-1 未设置；0=false；1=true
+    int real_height_cap_limit = -1;   ///< 高度上限值（米），范围 20-1500。-1 表示未设置
+
+    // TODO(apifox): need_verify_flight_control (是否需要验证飞行控制权，默认 true)
+
+    bool operator==(const FlyToPointParams& other) const {
+        return
+            start_point == other.start_point &&
+            points == other.points &&
+            max_speed == other.max_speed &&
+            speed_mode == other.speed_mode &&
+            real_height_cap_enabled == other.real_height_cap_enabled &&
+            real_height_cap_limit == other.real_height_cap_limit;
+    }
 };
 
 /// 更新指点飞行目标点参数
@@ -1754,7 +1873,11 @@ struct FlyToUpdateTargetPointsParams {
     std::vector<FlyToTargetPoint>  points;        ///< 目标点坐标数组（至少 1 个）
     int                            max_speed = 0; ///< 最大飞行速度，单位：m/s
 
-    // TODO(apifox): need_verify_flight_control (是否需要验证飞行控制权，默认 true)
+    // --- 可选（未设置则不传，服务端保持设备当前设置）---
+    int speed_mode = -1;              ///< 速度模式：0-低速，1-高速。-1 表示未设置。参见 `SpeedMode`（`value.h`）
+    int real_height_cap_enabled = -1; ///< 高度上限开关。-1 未设置；0=false；1=true
+    int real_height_cap_limit = -1;   ///< 高度上限值（米），范围 20-1500。-1 表示未设置
+    int need_verify_flight_control = -1; ///< 是否需要验证飞行控制权。-1 未设置；0=false；1=true
 };
 
 /// 飞行器自主规划路径点
@@ -2490,6 +2613,9 @@ struct PsdkSpeakerResource {
     std::string opus_object_key;   ///< Opus 格式对象 key
     long opus_size = 0;            ///< Opus 文件大小
     std::string opus_md5_sum;      ///< Opus 文件 MD5
+    std::string project_id;        ///< 项目 ID（编辑接口返回，列表/创建为空）
+    bool visible = false;          ///< 是否可见（编辑接口返回）
+    std::string create_scene;      ///< 创建场景（编辑接口返回）
 
     bool operator==(const PsdkSpeakerResource& other) const {
         return
@@ -2509,7 +2635,13 @@ struct PsdkSpeakerResource {
             pcm_md5_sum == other.pcm_md5_sum &&
             content == other.content &&
             md5_sum == other.md5_sum &&
-            created_at == other.created_at;
+            created_at == other.created_at &&
+            opus_object_key == other.opus_object_key &&
+            opus_size == other.opus_size &&
+            opus_md5_sum == other.opus_md5_sum &&
+            project_id == other.project_id &&
+            visible == other.visible &&
+            create_scene == other.create_scene;
     }
 };
 
@@ -2518,6 +2650,16 @@ struct PsdkSpeakerResourceList {
 
     bool operator==(const PsdkSpeakerResourceList& other) const {
         return resources == other.resources;
+    }
+};
+
+/// 获取 PSDK 喊话器资源列表的过滤参数
+struct PsdkSpeakerResourceListParams {
+    std::string file_type;  ///< 文件类型："audio" 或 "tts"，空=不过滤
+    std::string md5_sum;    ///< 文件 MD5，空=不过滤
+
+    bool operator==(const PsdkSpeakerResourceListParams& other) const {
+        return file_type == other.file_type && md5_sum == other.md5_sum;
     }
 };
 
@@ -2611,6 +2753,9 @@ struct EditPsdkSpeakerResourceParams {
     std::string file_type;  // "audio" or "tts"
     bool visible = false;   // required if file_type is "audio"
     std::string content;    // required if file_type is "tts"
+    std::string opus_object_key;  ///< Opus 对象 key
+    long long opus_size = 0;      ///< Opus 文件大小
+    std::string opus_md5_sum;     ///< Opus 文件 MD5
 
     bool operator==(const EditPsdkSpeakerResourceParams& other) const {
         return
@@ -2618,7 +2763,10 @@ struct EditPsdkSpeakerResourceParams {
             name == other.name &&
             file_type == other.file_type &&
             visible == other.visible &&
-            content == other.content;
+            content == other.content &&
+            opus_object_key == other.opus_object_key &&
+            opus_size == other.opus_size &&
+            opus_md5_sum == other.opus_md5_sum;
     }
 };
 
@@ -2628,6 +2776,7 @@ struct STSCredential {
     long long expire = 0;
     std::string security_token;
     int platform = 0;  // 直播专用，后续再废弃
+    std::string expiration;  ///< 凭证绝对过期时间
 
     bool operator==(const STSCredential& other) const {
         return
@@ -2635,7 +2784,8 @@ struct STSCredential {
             access_key_secret == other.access_key_secret &&
             expire == other.expire &&
             security_token == other.security_token &&
-            platform == other.platform;
+            platform == other.platform &&
+            expiration == other.expiration;
     }
 };
 
@@ -2785,11 +2935,14 @@ struct TakeoffParams {
     double target_longitude = 0;         ///< 目标经度
 
     // --- 可选（未设置则不传）---
-    int commander_flight_mode = -1;      ///< 指点飞行模式：0-平稳模式，1-运动模式。-1 表示未设置
+    int commander_flight_mode = -1;      ///< 指点飞行模式（飞行风格）：0-平稳模式，1-运动模式。-1 表示未设置。注意与 `speed_mode`（速度档位）是两个独立字段，互不相关
     double commander_flight_height = -1; ///< 指点飞行高度（米），范围 20-1500。-1 表示未设置
     int rth_mode = -1;                   ///< 返航模式：0-智能高度，1-设定高度。-1 表示未设置
     std::string cloud_to_cloud_id;       ///< 云云对接存储桶 ID。空串表示未设置
     int need_verify_flight_control = -1; ///< 是否需要验证飞行控制权。-1 未设置；0=false；1=true
+    int speed_mode = -1;                 ///< 速度模式（速度档位）：0-低速，1-高速。-1 表示未设置，此时不下发该字段、设备保持当前模式。参见 `SpeedMode`（`value.h`）。注意与 `commander_flight_mode`（飞行风格）是两个独立字段，互不相关
+    int real_height_cap_enabled = -1;    ///< 高度上限开关。-1 未设置（设备保持当前设置）；0=false；1=true
+    int real_height_cap_limit = -1;      ///< 高度上限值（米），范围 20-1500。-1 表示未设置
 
     bool operator==(const TakeoffParams& other) const {
         return
@@ -2805,7 +2958,10 @@ struct TakeoffParams {
             floatEqual(commander_flight_height, other.commander_flight_height) &&
             rth_mode == other.rth_mode &&
             cloud_to_cloud_id == other.cloud_to_cloud_id &&
-            need_verify_flight_control == other.need_verify_flight_control;
+            need_verify_flight_control == other.need_verify_flight_control &&
+            speed_mode == other.speed_mode &&
+            real_height_cap_enabled == other.real_height_cap_enabled &&
+            real_height_cap_limit == other.real_height_cap_limit;
     }
 };
 
@@ -2815,70 +2971,22 @@ struct TakeoffResult {
     std::string fly_to_id;  ///< 指点飞行任务 ID
 };
 
+/// 舱外起飞参数。对应 **GroundTakeoffRequest**。
+/// SDK 实际请求：`POST /atc/api/v1/flight-tasks/ground-take-off`；`device_sn` 由 Module 注入网关 SN，调用方无需填写。
+struct GroundTakeoffParams {
+    int auto_takeoff_height = 0;         ///< 自动起飞高度（米），范围 2-1500（必填）
+    int out_of_control_action = static_cast<int>(OutOfControlAction::UNKNOWN); ///< 失控动作（必填）。Hover/ReturnHome/Continue。参见 `OutOfControlAction`（`value.h`）
 
-// 飞机下载星历 参数;
-// DownloadEphemerisParams;
-struct DownloadEphemerisParams {
-    std::string ephemeris_url;        // ephemeris 文件 url;
-    std::string ephemeris_file_name;  // ephemeris 文件名;
-
-
-    bool operator==(const DownloadEphemerisParams& rhs) const {
+    bool operator==(const GroundTakeoffParams& other) const {
         return
-            ephemeris_url == rhs.ephemeris_url &&
-            ephemeris_file_name == rhs.ephemeris_file_name;
-    }
-
-    bool operator!=(const DownloadEphemerisParams& rhs) const {
-        return !(*this == rhs);
-    }
-}; 
-
-
-// 开始/暂停进离场任务 InOutWaylineDetectParams
-struct InOutWaylineDetectParams {
-    std::string task_id;            // 任务id;
-    int task_cmd;                   // 0 开始勘探选址; 1 终止勘探选址; 2 停止离场点视觉勘探; 3 开始离场点视觉勘探;
-    bool is_auto_visual_scout;      // 是否自动勘探;
-    double scout_relative_height;   // 离场点相对起飞高度 自动勘探需填;
-    double patrol_relative_height;  // 方兴航线执行相对起飞高度;
-
-
-    bool operator==(const InOutWaylineDetectParams& rhs) const {
-        return
-            task_id == rhs.task_id &&
-            task_cmd == rhs.task_cmd &&
-            is_auto_visual_scout == rhs.is_auto_visual_scout &&
-            floatEqual(scout_relative_height, rhs.scout_relative_height) &&
-            floatEqual(patrol_relative_height, rhs.patrol_relative_height);
-    }
-
-    bool operator!=(const InOutWaylineDetectParams& rhs) const {
-        return !(*this == rhs);
+            auto_takeoff_height == other.auto_takeoff_height &&
+            out_of_control_action == other.out_of_control_action;
     }
 };
 
-
-// 进离场航线飞行设置;
-struct InOutWaylineFlightSettingParams {
-    std::string sn;                // 设备序列号;
-    double min_return_home_height;  // 最低返航高度，单位：米;
-    int lost_contact_action;       // 失联动作。枚举：0=悬停, 1=返航, 2=自动降落;
-    double max_height_limit;       // 最大高度限制，单位：米;
-    double max_distance_limit;     // 最大距离限制，单位：米;
-
-    bool operator==(const InOutWaylineFlightSettingParams& rhs) const {
-        return
-            sn == rhs.sn &&
-            lost_contact_action == rhs.lost_contact_action &&
-            floatEqual(min_return_home_height, rhs.min_return_home_height) &&
-            floatEqual(max_height_limit, rhs.max_height_limit) &&
-            floatEqual(max_distance_limit, rhs.max_distance_limit);
-    }
-    
-    bool operator!=(const InOutWaylineFlightSettingParams& rhs) const {
-        return !(*this == rhs);
-    }
+/// 舱外起飞结果。对应 **GroundTakeoffResponse**。
+struct GroundTakeoffResult {
+    std::string flight_id;  ///< 飞行任务 ID
 };
 
 
@@ -2933,26 +3041,30 @@ struct CreateTestFlightTaskParams {
     std::string name;
     std::string wayline_uuid;
     std::string sn;
-    std::string landing_dock_sn;
-    int task_type = 1;  // 立即任务
+    std::string landing_dock_sn;  // 【不生效】试飞任务不支持 A 起 B 降，后端固定为空
+    int task_type = 1;            // 【不生效】后端固定为试飞任务
     int out_of_control_action_in_flight = 1;
-    int rth_mode = 1;
+    int rth_mode = 1;             // 【不生效】后端固定为设定高度返航
     int repeat_type = 0;
     std::string time_zone;
     std::string default_name;
     int wayline_precision_type = 1;
-    double wayline_duration = 0.0;  // 航线预估执行时间，单位秒
-    int rth_altitude = 100;  // 返航高度，单位米
-    std::string resumable_status;
+    double wayline_duration = 0.0;  // 航线预估执行时间，单位秒；试飞任务应传大于 0 的值
+    int rth_altitude = 100;         // 【不生效】后端固定为 60 米
+    std::string resumable_status;   // 【不生效】后端固定为手动续飞
     std::string media_folder_id_paths;
     int device_type = 0;
+    std::string cloud_to_cloud_id;  // 云云对接存储桶 ID
+    std::vector<std::string> tags;  // 云云对接标签，最多 10 个，每个 1~45 字符
 };
 
 /// 试飞航线下发 - 响应
 struct CreateTestFlightTaskResponse {
     std::string uuid;
-    int begin_at = 0;
-    int end_at = 0;
+    long long begin_at = 0;   // 任务开始时间（Unix 秒）
+    long long end_at = 0;     // 任务结束时间（Unix 秒）
+    std::vector<long long> wayline_validity_check_codes;  // 航线有效性校验码列表
+    bool is_task_created = false;                         // 是否成功创建任务；219019 时为 false
 };
 
 struct LiveVideoInfo {
@@ -2971,7 +3083,7 @@ struct LiveVideoInfo {
 
 struct ThermalGainModeInfo {
     std::string payload_index;               ///< 负载索引，格式为 {type-subtype-gimbalindex}，例如 "81-0-0"
-    int thermal_gain_mode = static_cast<int>(IrGainMode::Auto); ///< 取值语义同 `flight_hub_sdk::IrGainMode`（见 `value.h`）
+    int thermal_gain_mode = static_cast<int>(IrGainMode::UNKNOWN); ///< 取值语义同 `flight_hub_sdk::IrGainMode`（见 `value.h`）
 
     bool operator==(const ThermalGainModeInfo& other) const {
         return
@@ -2987,7 +3099,7 @@ struct CameraIrLensState {
     bool screen_split_enable = false;                      ///< 分屏开关（画中画）
     int ir_zoom_factor = 0;                                ///< IR 变焦倍率
     int thermal_current_palette_style = 0;                 ///< 当前调色板样式
-    int thermal_gain_mode = static_cast<int>(IrGainMode::Auto); ///< 增益模式（对应 IrGainMode 枚举整型）
+    int thermal_gain_mode = static_cast<int>(IrGainMode::UNKNOWN); ///< 增益模式（对应 IrGainMode 枚举整型）
     double thermal_global_temperature_max = 0.0;           ///< 全局最高温（°C）
     double thermal_global_temperature_min = 0.0;           ///< 全局最低温（°C）
     int thermal_isotherm_lower_limit = 0;                  ///< 等温线下限（%）
@@ -3013,7 +3125,7 @@ struct CameraIrLensState {
 
 struct ThermalGainModeSetParams {
     std::string payload_index;               ///< 负载索引，格式为 {type-subtype-gimbalindex}，例如 "81-0-0"
-    int thermal_gain_mode = static_cast<int>(IrGainMode::Auto); ///< 取值语义同 `flight_hub_sdk::IrGainMode`（见 `value.h`）
+    int thermal_gain_mode = static_cast<int>(IrGainMode::LowGain); ///< 取值语义同 `flight_hub_sdk::IrGainMode`（见 `value.h`）
 
     bool operator==(const ThermalGainModeSetParams& other) const {
         return
@@ -3097,21 +3209,6 @@ public:
             floatEqual(height, other.height) &&
             floatEqual(latitude, other.latitude) &&
             floatEqual(longitude, other.longitude);
-    }
-};
-
-// 机场离场点信息
-class DockDeparturePoint {
-public:
-    double longitude = 0.0;  // 经度
-    double latitude = 0.0;   // 纬度
-    double height = 0.0;     // 椭球高度
-
-    bool operator==(const DockDeparturePoint& other) const {
-        return
-            floatEqual(longitude, other.longitude) &&
-            floatEqual(latitude, other.latitude) &&
-            floatEqual(height, other.height);
     }
 };
 
@@ -3747,8 +3844,8 @@ struct ManualBatterySwapProgressResult {
 };
 
 struct DonglePowerSwitchResult {
-    std::string message;
-    std::string bid;
+    std::string message;            // 网关响应 message, 成功通常为 "OK", 失败为错误信息
+    std::string bid;                // 业务 ID
     bool operator==(const DonglePowerSwitchResult& other) const {
         return message == other.message && bid == other.bid;
     }
@@ -3959,7 +4056,7 @@ struct CloseChargeResult {
 // 
 struct NetworkTestProgressResult {
     std::string message;
-    std::string bid;
+    std::string bid;  // 业务ID; 仅 startNetworkTest 响应与 subscribeNetworkTestProgress(WS) 有值; getNetworkTestProgress(GET) 后端不返回, 恒为空
     double create_time = 0.0;
     double update_time = 0.0;
     double download_speed = 0.0;
@@ -4086,7 +4183,7 @@ struct DockStatusBackupBatteryResult {
 
 struct DockStatusNetworkStateResult {
     int quality = 0;
-    int rate = 0;
+    double rate = 0.0;
     int type = 0;
 };
 
@@ -5090,6 +5187,7 @@ struct HistoryHmsDataResultItem {
     std::string joint_key;       ///< 联合键
     std::string status_key;      ///< 状态键
     std::string sn;              ///< 设备 SN
+    std::vector<HistoryHmsDataResultItem> sub_hms_list; ///< HMS 根因列表(递归, 可为空)
 };
 
 /// 历史 HMS 告警查询结果
@@ -5137,19 +5235,21 @@ struct SubDeviceInfo {
     std::string flysafe_database_version;
     std::vector<std::string> parent_sns;
     std::string nickname;   // 设备昵称(后端 device_callsign 字段, 与 getDeviceList 的 nickname 同源)
+    std::string device_state;
 };
 
 struct DeviceDetailInfo {
     std::string device_sn;
     std::string nickname;   // 设备昵称(后端 device_callsign 字段, 与 getDeviceList 的 nickname 同源)
     ModelInfo model_info;
-    int device_add_time;
+    int64_t device_add_time = 0;
     bool device_online_status;
     std::string device_firmware_version;
     int device_firmware_status;
     int device_working_status;
     std::string complete_machine_sn;
     std::vector<SubDeviceInfo> sub_devices;
+    std::string device_state;
 };
 
 struct ModifyDeviceNameItem {
@@ -5192,9 +5292,10 @@ struct FirmwareUpgradeResponseDeviceItemResult {
 };
 
 struct FirmwareUpgradeResult {
-    int device_code = 0;
-    std::vector<FirmwareUpgradeResponseDeviceItemResult> devices;
-    std::string status;
+    std::string bid;                 // 业务 ID
+    int device_code = 0;             // 历史字段: 后端不返回, 恒为 0
+    std::vector<FirmwareUpgradeResponseDeviceItemResult> devices;  // 历史字段: 后端不返回, 恒为空
+    std::string status;              // 升级状态
 };
 
 struct FirmwareUpgradeProgressStep {
@@ -5217,50 +5318,6 @@ struct FirmwareUpgradeAssociateRelay {
     int firmware_status;
     std::string sn;
 };
-
-struct FirmwareUpgradeProgressItem {
-    FirmwareUpgradeAssociateDrone associate_drone;
-    FirmwareUpgradeAssociateRelay associate_relay;
-    int device_code;
-    int firmware_status;
-    FirmwareUpgradeProgressOTA ota;
-    std::string sn;
-    int working_status;
-};
-
-struct FirmwareUpgradeProgressResult {
-    std::vector<FirmwareUpgradeProgressItem> list;
-};
-
-struct FirmwareItemResult {
-    int id;
-    std::string created_at;
-    std::string device_model_key;
-    std::string status;
-    std::string version;
-    std::string desc;
-};
-
-struct FirmwareListResult {
-    std::vector<FirmwareItemResult> list;
-};
-
-
-struct FirmwareCompatibilityRulesResult {
-    std::string min_version;
-    std::string max_version;
-};
-
-struct FirmwareCompatibilityConfigItemResult {
-    std::string device_model_key;
-    std::vector<std::string> compatible_versions;
-    FirmwareCompatibilityRulesResult rules;
-};
-
-struct FirmwareCompatibilityConfigResult {
-    std::vector<FirmwareCompatibilityConfigItemResult> data;
-};
-
 
 struct FirmwareServiceProgress {
     int percent;
@@ -5286,6 +5343,69 @@ struct FirmwareService {
     FirmwareServiceProgress progress;
     FirmwareServiceData data;
 };
+
+struct FirmwareUpgradeProgressItem {
+    // 历史字段: 后端当前不返回, 保留以兼容旧调用方
+    FirmwareUpgradeAssociateDrone associate_drone;
+    FirmwareUpgradeAssociateRelay associate_relay;
+    int device_code;
+    int firmware_status;
+    FirmwareUpgradeProgressOTA ota;
+    std::string sn;
+    int working_status;
+    // 后端 GET /manager/ota/progress 实际返回字段
+    std::string firmware_version;   // 固件版本
+    std::string device_model_key;   // 设备型号 Key
+    FirmwareService services;       // 关联的升级服务, 进度见 services.progress
+};
+
+struct FirmwareUpgradeProgressResult {
+    std::vector<FirmwareUpgradeProgressItem> list;
+};
+
+struct FirmwareItemResult {
+    int id;
+    std::string created_at;
+    std::string device_model_key;
+    std::string status;
+    std::string version;
+    std::string desc;
+};
+
+struct FirmwareListResult {
+    std::vector<FirmwareItemResult> list;
+    CommonPaginationData pagination;  // 分页信息(当前页/每页数量/总数)
+};
+
+
+struct FirmwareCompatibilityRulesResult {
+    std::string min_version;
+    std::string max_version;
+};
+
+struct FirmwareCompatibilityValidateResult {
+    std::string field;
+    std::string description;
+    std::string compare;
+    std::string value;  // 原样 JSON 字符串
+};
+
+struct FirmwareCompatibilityConfigItemResult {
+    // 旧字段（保留兼容）
+    std::string device_model_key;
+    std::vector<std::string> compatible_versions;
+    FirmwareCompatibilityRulesResult rules;
+    // 后端实际返回字段
+    std::string key;
+    std::vector<std::string> user_type;
+    std::string description;
+    std::vector<FirmwareCompatibilityValidateResult> validates;
+};
+
+struct FirmwareCompatibilityConfigResult {
+    std::vector<FirmwareCompatibilityConfigItemResult> data;
+};
+
 
 struct FirmwareStatusItem {
     std::string sn;                 // 设备序列号
@@ -5334,9 +5454,15 @@ struct CheckUnlockLicenseResultItem {
     std::string url;
 };
 
+struct ErrCertMismatch {
+    std::string airport_sn;
+    std::string aircraft_sn;
+    std::string file_name;
+};
+
 struct CheckUnlockLicenseResult {
     std::vector<std::string> err_file_name;
-    std::vector<std::string> err_cert_mismatch;
+    std::vector<ErrCertMismatch> err_cert_mismatch;
     std::vector<CheckUnlockLicenseResultItem> list;
 };
 
@@ -5449,12 +5575,24 @@ struct GetWaylineListParam {
     std::vector<std::string> drone_types;             // 飞行器类型过滤
     std::vector<std::string> wayline_uuids;           // 航线 UUID 过滤
     std::vector<std::string> payload_types;            // 载荷类型过滤
-    std::vector<std::string> wayline_types;            // 航线类型过滤
+    std::vector<std::string> wayline_types;            // 航线类型过滤（历史字段，字符串；建议改用 wayline_types_int）
+    std::vector<int> wayline_types_int;                // 航线类型过滤（int 数组，与后端一致）
+    std::string keyword;                               // 关键字模糊搜索
 };
 struct WaylineListPaginationResult {
     int page = 0;
     int page_size = 0;
     int total = 0;
+};
+
+/// 航线碰撞事件
+struct WaylineCollisionEvent {
+    std::string wayline_uuid;
+    std::string flight_task_uuid;
+    long long timestamp = 0;
+    double latitude = 0.0;
+    double longitude = 0.0;
+    double altitude = 0.0;
 };
 
 struct WaylineListItemResult {
@@ -5465,10 +5603,14 @@ struct WaylineListItemResult {
     std::vector<std::string> payload_types;
     std::vector<std::string> payload_types_with_index;
     std::string drone_type;
-    long long updated_at = 0;
+    long long updated_at = 0;                    ///< 更新时间(unix 毫秒)
     bool with_megaphone = false;
     bool with_search_light = false;
     bool is_ai_wayline = false;
+    std::map<std::string, std::string> editor_warnings;   ///< 编辑告警
+    std::map<std::string, std::string> execute_warnings;  ///< 执行告警
+    bool has_collisions = false;                          ///< 是否存在碰撞
+    std::vector<WaylineCollisionEvent> collision_positions; ///< 碰撞位置列表
 };
 
 struct GetWaylineListResult {
@@ -5539,6 +5681,37 @@ struct WaylineDetailKmzData {
     std::unordered_map<std::string, std::string> audio_action_uuid_to_file_path_map;
     std::unordered_map<std::string, std::string> ai_audio_action_uuid_to_file_path_map;
     WaylineDetailSurveyAreaScope survey_area_scope;
+    std::string md5;                             ///< KMZ 数据 MD5
+};
+
+/// 模型边界信息（中心点 + 半长）
+struct ConcatWaylineExtDataModelBoundary {
+    double latitude = 0;              ///< 中心纬度
+    double longitude = 0;             ///< 中心经度
+    double altitude = 0;              ///< 中心海拔高度
+    double half_x = 0;                ///< 经度距离半长（米）
+    double half_y = 0;                ///< 纬度距离半长（米）
+    double half_z = 0;                ///< 海拔高度半长（米）
+    std::vector<double> transform;    ///< 变换矩阵
+};
+
+/// 二维地理坐标点
+struct ConcatWaylineExtDataModelBoundingPoint {
+    double lng = 0;                   ///< 经度
+    double lat = 0;                   ///< 纬度
+};
+
+/// 二维地理多边形
+struct ConcatWaylineExtDataModelBounding {
+    std::vector<ConcatWaylineExtDataModelBoundingPoint> points;  ///< 多边形顶点列表
+};
+
+/// 贴近摄影模型文件信息
+struct ConcatWaylineExtDataModel {
+    std::string uuid;                                            ///< 模型 UUID
+    std::string file_key;                                        ///< 文件存储 Key
+    ConcatWaylineExtDataModelBoundary boundary;                  ///< 模型边界信息
+    ConcatWaylineExtDataModelBounding bounding;                  ///< 模型包围多边形
 };
 
 struct WaylineDetailExtData {
@@ -5547,6 +5720,9 @@ struct WaylineDetailExtData {
     std::string target_area_file_object_key;
     std::string business_file_object_key;
     std::vector<std::string> model_file_object_keys;
+    std::vector<std::string> elevation_file_object_keys;  ///< 高程文件存储桶路径列表
+    long long content_length = 0;                         ///< 航线文件大小（字节）
+    std::vector<ConcatWaylineExtDataModel> models;        ///< 贴近摄影模型信息列表
 };
 
 struct GetWaylineDetailResult {
@@ -5557,7 +5733,7 @@ struct GetWaylineDetailResult {
     std::string url;
     std::string suffix;
     long long deleted_at = 0;
-    long long updated_at = 0;
+    long long updated_at = 0;                    ///< 更新时间(unix 秒)
     std::string kmz_without_res_url;
     std::string target_area_file_url;
     std::string business_file_url;
@@ -5565,6 +5741,10 @@ struct GetWaylineDetailResult {
     WaylineDetailExtData ext_data;
     std::unordered_map<std::string, std::string> editor_warnings;  ///< 编辑态告警
     std::unordered_map<std::string, std::string> execute_warnings; ///< 执行态告警
+    int wayline_point_nums = 0;                              ///< 航线点数量
+    std::vector<WaylineObstacle> obstacles;                  ///< 避障信息列表
+    std::string elevation_uuid;                              ///< 高程文件 UUID
+    std::vector<WaylineCollisionEvent> collision_positions;  ///< 碰撞位置列表
 };
 // WaylineDetail End
 
@@ -5627,36 +5807,6 @@ struct ConcatWaylineParam {
     std::unordered_map<std::string, std::string> editor_warnings;     ///< 编辑器警告（可选）
 };
 
-/// 模型边界信息（中心点 + 半长）
-struct ConcatWaylineExtDataModelBoundary {
-    double latitude = 0;              ///< 中心纬度
-    double longitude = 0;             ///< 中心经度
-    double altitude = 0;              ///< 中心海拔高度
-    double half_x = 0;                ///< 经度距离半长（米）
-    double half_y = 0;                ///< 纬度距离半长（米）
-    double half_z = 0;                ///< 海拔高度半长（米）
-    std::vector<double> transform;    ///< 变换矩阵
-};
-
-/// 二维地理坐标点
-struct ConcatWaylineExtDataModelBoundingPoint {
-    double lng = 0;                   ///< 经度
-    double lat = 0;                   ///< 纬度
-};
-
-/// 二维地理多边形
-struct ConcatWaylineExtDataModelBounding {
-    std::vector<ConcatWaylineExtDataModelBoundingPoint> points;  ///< 多边形顶点列表
-};
-
-/// 贴近摄影模型文件信息
-struct ConcatWaylineExtDataModel {
-    std::string uuid;                                            ///< 模型 UUID
-    std::string file_key;                                        ///< 文件存储 Key
-    ConcatWaylineExtDataModelBoundary boundary;                  ///< 模型边界信息
-    ConcatWaylineExtDataModelBounding bounding;                  ///< 模型包围多边形
-};
-
 /// 航线拼接扩展数据
 struct ConcatWaylineExtData {
     std::string kmz_without_res_object_key;                      ///< 航线 KMZ 文件存储路径（不含资源文件）
@@ -5680,8 +5830,9 @@ struct ConcatWaylineResult {
 // ============================================================
 struct ImportKmzItem {
     std::string kmz_object_key;          ///< KMZ 文件在对象存储中的路径，格式：wayline/import/<filename>.kmz
+    std::string wayline_uuid;            ///< 导入成功后生成的航线 UUID
     std::string wayline_name;            ///< 航线名称（默认为文件名去掉 .kmz 扩展名）
-    std::string async_request_id;        ///< 异步请求 ID（UUID 格式），可用于后续查询导入状态
+    std::string async_request_id;        ///< 异步请求 ID；后端当前不返回，恒为空，保留兼容
 };
 
 struct ImportKmzResult {
@@ -5818,6 +5969,9 @@ struct AIInsideModelItem {
     std::vector<int> image_source;            ///< 支持的图像来源（0=可见光, 1=红外）
     std::vector<int> digital_effect;          ///< 支持的数字效果列表
     std::vector<int> vl_resolution;           ///< 支持的可见光分辨率（0=1k, 1=2k）
+    std::vector<int> model_types;             ///< 模型类型列表
+    std::string model_combination;            ///< 模型组合，JSON 对象字符串
+    std::string status;                       ///< 算法装载状态：latest/updatable/not_loaded/expired/not_supported
 };
 
 struct GetAIInsideModelsResult {
@@ -5834,9 +5988,13 @@ struct GetAIInsideModelDevicesParam {
 };
 
 struct AIInsideDeviceModel {
-    std::string device_model_key;  ///< 设备型号枚举 Key（如 "EA230"）
-    std::string domain;            ///< 设备域（"dock" 表示机场，"drone" 表示飞机）
-    std::string name;              ///< 设备型号显示名称
+    std::string device_model_key;   ///< 设备型号枚举 Key（如 "EA230"）
+    std::string domain;             ///< 设备域（"dock" 表示机场，"drone" 表示飞机）
+    std::string type;               ///< 设备型号类型
+    std::string sub_type;           ///< 设备型号子类型
+    std::string name;               ///< 设备型号显示名称
+    std::string device_model_class; ///< 设备型号 class（JSON 键为 "class"）
+    std::string develop_code;       ///< 设备型号开发代号
 };
 
 struct AIInsideOperateProgressDetail {
@@ -5864,7 +6022,7 @@ struct AIInsideAssociateDrone {
     std::string device_sn;               ///< 飞机 SN
     AIInsideDeviceModel device_model;    ///< 飞机型号信息
     bool device_online_status = false;   ///< 飞机是否在线
-    int device_working_status = 0;       ///< 飞机工作状态码
+    double device_working_status = 0.0;  ///< 飞机工作状态码
     AIInsideModelInfo ai_model_info;     ///< 飞机当前算法装载状态
 };
 
@@ -5873,7 +6031,7 @@ struct AIInsideDeviceItem {
     AIInsideDeviceModel device_model;               ///< 机场型号信息
     std::string complete_machine_sn;                ///< 整机铭牌 SN
     bool device_online_status = false;              ///< 机场是否在线
-    int device_working_status = 0;                  ///< 机场工作状态码
+    double device_working_status = 0.0;             ///< 机场工作状态码
     AIInsideOperateProgress operate_ai_model;       ///< 机场当前算法操作进度
     AIInsideAssociateDrone associate_drone_device_info; ///< 机场关联的飞机信息
 };
@@ -5993,11 +6151,11 @@ struct UploadAIInsideAlgorithmFileResult {
 class GridSignalItem {
 public:
     std::string h3_index;        // Uber H3网格下标，等级为 11;
-    int sdr_avg = 0;             // 平均sdr信号强度;
+    double sdr_avg = 0;          // 平均sdr信号强度;
     int sdr_max = 0;             // 最大sdr信号强度;
     int sdr_min = 0;             // 最小sdr信号强度;
 
-    int signal_4g_avg = 0;       // 平均4g信号强度, 如果没有插入4G模块, 则无此字段;
+    double signal_4g_avg = 0;    // 平均4g信号强度, 如果没有插入4G模块, 则无此字段;
     int signal_4g_max = 0;       // 最大4g信号强度, 如果没有插入4G模块, 则无此字段;
     int signal_4g_min = 0;       // 最小4g信号强度, 如果没有插入4G模块, 则无此字段;
     
@@ -6005,10 +6163,10 @@ public:
     bool operator==(const GridSignalItem &rhs) const {
         return
             h3_index == rhs.h3_index &&
-            sdr_avg == rhs.sdr_avg &&
+            floatEqual(sdr_avg, rhs.sdr_avg) &&
             sdr_max == rhs.sdr_max &&
             sdr_min == rhs.sdr_min &&
-            signal_4g_avg == rhs.signal_4g_avg &&
+            floatEqual(signal_4g_avg, rhs.signal_4g_avg) &&
             signal_4g_max == rhs.signal_4g_max &&
             signal_4g_min == rhs.signal_4g_min;
     }
@@ -6374,19 +6532,46 @@ public:
 };
 
 
+// 获取飞行区文件下载地址;
+class GetFlightAreasUrlResults {
+public:
+    std::string name;        // 文件名;
+    std::string url;         // 签名下载地址(有效期 3600 秒);
+    std::string checksum;    // 文件内容 SHA-256, 十六进制;
+    long long size = 0;      // 文件大小(字节);
+
+    bool operator==(const GetFlightAreasUrlResults& rhs) const {
+        return
+            (name == rhs.name) &&
+            (url == rhs.url) &&
+            (checksum == rhs.checksum) &&
+            (size == rhs.size);
+    }
+
+    bool operator!=(const GetFlightAreasUrlResults& rhs) const {
+        return !(*this == rhs);
+    }
+};
+
+
 class UpdateCustomizedFlightAreasParams {
 public:
     std::string flight_area_id;
 
     std::string name;  // name, 飞行区名称, 比如 "圆形限飞区", "圆形作业区";
     FlightAreasContentData content;         // content, 飞行区内容;
-    std::string update_by;  // update_by, 更新用户 ID;
+    std::string status;  // status, 飞行区状态: enable / disable（可选, 空表示不更新）
+    std::string type;    // type, 飞行区类型: dfence / nfz / noland（可选, 空表示不更新）
+    // update_by, 更新用户 ID; 【已废弃】后端 updated_by 以登录态为准, 请求不再上送该字段, 设置无效(保留仅为兼容)。
+    std::string update_by;
 
     bool operator==(const UpdateCustomizedFlightAreasParams &rhs) const {
         return
             flight_area_id == rhs.flight_area_id &&
             name == rhs.name &&
             content == rhs.content &&
+            status == rhs.status &&
+            type == rhs.type &&
             update_by == rhs.update_by;
     }
     
@@ -6412,7 +6597,7 @@ struct OfflineMapsModelData {
     int id = -1;               // 离线地图模型ID;
     long long updated_time = 0;     // 更新时间;
     std::vector<OfflineMapsModelInfoData> models;  // 模型信息;
-    int percent = 0;           // 同步进度百分比;
+    double percent = 0.0;      // 同步进度百分比，后端为 float32，支持小数;
     std::string status;        // 状态。枚举："finish"=完成;
     int result = 0;            // 结果码;
 
@@ -6421,7 +6606,7 @@ struct OfflineMapsModelData {
             id == rhs.id &&
             updated_time == rhs.updated_time &&
             models == rhs.models &&
-            percent == rhs.percent &&
+            floatEqual(percent, rhs.percent) &&
             status == rhs.status &&
             result == rhs.result;
     }
@@ -6531,6 +6716,9 @@ public:
 class GetMediaFilesListParams {
 public:
     std::string flight_id;                // [可选参数] 飞行航线 ID, 传空字符串("")表示不指定具体的航线 ID;
+    std::string wayline_uuid;             // [可选参数] 航线 UUID 过滤, 传空字符串表示不指定;
+    std::string wayline_action_uuid;      // [可选参数] 航点动作 UUID 过滤, 传空字符串表示不指定;
+    std::vector<std::string> payload_types; // [可选参数] 负载类型过滤, 比如: ["1-98-0"];
     int start_index = 0;                  // [必须参数] 下一页请求的起始 index(第一次查询传入 0, 请求的响应结果返回会返回下一页起始索引);
     int page_size = 100;                  // [必须参数] 每页大小(比如可以传 100, 默认可传 100, 最大500);
     std::vector<std::string> file_types;  // [可选参数] file_types, 文件枚举类型("2": 图片, "3": 视频), 比如: ["2", "3"];
@@ -6541,6 +6729,9 @@ public:
     bool operator==(const GetMediaFilesListParams &rhs) const {
         return
             flight_id == rhs.flight_id &&
+            wayline_uuid == rhs.wayline_uuid &&
+            wayline_action_uuid == rhs.wayline_action_uuid &&
+            payload_types == rhs.payload_types &&
             start_index == rhs.start_index &&
             page_size == rhs.page_size &&
             file_types == rhs.file_types &&
@@ -6619,6 +6810,7 @@ class MediaFilesListItemInfoData {
 public:
     long long file_id = -1;                    // 文件id;
     std::string flight_id;                     // 飞行记录id;
+    std::string wayline_uuid;                  // 航线 UUID;
     std::string wayline_action_uuid;           // 航点动作id;
     long long size = 0;                        // 文件大小(字节);
     std::string object_key;                    // 文件存储对象key;
@@ -6629,12 +6821,19 @@ public:
     std::string file_path;                     // 文件路径;
     std::string device_sn;                     ///< 设备 SN
     std::string payload_type;                  ///< 负载类型
+    std::string preview_key;                   ///< 预览 key;
     int type = 0;                              ///< 文件类型; 取值参见 MediaType 枚举; 媒体列表接口实际只会出现 0(未定义)/1(文件夹)/2(图片)/3(视频)
+
+    // ==== 全景拼接相关字段（3X 超清全景，与云端媒体库文件接口字段一一对应）====
+    int pano_total_count     = 0;              ///< 全景源照片数量(文件夹字段; 成片文件为 0)
+    int pano_stitch_state    = 0;              ///< 拼接状态(成片字段, 取值见 `PanoStitchState` 枚举)
+    int pano_stitch_progress = 0;              ///< 拼接进度 [0, 100](成片字段)
 
     bool operator==(const MediaFilesListItemInfoData &rhs) const {
         return
             file_id == rhs.file_id &&
             flight_id == rhs.flight_id &&
+            wayline_uuid == rhs.wayline_uuid &&
             wayline_action_uuid == rhs.wayline_action_uuid &&
             size == rhs.size &&
             object_key == rhs.object_key &&
@@ -6645,6 +6844,10 @@ public:
             file_path == rhs.file_path &&
             device_sn == rhs.device_sn &&
             payload_type == rhs.payload_type &&
+            preview_key == rhs.preview_key &&
+            pano_total_count == rhs.pano_total_count &&
+            pano_stitch_state == rhs.pano_stitch_state &&
+            pano_stitch_progress == rhs.pano_stitch_progress &&
             type == rhs.type;
     }
 
@@ -6987,61 +7190,6 @@ public:
 
 
 
-// 进离场任务状态;
-// topic_task_visual_scout_status;
-class AircraftVisualScoutStatus {
-public:
-    std::string task_id;
-    int visual_scout_stage;
-    long scout_wayline_generate_remain_time;
-
-    bool operator==(const AircraftVisualScoutStatus &rhs) const {
-        return
-            task_id == rhs.task_id &&
-            visual_scout_stage == rhs.visual_scout_stage &&
-            scout_wayline_generate_remain_time == rhs.scout_wayline_generate_remain_time;
-    }
-
-    bool operator!=(const AircraftVisualScoutStatus &rhs) const {
-        return !(*this == rhs);
-    }
-};
-
-
-// 踏勘任务异常消息;
-// topic_task_visual_scout_abnormal_info;
-class AircraftVisualScoutAbnormalInfo {
-public:
-    std::string task_id;
-    int err_code;
-
-    bool operator==(const AircraftVisualScoutAbnormalInfo &rhs) const {
-        return task_id == rhs.task_id && err_code == rhs.err_code;
-    }
-
-    bool operator!=(const AircraftVisualScoutAbnormalInfo &rhs) const {
-        return !(*this == rhs);
-    }
-};
-
-
-// 障碍物过近消息;
-// topic_task_visual_scout_obstacle_info
-class AircraftVisualScoutObstacleInfo {
-public:
-    std::string task_id;
-    bool obstacle_tag;
-
-    bool operator==(const AircraftVisualScoutObstacleInfo &rhs) const {
-        return task_id == rhs.task_id && obstacle_tag == rhs.obstacle_tag;
-    }
-
-    bool operator!=(const AircraftVisualScoutObstacleInfo &rhs) const {
-        return !(*this == rhs);
-    }
-};
-
-
 // Geo Caging 围栏信息（SDK 公开结构）
 struct GeoCagingInfoParam {
     double fg_longitude = 0.0;   // 飞行地理围栏经度
@@ -7052,37 +7200,6 @@ struct GeoCagingInfoParam {
     double cv_latitude = 0.0;    // 自定义电子围栏纬度
     int cv_radius = 0;           // 自定义电子围栏半径（米）
     int cv_height = 0;           // 自定义电子围栏高度（米）
-};
-
-// 星历下载状态;
-// topic_task_ephemeris_download_state;
-class EphemerisDownloadState {
-public:
-    int state;
-
-    bool operator==(const EphemerisDownloadState &rhs) const {
-        return state == rhs.state;
-    }
-    
-    bool operator!=(const EphemerisDownloadState &rhs) const {
-        return !(*this == rhs);
-    }
-};
-
-
-// 星历信息;
-// topic_drone_ephemeris_info;
-class EphemerisInfo {
-public:
-    std::string ephemeris;
-
-    bool operator==(const EphemerisInfo &rhs) const {
-        return ephemeris == rhs.ephemeris;
-    }
-
-    bool operator!=(const EphemerisInfo &rhs) const {
-        return !(*this == rhs);
-    }
 };
 
 /// 设备影子同步单字段状态
@@ -7119,7 +7236,7 @@ struct FlightOutOfControlActionResult {
 
 // 飞行作业高度回调结果
 struct FlightCommanderHeightSetting {
-    int commander_flight_height = 0;   // 飞行作业高度（米）
+    double commander_flight_height = 0;   // 飞行作业高度（米）
 };
 
 struct FlightCommanderHeightResult {
@@ -7232,7 +7349,7 @@ struct MaintenanceOrderDeviceItemParams {
     std::string module;              // 设备机型领域;
     std::string nameplate_sn;        // 铭牌 SN，无则传空字符串;
     int source_type = 0;             // 报修来源类型：0=定损 2=日志反馈 3=直接报修;
-    std::string source_ref_id;       // 来源关联 ID, 来源关联 ID，无则传空字符串;
+    std::string source_ref_id;       // 来源关联 ID（请求体键为 source_reference_id），无则传空字符串;
 };
 
 // attachments;
@@ -7480,7 +7597,7 @@ struct GetSelfDiagnosisReportListParams {
     std::string report_time_begin;     // 上报时间范围起始(Unix 秒，闭区间);
     std::string report_time_end;       // 上报时间范围结束(Unix 秒，闭区间);
     int part = 0;                      // 部件类型过滤（0=整机，10=单机业务定损，其他值由设备协议定义）;
-    int origin = 0;                    // 定损来源过滤（0=FH2，1=NeptuneApp）;
+    int origin = 0;                    // 【已废弃】后端 -private 定损列表不支持 origin，SDK 不再上送;
     std::string query;
     std::vector<std::string> report_user;
     std::string sort_by;  //
@@ -7555,6 +7672,16 @@ struct GetSelfDiagnosisReportResults {
     DiagnosisDeviceReportProgressResult device_report_progress;
     std::string qr_code_content;
     std::string qr_guide_text;
+    std::string cloud_submit_status;                 // 云端提交状态；后端当前未实现时为空;
+    std::string qr_code_url;                         // 二维码 URL；设备回调存在异常且后端生成二维码后非空;
+    std::string qr_code_sign;                        // 二维码签名；仅详情或二维码接口返回;
+    std::string qr_code_nonce;                       // 二维码签名随机数；仅详情或二维码接口返回;
+    std::string device_callback_updated_at;          // 设备回调更新时间（RFC3339）；未回调时为空;
+    std::string created_at;                          // 记录创建时间（RFC3339），区别于 create_time;
+    std::string updated_at;                          // 记录更新时间（RFC3339）;
+    std::string organization_uuid;                   // 组织 UUID；PaaS 为空，SaaS 场景由上下文返回;
+    std::string project_uuid;                        // 项目 UUID；PaaS 为空，SaaS 场景由上下文返回;
+    std::string device_type;                         // 设备型号;
 };
 
 // 定损报告: 查询定损报告列表 结果;
@@ -8031,6 +8158,79 @@ struct WaylineTaskEvent {
 };
 
 // ─────────────────────────────────────────────────────────
+// 多机场返航路径信息事件 (topic_atc_return_home_info_event)
+// 蛙跳/多机场任务执行返航时, 服务端推送本次返航所选定的路径/机场信息。
+// ─────────────────────────────────────────────────────────
+
+struct MultiDockHomeInfo {
+    std::string sn;                          // 机场序列号
+    int plan_status = 0;                     // 规划状态：0-规划中/失败，1-不可达，2-电量不可达，3-可达
+    int estimated_battery_consumption = 0;   // 预计电量消耗
+    double home_distance = 0.0;              // home 点水平距离
+
+    bool operator==(const MultiDockHomeInfo& o) const {
+        return sn == o.sn && plan_status == o.plan_status
+            && estimated_battery_consumption == o.estimated_battery_consumption
+            && floatEqual(home_distance, o.home_distance);
+    }
+};
+
+struct ReturnHomeInfo {
+    long long timestamp = 0;                             // 时间戳（毫秒）
+    std::vector<Waypoint> planned_path_points;           // 规划路径点
+    int last_point_type = 0;                             // 末端点类型：0-可达，1-不可达
+    std::string home_dock_sn;                            // 返航机场序列号
+    std::vector<MultiDockHomeInfo> multi_dock_home_info; // 多机场返航信息
+
+    bool operator==(const ReturnHomeInfo& o) const {
+        return timestamp == o.timestamp && planned_path_points == o.planned_path_points
+            && last_point_type == o.last_point_type && home_dock_sn == o.home_dock_sn
+            && multi_dock_home_info == o.multi_dock_home_info;
+    }
+};
+
+struct ReturnHomeInfoEvent {
+    std::string flight_id;                   // 任务 UUID
+    std::string sn;                          // 设备序列号
+    ReturnHomeInfo info;                     // 返航信息
+
+    bool operator==(const ReturnHomeInfoEvent& o) const {
+        return flight_id == o.flight_id && sn == o.sn && info == o.info;
+    }
+};
+
+// ─────────────────────────────────────────────────────────
+// 任务异常事件 (topic_atc_task_exception_event)
+// ─────────────────────────────────────────────────────────
+
+struct TaskExceptionItem {
+    int code = 0;                            // 设备/业务错误码
+    std::string message;                     // 错误信息
+    std::string sn;                          // 出错设备序列号
+    long long happen_at = 0;                 // 发生时间（秒级时间戳）
+
+    bool operator==(const TaskExceptionItem& o) const {
+        return code == o.code && message == o.message && sn == o.sn && happen_at == o.happen_at;
+    }
+};
+
+struct TaskExceptionEvent {
+    std::string uuid;                        // 任务 UUID
+    std::string name;                        // 任务名称
+    std::string sn;                          // 设备序列号
+    int task_type = 0;                       // 任务类型
+    int status = 0;                          // 任务状态
+    long long timestamp = 0;                 // 时间戳（毫秒）
+    std::vector<TaskExceptionItem> exceptions; // 异常列表
+
+    bool operator==(const TaskExceptionEvent& o) const {
+        return uuid == o.uuid && name == o.name && sn == o.sn
+            && task_type == o.task_type && status == o.status
+            && timestamp == o.timestamp && exceptions == o.exceptions;
+    }
+};
+
+// ─────────────────────────────────────────────────────────
 // 空中下发航线（HTTP 创建/控制/查询 + WS 进度推送）
 // ─────────────────────────────────────────────────────────
 
@@ -8238,23 +8438,34 @@ struct FlightPoiProgressCenterPoint {
 };
 
 struct FlightPoiProgress {
-    std::string uuid;                        // 任务 UUID
-    std::string sn;                          // 机场序列号
-    std::string device_sn;                   // 设备（无人机）序列号
-    FlightPoiProgressCenterPoint poi_center_point; // POI 中心点
-    double speed = 0.0;                      // 飞行速度（m/s）
-    double circle_radius = 0.0;              // 环绕半径（m）
-    std::string payload_index;               ///< 负载索引，格式为 {type-subtype-gimbalindex}，例如 "81-0-0"
-    int status = 0;                          // 任务状态
-    int err_code = 0;                        // 错误码
+    std::string uuid;                        // 任务 UUID（设备进度推送不携带，可用 enter 返回的 uuid 关联）
+    std::string sn;                          // 机场序列号（机场场景，RC 手持为空）
+    std::string device_sn;                   // 网关设备序列号
+    std::string drone_sn;                    // 无人机序列号
+    FlightPoiProgressCenterPoint poi_center_point; // POI 中心点（设备字段 center_point）
+    double speed = 0.0;                       // 飞行速度（m/s，兼容旧字段，取 circle_speed）
+    double circle_speed = 0.0;                // 当前环绕速度（m/s）
+    double max_circle_speed = 0.0;            // 最大环绕速度（m/s）
+    double circle_radius = 0.0;               // 环绕半径（m）
+    std::string payload_index;                ///< 负载索引，例如 "128-0-0"
+    std::string status;                       // 任务状态，设备推送为字符串，如 "in_progress" / "ok"
+    int reason = 0;                           // 状态变化原因
+    long timestamp = 0;                       // 设备上报时间戳（ms）
+    int execute_duration = 0;                 // 已执行时长
+    int err_code = 0;                         // 错误码（设备进度不携带，恒 0；异常见 status/reason）
 
     bool operator==(const FlightPoiProgress &o) const {
         return uuid == o.uuid && sn == o.sn && device_sn == o.device_sn
+            && drone_sn == o.drone_sn
             && poi_center_point == o.poi_center_point
             && floatEqual(speed, o.speed)
+            && floatEqual(circle_speed, o.circle_speed)
+            && floatEqual(max_circle_speed, o.max_circle_speed)
             && floatEqual(circle_radius, o.circle_radius)
             && payload_index == o.payload_index
-            && status == o.status && err_code == o.err_code;
+            && status == o.status && reason == o.reason
+            && timestamp == o.timestamp && execute_duration == o.execute_duration
+            && err_code == o.err_code;
     }
 };
 
@@ -8367,6 +8578,42 @@ struct FlashLedConfigList {
     std::vector<FlashLedConfig> configs;
 };
 
+/// PAAS 自动录制配置项（单个设备/相机的录制目标）
+struct AutoRecordItem {
+    std::string sn;                    ///< 设备 SN（必填）
+    std::string camera_index;          ///< 负载相机索引（形如 "39-0-7"），与 camera_sn 二选一
+    std::string camera_sn;             ///< 第三方外接相机 SN，与 camera_index 二选一
+    int recording_strategy = 0;        ///< 只读，服务端按设备类型计算：0=任务录制 1=持续录制
+};
+
+/// PAAS 自动录制配置（项目级配置，无设备/session 上下文；配置不存在时服务端返回全零值，非错误）
+// 注意: id/created_at/updated_at/auto_cleaning_time 用 long long/int 而非 uint32_t/int64_t/int32_t,
+// 与本文件其余部分保持一致, 避免 SWIG 把 stdint 定长类型生成为不可用的 SWIGTYPE_p_xxx 不透明类型
+// (Java 侧拿不到数值);
+struct AutoRecordConfig {
+    long long id = 0;
+    std::string project_id;
+    long long created_at = 0;                  ///< unix 秒
+    long long updated_at = 0;                  ///< unix 秒
+    int auto_cleaning_time = 0;                ///< 自动清理时间(天)
+    bool disabled_auto_clean = false;          ///< 只读，是否已禁用自动清理
+    bool disable_dock_recording = false;
+    bool disable_drone_recording = false;
+    bool disable_base_station_recording = false;
+    bool disable_rtmp_recording = false;
+    std::vector<AutoRecordItem> recording_items;
+};
+
+/// PAAS 保存自动录制配置的入参
+struct SaveAutoRecordConfigParams {
+    int auto_cleaning_time = 0;                ///< binding: min=7,max=90
+    bool disable_dock_recording = false;
+    bool disable_drone_recording = false;
+    bool disable_base_station_recording = false;
+    bool disable_rtmp_recording = false;
+    std::vector<AutoRecordItem> recording_items;  ///< 允许空数组（关闭全部录制场景）
+};
+
 struct CameraLookAtParams {
     std::string payload_index;               ///< 负载索引，格式为 {type-subtype-gimbalindex}，例如 "81-0-0"
     bool locked = false;                     // 是否锁定 (false关闭 true开启)
@@ -8470,6 +8717,40 @@ struct DrcParachuteInfo {
             && parachute_type == o.parachute_type
             && parachute_sn == o.parachute_sn
             && parachute_is_abnormal == o.parachute_is_abnormal;
+    }
+};
+
+struct DrcLandingMissionState {
+    // 降落状态枚举:
+    //   0 = 初始空闲
+    //   1 = 等待参数同步
+    //   2 = 航向对齐
+    //   3 = 精准降落(有水平源)
+    //   4 = 无源降落(无水平源, 继续下降)
+    //   5 = 悬停微调(有水平源)
+    //   6 = 纯悬停(无水平源)
+    //   7 = 备降(有源)
+    //   8 = 备降(无源)
+    //   9 = 备降(用户 RC 接管)
+    int landing_state = 0;                   // 降落状态;
+    int pause_reason = 0;                    // 悬停原因, 0 或者 1, 1 代表回舱过程中有问题悬停了;
+
+    /// @note 本字段在协议侧拼作 cover_precent(协议设计如此, 非笔误), 对外 API 这里更正为 percent。
+    ///       转换点在 FlightCtrlMgr::onReceiveLandingMissionState, 是全链路唯一两侧字段名不一致的地方,
+    ///       任一侧写错都会编译报错, 不存在静默失灵。协议层 DrcLandingMissionStateNorthboundMsg::cover_precent
+    ///       按成员名绑定 JSON key, 保持 precent 原样, 勿"顺手"改成 percent。
+    int cover_percent = 0;                   // 舱盖开合百分比(开仓进度, 0 到 100 );
+    int cover_error_code = 0;                // 开仓错误码, 0 表示无异常, 非0代表开仓失败;
+
+    bool operator==(const DrcLandingMissionState& o) const {
+        return landing_state == o.landing_state
+            && pause_reason == o.pause_reason
+            && cover_percent == o.cover_percent
+            && cover_error_code == o.cover_error_code;
+    }
+
+    bool operator!=(const DrcLandingMissionState& o) const {
+        return !(*this == o);
     }
 };
 
@@ -8744,7 +9025,9 @@ struct WaylineEditorStsCredentials {
 /// 获取航线 Editor STS 请求参数
 struct GetWaylineEditorStsParams {
     std::string object_key_prefix; ///< 对象存储路径前缀，必填
-    int expire = 3600;             ///< 凭证有效期（秒），默认 3600（proto int64，实际值不超过 int 范围）
+    int expire = 3600;             ///< 凭证有效期（秒），默认 3600（proto int64，实际值不超过 int 范围）。注意：
+                                   ///< 后端 STS 对有效期有合法下限，过小的值（如 600）会被拒绝并返回 serverCode
+                                   ///< 200612（invalid token expiry），建议使用默认值 3600。
 };
 
 /// 获取航线 Editor STS 结果
@@ -8785,13 +9068,45 @@ struct MediaFileGeoPosition {
     double lat = 0.0;     ///< 纬度
     double lng = 0.0;     ///< 经度
     double abs_alt = 0.0; ///< 绝对高度（米）
+    double rel_alt = 0.0; ///< 相对高度（米）
 };
 
-/// 媒体文件扩展信息
+/// 媒体文件扩展信息（对齐 media.proto FileDetailExt）
 struct MediaFileDetailExt {
-    int width = 0;                        ///< 图片宽度（像素）
-    int height = 0;                       ///< 图片高度（像素）
-    MediaFileGeoPosition photo_position;  ///< 照片 GPS 位置
+    int width = 0;                            ///< 图片宽度（像素）
+    int height = 0;                           ///< 图片高度（像素）
+    MediaFileGeoPosition photo_position;      ///< 照片 GPS 位置
+    std::string resolution;                   ///< 分辨率
+    std::string photographer;                 ///< 拍摄者
+    std::string task_name;                    ///< 任务名称
+    std::string line_name;                    ///< 航线名称
+    std::string wayline_uuid;                 ///< 航线 UUID
+    std::string origin_wayline_uuid;          ///< 原始航线 UUID
+    std::string wayline_action_uuid;          ///< 航线动作 UUID
+    std::string payload_model_key;            ///< 负载型号 Key
+    std::string drone_model_key;              ///< 飞行器型号 Key
+    bool is_original = false;                 ///< 是否原片
+    double digital_zoom_ratio = 0.0;          ///< 数码变焦倍数
+    double length_in35mm_film = 0.0;          ///< 35mm 等效焦距
+    double gimbal_roll = 0.0;                 ///< 云台横滚角
+    double gimbal_yaw = 0.0;                  ///< 云台偏航角
+    double gimbal_yaw_degree = 0.0;           ///< 云台偏航角（度）
+    std::string flight_id;                    ///< 飞行任务 ID
+    double duration = 0.0;                    ///< 时长（秒）
+    MediaFileGeoPosition shoot_position;      ///< 拍摄位置
+    double absolute_altitude = 0.0;           ///< 绝对高度（米）
+    double relative_altitude = 0.0;           ///< 相对高度（米）
+    std::string created_time;                 ///< 创建时间
+    std::string creation_time;                ///< 创建时间
+    std::string create_time;                  ///< 创建时间
+    std::string encoder;                      ///< 编码器
+    std::string format_long_name;             ///< 格式长名称
+    std::string format_name;                  ///< 格式名称
+    std::string ext_size;                     ///< 扩展大小（字符串）
+    double flight_yaw = 0.0;                  ///< 飞行偏航角
+    double focal_length = 0.0;                ///< 焦距
+    double gimbal_pitch = 0.0;                ///< 云台俯仰角
+    std::string image_type;                   ///< 图片类型
 };
 
 /// 根据文件 ID 获取媒体文件详情结果
@@ -8804,6 +9119,43 @@ struct GetMediaFileDetailByIdResult {
     long long size = 0;          ///< 文件大小（字节）
     std::string create_at;       ///< 创建时间（ISO 字符串）
     MediaFileDetailExt ext;      ///< 扩展信息
+    int pano_stitch_state = 0;     ///< 全景拼接状态：0=未处理 1=等待资源 2=处理中 3=成功 4=失败 5=取消 6=余额不足
+    int pano_stitch_progress = 0;  ///< 全景拼接进度 [0, 100]
+    int pano_error_code = 0;       ///< 全景拼接错误码（成功时为 0）
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PaaS 3X 超清全景拼接（pano-stitch），链路：云端媒体服务 → 云端通知服务 → NCSDK
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// 全景瓦片 CDN Cookie 鉴权项。用于 `GetPanoTierTileUrlResult::cookies`。
+/// @note PaaS 通道下此字段不填充（后端经 HTTP Set-Cookie 响应头下发，SDK 不解析响应头）。
+///       Native/Java ISV 请使用 `GetPanoTierTileUrlResult::query_params`（Key/Value 与 cookies 同源）。
+struct PanoTierCookie {
+    std::string name;                  ///< Cookie 名（如 "tile-signature" 或 CDN 平台的签名 key）
+    std::string value;                 ///< Cookie 值
+    std::string path;                  ///< Cookie 作用域（如 "/model/api/v1/tiles"）
+    long long   expires_unix_sec = 0;  ///< 到期时间戳（Unix 秒）；后端签名有效期 24 小时
+};
+
+/// 获取全景瓦片 URL 结果。仅 `state == PanoTierState_SUCCESS(3)` 时 `base_url` / `query_params` 有效。
+struct GetPanoTierTileUrlResult {
+    int state = 0;                                        ///< 瓦片切片状态，取值见 `PanoTierState` 枚举
+    std::string base_url;                                 ///< 瓦片基础 URL（CDN 域名 + 前缀，指向 vtour 目录）
+    std::vector<PanoTierCookie> cookies;                  ///< CDN Cookie 鉴权（PaaS 通道不填充；保留供未来场景扩展）
+    std::map<std::string, std::string> query_params;      ///< URL Query 鉴权（PaaS 推荐；Key/Value 与 cookies 同源）
+};
+
+/// 全景拼接进度推送消息。
+/// 链路：云端拼接进度变化 → 云端通知服务 topic `topic_pano_stitch_progress`
+///       → NCSDK `ListenPanoStitchProgress` → SDK `subscribePanoStitchProgress` 回调。
+struct PanoStitchProgressMsg {
+    std::string workspace_id;                             ///< 工作空间 UUID（ISV 可据此过滤）
+    long long   file_id = -1;                             ///< 成片文件 ID
+    std::string name;                                     ///< 成片文件名
+    int pano_stitch_state    = 0;                         ///< 拼接状态，取值见 `PanoStitchState` 枚举
+    int pano_stitch_progress = 0;                         ///< 拼接进度 [0, 100]
+    int pano_error_code      = 0;                         ///< 错误码，0 表示无错误
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -8830,10 +9182,19 @@ struct AiAlertLocation {
     double altitude = 0;   ///< 海拔高度，单位米
 };
 
+struct AiAlertTriggerAction {
+    int action = 0;    ///< 触发动作类型
+    int duration = 0;  ///< 动作持续时间（秒）
+};
+
 struct AiAlertTargetAlertInfo {
-    int target_type = 0;   ///< 目标类型：0=人 / 1=车 / 2=船
-    int target_value = 0;  ///< 识别置信度（整数）
-    std::string label;     ///< 目标标签名称
+    int target_type = 0;                ///< 目标类型：0=人 / 1=车 / 2=船
+    double target_value = 0.0;          ///< 识别置信度
+    bool use_min_threshold = false;     ///< 是否启用最小阈值
+    bool use_max_threshold = false;     ///< 是否启用最大阈值
+    double target_max_threshold = 0.0;  ///< 最大阈值
+    double target_min_threshold = 0.0;  ///< 最小阈值
+    std::string label;                  ///< 目标标签名称
 };
 
 struct AiAlertFlightItem {
@@ -8842,22 +9203,29 @@ struct AiAlertFlightItem {
     std::string flight_task_name;   ///< 飞行任务名称
     int status = 0;                 ///< 架次状态
     long long start_time = 0;       ///< 架次开始时间（毫秒时间戳）
+    int flight_task_type = 0;       ///< 飞行任务类型。枚举：0=未知, 1=航线任务, 2=指令任务
+    bool is_commented = false;      ///< 该架次是否已评论
 };
 
 struct AiAlertRecordItem {
     std::string alert_uuid;                                       ///< 告警唯一 ID
     std::string flight_id;                                        ///< 所属架次 ID
+    std::string project_id;                                       ///< 项目 ID
     std::string drone_sn;                                         ///< 无人机序列号
     std::string gateway_sn;                                       ///< 遥控器序列号
     int status = 0;                                               ///< 0=待处理 1=处理中 2=已完成 3=云云对接 4=失败 5=超时
+    std::string reason;                                           ///< 告警原因
     int algorithm_source = 0;                                     ///< 算法来源
     AiAlertLocation location;                                     ///< 告警发生时的位置信息
+    int64_t file_id = 0;                                          ///< 关联媒体文件 ID
+    std::vector<AiAlertTriggerAction> trigger_actions;            ///< 触发动作列表
     std::vector<AiAlertTargetAlertInfo> target_alert_infos;       ///< 各目标类型的识别结果列表
     std::string thumbnail_url;                                    ///< status=1/2/3 时有值，24h CDN 鉴权 URL
     std::vector<std::string> labels;                              ///< 目标标签列表
     long long timestamp = 0;                                      ///< 毫秒时间戳
     std::string task_name;                                        ///< 飞行任务名称
-    int media_index = 0;                                          ///< 媒体文件索引
+    int64_t media_index = 0;                                      ///< 媒体文件索引
+    int interval_seconds = 0;                                     ///< 告警记录间隔秒数
 };
 
 // ---- 1 POST /device-setting ----
@@ -8933,6 +9301,56 @@ struct GetAiAlertRecordsResult {
     int page = 1;                          ///< 当前页码
     int page_size = 50;                    ///< 每页数量
     int page_count = 0;                    ///< 总页数
+};
+
+// ---- 7 DELETE /ai-alert-record ----
+struct DeleteAiAlertRecordParam {
+    std::string alert_uuid;    ///< 告警记录唯一 ID；非空时精确删除该条记录（优先）
+    std::string flight_id;     ///< 架次 ID；alert_uuid 为空时按架次批量删除该架次全部告警记录
+};
+
+// ---- WS Listen: alert_records.alert_records_notify ----
+
+/// AI 告警推送 — 单条告警记录中的目标识别信息
+struct AiAlertNotifyTargetInfo {
+    int target_type = 0;                   ///< 目标类型：0=人 1=车 2=船
+    double target_value = 0.0;             ///< 识别置信度
+    bool use_min_threshold = false;        ///< 是否启用阈值下限
+    bool use_max_threshold = false;        ///< 是否启用阈值上限
+    double target_max_threshold = 0.0;     ///< 阈值上限
+    double target_min_threshold = 0.0;     ///< 阈值下限
+    std::string label;                     ///< 目标标签名称
+};
+
+/// AI 告警推送 — 单条告警记录
+struct AiAlertNotifyRecordItem {
+    std::string alert_uuid;                ///< 告警唯一 ID
+    std::string flight_id;                 ///< 所属架次 ID
+    std::string drone_sn;                  ///< 无人机序列号
+    std::string gateway_sn;                ///< 网关序列号
+    int status = 0;                        ///< 0=待处理 1=缩略图就绪 2=大图就绪 3=云云对接 4=失败 5=超时
+    int algorithm_source = 0;              ///< 算法来源
+    AiAlertLocation location;              ///< 告警发生时的位置信息
+    long long file_id = 0;                 ///< 媒体文件 ID
+    long long media_index = 0;             ///< 媒体文件索引
+    std::string task_name;                 ///< 飞行任务名称
+    std::vector<AiAlertNotifyTargetInfo> target_alert_infos;  ///< 各目标类型的识别结果列表
+    long long timestamp = 0;               ///< 毫秒时间戳
+    std::string thumbnail_url;             ///< 缩略图 URL（24h CDN 鉴权）
+    std::vector<std::string> labels;       ///< 目标标签列表
+};
+
+/// AI 告警推送 — 按架次分组的告警数据
+struct AiAlertNotifyFlightData {
+    std::string flight_id;                 ///< 架次 ID
+    std::string flight_task_name;          ///< 飞行任务名称
+    std::vector<AiAlertNotifyRecordItem> records;  ///< 该架次的告警记录列表
+};
+
+/// AI 告警推送 — 完整通知消息（topic: alert_records.alert_records_notify）
+/// @internal 链路: WebSocket | topic: alert_records.alert_records_notify
+struct AiAlertRecordsNotifyResult {
+    std::vector<AiAlertNotifyFlightData> data;  ///< 按架次分组的告警数据列表
 };
 
 // ===================== Live Sync (paas_live_sync) Begin =====================
@@ -9226,6 +9644,71 @@ struct DronePsdkUiResource {
     std::vector<PsdkUiResourceItem> psdk_ui_resource;
 
     bool operator==(const DronePsdkUiResource& rhs) const { return psdk_ui_resource == rhs.psdk_ui_resource; }
+};
+
+// ─────────────────────────────────────────────────────────
+// PSDK 自定义数据透传（上行，PSDK→云端）
+// (topic_custom_data_transmission_from_psdk)
+// ─────────────────────────────────────────────────────────
+
+struct PsdkCustomDataTransmission {
+    std::string value;                        ///< 数据内容（长度 < 256）
+
+    bool operator==(const PsdkCustomDataTransmission& rhs) const { return value == rhs.value; }
+};
+
+// ─────────────────────────────────────────────────────────
+// ESDK 自定义数据透传（上行，ESDK→云端）
+// (topic_custom_data_transmission_from_esdk)
+// ─────────────────────────────────────────────────────────
+
+struct EsdkCustomDataTransmission {
+    std::string value;                        ///< 数据内容（长度 < 256）
+
+    bool operator==(const EsdkCustomDataTransmission& rhs) const { return value == rhs.value; }
+};
+
+// ─────────────────────────────────────────────────────────
+// 飞行任务媒体最高优先级上传（上行，dock→云端）
+// (topic_highest_priority_upload_flighttask_media)
+// ─────────────────────────────────────────────────────────
+
+struct HighestPriorityUploadFlighttaskMedia {
+    std::string flight_id;
+
+    bool operator==(const HighestPriorityUploadFlighttaskMedia& rhs) const { return flight_id == rhs.flight_id; }
+};
+
+// ─────────────────────────────────────────────────────────
+// AirSense 民航飞机告警（上行）
+// (topic_airsense_warning)
+// ─────────────────────────────────────────────────────────
+
+struct AirsenseWarningItem {
+    std::string icao;              ///< ICAO 民航飞机地址
+    int warning_level = 0;         ///< 告警等级 0~4（≥3 建议避让）
+    double latitude = 0.0;         ///< 纬度 [-90,90]
+    double longitude = 0.0;        ///< 经度 [-180,180]
+    int altitude = 0;              ///< 绝对高度（米）
+    int altitude_type = 0;         ///< 0 椭球高 / 1 海拔高
+    double heading = 0.0;          ///< 航向角（0 正北, 90 正东）
+    int relative_altitude = 0;     ///< 相对无人机高度（米）
+    int vert_trend = 0;            ///< 0 不变 / 1 上升 / 2 下降
+    int distance = 0;              ///< 与无人机水平距离（米）
+
+    bool operator==(const AirsenseWarningItem& rhs) const {
+        return icao == rhs.icao && warning_level == rhs.warning_level &&
+               latitude == rhs.latitude && longitude == rhs.longitude &&
+               altitude == rhs.altitude && altitude_type == rhs.altitude_type &&
+               heading == rhs.heading && relative_altitude == rhs.relative_altitude &&
+               vert_trend == rhs.vert_trend && distance == rhs.distance;
+    }
+};
+
+struct AirsenseWarning {
+    std::vector<AirsenseWarningItem> data;   ///< 周边民航飞机告警数组（可能为空）
+
+    bool operator==(const AirsenseWarning& rhs) const { return data == rhs.data; }
 };
 
 // 飞行器进入当前状态原因(mode_code_reason);

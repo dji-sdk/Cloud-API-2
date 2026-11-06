@@ -23,6 +23,13 @@ enum class FlightHubSdkErrorCode {
     UPLOAD_FAILED = -10,            ///< 上传失败。文件已找到但上传过程出错
     WAYLINE_ID_NOT_FOUND = -11,     ///< 航线 ID 未找到。HTTP 响应中未携带预期的航线 ID
     ERROR_DRC_LINK = -12,           ///< DRC 链路异常。DRC 通道不存在或数据传输失败，常见于指点飞行、设备控制、PSDK 控制等场景
+    ERROR_CASCADE_PARTIAL_GRANT_NOT_SUPPORTED = -13, ///< Cascade：setNodePermission 8 字段既非全 true 也非全 false（一期只支持二元）
+    ERROR_CASCADE_INVALID_TOPIC = -14,               ///< Cascade：postToNode 的 topic 不匹配 [a-zA-Z0-9._-]{1,64}
+    ERROR_CASCADE_BODY_TOO_LARGE = -15,              ///< Cascade：postToNode 的 body 长度 > 1MB（v1.0 §8：body ≤ 1MB 合法）
+    ERROR_CASCADE_EMPTY_NODE_ID = -16,               ///< Cascade：deleteChildNode / postToNode 传入空 nodeId
+    ERROR_AI_NOT_SUPPORTED = -17,        ///< 当前码流不支持 AI。订阅 AI SEI 时，该路码流类型未绑定任何 AI 模型
+    ERROR_AI_MODEL_NOT_AVAILABLE = -18,  ///< 无生效 AI 模型。AI 识别未开启或 ai_models_config 为空
+    ERROR_RESPONSE_PARSE_FAILED = -19,   ///< 响应解析失败。HTTP 请求成功（2xx + code:0），但响应体与预期结构不匹配，具体原因见 server_message
     UNKNOWN = 0xFFFF,               ///< 未知错误
 };
 
@@ -76,6 +83,16 @@ struct FlightHubError {
         e.error_code = FlightHubSdkErrorCode::ERROR_OPERATION_FAILED;
         e.server_code = server_code;
         e.server_message = msg;
+        return e;
+    }
+
+    /// 本地响应解析失败（HTTP 2xx + code:0 但响应体与 bean 结构不匹配）。
+    /// 区别于 from_http：后者靠重新解析原始响应体判错，2xx+code:0 必然落入 SUCCESS，会丢失本地解析失败的事实。
+    static FlightHubError from_parse_error(int http_code, const std::string& parse_err) {
+        FlightHubError e;
+        e.error_code = FlightHubSdkErrorCode::ERROR_RESPONSE_PARSE_FAILED;
+        e.http_code = http_code;
+        e.server_message = parse_err;
         return e;
     }
 
@@ -400,7 +417,6 @@ enum class CameraLensType {
 
 /// 红外增益模式。`ThermalGainModeInfo` / `ThermalGainModeSetParams::thermal_gain_mode` 以 `int` 传递，数值须与本枚举一致。
 enum class IrGainMode {
-    Auto = 0,      ///< 自动
     LowGain = 1,   ///< 低增益
     HighGain = 2,  ///< 高增益
     UltraHD = 3,   ///< 超清模式
@@ -507,6 +523,22 @@ enum class TakeoffMode {
     TAKEOFF = 0,              ///< 起飞
     TAKEOFF_WITH_FLY_TO = 1,  ///< 起飞并飞向目标点
     UNKNOWN = 0xFFFF,         ///< 未知
+};
+
+
+/// 舱外降落指令。
+enum class GroundLandingCommand {
+    LAND_TO_DOCK = 0,  ///< 降落至机场（机场自动开舱盖 → 无人机降落 → 关舱盖）
+    CANCEL = 1,        ///< 取消降落（飞机悬停）
+    UNKNOWN = 0xFFFF,  ///< 未知
+};
+
+/// 速度模式。当前 EA230 / EA340 支持，后续机型可能扩展；SDK 不做机型校验，由服务端与设备侧判定。
+/// 与 `TakeoffParams::commander_flight_mode`（指点飞行风格：平稳/运动）无关，是两个独立字段。
+enum class SpeedMode {
+    LOW = 0,          ///< 低速
+    HIGH = 1,         ///< 高速
+    UNKNOWN = 0xFFFF, ///< 未设置：不下发该字段，设备保持当前模式
 };
 
 /// 机场空调状态。
@@ -722,6 +754,43 @@ enum class AIIdentifyScoreMode{
 	MODE_USER = 3,        ///< 用户自定义模式
 	UNKNOWN = 0xFFFF,     ///< 未知
 };
+
+/// 全景拼接状态。`MediaFilesListItemInfoData::pano_stitch_state` 与 `PanoStitchProgressMsg::pano_stitch_state`
+/// 以 `int` 传递，数值须与本枚举一致，与后端 `PanoStitchState` 定义完全对齐。
+/// @note 枚举值带类型名前缀（`PanoStitchState_XXX`）是有意为之：`enum class` 已有独立作用域，
+///       前缀主要为了与其他同名状态枚举（如 `PanoTierState`）在日志/调试输出中易于区分。
+enum class PanoStitchState {
+    PanoStitchState_NOT_PROCESSED    = 0, ///< 未处理，可 startPanoStitch
+    PanoStitchState_WAITING_RESOURCE = 1, ///< 等待资源，可 stopPanoStitch
+    PanoStitchState_PROCESSING       = 2, ///< 处理中，可 stopPanoStitch
+    PanoStitchState_SUCCESS          = 3, ///< 成功
+    PanoStitchState_FAILED           = 4, ///< 失败，可 retryPanoStitch
+    PanoStitchState_CANCEL           = 5, ///< 取消，可 retryPanoStitch
+    PanoStitchState_PAID_FAILED      = 6, ///< 余额不足，可 retryPanoStitch
+    PanoStitchState_UNKNOWN          = 0xFFFF, ///< 未知
+};
+
+/// 全景瓦片切片状态。`GetPanoTierTileUrlResult::state` 以 `int` 传递，数值须与本枚举一致，
+/// 与后端 `PanoTierState` 定义完全对齐。仅 `PanoTierState_SUCCESS` 时 `base_url` / `cookies` / `query_params` 有效。
+enum class PanoTierState {
+    PanoTierState_NOT_PROCESSED    = 0, ///< 未处理
+    PanoTierState_WAITING_RESOURCE = 1, ///< 等待资源
+    PanoTierState_PROCESSING       = 2, ///< 处理中
+    PanoTierState_SUCCESS          = 3, ///< 成功，可获取瓦片 URL
+    PanoTierState_FAILED           = 4, ///< 失败
+    PanoTierState_UNKNOWN          = 0xFFFF, ///< 未知
+};
+
+/// 飞行安全风险类型。`FlightRiskItem::risk_type` 以 `int` 传递，数值须与本枚举一致。
+/// @note 绕行只在开始点产生一条 `FlightRiskType_OBSTACLE_BYPASS`，结束点不单独成为一条风险。
+enum class FlightRiskType {
+    FlightRiskType_UNSPECIFIED     = 0, ///< 未指定
+    FlightRiskType_OBSTACLE_BRAKE  = 1, ///< 避障刹停
+    FlightRiskType_OBSTACLE_BYPASS = 2, ///< 避障绕行
+    FlightRiskType_COLLISION       = 3, ///< 碰撞炸机
+    FlightRiskType_UNKNOWN         = 0xFFFF, ///< 未知
+};
+
 
 /// 媒体文件类型（后端 file_type 枚举，多接口共用）。
 /// 不同接口实际返回的取值范围不同，具体参见各接口字段注释。

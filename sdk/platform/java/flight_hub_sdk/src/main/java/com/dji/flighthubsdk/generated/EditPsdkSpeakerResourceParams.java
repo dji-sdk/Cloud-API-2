@@ -91,6 +91,30 @@ public class EditPsdkSpeakerResourceParams {
     return flighthubsdkmoduleJNI.EditPsdkSpeakerResourceParams_content_get(swigCPtr, this);
   }
 
+  public void setOpus_object_key(String value) {
+    flighthubsdkmoduleJNI.EditPsdkSpeakerResourceParams_opus_object_key_set(swigCPtr, this, value);
+  }
+
+  public String getOpus_object_key() {
+    return flighthubsdkmoduleJNI.EditPsdkSpeakerResourceParams_opus_object_key_get(swigCPtr, this);
+  }
+
+  public void setOpus_size(long value) {
+    flighthubsdkmoduleJNI.EditPsdkSpeakerResourceParams_opus_size_set(swigCPtr, this, value);
+  }
+
+  public long getOpus_size() {
+    return flighthubsdkmoduleJNI.EditPsdkSpeakerResourceParams_opus_size_get(swigCPtr, this);
+  }
+
+  public void setOpus_md5_sum(String value) {
+    flighthubsdkmoduleJNI.EditPsdkSpeakerResourceParams_opus_md5_sum_set(swigCPtr, this, value);
+  }
+
+  public String getOpus_md5_sum() {
+    return flighthubsdkmoduleJNI.EditPsdkSpeakerResourceParams_opus_md5_sum_get(swigCPtr, this);
+  }
+
   public EditPsdkSpeakerResourceParams() {
     this(flighthubsdkmoduleJNI.new_EditPsdkSpeakerResourceParams(), true);
   }

@@ -46,12 +46,12 @@ class KernelDefaultsEnvironmentPostProcessorTest {
     @Test
     void postProcessEnvironment_shouldLetUserOverride_whenIsvSetsExplicit() {
         MockEnvironment env = new MockEnvironment();
-        // 模拟 ISV 在 application.yml 中显式覆盖（更高优先级 source）
+        // 模拟集成商在 application.yml 中显式覆盖（更高优先级 source）
         env.setProperty("spring.jpa.hibernate.ddl-auto", "validate");
 
         processor.postProcessEnvironment(env, new SpringApplication());
 
-        // ISV 显式值优先于 addLast 注入的缺省
+        // 集成商 显式值优先于 addLast 注入的缺省
         assertThat(env.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
     }
 

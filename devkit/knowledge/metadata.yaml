@@ -1,7 +1,7 @@
 version: "1.0.0"
 last_updated: "2026-08-05"
 sdk_version: "3.3.7"
-description: "FlightHub PaaS SDK Knowledge Base — LLM-friendly domain knowledge for ISV AI agents and developers"
+description: "DJI Cloud API 2 SDK Knowledge Base — LLM-friendly domain knowledge for Integrator AI agents and developers"
 
 modules:
   - id: getting-started

@@ -68,6 +68,9 @@ class SdkFlightTaskCommandServiceTest {
     private static final String DOCK_SN = "8UUXN5F00A08FT";
     private static final String WAYLINE_UUID = "wl-001";
 
+    /** 「已丢弃字段」告警中 resumable_status 的字段名片段 */
+    private static final String RESUMABLE_STATUS_FIELD = "resumable_status";
+
     private FlightTaskModule flightTaskModule;
     private SdkFlightTaskCommandService service;
 
@@ -213,6 +216,49 @@ class SdkFlightTaskCommandServiceTest {
         assertThat(capturedCreateReq.getMinBatteryCapacity()).isEqualTo(30);
     }
 
+    /**
+     * 核心修复点：{@code resumable_status=1} 必须映射为 SDK 的字符串枚举 {@code "auto"}，
+     * 而不是写进 {@code is_break_point_resume}。后者表达「本任务是否为断点续飞任务」，
+     * 与续飞策略是两个概念；历史实现把两者混为一谈，导致详情回显为 false。
+     */
+    @Test
+    void createTask_shouldMapResumableStatusToAuto_whenDtoValueIsOne() {
+        stubCreateCallbackSuccess("created-uuid");
+        CreateFlightTaskDto dto = baseDto();
+        dto.setResumableStatus(1);
+
+        service.createTask(dto);
+
+        assertThat(capturedCreateReq.getResumableStatus()).isEqualTo("auto");
+        assertThat(capturedCreateReq.isBreakPointResume()).isFalse();
+    }
+
+    @Test
+    void createTask_shouldMapResumableStatusToManual_whenDtoValueIsZero() {
+        stubCreateCallbackSuccess("created-uuid");
+        CreateFlightTaskDto dto = baseDto();
+        dto.setResumableStatus(0);
+
+        service.createTask(dto);
+
+        assertThat(capturedCreateReq.getResumableStatus()).isEqualTo("manual");
+        assertThat(capturedCreateReq.isBreakPointResume()).isFalse();
+    }
+
+    /**
+     * 前端未传 resumable_status 时不得调用 setResumableStatus：
+     * SDK 内部对 null 的处理是写入空串而非跳过，透传 null 会把「未设置」变成「空值」。
+     */
+    @Test
+    void createTask_shouldLeaveResumableStatusUntouched_whenDtoValueIsNull() {
+        stubCreateCallbackSuccess("created-uuid");
+
+        service.createTask(baseDto());
+
+        // CreateTaskReq 构造器把该字段初始化为空串，未被本服务覆盖即证明没有调用 setter
+        assertThat(capturedCreateReq.getResumableStatus()).isEmpty();
+    }
+
     @Test
     void createTask_shouldThrowSdkQueryException_whenWaylineValidityCheckFails() {
         stubCreateCallbackSuccess("created-uuid", List.of(0, 1001));
@@ -287,6 +333,37 @@ class SdkFlightTaskCommandServiceTest {
         assertThat(capturedEditReq.getName()).isEqualTo("XH重复任务1");
         assertThat(capturedEditReq.getTaskType()).isEqualTo(2);
         assertThat(collectedWarnings()).contains("repeat_type=4", "interval=1");
+    }
+
+    /**
+     * 编辑路径的能力边界：{@code EditTaskReq} 是独立类（非 CreateTaskReq 子类），
+     * 没有 resumableStatus 承载位。提交续飞策略必须显式告警，且不能退化为
+     * {@code setBreakPointResume(true)} —— 那会改变任务类型语义。
+     */
+    @Test
+    void updateTask_shouldWarnAndNotSetBreakPointResume_whenResumableStatusProvided() {
+        stubEditCallbackSuccess();
+        CreateFlightTaskDto dto = baseDto();
+        dto.setResumableStatus(1);
+
+        service.updateTask(TASK_UUID, dto);
+
+        assertThat(capturedEditReq.isBreakPointResume()).isFalse();
+        assertThat(collectedWarnings())
+                .contains(RESUMABLE_STATUS_FIELD)
+                .contains("isEdit=true");
+    }
+
+    /** 创建路径的 resumable_status 是真正下发的字段，不应出现在「已丢弃」告警里。 */
+    @Test
+    void createTask_shouldNotWarnResumableStatus_whenCreatePath() {
+        stubCreateCallbackSuccess("created-uuid");
+        CreateFlightTaskDto dto = baseDto();
+        dto.setResumableStatus(1);
+
+        service.createTask(dto);
+
+        assertThat(collectedWarnings()).doesNotContain(RESUMABLE_STATUS_FIELD);
     }
 
     @Test

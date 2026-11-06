@@ -296,6 +296,112 @@ class FhStickMoveToolTest {
         assertTrue(result.get("error_message").toString().contains("timed out"));
     }
 
+    // ==================== raw_axis 模式 ====================
+
+    @Test
+    void execute_shouldReturnError_whenRawAxisMissingRequiredParams() {
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        session.setActiveDrcDevice(DRONE_SN);
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "mode", "raw_axis",
+                "confirm", true,
+                "roll", 1200
+                // 缺 pitch/yaw/throttle
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("raw_axis"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldSucceed_whenRawAxisValid() {
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        session.setActiveDrcDevice(DRONE_SN);
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "mode", "raw_axis",
+                "confirm", true,
+                "roll", 1200,
+                "pitch", 900,
+                "yaw", 1024,
+                "throttle", 1100,
+                "duration_ms", 100
+        ));
+
+        assertEquals(true, result.get("success"), "raw_axis 应成功执行，但返回: " + result.get("error_message"));
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertEquals(1200, data.get("roll"));
+        assertEquals(900, data.get("pitch"));
+        assertEquals(1024, data.get("yaw"));
+        assertEquals(1100, data.get("throttle"));
+        assertEquals(StickControlExecutor.STICK_CENTER, data.get("gimbal_pitch"), "未传 gimbal_pitch 应默认中位值");
+        assertEquals(true, data.get("_mock"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenRawAxisOutOfRange() {
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        session.setActiveDrcDevice(DRONE_SN);
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "mode", "raw_axis",
+                "confirm", true,
+                "roll", 9999,
+                "pitch", 1024,
+                "yaw", 1024,
+                "throttle", 1024
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("out of range"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_shouldPreview_whenRawAxisDryRun() {
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        session.setActiveDrcDevice(DRONE_SN);
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "mode", "raw_axis",
+                "confirm", false,
+                "dry_run", true,
+                "roll", 1200,
+                "pitch", 1024,
+                "yaw", 1024,
+                "throttle", 1024
+        ));
+
+        assertEquals(true, result.get("success"));
+        assertEquals(true, result.get("_dry_run"));
+    }
+
+    @Test
+    void execute_shouldReturnError_whenInvalidMode() {
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        session.setActiveDrcDevice(DRONE_SN);
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "mode", "bogus",
+                "confirm", true
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("Invalid mode"));
+    }
+
     @Test
     void getToolDefinition_shouldHaveCorrectName() {
         Map<String, Object> def = tool.getToolDefinition();
@@ -303,5 +409,114 @@ class FhStickMoveToolTest {
         assertEquals("fh_stick_move", def.get("name"));
         assertNotNull(def.get("description"));
         assertNotNull(def.get("inputSchema"));
+    }
+
+    // ==================== DRC 显式断开 / 干跑顺序 ====================
+
+    @Test
+    void execute_shouldReturnError_whenDrcExplicitlyDisconnected() {
+        // FC-061：用户显式 fh_drc_disconnect 后，fh_stick_move 不得静默重连下发指令
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveDrcDevice(DRONE_SN);
+        session.markDrcExplicitlyDisconnected(DRONE_SN);
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "direction", "forward",
+                "confirm", true
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertTrue(result.get("error_message").toString().contains("explicitly disconnected"));
+        assertTrue(result.get("suggestion").toString().contains("fh_drc_connect"));
+        assertFalse(session.hasDrcLinkTo(DRONE_SN), "不得静默重建 DRC 链路");
+    }
+
+    @Test
+    void execute_shouldNotAcquireControl_whenDrcExplicitlyDisconnected() {
+        // 拒绝必须在 ensureControlAuthority 之前发生，避免"先抢控再报错"留下部分副作用
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveDrcDevice(DRONE_SN);
+        session.markDrcExplicitlyDisconnected(DRONE_SN);
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "direction", "forward",
+                "confirm", true
+        ));
+
+        assertEquals(false, result.get("success"));
+        assertFalse(session.hasControlOf(DRONE_SN), "显式断开后不应重新抢控");
+    }
+
+    @Test
+    void execute_shouldSelfHeal_whenNeverConnected() {
+        // device-control.md 契约：从未连接过的场景仍可自愈，不因本次收紧而被破坏
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        assertFalse(session.isDrcExplicitlyDisconnected(DRONE_SN));
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "direction", "forward",
+                "confirm", true
+        ));
+
+        assertEquals(true, result.get("success"));
+        assertTrue(session.hasDrcLinkTo(DRONE_SN));
+    }
+
+    @Test
+    void execute_shouldSucceed_afterReconnect() {
+        // 显式断开 → 用户显式 fh_drc_connect 重连后，摇杆控制应恢复正常
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveDrcDevice(DRONE_SN);
+        session.markDrcExplicitlyDisconnected(DRONE_SN);
+        session.setActiveDrcDevice(DRONE_SN);
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "direction", "forward",
+                "confirm", true
+        ));
+
+        assertEquals(true, result.get("success"),
+                "重连后应恢复摇杆控制: " + result.get("error_message"));
+        assertFalse(session.isDrcExplicitlyDisconnected(DRONE_SN));
+    }
+
+    @Test
+    void execute_dryRun_shouldNotAcquireControlOrConnectDrc() {
+        // 干跑必须不产生任何 DRC/控制权副作用
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "direction", "forward",
+                "dry_run", true
+        ));
+
+        assertEquals(true, result.get("success"));
+        assertEquals(true, result.get("_dry_run"));
+        assertFalse(session.hasControlOf(DRONE_SN), "dry_run 不应获取控制权");
+        assertFalse(session.hasDrcLinkTo(DRONE_SN), "dry_run 不应建立 DRC 链路");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void execute_dryRun_shouldNotClaimDrcLinked() {
+        // 干跑在 ensureDrcLink 之前返回，预览不能声明尚未检查的 drc_linked
+        sessionManager.createSession("uuid", "ws");
+
+        Map<String, Object> result = tool.execute(Map.of(
+                "drone_sn", DRONE_SN,
+                "direction", "forward",
+                "dry_run", true
+        ));
+
+        Map<String, Object> wouldExecute = (Map<String, Object>) result.get("would_execute");
+        @SuppressWarnings("unchecked")
+        java.util.List<String> checked = (java.util.List<String>) wouldExecute.get("prerequisites_checked");
+        assertFalse(checked.contains("drc_linked"), "预览不应声明 drc_linked");
+        assertTrue(checked.contains("params_valid"));
     }
 }

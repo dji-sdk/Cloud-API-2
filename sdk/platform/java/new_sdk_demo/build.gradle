@@ -31,8 +31,9 @@ def sdkVersion = resolveSdkVersion()
 application {
     mainClass = project.hasProperty('mainClass') ? project.property('mainClass')
             : 'com.dji.flighthubsdk.demo.DemoEntry'
-    // 强制 UTF-8：一处配置同时作用于 `gradlew run` 与生成的 install/distZip/distTar 启动脚本,
+    // 强制 UTF-8：一处配置同时作用于 `gradlew run` 与 startScripts 生成的启动脚本,
     // 保证中文日志/菜单在任何默认字符集(含 Windows-GBK)的 JVM 上都不乱码。
+    // (distZip/distTar 已在文件末尾禁用, 见那里的说明; startScripts/installDist 不受影响。)
     // (注: `java -jar` 直跑走的是另一条路径, 由 DemoEntry.main 里的控制台兜底包装保证, 见该处注释。)
     applicationDefaultJvmArgs = ['-Dfile.encoding=UTF-8']
 }
@@ -97,9 +98,6 @@ run {
     // 注: -Dfile.encoding=UTF-8 已上移到 application.applicationDefaultJvmArgs(同时覆盖 run 与启动脚本)。
 }
 
-distTar { duplicatesStrategy = DuplicatesStrategy.EXCLUDE }
-distZip { duplicatesStrategy = DuplicatesStrategy.EXCLUDE }
-
 jar {
     archiveBaseName = 'new-sdk-demo'
     manifest {
@@ -137,6 +135,7 @@ task executableJar(type: Jar) {
 
     // 构建完成后, 把产物同步到 tests/ 目录(覆盖旧的), 供 `java -jar` 测试直接使用。
     // 把 tests 副本登记为 output：副本丢失/损坏会让本 task 失效并重新拷贝(而非被判 UP-TO-DATE 跳过)。
+    // 登记为 output 也意味着 clean 有责任清掉它——见文件末尾对 clean 的扩展。
     def testsCopy = file("$projectDir/tests/new-sdk-demo-executable.jar")
     outputs.file(testsCopy)
     doLast {
@@ -149,3 +148,47 @@ task executableJar(type: Jar) {
         println "已同步可执行 JAR 到: ${testsCopy}"
     }
 }
+
+// ============================================================================
+// 构建生命周期接线：`assemble` / `build` 到底产出什么
+// ============================================================================
+// 默认行为有两个问题, 而它们互为对方的代价, 必须一起改:
+//
+//   1) `executableJar` 不挂在任何生命周期链上。可执行 Fat JAR 才是本工程对外承认的产物
+//      (README 教的是 `java -jar build/libs/new-sdk-demo-executable.jar`, 发布脚本
+//      scripts/build_java.sh 打包的也是它), 但 `./gradlew build` 只产瘦 jar, 于是
+//      build/libs 与 tests/ 里长期躺着上一次留下的旧 fat jar——`build.sh -b` 跑完
+//      build 后 `ls build/libs/`, 会把那个陈旧产物当作"本次构建成功的产物"列给用户看。
+//      这不是少建一个文件, 是主动误报。
+//
+//   2) `application` 插件的 distZip/distTar 每次 assemble 各打一份分发包(实测 111MB zip
+//      + 113MB tar = 224MB, 且 tar 未压缩), 而本工程从来不用它们: build.sh、
+//      scripts/build_java.sh、README 取的全是 build/libs 下的 jar。全仓无一处引用
+//      build/distributions。
+//
+// 只做 (1): 每次 build 变成 224MB dists 再叠 118MB fat jar, 纯加负担。
+// 只做 (2): fat jar 依旧陈旧, 误报照旧。
+// 两个一起做, 实测 clean build: build/ 由 227MB 降到 116MB, 耗时由 5s 升到 13s。
+//
+// 时间这一项别被"砍掉了 224MB 分发包"误导成变快——它变慢了 8s: dist 两个任务只是把现成的
+// jar 拷进归档(tar 还不压缩), 很便宜; 而 executableJar 要 zipTree 解开整个 SDK jar 再整体
+// 重压, 12s 全花在这里。公平的对照是"拿到交付物要多久": 旧口径得 build(5s) + 单独跑
+// executableJar(12s) = 17s 且 345MB, 新口径 13s / 116MB——那才是更快更小。
+//
+// 13s 的来源: manifest 里的 'Built-Date': new Date() 在配置期求值, 每次调用 gradle 取值都不同,
+// 因此 jar/executableJar 永远不会被判 UP-TO-DATE, 每次 build 都实打实重打一遍。这也正是
+// "必须先砍掉 dists 才能挂 assemble"的原因。日常开发不必付这笔钱: `./gradlew run` 只走
+// compileJava→classes→run, 根本不经过 assemble。
+//
+// 写法用 tasks.named 而非顶层 `distTar { }` 块: 后者是急切配置, 在配置缓存下会告警。
+// 只是禁用而非移除: startScripts/installDist 仍然可用, 需要分发包时改回 enabled = true 即可
+// (届时要把原先的 duplicatesStrategy = DuplicatesStrategy.EXCLUDE 一并加回来)。
+tasks.named('distTar') { enabled = false }
+tasks.named('distZip') { enabled = false }
+tasks.named('assemble') { dependsOn tasks.named('executableJar') }
+
+// clean 要清掉 executableJar 声明过的全部产物。build/ 下的由 clean 默认负责, 但同步到
+// tests/ 的那份在构建目录之外: 它已被 outputs.file(testsCopy) 登记为本 task 的产物, Gradle
+// 认领了它却从不清理, `./gradlew clean` 之后会原样留下一个 118MB 的陈旧 jar, 让"我已经清理过了"
+// 这个前提失真。tests/ 整个目录是 gitignore 的生成物(见 .gitignore), 删除安全。
+tasks.named('clean') { delete file("$projectDir/tests/new-sdk-demo-executable.jar") }

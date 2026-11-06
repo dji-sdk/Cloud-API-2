@@ -23,6 +23,15 @@ public:
     /// @endinternal
     virtual void start(const FlyToPointParams& params, const std::function<void(FlightHubError err, std::string fly_to_id)> callback) = 0;
 
+    /// @brief 开始指点飞行（返回 fly_to_id 与 flight_id）
+    /// @param params 目标点坐标与最大速度
+    /// @param callback 结果回调
+    /// @internal
+    /// 链路: HTTP | POST /atc/api/v1/flight-tasks/fly-to-points
+    /// @endinternal
+    virtual void startWithResult(const FlyToPointParams& params,
+        const std::function<void(FlightHubError err, const FlyToPointStartResult& result)> callback) = 0;
+
     /// @brief 停止指点飞行（紧急停止）
     /// @param callback 结果回调
     ///

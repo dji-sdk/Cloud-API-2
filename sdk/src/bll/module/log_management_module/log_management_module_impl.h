@@ -8,12 +8,13 @@
 #include "common/util/async_capture_protect.h"
 #include "http_interface/http_interface.h"
 #include <unordered_map>
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class LogManagementModuleImpl : public ILogManagementModule, public drc_sdk::common::AsyncCaptureProtect{
 public:
-    explicit LogManagementModuleImpl();
+    explicit LogManagementModuleImpl(int session_id);
     ~LogManagementModuleImpl();
     void QueryDeviceLogList(const std::string& device_sn, const std::vector<int> module_list, const std::function<void(FlightHubError err, DeviceLogListResult result)>& callback) override;
     void CreateDeviceLogReport(const CreateDeviceLogReportRequestParam& param, const std::function<void(FlightHubError err, CreateDeviceLogReportResult result)>& callback) override;
@@ -23,6 +24,7 @@ public:
     int listenDeviceFileUploadProgress(const std::string& device_sn, const std::function<void(const DeviceFileUploadProgress& msg)>& callback) override;
     void cancelListenDeviceFileUploadProgress(int listen_id) override;
 private:
+    int session_id_;
     void GetStsToken(const std::function<void(FlightHubError err, const LogReportAppendStsResponse& sts_response)>& callback);
     std::unordered_map<int, int64_t> file_upload_nc_listen_ids_;
     int file_upload_next_id_ = 0;

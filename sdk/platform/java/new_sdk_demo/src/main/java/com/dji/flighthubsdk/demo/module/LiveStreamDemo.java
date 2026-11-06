@@ -9,18 +9,25 @@ import com.dji.flighthubsdk.bean.DeviceAudienceCountItem;
 import com.dji.flighthubsdk.bean.FlightHubError;
 import com.dji.flighthubsdk.bean.FrameInfo;
 import com.dji.flighthubsdk.bean.LiveInfo;
+import com.dji.flighthubsdk.bean.AiModelsConfigParams;
+import com.dji.flighthubsdk.bean.AiModelsConfigSet;
 import com.dji.flighthubsdk.bean.LiveQualitySettingParams;
 import com.dji.flighthubsdk.core.Dock;
+import com.dji.flighthubsdk.core.DrcModule;
 import com.dji.flighthubsdk.core.Drone;
 import com.dji.flighthubsdk.core.LiveDeviceModule;
 import com.dji.flighthubsdk.core.LiveModule;
+import com.dji.flighthubsdk.core.OnboardAiModule;
 import com.dji.flighthubsdk.demo.base.ModuleDemo;
 import com.dji.flighthubsdk.demo.runtime.Await;
 import com.dji.flighthubsdk.demo.runtime.DemoLog;
+import com.dji.flighthubsdk.demo.runtime.Devices;
 import com.dji.flighthubsdk.demo.runtime.FlightHubException;
 import com.dji.flighthubsdk.demo.runtime.Node;
 import com.dji.flighthubsdk.demo.runtime.Subscription;
 import com.dji.flighthubsdk.demo.utils.Utils;
+import com.dji.flighthubsdk.generated.AiIdentifySetParam;
+import com.dji.flighthubsdk.generated.AiModelSelectParam;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -31,8 +38,13 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -48,7 +60,16 @@ import java.util.concurrent.atomic.AtomicReference;
  *       按固定序列先 0=自适应, <b>设置成功后</b>再 3=高清(档位表: 0=自适应 1=流畅 2=标清 3=高清 4=超清);
  *       每次请求的完整参数与设置结果均详细落<b>日志文件</b>;需先拉流成功, 变更后提示「停止再重拉」以重连生效;</li>
  *   <li><b>停止拉流</b>——按<b>退订 → stop → 关文件</b>的正确顺序停止全部路(避免「先关文件后退订」导致丢帧);</li>
- *   <li><b>获取在线观众数量</b>——接口飞机/机场共有, 联调实测仅<b>机场</b>直播有观众数据, 故本 demo 仅查机场, 需机场在线。</li>
+ *   <li><b>获取在线观众数量</b>——接口飞机/机场共有, 联调实测仅<b>机场</b>直播有观众数据, 故本 demo 仅查机场, 需机场在线;</li>
+ *   <li><b>获取拉流地址</b>——调用 {@code startWithURL} 只取后端地址, 不自动拉流;</li>
+ *   <li><b>订阅 AI SEI</b>——手动输入 payloadIndex(如 176-0-0 / 122-0-0), 未拉流则先自动拉流,
+ *       然后订阅 AI SEI 并观察 15s 内是否回调, 用于复现「无 AI 能力码流静默无回调」问题;</li>
+ *   <li><b>AI 识别开关</b>——调用 {@code AIIdentifySet} 开启/关闭 AI 识别, 并观察 3s AI 状态推送。
+ *       AI SEI 只有开启 AI 识别后才可能产生; 该指令需先建立 DRC 链路;</li>
+ *   <li><b>配置并启用 AI 模型</b>——{@code AIModelSelect} + {@code DrcAIModelsConfig} + {@code AIIdentifySet},
+ *       把已安装模型绑定到码流类型(广角/变焦等), 解决 {@code ai_models_config=[]} 导致无 AI SEI 的问题。</li>
+ *   <li><b>缓存验证(调试)</b>——同一 {@code payloadIndex} 下先后取两个不同 {@code videoId}, 检查
+ *       {@code getLiveStream} 是否错误复用第一个 {@code LiveModule}(调试验证);不改变业务逻辑, 发版前可移除。</li>
  * </ol>
  *
  * <p><b>交互与日志</b>：拉取码流后<b>非阻塞</b>, 拉流在后台持续写盘。菜单<b>常驻</b>:每轮直接列菜单并读一次
@@ -96,12 +117,35 @@ public class LiveStreamDemo extends ModuleDemo {
     /** 当前活动的拉流路(无人机 / 机场各一)。仅主线程(菜单)访问, 无需同步。 */
     private final List<StreamPull> pulls = new ArrayList<>();
 
+    /**
+     * 已放弃等待、但<b>原生 stop 仍未返回</b>的停止线程, 按<b>设备 SN</b> 索引。
+     *
+     * <p><b>为什么必须拦住重拉</b>: SDK 的 {@code Drone/Dock.getLiveStream} 按
+     * {@code payloadIndex + videoId} <b>缓存 LiveModule 实例</b>, 同一路源提前重拉拿到的是同一个
+     * 对象——卡住的旧 {@code stop()} 返回时会 shutdown 新一路正在用的回调线程池, 并在同一 native
+     * 模块上 teardown 刚建好的链路, 结果是新一路静默 0 帧。故在旧 stop 跑完前拒绝对<b>同一设备</b>重拉。
+     *
+     * <p><b>为什么按设备 SN 而不是一个全局标志</b>: LiveModule 缓存是
+     * 「设备 + payloadIndex + videoId」粒度的, 飞机路卡住不影响机场路(不同设备、不同 LiveModule、
+     * 不同 native 模块), 换选另一台设备同理。全局标志会把无风险的另一路/另一台设备一起误拦。
+     * 本 demo 每台设备同时只拉一路, 故按设备 SN 拦截已足够(比实际缓存粒度更保守)。
+     *
+     * <p><b>为什么是 static</b>: 入口每次进模块都 new 一个 demo 实例({@code DemoEntry} 注册的是
+     * {@code LiveStreamDemo::new}), 而危险对象活在进程里({@code FlightHubSdkManager} 按 SN 缓存
+     * Drone/Dock, LiveModule 缓存挂在其上)——实例字段会在「q 退模块再进来」时被静默清零, 保护随之失效。
+     * 仅交互主线程读写({@code startOne}/{@code stopAll}/{@code run} 同线程), 故无需同步。
+     */
+    private static final Map<String, Thread> PENDING_STOPS = new LinkedHashMap<String, Thread>();
+
     /** 落盘目录(run 时从配置解析)。 */
     private String outputDir = DEFAULT_OUTPUT_DIR;
     /** range 发现超时(ms)。 */
     private long rangeTimeoutMs = DEFAULT_RANGE_TIMEOUT_MS;
     /** start()/setLiveQuality() 回调超时(ms)。 */
     private long startTimeoutMs;
+
+    /** [8] 为下发 AIIdentifySet 而建立的 DRC 链路; 退出本 demo 时尽力断开(仅菜单线程访问)。 */
+    private DrcModule autoConnectedDrc;
 
     @Override
     public String name() {
@@ -140,8 +184,13 @@ public class LiveStreamDemo extends ModuleDemo {
                 if (!pulls.isEmpty()) {
                     console("(拉流中：" + pulls.size() + " 路后台写盘中; 选 [2] 看进度、[4] 停止, [5] 观众数量, 或 q 退出)");
                 }
+                // 让「为什么 [1] 拉不起来」在按下去之前就可见, 而不是等被拒绝才知道。
+                purgeFinishedStops();
+                if (!PENDING_STOPS.isEmpty()) {
+                    console("(注意：" + describePendingStops() + " 的上一次停止尚未跑完, 对其选 [1] 会被拒绝, 稍等后重试)");
+                }
                 System.out.print(menu());
-                int choice = Utils.readIntInRange(input, "请选择(1-6, q 退出): ", 1, 6);
+                int choice = Utils.readIntInRange(input, "请选择(1-10, q 退出): ", 1, 10);
                 if (choice == Utils.QUIT) {
                     DemoLog.info(name(), "退出直播菜单");
                     break;
@@ -169,6 +218,18 @@ public class LiveStreamDemo extends ModuleDemo {
                         case 6:
                             getStreamURL();
                             break;
+                        case 7:
+                            subscribeAiSei();
+                            break;
+                        case 8:
+                            setAiIdentify();
+                            break;
+                        case 9:
+                            configureAiModel();
+                            break;
+                        case 10:
+                            verifyLiveModuleCache();
+                            break;
                         default:
                             break;
                     }
@@ -181,6 +242,15 @@ public class LiveStreamDemo extends ModuleDemo {
             // 退出前收尾：停止全部拉流(会话退出的幂等兜底)。
             if (!pulls.isEmpty()) {
                 stopAll();
+            }
+            // [8] 自动建立的 DRC 链路在此断开，避免退出 demo 后仍保持受控。
+            if (autoConnectedDrc != null) {
+                try {
+                    syncItem("DRC 链路断开(收尾)", autoConnectedDrc::disconnectDrcLink, startTimeoutMs);
+                } catch (Throwable t) {
+                    DemoLog.warn(name(), "DRC 链路断开(收尾)异常: " + Utils.describe(t));
+                }
+                autoConnectedDrc = null;
             }
         }
     }
@@ -265,7 +335,8 @@ public class LiveStreamDemo extends ModuleDemo {
         // 停止线程设为 daemon 且 join 带超时: 单路 stop() 内 liveModule.stop() 会 awaitTermination(最长 ~5s);
         // 万一某路原生 stop 卡死(如 0 帧 RTC 通道 teardown), 有界 join 后放弃等待并继续, daemon 身份保证它绝不拖住进程退出。
         List<Thread> workers = new ArrayList<>(n);
-        for (final StreamPull p : pulls) {
+        List<StreamPull> ordered = new ArrayList<>(pulls);
+        for (final StreamPull p : ordered) {
             // p.stop() 内部各步各自 try/catch(Throwable), 不外抛
             Thread t = new Thread(() -> p.stop(), "live-stop-" + p.role);
             t.setDaemon(true);
@@ -286,9 +357,46 @@ public class LiveStreamDemo extends ModuleDemo {
                     + "ms, 原生 stop 可能卡在 RTC teardown), 放弃等待(daemon, 不拖住退出): " + t.getName());
             }
         }
+        // 放弃等待的那几路(join 超时, 或主线程被中断而 break 掉的剩余路)要按设备 SN 记名:
+        // 它们仍握着缓存的 LiveModule, 跑完前不能对同一设备重拉(见 PENDING_STOPS)。
+        purgeFinishedStops();
+        for (int i = 0; i < workers.size(); i++) {
+            Thread t = workers.get(i);
+            if (t.isAlive()) {
+                PENDING_STOPS.put(ordered.get(i).info.getDeviceSn(), t);
+            }
+        }
+        // pulls 仍无条件清空: StreamPull.stop() 入口即置 closed=true, 留在 pulls 里只会让 [2]/[3]
+        // 对死路发命令; 「未停完」的状态由 PENDING_STOPS 承载, 不由 pulls 承载。
         pulls.clear();
-        DemoLog.info(name(), "全部 " + n + " 路停止流程结束");
-        console("   全部已停止。");
+        DemoLog.info(name(), "全部 " + n + " 路停止流程结束"
+            + (PENDING_STOPS.isEmpty() ? "" : "(原生 stop 未返回: " + describePendingStops() + ")"));
+        if (PENDING_STOPS.isEmpty()) {
+            console("   全部已停止。");
+        } else {
+            hint("已停止, 但 " + describePendingStops() + " 的原生 stop 仍未返回;"
+                + " 在其跑完前对这些设备选 [1] 重新拉流会被拒绝(避免复用同一 LiveModule), 稍等后重试即可");
+        }
+    }
+
+    /** 剔除已跑完的停止线程——「等停止线程跑完即自动放行」就靠这里, 无需定时器/守护线程。 */
+    private static void purgeFinishedStops() {
+        PENDING_STOPS.values().removeIf(t -> !t.isAlive());
+    }
+
+    /** 未跑完的停止线程的人读描述, 如 {@code 1 台设备(****1234)}; 供拒绝提示与日志。 */
+    private static String describePendingStops() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(PENDING_STOPS.size()).append(" 台设备(");
+        boolean first = true;
+        for (String sn : PENDING_STOPS.keySet()) {
+            if (!first) {
+                sb.append(", ");
+            }
+            first = false;
+            sb.append(Devices.maskSnForDisplay(sn));
+        }
+        return sb.append(')').toString();
     }
 
     // ==================== [5] 获取在线观众数量 (getAudienceCount) ====================
@@ -445,6 +553,626 @@ public class LiveStreamDemo extends ModuleDemo {
         registry().remove(d.rangeSub);
     }
 
+    // ==================== [10] 缓存验证（调试入口） ====================
+
+    /**
+     * 验证 {@code Drone/Dock.getLiveStream} 对<b>同一 payloadIndex、不同 videoId</b> 是否返回不同
+     * {@link LiveModule}（调试验证）。
+     *
+     * <p>流程与 bridge 复现一致：同一个 demo 进程内对同一相机先取 videoA → {@code startWithURL}，
+     * 再取 videoB → {@code startWithURL}，比较两次返回的 LiveModule 是否为同一实例，并打印后端返回的
+     * stream id（DRTC 为 {@code stream_id=0-x-y}，WHEP 为 {@code stream=...}）。若两次是同一实例，
+     * 第二次的 videoId 实际被忽略，即命中缓存 bug。
+     *
+     * <p>本入口仅用于本地排查，不改变任何业务逻辑；验证完成后可在发版前移除。
+     */
+    private void verifyLiveModuleCache() {
+        String role;
+        String deviceSn;
+        LiveDeviceModule ldm;
+        Object device;
+        String preferred;
+
+        if (session.hasDrone() && session.isDroneOnline()) {
+            role = "drone";
+            deviceSn = session.droneSn();
+            device = session.drone();
+            ldm = session.drone().getLiveDeviceModule();
+            preferred = payloadIndex();
+        } else if (session.hasDock() && session.isDockOnline()) {
+            role = "dock";
+            deviceSn = session.dockSn();
+            device = session.dock();
+            ldm = session.dock().getLiveDeviceModule();
+            preferred = "";
+        } else {
+            hint("当前设备离线或无可用机型, 无法做缓存验证");
+            return;
+        }
+        if (ldm == null) {
+            hint("[" + role + "] 获取直播发现模块失败");
+            return;
+        }
+
+        List<LiveInfo> all = awaitAllLiveInfos(role, ldm, deviceSn, rangeTimeoutMs);
+        if (all == null || all.isEmpty()) {
+            hint("[" + role + "] 无可用直播源, 无法做缓存验证");
+            return;
+        }
+
+        console("\n   [" + role + "] 可用直播源:");
+        for (LiveInfo li : all) {
+            console("     sn=" + li.getDeviceSn()
+                    + " payload=" + li.getPayloadIndex()
+                    + " video=" + li.getVideoId());
+        }
+
+        String payload = (preferred != null && !preferred.isEmpty())
+                ? preferred
+                : all.get(0).getPayloadIndex();
+        List<LiveInfo> samePayload = collectSamePayload(all, deviceSn, payload);
+
+        // 配置里的 target_payload_index 可能只对应单 video；回退到本机第一个含 >=2 个 video 的 payload。
+        if (!hasTwoDistinctVideos(samePayload)) {
+            for (LiveInfo li : all) {
+                if (li == null || !deviceSn.equals(li.getDeviceSn())) {
+                    continue;
+                }
+                String p = li.getPayloadIndex();
+                List<LiveInfo> group = collectSamePayload(all, deviceSn, p);
+                if (hasTwoDistinctVideos(group)) {
+                    payload = p;
+                    samePayload = group;
+                    break;
+                }
+            }
+        }
+        if (!hasTwoDistinctVideos(samePayload)) {
+            hint("没有找到同一 payload 下两路不同 video 的可用源, 无法验证");
+            return;
+        }
+
+        LiveInfo first = samePayload.get(0);
+        LiveInfo second = null;
+        for (LiveInfo li : samePayload) {
+            if (!first.getVideoId().equals(li.getVideoId())) {
+                second = li;
+                break;
+            }
+        }
+
+        console("   payload=" + payload
+                + " first=" + first.getVideoId()
+                + " second=" + second.getVideoId());
+
+        LiveModule m1 = getLiveStream(device, first);
+        console("\n   [1] first=" + first.getVideoId()
+                + " module=" + System.identityHashCode(m1));
+        printStartUrl(first.getVideoId(), m1);
+
+        LiveModule m2 = getLiveStream(device, second);
+        console("\n   [2] second=" + second.getVideoId()
+                + " module=" + System.identityHashCode(m2)
+                + " sameAsFirst=" + (m1 == m2));
+        printStartUrl(second.getVideoId(), m2);
+
+        boolean activePull = false;
+        for (StreamPull p : pulls) {
+            if (p.liveModule == m1) {
+                activePull = true;
+                break;
+            }
+        }
+        if (activePull) {
+            console("\n   [3] 该 LiveModule 正在拉流中, 跳过 stop 后复测(避免中断 [1] 的拉流)");
+        } else {
+            if (m1 != null) {
+                m1.stop();
+            }
+            LiveModule m3 = getLiveStream(device, second);
+            console("\n   [3] after stop, second=" + second.getVideoId()
+                    + " module=" + System.identityHashCode(m3)
+                    + " sameAsFirst=" + (m1 == m3));
+        }
+
+        String verdict = (m1 == m2)
+                ? "[BUG] 不同 videoId 返回同一个 LiveModule（第二个 videoId 被忽略）"
+                : "[PASS] 不同 videoId 返回不同 LiveModule";
+        console("\n   结论: " + verdict);
+        DemoLog.info(name(), "[cacheRepro] payload=" + payload
+                + " first=" + first.getVideoId()
+                + " second=" + second.getVideoId()
+                + " sameAsFirst=" + (m1 == m2) + " -> " + verdict);
+    }
+
+    /** 等一轮 range 回调并返回<b>全部</b>可用源，用于缓存验证等多路场景。 */
+    private List<LiveInfo> awaitAllLiveInfos(final String role, LiveDeviceModule ldm,
+            String ownSn, long timeoutMs) {
+        final AtomicReference<List<LiveInfo>> ref = new AtomicReference<>();
+        final CountDownLatch latch = new CountDownLatch(1);
+        int id = ldm.listenLiveAvailableRange(new FlightHubCallback.LiveAvailableRangeCallback() {
+            @Override
+            public void onResult(List<LiveInfo> list) {
+                if (list != null && !list.isEmpty()) {
+                    ref.set(new ArrayList<>(list));
+                    latch.countDown();
+                }
+            }
+        });
+        if (id == -1) {
+            DemoLog.warn(name(), "[" + role + "] listenLiveAvailableRange 返回 -1");
+            return null;
+        }
+        try {
+            if (!latch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
+                DemoLog.info(name(), "[" + role + "] 等待可用直播源超时(" + timeoutMs + "ms)");
+                return null;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        } finally {
+            ldm.cancelListenLiveAvailableRange(id);
+        }
+        return ref.get();
+    }
+
+    /** 从全量源里筛出指定设备 + payload 的所有 video。 */
+    private static List<LiveInfo> collectSamePayload(List<LiveInfo> all, String deviceSn,
+            String payload) {
+        List<LiveInfo> out = new ArrayList<>();
+        if (all == null || payload == null) {
+            return out;
+        }
+        for (LiveInfo li : all) {
+            if (li != null && deviceSn.equals(li.getDeviceSn())
+                    && payload.equals(li.getPayloadIndex())) {
+                out.add(li);
+            }
+        }
+        return out;
+    }
+
+    /** 同一 payload 的源里是否至少有两个不同的 videoId。 */
+    private static boolean hasTwoDistinctVideos(List<LiveInfo> list) {
+        String first = null;
+        for (LiveInfo li : list) {
+            if (li == null || li.getVideoId() == null) {
+                continue;
+            }
+            if (first == null) {
+                first = li.getVideoId();
+            } else if (!first.equals(li.getVideoId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 调用 startWithURL 并打印 urlType + 后端 stream id；不自动拉流。 */
+    private void printStartUrl(final String tag, LiveModule module) {
+        if (module == null) {
+            console("       startWithURL(" + tag + ") skipped: module=null");
+            return;
+        }
+        final Await<FlightHubError> await =
+                new Await<>(name() + ".cacheRepro.startWithURL(" + tag + ")");
+        final AtomicReference<com.dji.flighthubsdk.bean.LiveStreamStartResult> ref =
+                new AtomicReference<>();
+        Outcome o = runOutcome("缓存验证-startWithURL(" + tag + ")", startTimeoutMs, await, () ->
+            module.startWithURL(new FlightHubCallback.LiveStreamStartCallback() {
+                @Override
+                public void onResult(FlightHubError error,
+                        com.dji.flighthubsdk.bean.LiveStreamStartResult result) {
+                    ref.set(result);
+                    await.set(error);
+                }
+            })
+        );
+        com.dji.flighthubsdk.bean.LiveStreamStartResult r = ref.get();
+        if (o == Outcome.SUCCESS && r != null) {
+            String streamId = extractStreamId(r.getUrl());
+            console("       startWithURL(" + tag + ") success=true"
+                    + " urlType=" + r.getUrlType()
+                    + " streamId=" + streamId);
+            console("       url=" + r.getUrl());
+            DemoLog.info(name(), "[cacheRepro] startWithURL " + tag
+                    + ": urlType=" + r.getUrlType() + " streamId=" + streamId);
+        } else {
+            console("       startWithURL(" + tag + ") failed/timeout");
+            DemoLog.warn(name(), "[cacheRepro] startWithURL " + tag + " failed/timeout");
+        }
+    }
+
+    /** 从 DRTC query string 的 channel_name / WHEP url 的 stream 参数中提取后端流标识。 */
+    private static String extractStreamId(String url) {
+        if (url == null) {
+            return null;
+        }
+        java.util.regex.Matcher m =
+                java.util.regex.Pattern.compile("(?:stream_id|stream|channel_name)=([^&]+)").matcher(url);
+        return m.find() ? m.group(1) : null;
+    }
+
+    // ==================== [8] AI 识别开关 (AIIdentifySet) ====================
+
+    /**
+     * 开启 / 关闭 AI 识别。
+     *
+     * <p>AI SEI 只有在设备开启 AI 识别后才可能产生；本动作通过
+     * {@code OnboardAiModule.AIIdentifySet} 下发 {@code drc_ai_identify_set}，需要先建立 DRC 链路
+     * （主菜单 → DRCLink → 获取负载控制权 → DRC 链路建立）。下发后再监听 3s AI 状态推送，
+     * 回显 {@code identify_on} 与模型配置数量，便于确认是否真正生效。
+     */
+    private void setAiIdentify() {
+        if (!session.hasDrone() || !session.isDroneOnline()) {
+            hint("当前无在线无人机, 无法设置 AI 识别");
+            return;
+        }
+        Drone drone;
+        try {
+            drone = session.drone();
+        } catch (Exception e) {
+            hint("获取无人机实例失败: " + Utils.describe(e));
+            return;
+        }
+        OnboardAiModule ai = drone.getOnboardAiModule();
+        if (ai == null) {
+            hint("获取 OnboardAiModule 失败, 无法设置 AI 识别");
+            return;
+        }
+
+        String s = Utils.readLineEcho(input, "请输入 AI 识别开关 (1=开启, 0=关闭, 回车默认 1): ");
+        if (s == null || "q".equalsIgnoreCase(s.trim())) {
+            return;
+        }
+        s = s.trim();
+        final int on;
+        try {
+            on = s.isEmpty() ? 1 : Integer.parseInt(s);
+        } catch (NumberFormatException e) {
+            hint("非法输入: " + s + " (只支持 1=开启 / 0=关闭)");
+            return;
+        }
+        if (on != 0 && on != 1) {
+            hint("非法输入: " + on + " (只支持 1=开启 / 0=关闭)");
+            return;
+        }
+
+        // AIIdentifySet 走 DRC 链路；未建链时服务端会找不到 drc_ai_identify_set transport。
+        // 这里先尽力建立链路(已建链时该步可能失败, 忽略并继续), 建链后等 3s 让传输就绪。
+        DrcModule drc = drone.getDrcModule();
+        if (drc != null) {
+            console("   前置: 尝试建立 DRC 链路(已建链时该步失败可忽略) ...");
+            Outcome o = syncOutcome("DRC 链路建立(前置)", drc::connectDrcLink, startTimeoutMs);
+            if (o != Outcome.FAILED) {
+                autoConnectedDrc = drc;
+                sleep(3000L);
+            }
+        }
+
+        AiIdentifySetParam param = new AiIdentifySetParam();
+        param.setOn(on);
+        console("\n>> [AIIdentifySet] on=" + on + " 执行中 ...");
+        DemoLog.info(name(), "[drone] AIIdentifySet on=" + on + " timeout=" + startTimeoutMs + "ms");
+
+        final Await<FlightHubError> await = new Await<>(name() + ".AIIdentifySet");
+        ai.AIIdentifySet(param, new FlightHubCallback.ResultCallback() {
+            @Override
+            public void onResult(FlightHubError error) {
+                await.set(error);
+            }
+        });
+        try {
+            FlightHubError err = await.await(startTimeoutMs);
+            if (err != null && err.isSuccess()) {
+                console("   AIIdentifySet 成功: on=" + on);
+                DemoLog.info(name(), "[drone] AIIdentifySet 成功: on=" + on);
+            } else {
+                String line = "AIIdentifySet 失败: error_code="
+                    + (err == null ? "(null)" : err.getErrorCode())
+                    + ", server_code=" + (err == null ? 0 : err.getServerCode())
+                    + ", message=" + (err == null ? "" : err.getServerMessage())
+                    + (on == 1 ? " —— 若提示 transport_not_found, 请先建立 DRC 链路" : "");
+                console("   " + line);
+                DemoLog.warn(name(), "[drone] " + line);
+            }
+        } catch (FlightHubException e) {
+            console("   AIIdentifySet 等待回调超时: " + Utils.describe(e)
+                + " —— 请确认 DRC 链路已建立");
+            DemoLog.warn(name(), "[drone] AIIdentifySet 等待回调超时: " + Utils.describe(e));
+        }
+
+        // 下发后监听 AI 状态推送, 用 identify_on / 模型配置数量确认是否生效。
+        observeAiState(ai, 3000L);
+    }
+
+    /**
+     * 监听 {@code drc_ai_info_push} 一段时间, 回显最新的 {@code identify_on} 与模型配置数量。
+     *
+     * <p>不能只看第一条回调: SDK 的 AI 数据订阅带缓存, 首次回调可能是下发前的旧状态(identify_on=0)。
+     * 故这里持续收 {@code observeMs}，取这段时间内最后一条推送作为结果。
+     */
+    private void observeAiState(OnboardAiModule ai, long observeMs) {
+        final AtomicInteger identifyOn = new AtomicInteger(-1);
+        final AtomicInteger modelConfigs = new AtomicInteger(-1);
+        int listenId = ai.listenAIDataInfo(new FlightHubCallback.AiDataInfoCallback() {
+            @Override
+            public void onResult(com.dji.flighthubsdk.generated.AiDataInfo info) {
+                if (info == null) {
+                    return;
+                }
+                identifyOn.set(info.getIdentify_on());
+                modelConfigs.set(info.getAi_models_config() == null ? 0 : info.getAi_models_config().size());
+            }
+        });
+        if (listenId < 0) {
+            console("   AI 状态订阅失败(listenAIDataInfo 返回 -1)");
+            return;
+        }
+        try {
+            sleep(observeMs);
+        } finally {
+            ai.cancelListenAIDataInfo(listenId);
+        }
+        if (identifyOn.get() >= 0) {
+            String line = "AI 状态推送(最新): identify_on=" + identifyOn.get()
+                + ", ai_models_config.size=" + modelConfigs.get();
+            console("   " + line);
+            DemoLog.info(name(), "[drone] " + line);
+        } else {
+            console("   " + observeMs + "ms 内未收到 AI 状态推送(设备可能未上报, 或 DRC 未连通)");
+            DemoLog.info(name(), "[drone] " + observeMs + "ms 内未收到 AI 状态推送");
+        }
+    }
+
+    // ==================== [9] 配置并启用 AI 模型 ====================
+
+    /**
+     * 配置并启用 AI 模型：{@code AIModelSelect} 选模型 → {@code DrcAIModelsConfig} 把模型绑定到
+     * 码流类型(0=融合/1=广角/2=变焦/3=红外) → {@code AIIdentifySet on=1} 开启识别。
+     *
+     * <p>设备 {@code ai_models_config=[]} 时即使 AI 开关为 1 也不会产出 AI SEI；本动作用于把
+     * 已安装的模型真正绑定到目标码流。需要 DRC 链路，菜单会自动尽力建立。
+     */
+    private void configureAiModel() {
+        if (!session.hasDrone() || !session.isDroneOnline()) {
+            hint("当前无在线无人机, 无法配置 AI 模型");
+            return;
+        }
+        Drone drone;
+        try {
+            drone = session.drone();
+        } catch (Exception e) {
+            hint("获取无人机实例失败: " + Utils.describe(e));
+            return;
+        }
+        OnboardAiModule ai = drone.getOnboardAiModule();
+        if (ai == null) {
+            hint("获取 OnboardAiModule 失败, 无法配置 AI 模型");
+            return;
+        }
+
+        String idxInput = Utils.readLineEcho(input,
+            "请输入 AI 模型 index (0=官方模型, 1=EA340-可见光假模型; 回车默认 0): ");
+        if (idxInput == null || "q".equalsIgnoreCase(idxInput.trim())) {
+            return;
+        }
+        final int modelIndex;
+        try {
+            modelIndex = idxInput.trim().isEmpty() ? 0 : Integer.parseInt(idxInput.trim());
+        } catch (NumberFormatException e) {
+            hint("非法模型 index: " + idxInput);
+            return;
+        }
+
+        String stInput = Utils.readLineEcho(input,
+            "请输入要绑定模型的码流类型, 逗号分隔 (0=融合 1=广角 2=变焦 3=红外; 回车默认 1,2): ");
+        if (stInput == null || "q".equalsIgnoreCase(stInput.trim())) {
+            return;
+        }
+        String stText = stInput.trim().isEmpty() ? "1,2" : stInput.trim();
+        List<Integer> streamTypes = new ArrayList<>();
+        try {
+            for (String part : stText.split(",")) {
+                int t = Integer.parseInt(part.trim());
+                if (t < 0 || t > 3) {
+                    hint("非法码流类型: " + t + " (只支持 0-3)");
+                    return;
+                }
+                streamTypes.add(t);
+            }
+        } catch (NumberFormatException e) {
+            hint("非法码流类型列表: " + stText);
+            return;
+        }
+        if (streamTypes.isEmpty()) {
+            hint("码流类型列表为空");
+            return;
+        }
+
+        // AI 指令走 DRC；未建链时先尽力建立。
+        DrcModule drc = drone.getDrcModule();
+        if (drc != null) {
+            console("   前置: 尝试建立 DRC 链路(已建链时该步失败可忽略) ...");
+            Outcome o = syncOutcome("DRC 链路建立(前置)", drc::connectDrcLink, startTimeoutMs);
+            if (o != Outcome.FAILED) {
+                autoConnectedDrc = drc;
+                sleep(3000L);
+            }
+        }
+
+        AiModelSelectParam selectParam = new AiModelSelectParam();
+        selectParam.setIndex(modelIndex);
+        if (!syncItem("选择 AI 模型(index=" + modelIndex + ")",
+                cb -> ai.AIModelSelect(selectParam, cb), startTimeoutMs)) {
+            hint("选择 AI 模型失败, 后续配置可能无效");
+        }
+
+        AiModelsConfigParams configParams = new AiModelsConfigParams();
+        List<AiModelsConfigSet> configs = new ArrayList<>();
+        List<Integer> models = new ArrayList<>();
+        models.add(modelIndex);
+        for (Integer t : streamTypes) {
+            AiModelsConfigSet set = new AiModelsConfigSet();
+            set.setStreamType(t);
+            set.setModels(models);
+            configs.add(set);
+        }
+        configParams.setAiModelsConfig(configs);
+        if (!callItem("配置 AI 模型(stream_type=" + stText + ", model=" + modelIndex + ")",
+                cb -> ai.DrcAIModelsConfig(configParams, cb), startTimeoutMs)) {
+            hint("配置 AI 模型失败: 设备可能未安装该模型或不支持该码流类型");
+        }
+
+        AiIdentifySetParam identifyParam = new AiIdentifySetParam();
+        identifyParam.setOn(1);
+        if (syncItem("开启 AI 识别", cb -> ai.AIIdentifySet(identifyParam, cb), startTimeoutMs)) {
+            console("   AI 识别已开启, 观察 5s 状态推送...");
+        } else {
+            hint("开启 AI 识别失败");
+        }
+        observeAiState(ai, 5000L);
+    }
+
+    // ==================== [7] 订阅 AI SEI (subscribeAiSeiInfo) ====================
+
+    /**
+     * 订阅 AI SEI 并观察 15s 内是否回调。
+     *
+     * <p>用于复现「无 AI 能力码流 subscribeAiSeiInfo 静默无回调」：输入 payloadIndex 后，
+     * 若该 payload 尚未拉流则先走拉流流程；随后订阅 AI SEI，统计回调次数 / 目标数 / 视频帧数。
+     * 观察结束后自动退订，拉流本身保持运行，可继续 [2] 查看或 [4] 停止。
+     */
+    private void subscribeAiSei() {
+        if (!session.hasDrone() || !session.isDroneOnline()) {
+            hint("当前无在线无人机, 无法订阅 AI SEI");
+            return;
+        }
+        Drone drone;
+        try {
+            drone = session.drone();
+        } catch (Exception e) {
+            hint("获取无人机实例失败: " + Utils.describe(e));
+            return;
+        }
+        LiveDeviceModule ldm = drone.getLiveDeviceModule();
+        if (ldm == null) {
+            hint("获取 LiveDeviceModule 失败, 无法订阅 AI SEI");
+            return;
+        }
+        final String deviceSn = session.droneSn();
+
+        String defaultPayload = payloadIndex();
+        for (StreamPull p : pulls) {
+            if ("drone".equals(p.role) && deviceSn != null && deviceSn.equals(p.info.getDeviceSn())) {
+                defaultPayload = p.info.getPayloadIndex();
+                break;
+            }
+        }
+        String inputPayload = Utils.readLineEcho(input,
+            "请输入要订阅 AI SEI 的 payloadIndex (如 176-0-0 / 122-0-0, 回车默认 "
+                + (defaultPayload == null || defaultPayload.isEmpty() ? "(无)" : defaultPayload) + "): ");
+        if (inputPayload == null || "q".equalsIgnoreCase(inputPayload.trim())) {
+            return;
+        }
+        final String payload = inputPayload.trim().isEmpty() ? defaultPayload : inputPayload.trim();
+        if (payload == null || payload.isEmpty()) {
+            hint("未指定 payloadIndex, 无法订阅 AI SEI");
+            return;
+        }
+
+        StreamPull pull = findPull("drone", deviceSn, payload);
+        if (pull == null) {
+            console("   [drone] payload=" + payload + " 尚未拉流, 先自动拉流...");
+            if (!startOne("drone", deviceSn, ldm, drone, payload)) {
+                hint("[" + payload + "] 拉流失败, 无法订阅 AI SEI");
+                return;
+            }
+            pull = findPull("drone", deviceSn, payload);
+            if (pull == null) {
+                hint("[" + payload + "] 拉流后未找到对应 LiveModule, 无法订阅 AI SEI");
+                return;
+            }
+        } else {
+            console("   复用已拉流的 payload=" + payload + " (已收帧=" + pull.frames.get() + ")");
+        }
+        final StreamPull targetPull = pull;
+
+        final AtomicInteger aiCallbacks = new AtomicInteger();
+        final AtomicInteger targets = new AtomicInteger();
+        final CountDownLatch firstAi = new CountDownLatch(1);
+        int listenId = targetPull.liveModule.subscribeAiSeiInfo(new FlightHubCallback.AiSeiInfoCallback() {
+            @Override
+            public void onResult(com.dji.flighthubsdk.bean.AiSeiInfo aiSeiInfo) {
+                aiCallbacks.incrementAndGet();
+                int n = (aiSeiInfo == null || aiSeiInfo.getTargets() == null)
+                    ? 0 : aiSeiInfo.getTargets().size();
+                targets.addAndGet(n);
+                if (firstAi.getCount() > 0) {
+                    DemoLog.info(name(), "[drone] AI SEI 首次回调: payload=" + payload + " targets=" + n);
+                    firstAi.countDown();
+                }
+            }
+        });
+        if (listenId < 0) {
+            if (listenId == -17) { // ERROR_AI_NOT_SUPPORTED
+                hint("subscribeAiSeiInfo 返回 -17: 该路不支持 AI (payload=" + payload + ")");
+            } else if (listenId == -18) { // ERROR_AI_MODEL_NOT_AVAILABLE
+                hint("subscribeAiSeiInfo 返回 -18: 无生效 AI 模型 (payload=" + payload + ")");
+            } else {
+                hint("subscribeAiSeiInfo 返回 " + listenId + ", 订阅失败");
+            }
+            return;
+        }
+
+        final long observeMs = 15000L;
+        console("   subscribeAiSeiInfo id=" + listenId + ", 立即返回; 观察 " + observeMs + "ms 内回调...");
+        DemoLog.info(name(), "[drone] subscribeAiSeiInfo: payload=" + payload
+            + " listenId=" + listenId + " observeMs=" + observeMs);
+        boolean gotAi = false;
+        try {
+            gotAi = firstAi.await(observeMs, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            targetPull.liveModule.unSubscribeAiSeiInfo(listenId);
+        }
+
+        long videoFrames = targetPull.frames.get();
+        String result = "payload=" + payload
+            + " gotAiCallback=" + gotAi
+            + " aiCallbacks=" + aiCallbacks.get()
+            + " targetsTotal=" + targets.get()
+            + " videoFrames=" + videoFrames;
+        DemoLog.info(name(), "[drone] AI SEI 观察结果: " + result);
+        console("   " + result);
+        if (!gotAi) {
+            if (videoFrames == 0) {
+                console("   -> 该路 15s 内无视频帧, 无法判断是否有 AI 能力; 请确认码流有帧后重试");
+            } else {
+                console("   -> 该路有视频帧但 15s 内无 AI SEI 回调: SDK 未返回“该路不支持 AI/无生效模型”等业务错误码");
+            }
+        }
+        console("   已退订 AI SEI; 拉流仍在继续, 可继续 [2] 查看或 [4] 停止");
+    }
+
+    /** 按 role + sn + payloadIndex 查找当前活动的拉流路(未关闭)。 */
+    private StreamPull findPull(String role, String deviceSn, String payloadIndex) {
+        for (StreamPull p : pulls) {
+            if (!role.equals(p.role) || p.closed) {
+                continue;
+            }
+            if (deviceSn != null && !deviceSn.equals(p.info.getDeviceSn())) {
+                continue;
+            }
+            if (payloadIndex.equals(p.info.getPayloadIndex())) {
+                return p;
+            }
+        }
+        return null;
+    }
+
     // ==================== [2] 拉流状态 ====================
 
     /** 拉流状态：逐路打印帧数 / 字节 / 输出文件。 */
@@ -521,6 +1249,16 @@ public class LiveStreamDemo extends ModuleDemo {
      */
     private boolean startOne(String role, String deviceSn, LiveDeviceModule ldm,
             Object device, String preferredPayloadIndex) {
+        // 上一次对本设备的停止还没跑完 -> 拒绝重拉: 此时 getLiveStream 会返回同一个缓存 LiveModule,
+        // 旧 stop 返回时会关掉新一路的回调线程池并 teardown 新链路(见 PENDING_STOPS)。
+        purgeFinishedStops();
+        if (PENDING_STOPS.containsKey(deviceSn)) {
+            hint("[" + role + "] 上一次停止尚未完成(" + Devices.maskSnForDisplay(deviceSn)
+                + " 的原生 stop 仍在收尾, 可能卡在 RTC teardown), 本路拉取已拒绝"
+                + " —— SDK 按 payloadIndex + videoId 缓存 LiveModule, 同一路源提前重拉会拿到同一实例;"
+                + " 等停止线程跑完再选 [1] 即自动放行");
+            return false;
+        }
         if (ldm == null) {
             DemoLog.warn(name(), "[" + role + "] 获取 LiveDeviceModule 失败, 跳过");
             console("   [" + role + "] 获取直播发现模块失败, 跳过");
@@ -534,7 +1272,7 @@ public class LiveStreamDemo extends ModuleDemo {
             return false;
         }
 
-        // 2) 取拉流模块(按 payloadIndex 缓存)。尚未启动, 失败仅收尾 range。
+        // 2) 取拉流模块(按 payloadIndex + videoId 缓存)。尚未启动, 失败仅收尾 range。
         LiveModule lm = getLiveStream(device, d.info);
         if (lm == null) {
             DemoLog.warn(name(), "[" + role + "] getLiveStream 返回 null, 跳过");
@@ -844,12 +1582,12 @@ public class LiveStreamDemo extends ModuleDemo {
     }
 
     /** 纯控制台输出(不落日志文件), 用于菜单文案与结果回显——DemoLog 只落日志文件, 交互终端看不到。 */
-    private void console(String line) {
+    protected void console(String line) {
         System.out.println(line);
     }
 
     /** 提示信息双写：既落日志文件(带 demo 名 tag)又回显控制台, 用于前置条件不满足、取消等需留痕的提示。 */
-    private void hint(String msg) {
+    protected void hint(String msg) {
         DemoLog.info(name(), msg);
         console("   " + msg);
     }
@@ -870,6 +1608,10 @@ public class LiveStreamDemo extends ModuleDemo {
             + "  4. 停止拉流 (退订 → stop → 关文件)\n"
             + "  5. 获取在线观众数量 (机场; level1=web, level2=\"\")\n"
             + "  6. 获取拉流地址 (startWithURL: 只获取后端拉流地址, 不自动拉流)\n"
+            + "  7. 订阅 AI SEI (输入 payloadIndex, 未拉流则先拉流; 观察 15s 内是否回调)\n"
+            + "  8. AI 识别开关 (AIIdentifySet, 输入 1=开启 0=关闭; 需先建立 DRC 链路)\n"
+            + "  9. 配置并启用 AI 模型 (AIModelSelect + DrcAIModelsConfig + AIIdentifySet)\n"
+            + " 10. 缓存验证 (调试: 同一 payload 不同 videoId 是否返回不同 LiveModule)\n"
             + "  q. 返回上级菜单\n";
     }
 
@@ -910,6 +1652,19 @@ public class LiveStreamDemo extends ModuleDemo {
         private final AtomicLong bytes = new AtomicLong();
         private volatile boolean closed;
 
+        /**
+         * 写盘失败次数 (本机落盘问题: 磁盘满 / 无写权限 / 文件被移走)。
+         *
+         * <p><b>为什么必须单独记</b>: 停止时「0 字节」有两种完全不同的成因, 归错因会把排查引向反方向——
+         * 没发生过写盘失败 = 上游确实没推流(该去查设备/推流侧, 非 demo/SDK bug);
+         * 发生过写盘失败 = 帧收到了但本机写不下去(该去查磁盘/权限), 此时空文件<b>必须保留</b>,
+         * 删掉等于把唯一的现场证据一起删了。
+         */
+        private final AtomicLong writeFailures = new AtomicLong();
+
+        /** 首个写盘失败原因 (只记第一个: 后续多为同一根因的重复, 首因才指向问题源头)。 */
+        private final AtomicReference<String> firstWriteFailure = new AtomicReference<String>();
+
         StreamPull(String role, LiveInfo info, LiveModule liveModule,
                 OutputStream out, File file, Subscription rangeSub) {
             this.role = role;
@@ -949,7 +1704,12 @@ public class LiveStreamDemo extends ModuleDemo {
                     );
                 }
             } catch (Throwable t) {
-                DemoLog.warn(name(), "[" + role + "] 写码流异常: " + Utils.describe(t));
+                // 计数与首因在 synchronized(lock) 之外记录(catch 本就在锁外), 不延长持锁时间;
+                // 两者均为原子量, SDK 多回调线程并发写安全。
+                long fails = writeFailures.incrementAndGet();
+                String desc = Utils.describe(t);
+                firstWriteFailure.compareAndSet(null, desc);
+                DemoLog.warn(name(), "[" + role + "] 写码流异常(第 " + fails + " 次): " + desc);
             }
         }
 
@@ -995,8 +1755,16 @@ public class LiveStreamDemo extends ModuleDemo {
 
             long f = frames.get();
             long b = bytes.get();
-            // 5) 0 字节 = 无真实推流：删空文件, 避免磁盘残留。
-            if (b == 0) {
+            long fails = writeFailures.get();
+            // 5) 0 字节分两种成因(见 writeFailures 字段注释): 有写盘失败 = 本机落盘问题, 保留空文件留证;
+            //    无写盘失败 = 上游无真实推流, 删空文件避免磁盘残留。
+            if (b == 0 && fails > 0) {
+                DemoLog.warn(name(), "[" + role + "] 0 字节, 但发生过 " + fails + " 次写盘失败(本机落盘问题,"
+                    + " 非上游无推流): 首因=" + firstWriteFailure.get() + "; 空文件已保留留证: " + file.getName());
+                console("   [" + role + "] 停止: 0 字节, 但写盘失败 " + fails + " 次 —— 本机落盘问题"
+                    + "(磁盘满/无写权限/文件被移走), 请查磁盘与目录权限; 空文件已保留: " + file.getName());
+                console("      首个失败原因: " + firstWriteFailure.get());
+            } else if (b == 0) {
                 boolean deleted = false;
                 try {
                     deleted = file.delete();
@@ -1008,19 +1776,24 @@ public class LiveStreamDemo extends ModuleDemo {
                 console("   [" + role + "] 停止: 0 帧 / 0 字节 —— 未写入数据(启动失败或上游无推流), 空文件已"
                     + (deleted ? "删除" : "保留"));
             } else {
+                String failSuffix = fails > 0
+                        ? (" 写盘失败=" + fails + " 次(首因: " + firstWriteFailure.get() + ")")
+                        : "";
                 DemoLog.info(name(), "[" + role + "] 停止: 帧数=" + f + " 字节=" + b
-                    + String.format(" (%.2f MB) -> ", b / 1024.0 / 1024.0) + file.getAbsolutePath());
+                    + String.format(" (%.2f MB) -> ", b / 1024.0 / 1024.0) + file.getAbsolutePath() + failSuffix);
                 console("   [" + role + "] 停止: 帧数=" + f + " 字节=" + b
-                    + String.format(" (%.2f MB) -> ", b / 1024.0 / 1024.0) + file.getName());
+                    + String.format(" (%.2f MB) -> ", b / 1024.0 / 1024.0) + file.getName() + failSuffix);
             }
         }
 
-        /** 状态行(供「拉流状态」打印)。 */
+        /** 状态行(供「拉流状态」打印)。写盘失败非零时附计数与首因——README 承诺 [2] 能看到这两项。 */
         String status() {
+            long fails = writeFailures.get();
             return "[" + role + "] sn=" + info.getDeviceSn()
                 + " payload=" + info.getPayloadIndex()
                 + " 帧数=" + frames.get() + " 字节=" + bytes.get()
                 + " 运行=" + (!closed)
+                + (fails > 0 ? " 写盘失败=" + fails + "次(首因: " + firstWriteFailure.get() + ")" : "")
                 + " -> " + file.getName();
         }
     }

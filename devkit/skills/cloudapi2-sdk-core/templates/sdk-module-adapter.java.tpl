@@ -1,6 +1,8 @@
 package com.example.dji.sdk.modules;
 
-import com.dji.flighthub.sdk.*;
+import com.dji.flighthubsdk.FlightHubSDK;
+import com.dji.flighthubsdk.core.Drone;
+import com.dji.flighthubsdk.generated.FlightHubSdkErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

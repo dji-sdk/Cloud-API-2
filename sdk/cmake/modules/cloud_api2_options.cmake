@@ -1,3 +1,6 @@
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 option(ENABLE_CCACHE "Enable ccache if installed" ON)
 option(ASAN_ENABLE "AddressSanitizer (debug)" OFF)
 option(FH_SDK_DEBUG_SYMBOLS "Debug symbols + frame pointers" ON)

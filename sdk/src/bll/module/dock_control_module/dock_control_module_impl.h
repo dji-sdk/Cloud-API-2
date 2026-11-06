@@ -7,12 +7,13 @@
 #include "common/util/async_capture_protect.h"
 #include "tool/callback_container.h"
 #include <string>
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class DockControlModuleImpl : public IDockControlModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    DockControlModuleImpl(const std::string& sn);
+    DockControlModuleImpl(const std::string& sn, int session_id);
     ~DockControlModuleImpl() override;
 
     void changeDockCameraPosition(
@@ -33,6 +34,7 @@ public:
     void setDockAirConditionerMode(int mode, const std::function<void(FlightHubError err)>& callback) override;
 
 private:
+    int session_id_;
     void registerNotificationCenterListeners();
 
     std::string sn_;

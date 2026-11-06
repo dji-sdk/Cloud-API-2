@@ -119,6 +119,23 @@ public class GetWaylineListParam {
     return (cPtr == 0) ? null : new StringVector(cPtr, false);
   }
 
+  public void setWayline_types_int(IntVector value) {
+    flighthubsdkmoduleJNI.GetWaylineListParam_wayline_types_int_set(swigCPtr, this, IntVector.getCPtr(value), value);
+  }
+
+  public IntVector getWayline_types_int() {
+    long cPtr = flighthubsdkmoduleJNI.GetWaylineListParam_wayline_types_int_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new IntVector(cPtr, false);
+  }
+
+  public void setKeyword(String value) {
+    flighthubsdkmoduleJNI.GetWaylineListParam_keyword_set(swigCPtr, this, value);
+  }
+
+  public String getKeyword() {
+    return flighthubsdkmoduleJNI.GetWaylineListParam_keyword_get(swigCPtr, this);
+  }
+
   public GetWaylineListParam() {
     this(flighthubsdkmoduleJNI.new_GetWaylineListParam(), true);
   }

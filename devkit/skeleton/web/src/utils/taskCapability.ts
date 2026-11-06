@@ -58,7 +58,7 @@ const UNSUPPORTED_PLAN_TYPES: readonly PlanType[] = ['leapfrog', 'manual']
  * 置灰入口的统一提示文案（渲染为按钮 title）。
  *
  * 措辞与 `FlightTaskList.vue` 的 `UNSUPPORTED_ACTION_TIP` 对齐，用「平台协议」
- * 而非「通道」：面向 ISV 用户，通道/链路的内部叫法没有解释力。
+ * 而非「通道」：面向集成商用户，通道/链路的内部叫法没有解释力。
  */
 export const CHANNEL_UNSUPPORTED_HINT = '当前平台协议暂不支持该选项'
 

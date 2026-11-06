@@ -1,3 +1,6 @@
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 # 示例默认不编；单独调试时用 -DBUILD_BLOCKING_DETECTOR_DEMO=ON。
 set(BUILD_BLOCKING_DETECTOR_DEMO OFF CACHE BOOL "" FORCE)
 add_subdirectory(

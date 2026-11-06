@@ -82,6 +82,18 @@ public class IAIAlertModule {
     flighthubsdkmoduleJNI.IAIAlertModule_getAiAlertRecordsWrapper(swigCPtr, this, GetAiAlertRecordsParam.getCPtr(param), param, GetAiAlertRecordsCallback.getCPtr(callback), callback);
   }
 
+  public int listenAiAlertRecordsWrapper(String device_sn, AiAlertRecordsNotifyCallback callback) {
+    return flighthubsdkmoduleJNI.IAIAlertModule_listenAiAlertRecordsWrapper(swigCPtr, this, device_sn, AiAlertRecordsNotifyCallback.getCPtr(callback), callback);
+  }
+
+  public void cancelListenAiAlertRecordsWrapper(int listen_id) {
+    flighthubsdkmoduleJNI.IAIAlertModule_cancelListenAiAlertRecordsWrapper(swigCPtr, this, listen_id);
+  }
+
+  public void deleteAiAlertRecordWrapper(DeleteAiAlertRecordParam param, ResultCallbackWithError callback) {
+    flighthubsdkmoduleJNI.IAIAlertModule_deleteAiAlertRecordWrapper(swigCPtr, this, DeleteAiAlertRecordParam.getCPtr(param), param, ResultCallbackWithError.getCPtr(callback), callback);
+  }
+
   public IAIAlertModule() {
     this(flighthubsdkmoduleJNI.new_IAIAlertModule(), true);
     flighthubsdkmoduleJNI.IAIAlertModule_director_connect(this, swigCPtr, true, true);

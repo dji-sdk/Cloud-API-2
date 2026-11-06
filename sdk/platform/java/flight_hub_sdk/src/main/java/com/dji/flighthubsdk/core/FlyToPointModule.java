@@ -122,6 +122,60 @@ public class FlyToPointModule {
      * @param callback 结果回调
      * @implNote 链路: DRC | method: drone_emergency_stop
      */
+    /**
+     * 开始指点飞行（返回 fly_to_id + flight_id）
+     * @param params 目标点坐标与最大速度
+     * @param callback 结果回调
+     * @implNote 链路: HTTP | POST /atc/api/v1/flight-tasks/fly-to-points
+     */
+    public void startWithResult(com.dji.flighthubsdk.bean.FlyToPointParams params,
+            FlightHubCallback.FlyToPointStartResultCallback callback) {
+        try {
+            int id = generateActionCallbackId();
+            com.dji.flighthubsdk.generated.FlyToPointStartResultCallback swigCallback =
+                    new com.dji.flighthubsdk.generated.FlyToPointStartResultCallback() {
+                        @Override
+                        public void onFlyToPointStartResult(com.dji.flighthubsdk.generated.FlightHubError err,
+                                com.dji.flighthubsdk.generated.FlyToPointStartResult result) {
+                            try {
+                                if (callback != null) {
+                                    callback.onResult(FlightHubSdkConvert.toFlightHubError(err),
+                                            FlightHubSdkConvert.toFlyToPointStartResult(result));
+                                }
+                            } catch (Exception e) {
+                                Logger.error("FlyToPointModule", "StartWithResult callback error: " + e.getMessage(), e);
+                            } finally {
+                                startCallbackRef.remove(id);
+                            }
+                        }
+                    };
+            final CallbackRefContainer container = new CallbackRefContainer(swigCallback, callback);
+            com.dji.flighthubsdk.generated.FlyToPointParams nativeFlyToPointParams = null;
+            synchronized (startCallbackRef) {
+                startCallbackRef.put(id, container);
+                try {
+                    nativeFlyToPointParams = FlightHubSdkConvert.toNativeFlyToPointParams(params);
+                    this.flyToPointModule.startWithResultWrapper(nativeFlyToPointParams, swigCallback);
+                } finally {
+                    if (nativeFlyToPointParams != null) {
+                        nativeFlyToPointParams.delete();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Logger.error("FlyToPointModule", "startWithResult error: " + e.getMessage(), e);
+            if (callback != null) {
+                try {
+                    callback.onResult(new com.dji.flighthubsdk.bean.FlightHubError(
+                            FlightHubSdkErrorCode.ERROR_OPERATION_FAILED),
+                            new com.dji.flighthubsdk.bean.FlyToPointStartResult("", ""));
+                } catch (Exception ex) {
+                    Logger.error("FlyToPointModule", "error callback threw: " + ex.getMessage(), ex);
+                }
+            }
+        }
+    }
+
     public void drcStop(FlightHubCallback.ResultCallbackWithError callback) {
         try {
             int id = generateActionCallbackId();

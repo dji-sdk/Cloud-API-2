@@ -25,7 +25,10 @@ enum class SeiType {
 };
 
 public: 
-    explicit LiveModuleImpl(const LiveInfo& params, std::shared_ptr<message_engine::IRtcChannelManager> rtc_channel_manager, const std::string& gateway_sn = "");
+    /// 查询设备最新 AI 状态；返回 false 表示尚未收到 AI 状态推送（无法判定）。
+    using AiCapabilityProvider = std::function<bool(AiDataInfo*)>;
+
+    explicit LiveModuleImpl(const LiveInfo& params, std::shared_ptr<message_engine::IRtcChannelManager> rtc_channel_manager, int session_id, const std::string& gateway_sn = "", AiCapabilityProvider ai_capability_provider = nullptr);
     ~LiveModuleImpl() override;
 
     void start(const std::function<void(FlightHubError result)>& callback) override;
@@ -64,6 +67,7 @@ public:
     void setLiveQuality(const LiveQualitySettingParams& params, const std::function<void(FlightHubError err)>& callback) override;
 
 private:
+    int session_id_;
     message_engine::ChannelProviderType getChannelProviderType(const LiveStreamStartResponse& response);
 
 
@@ -94,6 +98,12 @@ private:
     bool isJsonFormattedSei() const;
 
     bool isNeedProcessSei();
+
+    /// 订阅 AI SEI 前的能力校验：0=支持；负值=业务错误码。
+    int checkAiSupport() const;
+
+    /// 将当前 payload/video 映射为 AI 协议里的 stream_type（0 融合 / 1 广角 / 2 变焦 / 3 红外）。
+    int resolveAiStreamType() const;
     
     void handleWebRTCError(const std::string& error, const std::string& message);
     
@@ -103,6 +113,7 @@ private:
     std::string gateway_sn_;   // 网关设备SN（drone场景为机场SN，dock场景为机场SN）
     message_engine::ChannelInfo channel_info_;
     std::shared_ptr<message_engine::IRtcChannelManager> rtc_channel_manager_;
+    AiCapabilityProvider ai_capability_provider_;
     std::atomic<bool> is_stopped_{false}; // 防止重复停止的标志
 
     CallbackContainerTwoParams<std::vector<uint8_t>, FrameInfo, false> live_stream_callback_container_;

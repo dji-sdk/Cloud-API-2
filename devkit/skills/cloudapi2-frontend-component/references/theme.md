@@ -7,12 +7,12 @@
 | `WaylineEditor` | `theme` | `Partial<WaylineTheme>` | `editor.setTheme(theme)` | `--fh2-*` / `--dji-wl-*` |
 | `FlyDataReplay` | `theme` | `Partial<FlyDataTheme>` | `player.setTheme(theme)` | `--fh2-*` / `--fly-data-*` |
 | `UranusDeviceManagerApp` | — | — | — | — |
-| `FH2.loadCockpit` / `loadDevice` / `loadWaylineView` | — | — | — | — |
+| `FH2.loadCockpit` / `loadDeviceWindow` | — | — | — | — |
 
 **踩坑提醒：**
 
 1. **Ant Design 组件主色为构建期 Less 编译**，`setTheme()` 对 AntD 主色**不生效**；其它走 `var(--fh2-*)` CSS 变量的颜色会跟随。
-2. SDK **不提供预置主题**，只暴露定制接口。下方 `OCEAN_THEME` 仅作字段填法演示，颜色值由 ISV 自行决定。
+2. SDK **不提供预置主题**，只暴露定制接口。下方 `OCEAN_THEME` 仅作字段填法演示，颜色值由集成商自行决定。
 3. **UMD 模式不暴露** `applyTheme` / `DEFAULT_THEME` 工具；只能用 `setTheme()`，或自行 `document.documentElement.style.setProperty('--fh2-primary-color', ...)`。
 4. 同一份调色板可以直接喂给两个组件（结构一致），但**默认值不同** —— 不传的字段各自沿用自己的默认值。
 

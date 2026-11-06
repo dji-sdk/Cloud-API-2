@@ -66,6 +66,30 @@ public class IFlightTaskControlModule {
     flighthubsdkmoduleJNI.IFlightTaskControlModule_cancelListenWaylineTaskEventWrapper(swigCPtr, this, listen_id);
   }
 
+  public int listenReturnHomeInfoEventWrapper(ReturnHomeInfoEventCallback callback) {
+    return flighthubsdkmoduleJNI.IFlightTaskControlModule_listenReturnHomeInfoEventWrapper(swigCPtr, this, ReturnHomeInfoEventCallback.getCPtr(callback), callback);
+  }
+
+  public int listenReturnHomeInfoEventByDeviceWrapper(String device_sn, ReturnHomeInfoEventCallback callback) {
+    return flighthubsdkmoduleJNI.IFlightTaskControlModule_listenReturnHomeInfoEventByDeviceWrapper(swigCPtr, this, device_sn, ReturnHomeInfoEventCallback.getCPtr(callback), callback);
+  }
+
+  public void cancelListenReturnHomeInfoEventWrapper(int listen_id) {
+    flighthubsdkmoduleJNI.IFlightTaskControlModule_cancelListenReturnHomeInfoEventWrapper(swigCPtr, this, listen_id);
+  }
+
+  public void cancelListenReturnHomeInfoEventByDeviceWrapper(int listen_id) {
+    flighthubsdkmoduleJNI.IFlightTaskControlModule_cancelListenReturnHomeInfoEventByDeviceWrapper(swigCPtr, this, listen_id);
+  }
+
+  public int listenTaskExceptionEventWrapper(TaskExceptionEventCallback callback) {
+    return flighthubsdkmoduleJNI.IFlightTaskControlModule_listenTaskExceptionEventWrapper(swigCPtr, this, TaskExceptionEventCallback.getCPtr(callback), callback);
+  }
+
+  public void cancelListenTaskExceptionEventWrapper(int listen_id) {
+    flighthubsdkmoduleJNI.IFlightTaskControlModule_cancelListenTaskExceptionEventWrapper(swigCPtr, this, listen_id);
+  }
+
   public void pauseWrapper(ResultCallbackWithError callback) {
     flighthubsdkmoduleJNI.IFlightTaskControlModule_pauseWrapper(swigCPtr, this, ResultCallbackWithError.getCPtr(callback), callback);
   }

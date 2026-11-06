@@ -61,6 +61,24 @@ public class McpClientProperties {
     /** 重连最大延迟（指数退避上限），默认 30 秒 */
     private Duration reconnectMaxDelay = Duration.ofSeconds(30);
 
+    /**
+     * 重连退避抖动比例，默认 0.2（即实际延迟在 {@code [0.8d, 1.0d]} 内随机）。
+     *
+     * <p>多个 skeleton 实例同时断连时，固定退避会让它们的重连时刻完全对齐，
+     * 形成对 MCP Server 的周期性尖峰。加入抖动可把重连打散。
+     * 设为 0 表示关闭抖动（测试需要确定性时使用）。
+     */
+    private double reconnectJitterRatio = 0.2;
+
+    /**
+     * 重连延迟的绝对上限，默认 120 秒。
+     *
+     * <p>与 {@link #reconnectMaxDelay} 不同：服务端返回 429 且带 {@code Retry-After} 时，
+     * 退避延迟必须服从服务端要求，不能被 {@code reconnectMaxDelay}（30 秒）截断，
+     * 否则会在服务端限流窗口内继续重试。该上限仅用于防御异常大的 header 值。
+     */
+    private Duration retryAfterMax = Duration.ofSeconds(120);
+
     /** 是否启用心跳保活，默认开启 */
     private boolean keepaliveEnabled = true;
 
@@ -230,6 +248,42 @@ public class McpClientProperties {
      */
     public void setReconnectMaxDelay(Duration reconnectMaxDelay) {
         this.reconnectMaxDelay = reconnectMaxDelay;
+    }
+
+    /**
+     * 返回重连退避抖动比例。
+     *
+     * @return 抖动比例，取值范围 {@code [0, 1)}
+     */
+    public double getReconnectJitterRatio() {
+        return reconnectJitterRatio;
+    }
+
+    /**
+     * 设置重连退避抖动比例。
+     *
+     * @param reconnectJitterRatio 抖动比例，取值范围 {@code [0, 1)}；0 表示关闭抖动
+     */
+    public void setReconnectJitterRatio(double reconnectJitterRatio) {
+        this.reconnectJitterRatio = reconnectJitterRatio;
+    }
+
+    /**
+     * 返回重连延迟的绝对上限。
+     *
+     * @return 绝对上限时长
+     */
+    public Duration getRetryAfterMax() {
+        return retryAfterMax;
+    }
+
+    /**
+     * 设置重连延迟的绝对上限。
+     *
+     * @param retryAfterMax 绝对上限时长
+     */
+    public void setRetryAfterMax(Duration retryAfterMax) {
+        this.retryAfterMax = retryAfterMax;
     }
 
     /**

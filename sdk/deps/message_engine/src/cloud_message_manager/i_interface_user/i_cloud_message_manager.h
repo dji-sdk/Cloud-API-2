@@ -19,9 +19,30 @@ public:
 public:
 ///------ 用户自定义接口声明 start ------
     /*
+        降落任务状态: 设备主动推送, 无需回包
+        北向: thing/product/{gateway_sn}/drc/up   method: landing_mission_state
+        landing_state 枚举: 0=初始空闲 1=等待参数同步 2=航向对齐 3=精准降落(有水平源) 4=无源降落(无水平源, 继续下降)
+                            5=悬停微调(有水平源) 6=纯悬停(无水平源) 7=备降(有源) 8=备降(无源) 9=备降(用户 RC 接管)
+        注: msg 中 cover_precent 的拼写系协议设计如此(原文即 precent, 非 percent), 详见 drc_landing_mission_state_northbound.h
+    */
+    virtual ListenIdCode ObserveDrcLandingMissionStateNorthbound(const std::function<void(const std::shared_ptr<DrcLandingMissionStateNorthbound>& msg)>& observe_callback, const std::shared_ptr<drc_sdk::Executor>& user_define_executor = nullptr) = 0;
+
+    /*
         V3 压缩杆量控制（二进制 MessageV3，脚本无法生成）
     */
     virtual MeErrorCode SendCompressedSticksControlSouthbound(const std::shared_ptr<CompressedSticksControlSouthbound>& msg, const std::shared_ptr<drc_sdk::Executor>& user_define_executor = nullptr) = 0;
+
+    /*
+        custom_data_transmission_to_esdk: 云端向 ESDK 下发自定义数据
+    */
+    virtual MeErrorCode SendServicesCustomDataTransmissionToEsdkSouthbound(const std::shared_ptr<ServicesCustomDataTransmissionToEsdkSouthbound>& msg, const std::function<void(int error_code, const std::shared_ptr<ServicesReplyCustomDataTransmissionToEsdkNorthbound>& msg)>& southbound_msg_callback, const std::shared_ptr<drc_sdk::Executor>& user_define_executor = nullptr) = 0;
+    virtual ListenIdCode ObserveServicesReplyCustomDataTransmissionToEsdkNorthbound(const std::function<void(const std::shared_ptr<ServicesReplyCustomDataTransmissionToEsdkNorthbound>& msg)>& observe_callback, const std::shared_ptr<drc_sdk::Executor>& user_define_executor = nullptr) = 0;
+
+    /*
+        custom_data_transmission_to_psdk: 云端向 PSDK 下发自定义数据
+    */
+    virtual MeErrorCode SendServicesCustomDataTransmissionToPsdkSouthbound(const std::shared_ptr<ServicesCustomDataTransmissionToPsdkSouthbound>& msg, const std::function<void(int error_code, const std::shared_ptr<ServicesReplyCustomDataTransmissionToPsdkNorthbound>& msg)>& southbound_msg_callback, const std::shared_ptr<drc_sdk::Executor>& user_define_executor = nullptr) = 0;
+    virtual ListenIdCode ObserveServicesReplyCustomDataTransmissionToPsdkNorthbound(const std::function<void(const std::shared_ptr<ServicesReplyCustomDataTransmissionToPsdkNorthbound>& msg)>& observe_callback, const std::shared_ptr<drc_sdk::Executor>& user_define_executor = nullptr) = 0;
 ///------ 用户自定义接口声明 end ------
 public:
 

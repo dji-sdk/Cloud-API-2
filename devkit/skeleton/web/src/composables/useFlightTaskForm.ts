@@ -250,9 +250,15 @@ export function useFlightTaskForm() {
       out_of_control_action_in_flight: form.outOfControlAction === 'return_home' ? 1 : 2,
       wayline_precision_type: form.precision === 'rtk' ? 1 : 0,
       rth_altitude: form.rthAltitude,
-      resumable_status: form.resumableEnabled ? 1 : 0,
       rth_mode: form.smartRthEnabled ? 1 : 0,
       vlm_enabled: form.vlmEnabled,
+    }
+
+    // resumable_status 只在创建时下发：EditTaskReq 无该字段承载位，编辑态回传只会被
+    // 后端丢弃并记 WARN；同时详情接口不回显该字段，编辑态无法还原原策略，
+    // 若在此盲发会让人误以为改动生效（见 applyDetail 注释）。
+    if (!editTaskUuid.value) {
+      req.resumable_status = form.resumableEnabled ? 1 : 0
     }
 
     // once（单次定时）：task_type=3，仅需 begin_at；end_at 由平台按 begin_at + wayline_duration 计算
@@ -317,8 +323,14 @@ export function useFlightTaskForm() {
    * 将任务详情预填到表单（编辑模式用）。
    *
    * 盲区：详情接口不返回 planType / repeatType / repeatInterval / vlmEnabled /
-   * continuousPeriods，这些字段无法从后端还原。为避免「上一次编辑残留值」被静默
-   * 带入本次提交，回填前先把它们复位为 DEFAULT_FORM 值，而不是沿用当前 reactive 状态。
+   * continuousPeriods / resumableStatus，这些字段无法从后端还原。为避免「上一次编辑
+   * 残留值」被静默带入本次提交，回填前先把它们复位为 DEFAULT_FORM 值，而不是沿用当前
+   * reactive 状态。
+   *
+   * 注意 isBreakPointResume 不能用于回填 resumableEnabled：前者是「本任务是否为断点续飞
+   * 任务」的任务标识（这类任务本身不可编辑），后者是「出了断点后如何续飞」的策略
+   * （resumable_status）。SDK 3.3.7 的详情 / 列表接口只返回 is_break_point_resume，
+   * false 并不代表自动续飞关闭。
    *
    * 策略以详情返回的 taskType 判定（见 {@link mapDetailTaskType}），不再用
    * beginAt/endAt 是否相等去猜；仅当重复任务窗口塌缩或缺失时退回单次定时。
@@ -327,6 +339,7 @@ export function useFlightTaskForm() {
     // 详情接口无法提供的字段：先复位，防止跨任务的陈旧值污染本次提交
     form.planType = DEFAULT_FORM.planType
     form.vlmEnabled = DEFAULT_FORM.vlmEnabled
+    form.resumableEnabled = DEFAULT_FORM.resumableEnabled
     form.repeatType = DEFAULT_FORM.repeatType
     form.repeatInterval = DEFAULT_FORM.repeatInterval
     form.continuousPeriods = DEFAULT_FORM.continuousPeriods
@@ -338,7 +351,6 @@ export function useFlightTaskForm() {
     form.waylineUuid = detail.waylineUuid
     form.waylineName = detail.waylineName
     form.rthAltitude = detail.rthAltitude
-    form.resumableEnabled = detail.isBreakPointResume
     form.minBatteryCapacity = detail.minBatteryCapacity > 0 ? detail.minBatteryCapacity : null
     form.precision = detail.waylinePrecisionType === 1 ? 'rtk' : 'gnss'
     form.outOfControlAction = detail.outOfControlActionInFlight === 1 ? 'return_home' : 'continue'

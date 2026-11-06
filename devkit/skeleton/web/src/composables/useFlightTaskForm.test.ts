@@ -271,7 +271,8 @@ describe('useFlightTaskForm', () => {
      * 把表单置为「上一次编辑遗留」的脏状态。
      *
      * 详情接口不返回 planType / vlmEnabled / repeatType / repeatInterval /
-     * continuousPeriods，回填若沿用当前 reactive 状态，这些值会被静默带进本次提交。
+     * continuousPeriods / resumableStatus，回填若沿用当前 reactive 状态，
+     * 这些值会被静默带进本次提交。
      */
     function dirtyForm(form: FlightTaskFormReturn['form']): void {
       form.planType = 'leapfrog'
@@ -279,6 +280,7 @@ describe('useFlightTaskForm', () => {
       form.repeatType = 'weekly'
       form.repeatInterval = 3
       form.continuousPeriods = [[0, 3600]]
+      form.resumableEnabled = true
     }
 
     it('applyDetail：应把详情接口不提供的字段复位，避免跨任务陈旧值污染提交', () => {
@@ -293,7 +295,22 @@ describe('useFlightTaskForm', () => {
       expect(form.repeatType).toBeNull()
       expect(form.repeatInterval).toBeNull()
       expect(form.continuousPeriods).toBeNull()
+      expect(form.resumableEnabled).toBe(false)
       expect(form.strategy).toBe('immediate')
+    })
+
+    /**
+     * 回填回归：isBreakPointResume 是「本任务是否为断点续飞任务」的任务标识，
+     * 不是续飞策略。此前实现用 detail.isBreakPointResume 回填「自动断点续飞」开关，
+     * 导致详情返回 false 时误显示「自动续飞已关闭」。该开关必须始终复位为默认值。
+     */
+    it('applyDetail_shouldResetResumableEnabled_whenDetailIsBreakPointResumeIsTrue', () => {
+      const { form, applyDetail } = useForm()
+      form.resumableEnabled = true
+
+      applyDetail(buildDetail({ isBreakPointResume: true }))
+
+      expect(form.resumableEnabled).toBe(false)
     })
 
     it('applyDetail：重复定时应显式回填 repeatType=daily / repeatInterval=1，与界面展示保持一致', () => {
@@ -508,6 +525,28 @@ describe('useFlightTaskForm', () => {
       expect(req.begin_at).toBeUndefined()
       expect(req.end_at).toBeUndefined()
       expect(req.interval).toBeUndefined()
+    })
+
+    it('buildRequest_shouldIncludeResumableStatus_whenCreateMode()', () => {
+      const { form, buildRequest } = useForm()
+      fillTimedForm(form)
+      form.resumableEnabled = true
+
+      const req = buildRequest()
+
+      expect(req.resumable_status).toBe(1)
+    })
+
+    it('buildRequest_shouldOmitResumableStatus_whenEditMode()', () => {
+      const { form, applyDetail, buildRequest } = useForm()
+      applyDetail(buildDetail())
+      form.resumableEnabled = true
+
+      const req = buildRequest()
+
+      // EditTaskReq 无 resumable_status 承载位，且详情接口不回显原策略；
+      // 盲发只会让用户误以为改动生效
+      expect(req.resumable_status).toBeUndefined()
     })
 
     it('buildRequest：重复策略缺少 interval 时请求不含该字段（周期语义不完整）', () => {

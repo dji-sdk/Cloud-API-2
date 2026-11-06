@@ -28,7 +28,7 @@
 └────────┬────────────┬────────────────┬──────────────────┘
          │            │                │
   ┌──────▼──────┐ ┌──▼─────────┐ ┌───▼──────────┐
-  │feature-device│ │feature-user│ │feature-chat  │   ← ISV 扩展区（每个独立 module）
+  │feature-device│ │feature-user│ │feature-chat  │   ← 集成商扩展区（每个独立 module）
   └──────┬───────┘ └──┬─────────┘ └───┬──────────┘
          │            │                │
          └────────────┼────────────────┘
@@ -65,10 +65,10 @@ skeleton/
 │   │       ├── bridge/                  # EventBridge SPI
 │   │       └── manifest/                # module.yaml 反序列化结构
 │   ├── kernel-impl/                     # 默认实现（事件总线/存储/鉴权切面）
-│   ├── kernel-real-sdk/                 # DJI CloudAPI2 SDK JNI 适配
+│   ├── kernel-real-sdk/                 # DJI Cloud API 2 SDK JNI 适配
 │   └── kernel-mock-sdk/                 # Mock 模式（开发环境，无需真实 SDK）
 ├── feature/
-│   ├── feature-device/                  # ★ 参考模板 —— ISV 新建 feature 照此模式
+│   ├── feature-device/                  # ★ 参考模板 —— 集成商新建 feature 照此模式
 │   ├── feature-user/                    # 用户认证模块（JWT）
 │   └── feature-chat/                    # AI Chat Bot 模块（Spring AI）
 └── app/
@@ -199,8 +199,8 @@ public class AlertAutoConfiguration {
 
 **关键约定**：
 - `@ConditionalOnProperty` 的 name 格式：`fh.skeleton.feature.{module}.enabled`
-- `matchIfMissing = true` → 默认启用，ISV 设 false 可禁用
-- 所有 Bean 用 `@ConditionalOnMissingBean` → ISV 可声明同类型 Bean 覆盖
+- `matchIfMissing = true` → 默认启用，集成商设 false 可禁用
+- 所有 Bean 用 `@ConditionalOnMissingBean` → 集成商可声明同类型 Bean 覆盖
 
 ### 5.2 Properties（配置）
 

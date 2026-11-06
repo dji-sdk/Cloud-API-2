@@ -18,12 +18,14 @@ package com.dji.flighthub.mcp.tools.maintenance;
 
 import com.dji.flighthub.mcp.sdk.SdkCallbackBridge;
 import com.dji.flighthub.mcp.sdk.SdkService;
+import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
 import com.dji.flighthub.mcp.annotation.Generated;
 import com.dji.flighthubsdk.bean.CreateMaintenanceOrderParams;
 import com.dji.flighthubsdk.bean.CreateMaintenanceOrderResults;
+import com.dji.flighthubsdk.bean.DeviceRepairConfig;
 import com.dji.flighthubsdk.bean.DeviceRepairConfigResults;
 import com.dji.flighthubsdk.bean.GetDeviceRepairConfigParams;
 import com.dji.flighthubsdk.bean.GetMaintenanceOrdersListParams;
@@ -31,6 +33,7 @@ import com.dji.flighthubsdk.bean.MaintenanceOrderDetailResults;
 import com.dji.flighthubsdk.bean.MaintenanceOrderDeviceItemParams;
 import com.dji.flighthubsdk.bean.MaintenanceOrdersListItem;
 import com.dji.flighthubsdk.bean.MaintenanceOrdersListResults;
+import com.dji.flighthubsdk.bean.RepairGuidance;
 import com.dji.flighthubsdk.core.MaintenanceManagementModule;
 import com.dji.flighthubsdk.core.Workspace;
 import org.slf4j.Logger;
@@ -49,13 +52,15 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>支持 action：
  * <ul>
- *   <li>get_configs — 获取维修配置项列表（L0）</li>
- *   <li>create_order — 创建维修工单（L0）</li>
- *   <li>get_detail — 查询工单详情（L0）</li>
- *   <li>list_orders — 分页查询工单列表（L0）</li>
+ *   <li>get_configs — 获取维修配置项列表</li>
+ *   <li>create_order — 创建维修工单</li>
+ *   <li>get_detail — 查询工单详情</li>
+ *   <li>list_orders — 分页查询工单列表</li>
  * </ul>
  *
- * <p>所有操作均为 L0，无需人工确认。
+ * <p>安全等级：混合等级工具，工具级声明最低等级 L0（READ_ONLY，门控基线）；
+ * {@code create_order} 为 L1，由 {@link #ACTION_SECURITY_LEVELS} 在 action 内抬高要求。
+ * per-action 门控只能抬高、不能降低。
  *
  * @author DJI FlightHub SDK Team
  */
@@ -73,6 +78,11 @@ public class FhMaintenanceTool extends AbstractMcpTool {
 
     /** 有效 action 集合（用于快速校验） */
     private static final Set<String> VALID_ACTIONS_SET = Set.copyOf(VALID_ACTIONS);
+
+    /** 各 action 要求的安全等级（未列出的 action 为 L0，不需要拦截） */
+    private static final Map<String, SecurityLevel> ACTION_SECURITY_LEVELS = Map.of(
+            "create_order", SecurityLevel.REVERSIBLE
+    );
 
     /** 参数名常量 */
     private static final String PARAM_ACTION = "action";
@@ -107,6 +117,19 @@ public class FhMaintenanceTool extends AbstractMcpTool {
     public FhMaintenanceTool(SessionManager sessionManager, SdkService sdkService) {
         super(sessionManager);
         this.sdkService = sdkService;
+    }
+
+    /**
+     * 声明工具级静态安全等级：READ_ONLY（混合等级工具的门控基线）。
+     *
+     * <p>只读的 {@code get_configs} / {@code get_detail} / {@code list_orders} 不应被 L1 门控误拦，
+     * {@code create_order} 由 action 内 {@code enforceSecurityLevel} 抬升至 L1。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.READ_ONLY;
     }
 
     @Override
@@ -159,6 +182,15 @@ public class FhMaintenanceTool extends AbstractMcpTool {
         String action = getStringArg(args, PARAM_ACTION, null);
         if (action == null || !VALID_ACTIONS_SET.contains(action)) {
             return errorResult("Invalid or missing action", "Valid actions: " + VALID_ACTIONS);
+        }
+
+        // 统一安全等级拦截：create_order=L1
+        SecurityLevel requiredLevel = ACTION_SECURITY_LEVELS.get(action);
+        if (requiredLevel != null) {
+            Map<String, Object> denied = enforceSecurityLevel(requiredLevel);
+            if (denied != null) {
+                return denied;
+            }
         }
 
         switch (action) {
@@ -240,7 +272,7 @@ public class FhMaintenanceTool extends AbstractMcpTool {
             DeviceRepairConfigResults result = SdkCallbackBridge.await(future);
 
             Map<String, Object> data = new LinkedHashMap<>();
-            data.put("configs", result.getData() != null ? result.getData().toString() : List.of());
+            data.put("configs", buildRepairConfigs(result.getData()));
             return successResult(data, "Repair configs retrieved.");
 
         } catch (SdkCallbackBridge.SdkTimeoutException e) {
@@ -255,7 +287,7 @@ public class FhMaintenanceTool extends AbstractMcpTool {
         }
     }
 
-    // ==================== create_order（L0） ====================
+    // ==================== create_order（L1） ====================
 
     private Map<String, Object> executeCreateOrder(Map<String, Object> args) {
         String faultTime = getStringArg(args, PARAM_FAULT_TIME, null);
@@ -567,6 +599,54 @@ public class FhMaintenanceTool extends AbstractMcpTool {
             log.error("[{}] list_orders error: {}", TOOL_NAME, e.getMessage(), e);
             return errorResult("Failed to list orders: " + e.getMessage(), "Check logs for details.");
         }
+    }
+
+    // ==================== SDK bean → 结构化 Map（避免 toString 透传） ====================
+
+    /**
+     * 将维修配置项列表映射为结构化列表，避免 {@code toString()} 透传导致输出不可解析。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param configs SDK 返回的维修配置列表，可为 null
+     * @return 结构化配置列表，入参为 null 时返回空列表
+     */
+    List<Map<String, Object>> buildRepairConfigs(List<DeviceRepairConfig> configs) {
+        if (configs == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> mapped = new ArrayList<>(configs.size());
+        for (DeviceRepairConfig config : configs) {
+            if (config == null) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("device_sn", config.getDeviceSn());
+            row.put("support_repair", config.isSupportRepair());
+            row.put("allowed_source_types",
+                    config.getAllowedSourceTypes() != null ? config.getAllowedSourceTypes() : List.of());
+            row.put("repair_guidance", buildRepairGuidance(config.getRepairGuidance()));
+            mapped.add(row);
+        }
+        return mapped;
+    }
+
+    /**
+     * 映射维修指引信息。
+     *
+     * <p>包可见以便单元测试直接验证字段映射。
+     *
+     * @param guidance SDK 维修指引对象，可为 null
+     * @return 结构化维修指引；入参为 null 时返回 null
+     */
+    Map<String, Object> buildRepairGuidance(RepairGuidance guidance) {
+        if (guidance == null) {
+            return null;
+        }
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("redirect_url", guidance.getRedirectUrl());
+        row.put("description", guidance.getDescription());
+        return row;
     }
 
     // ==================== 工具方法 ====================

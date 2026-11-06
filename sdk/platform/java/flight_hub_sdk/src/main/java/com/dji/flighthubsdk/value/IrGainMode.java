@@ -6,8 +6,6 @@ package com.dji.flighthubsdk.value;
 /** 红外增益模式。 */
 public enum IrGainMode {
 
-    /** 自动 */
-    Auto(0),
     /** 低增益 */
     LowGain(1),
     /** 高增益 */

@@ -93,6 +93,11 @@ public class SseTransport {
     private static final int ERROR_METHOD_NOT_FOUND = -32601;
     /** JSON-RPC 错误码：缺少必填参数 */
     private static final int ERROR_INVALID_PARAMS = -32602;
+    /** JSON-RPC 错误码：服务端内部错误 */
+    private static final int ERROR_INTERNAL = -32603;
+
+    /** params 不是 JSON 对象时的错误文案 */
+    private static final String PARAMS_MUST_BE_OBJECT = "params must be an object";
 
     /** elicitation 反向请求方法名（MCP 协议约定） */
     private static final String METHOD_ELICITATION_CREATE = "elicitation/create";
@@ -315,7 +320,16 @@ public class SseTransport {
         // 刷新客户端活跃时间（用于心跳超时检测）
         clientRegistry.touchClient(clientId);
 
-        Map<String, Object> response = handleRequest(clientId, request);
+        Map<String, Object> response;
+        try {
+            response = handleRequest(clientId, request);
+        } catch (Exception e) {
+            // 兜底：未预料的异常不能让请求被静默吞掉，否则 client 只能等到超时
+            log.error("SSE message handling failed unexpectedly: clientId={}, method={}",
+                    clientId, request.get("method"), e);
+            response = createErrorResponse(request.get("id"), ERROR_INTERNAL,
+                    "Internal error: " + e.toString());
+        }
 
         // 通过 SSE 发送响应
         if (response != null) {
@@ -382,15 +396,51 @@ public class SseTransport {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
+    /**
+     * 处理一条入站 JSON-RPC 消息，返回需要经 SSE 推送的响应。
+     *
+     * <p>处理顺序：</p>
+     * <ol>
+     *   <li>先识别 elicitation 反向请求的响应：命中即唤醒等待线程并返回 null（不走 SSE 推送）；</li>
+     *   <li>通知短路：无 id 且 method 为字符串的消息不会产生任何响应，直接返回 null；
+     *       无 id 但 method 不是字符串的消息不是合法通知，按无效请求处理，返回 {@code -32601}；</li>
+     *   <li>方法名分类：id 缺失或 method 缺失/非字符串 → {@code -32601}（无效请求，响应 id 为 null）；</li>
+     *   <li>params 形状：不是 JSON 对象（如数组）→ {@code -32602}；</li>
+     *   <li>按方法名 dispatch：initialize / tools/list / tools/call / prompts/* / reconnect / ping，
+     *       未知方法 → {@code -32601}。</li>
+     * </ol>
+     *
+     * @param clientId 客户端标识
+     * @param request  入站 JSON-RPC 消息
+     * @return 需要推送的响应；通知、elicitation 响应、异步 tool 调用返回 null
+     */
     private Map<String, Object> handleRequest(String clientId, Map<String, Object> request) {
-        String method = (String) request.get("method");
+        Object rawMethod = request.get("method");
         Object id = request.get("id");
-        Map<String, Object> params = (Map<String, Object>) request.getOrDefault("params", Map.of());
 
         // 优先检测是否为 elicitation 反向请求的响应
         if (tryHandleElicitationResponse(id, request)) {
             return null; // 已唤醒等待线程，无需 SSE 推送
+        }
+
+        // 通知语义：无 id 且 method 是字符串的消息不产生任何响应；method 非字符串时不是合法通知，
+        // 继续走方法名校验并返回 -32601（与 stdio 传输保持一致，避免畸形消息被静默丢弃）
+        if (id == null && rawMethod instanceof String) {
+            log.warn("Ignoring notification without id: method={}", rawMethod);
+            return null;
+        }
+
+        if (rawMethod == null) {
+            return createErrorResponse(id, ERROR_METHOD_NOT_FOUND, "Method is null");
+        }
+        if (!(rawMethod instanceof String method)) {
+            return createErrorResponse(id, ERROR_METHOD_NOT_FOUND, "Method must be a string");
+        }
+
+        // 方法名合法后再校验 params 形状：避免把「方法不存在」误报成「参数非法」
+        Map<String, Object> params = asParamsMap(request.get("params"));
+        if (params == null) {
+            return createErrorResponse(id, ERROR_INVALID_PARAMS, PARAMS_MUST_BE_OBJECT);
         }
 
         log.debug("SSE request: method={}, id={}", method, id);
@@ -464,21 +514,23 @@ public class SseTransport {
      * <p>L1+ 危险工具：提交到 toolExecutor 异步执行（支持 elicitation 阻塞等待），
      * 返回 null（结果通过 SSE 异步推送）。
      */
-    @SuppressWarnings("unchecked")
     private Map<String, Object> handleToolsCall(Object id, Map<String, Object> params, String clientId) {
-        String toolName = (String) params.get("name");
-        Object rawArgs = params.getOrDefault("arguments", Map.of());
-        Map<String, Object> arguments = (rawArgs instanceof Map) ? (Map<String, Object>) rawArgs : Map.of();
+        ToolCallParams call;
+        try {
+            call = ToolCallParams.parse(params);
+        } catch (InvalidParamsException e) {
+            return createErrorResponse(id, ERROR_INVALID_PARAMS, e.getMessage());
+        }
 
         // L1+ 危险工具走异步路径（支持 elicitation 阻塞等待）
-        if (toolRegistry.isHumanConfirmRequired(toolName)) {
-            executeToolAsync(id, toolName, arguments, clientId);
+        if (toolRegistry.isHumanConfirmRequired(call.toolName())) {
+            executeToolAsync(id, call.toolName(), call.arguments(), clientId);
             return null; // 结果通过 SSE 异步推送
         }
 
         // L0 安全工具：同步执行
-        log.info("SSE tool call: name={}, id={}, client={}", toolName, id, clientId);
-        return executeToolSync(id, toolName, arguments, clientId);
+        log.info("SSE tool call: name={}, id={}, client={}", call.toolName(), id, clientId);
+        return executeToolSync(id, call.toolName(), call.arguments(), clientId);
     }
 
     /**
@@ -832,6 +884,26 @@ public class SseTransport {
         elicitationRegistry.complete(strId, elicitResult);
         log.debug("Elicitation 响应已处理: id={}, action={}", strId, elicitResult.action());
         return true;
+    }
+
+    /**
+     * 把 JSON-RPC {@code params} 安全地取成对象：缺省或 null 视为空对象，其余非对象类型视为非法。
+     *
+     * <p>与 stdio 传输保持同样的判定：{@code params: []} 之类的畸形请求直接返回 {@code -32602}，
+     * 不允许 {@link ClassCastException} 冒泡成 {@code -32603} 或无响应。</p>
+     *
+     * @param rawParams params 原始值
+     * @return params 对象；不是对象时返回 null（调用方负责返回 {@code -32602}）
+     */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> asParamsMap(Object rawParams) {
+        if (rawParams == null) {
+            return Map.of();
+        }
+        if (rawParams instanceof Map<?, ?> map) {
+            return (Map<String, Object>) map;
+        }
+        return null;
     }
 
     /**

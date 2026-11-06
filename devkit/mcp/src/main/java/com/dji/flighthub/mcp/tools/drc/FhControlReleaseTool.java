@@ -66,7 +66,7 @@ public class FhControlReleaseTool extends AbstractMcpTool {
         this.sdkService = sdkService;
     }
 
-@Override
+    @Override
     public SecurityLevel getSecurityLevel() {
         return SecurityLevel.REVERSIBLE;
     }
@@ -101,7 +101,7 @@ public class FhControlReleaseTool extends AbstractMcpTool {
 
     /**
      * 执行释放飞行控制权操作。
-     * 前置条件：持有控制权 + DRC 链路已断开。安全等级 L2。
+     * 前置条件：持有控制权 + DRC 链路已断开。安全等级 L1（可逆操作，无需 confirm）。
      *
      * @param args 输入参数
      * @return 执行结果

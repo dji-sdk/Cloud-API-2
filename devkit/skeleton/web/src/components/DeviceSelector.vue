@@ -21,10 +21,12 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import DeviceMap from '@/components/dashboard/DeviceMap.vue'
 import type { DeviceState } from '@/types/api'
 import type { DeviceMarker } from '@/types/dashboard'
+import { buildDeviceGroups, deviceCategory, type DeviceCategory, type DeviceGroup } from '@/utils/deviceGroup'
 
-interface DockGroup {
-  dock: DeviceState
-  drones: DeviceState[]
+/** 机场卡片内一条基础设施（机场 / 基站）展示行 */
+interface InfraRow {
+  label: string
+  device: DeviceState
 }
 
 const emit = defineEmits<{
@@ -39,15 +41,35 @@ let pollTimer: ReturnType<typeof setInterval> | null = null
 
 const POLL_INTERVAL = 10000
 
-const onlineDockGroups = computed<DockGroup[]>(() => {
-  const onlineDocks = devices.value.filter(d => d.deviceType === 'DOCK' && d.online)
-  return onlineDocks.map(dock => ({
-    dock,
-    drones: (dock.childDevices ?? []).filter(c => c.deviceType === 'DRONE'),
-  }))
-})
+const deviceGroups = computed<DeviceGroup[]>(() => buildDeviceGroups(devices.value))
 
-const hasOnlineDevices = computed(() => onlineDockGroups.value.length > 0)
+const hasOnlineDevices = computed(() => deviceGroups.value.length > 0)
+
+/**
+ * 机场卡片的基础设施行：机场在前、基站在后，各自保留自己的 SN。
+ * 修复「340 机场卡片显示基站 SN」—— 机场与基站作为独立行分别展示。
+ */
+function infraRows(group: DeviceGroup): InfraRow[] {
+  const rows: InfraRow[] = []
+  if (group.dock) {
+    rows.push({ label: '机场', device: group.dock })
+  }
+  if (group.baseStation) {
+    rows.push({ label: '基站', device: group.baseStation })
+  }
+  return rows
+}
+
+/**
+ * 地图标注类型：基站与机场同属地面基础设施，统一按 dock 渲染图标，飞行器按 drone 渲染。
+ *
+ * <p>用 {@link deviceCategory} 而非 deviceType 判定：deviceType 无法区分基站与机场，
+ * 且 340 拓扑下基站可能不出现在 deviceType=DOCK 的取值中。
+ */
+function markerType(d: DeviceState): DeviceMarker['type'] {
+  const category: DeviceCategory = deviceCategory(d)
+  return category === 'drone' ? 'drone' : 'dock'
+}
 
 /** 将在线设备转为地图标注点 */
 const deviceMarkers = computed<DeviceMarker[]>(() => {
@@ -55,7 +77,7 @@ const deviceMarkers = computed<DeviceMarker[]>(() => {
     .filter(d => d.online)
     .map(d => ({
       sn: d.sn,
-      type: d.deviceType === 'DOCK' ? 'dock' as const : 'drone' as const,
+      type: markerType(d),
       name: d.name ?? d.sn,
       status: d.online ? 'online' : 'offline',
       lat: typeof d.lastOsd?.attributes['lat'] === 'number'
@@ -76,17 +98,17 @@ async function loadDevices(): Promise<void> {
   }
 }
 
-function handleCardClick(group: DockGroup): void {
+function handleCardClick(group: DeviceGroup): void {
   const droneSn = group.drones.length > 0 ? group.drones[0].sn : ''
-  emit('select', group.dock.sn, droneSn)
+  emit('select', group.gatewaySn, droneSn)
 }
 
-function handleSelect(dock: DeviceState, drone: DeviceState): void {
-  emit('select', dock.sn, drone.sn)
+function handleSelect(group: DeviceGroup, drone: DeviceState): void {
+  emit('select', group.gatewaySn, drone.sn)
 }
 
-function handleDeviceWindow(dock: DeviceState, drone: DeviceState): void {
-  emit('device-window', dock.sn, drone.sn)
+function handleDeviceWindow(group: DeviceGroup, drone: DeviceState): void {
+  emit('device-window', group.gatewaySn, drone.sn)
 }
 
 function getBattery(d: DeviceState): string {
@@ -130,32 +152,39 @@ onUnmounted(() => {
 
       <div v-else class="dock-list">
         <div
-          v-for="group in onlineDockGroups"
-          :key="group.dock.sn"
+          v-for="group in deviceGroups"
+          :key="group.gatewaySn"
           class="dock-card"
           @click="handleCardClick(group)"
         >
           <div class="dock-info">
-            <div class="dock-header">
-              <span class="dock-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <rect x="2" y="6" width="20" height="12" rx="2" />
-                  <line x1="6" y1="10" x2="6" y2="14" />
-                  <line x1="18" y1="10" x2="18" y2="14" />
-                  <line x1="10" y1="3" x2="14" y2="3" />
-                  <line x1="12" y1="3" x2="12" y2="6" />
-                </svg>
-              </span>
-              <span class="dock-name">{{ group.dock.name ?? '机场' }}</span>
-              <StatusBadge :online="group.dock.online" />
-            </div>
-            <div class="dock-meta">
-              <span class="meta-label">SN</span>
-              <span class="meta-value mono">{{ group.dock.sn }}</span>
-            </div>
-            <div v-if="group.dock.model" class="dock-meta">
-              <span class="meta-label">型号</span>
-              <span class="meta-value">{{ group.dock.model }}</span>
+            <div
+              v-for="row in infraRows(group)"
+              :key="row.device.sn"
+              class="infra-row"
+            >
+              <div class="dock-header">
+                <span class="dock-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="2" y="6" width="20" height="12" rx="2" />
+                    <line x1="6" y1="10" x2="6" y2="14" />
+                    <line x1="18" y1="10" x2="18" y2="14" />
+                    <line x1="10" y1="3" x2="14" y2="3" />
+                    <line x1="12" y1="3" x2="12" y2="6" />
+                  </svg>
+                </span>
+                <span class="infra-label">{{ row.label }}</span>
+                <span class="dock-name">{{ row.device.name ?? row.label }}</span>
+                <StatusBadge :online="row.device.online" />
+              </div>
+              <div class="dock-meta">
+                <span class="meta-label">SN</span>
+                <span class="meta-value mono">{{ row.device.sn }}</span>
+              </div>
+              <div v-if="row.device.model" class="dock-meta">
+                <span class="meta-label">型号</span>
+                <span class="meta-value">{{ row.device.model }}</span>
+              </div>
             </div>
           </div>
 
@@ -189,13 +218,13 @@ onUnmounted(() => {
               <div class="drone-actions">
                 <button
                   class="btn-action btn-action--secondary"
-                  @click.stop="handleDeviceWindow(group.dock, drone)"
+                  @click.stop="handleDeviceWindow(group, drone)"
                 >
                   设备小窗
                 </button>
                 <button
                   class="btn-action btn-action--primary"
-                  @click.stop="handleSelect(group.dock, drone)"
+                  @click.stop="handleSelect(group, drone)"
                 >
                   驾驶舱
                 </button>
@@ -311,6 +340,22 @@ onUnmounted(() => {
 
 .dock-info {
   padding: var(--space-md) var(--space-lg);
+}
+
+.infra-row + .infra-row {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px dashed var(--app-border);
+}
+
+.infra-label {
+  font-size: 11px;
+  color: var(--app-text-secondary);
+  background: var(--app-bg);
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  flex-shrink: 0;
 }
 
 .dock-header {

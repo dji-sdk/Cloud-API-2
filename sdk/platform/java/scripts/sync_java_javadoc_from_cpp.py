@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """Sync C++ src/api/*.h Doxygen comments to Java core/*.java Javadoc."""
 
 from __future__ import annotations
@@ -31,7 +35,6 @@ HEADER_TO_JAVA = {
     "device_hms_module.h": "DeviceHMSModule.java",
     "device_manage_module.h": "DeviceManageModule.java",
     "live_device_module.h": "LiveDeviceModule.java",
-    "deploy_module.h": "DeployModule.java",
     "dock_control_module.h": "DockControlModule.java",
     "device_debug_module.h": "DeviceDebugModule.java",
     "network_test_module.h": "NetworkTestModule.java",

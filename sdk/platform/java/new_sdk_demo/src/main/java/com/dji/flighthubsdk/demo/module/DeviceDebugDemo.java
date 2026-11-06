@@ -62,7 +62,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * 设备调试模块 Demo(菜单驱动)：机场/飞行器调试、舱盖、充电、重启/格式化、
  * 飞行参数设置(限高/限远/避障/返航电量/夜航灯/报警灯)、电池/SIM/低功耗等。
  *
- * <p>对应 {@code IDeviceDebugModule} 全部接口, 按功能域分组为 7 个子菜单：
+ * <p>对应 {@code IDeviceDebugModule} 全部接口, 按功能域分组为 8 个子菜单：
  *
  * <pre>
  * 主菜单
@@ -113,6 +113,15 @@ public class DeviceDebugDemo extends ModuleDemo {
     /** 进度推送等待超时(ms), 独立于 action 超时, 给物理动作留足时间。 */
     private static final long PROGRESS_WAIT_MS = 60_000L;
 
+    /**
+     * 用户是否经子菜单 [1] <b>手动</b>开启过远程调试模式。
+     *
+     * <p>与基类的 {@code debugModeOpenedByDemo}(=本 demo 自动开的, 退出时还原)互斥:
+     * 手动开的状态属于用户的显式设置, 收尾时不得越权关闭。判定逻辑见
+     * {@link #markDebugModeOpenedByDemo}。仅交互主线程访问, 无需 volatile。
+     */
+    private boolean debugModeOpenedByUser = false;
+
     @Override
     public String name() {
         return "DeviceDebugDemo";
@@ -146,30 +155,42 @@ public class DeviceDebugDemo extends ModuleDemo {
         final long actionTimeout = timeout("default_callback_timeout_ms");
         DemoLog.info(name(), "deviceSn=" + deviceSn + " actionTimeout=" + actionTimeout + "ms");
 
-        while (true) {
-            Utils.printTitle("执行 " + name() + "  (设备 SN: " + deviceSn + ")");
-            System.out.print(mainMenu());
-            int choice = Utils.readIntInRange(input, "请选择(1-8, q 退出): ", 1, 8);
-            if (choice == Utils.QUIT) {
-                DemoLog.info(name(), "退出设备调试菜单");
-                break;
-            }
-            try {
-                switch (choice) {
-                    case 1: menuDebugMode(module, deviceSn, actionTimeout);    break;
-                    case 2: menuDockCover(module, deviceSn, actionTimeout);    break;
-                    case 3: menuDronePower(module, deviceSn, actionTimeout);   break;
-                    case 4: menuCharge(module, deviceSn, actionTimeout);       break;
-                    case 5: menuFlightParams(module, deviceSn, actionTimeout); break;
-                    case 6: menuMaintenance(module, deviceSn, actionTimeout);  break;
-                    case 7: menuSimManagement(module, deviceSn, actionTimeout); break;
-                    case 8: menuCloudEnvironmentSwitch(module, deviceSn, actionTimeout); break;
-                    default: break;
+        try {
+            while (true) {
+                Utils.printTitle("执行 " + name() + "  (设备 SN: " + deviceSn + ")");
+                System.out.print(mainMenu());
+                int choice = Utils.readIntInRange(input, "请选择(1-8, q 退出): ", 1, 8);
+                if (choice == Utils.QUIT) {
+                    DemoLog.info(name(), "退出设备调试菜单");
+                    break;
                 }
-            } catch (Exception e) {
-                console("   结果 -> [异常] " + Utils.describe(e));
-                DemoLog.error(name(), "菜单动作执行异常: " + Utils.describe(e), e);
+                try {
+                    switch (choice) {
+                        case 1: menuDebugMode(module, deviceSn, actionTimeout);    break;
+                        case 2: menuDockCover(module, deviceSn, actionTimeout);    break;
+                        case 3: menuDronePower(module, deviceSn, actionTimeout);   break;
+                        case 4: menuCharge(module, deviceSn, actionTimeout);       break;
+                        case 5: menuFlightParams(module, deviceSn, actionTimeout); break;
+                        case 6: menuMaintenance(module, deviceSn, actionTimeout);  break;
+                        case 7: menuSimManagement(module, deviceSn, actionTimeout); break;
+                        case 8: menuCloudEnvironmentSwitch(module, deviceSn, actionTimeout); break;
+                        default: break;
+                    }
+                } catch (Exception e) {
+                    console("   结果 -> [异常] " + Utils.describe(e));
+                    DemoLog.error(name(), "菜单动作执行异常: " + Utils.describe(e), e);
+                }
             }
+        } finally {
+            // 状态还原: [2][3][4][6] 经 checkAndEnsureDebugMode 自动开启过远程调试模式时, 退出前
+            // closeDebugMode 还原——机场遗留在 mode_code=2 会拒绝后续正常作业调度。基类实现已兜
+            // Throwable(不掩盖主异常)、且只在 SUCCESS 才清位(TIMEOUT 保留置位以便日志留痕)。
+            // module/deviceSn 在上方已判非 null/非空, 收尾直接复用。
+            // 用户经 [1] 手动开启的不在此列(见 markDebugModeOpenedByDemo)。
+            if (debugModeOpenedByDemo) {
+                hint("[收尾] 正在还原远程调试模式, 最多等待 " + actionTimeout + "ms...");
+            }
+            restoreDebugModeIfOpened(module, deviceSn, actionTimeout);
         }
     }
 
@@ -185,7 +206,7 @@ public class DeviceDebugDemo extends ModuleDemo {
             // openDebugMode: (device_sn, callback(error, OpenDebugModeResult))
             final Await<FlightHubError> await = new Await<>(name() + ".openDebugMode");
             final AtomicReference<OpenDebugModeResult> ref = new AtomicReference<>();
-            runOutcome("打开调试模式", timeout, await, () ->
+            Outcome o = runOutcome("打开调试模式", timeout, await, () ->
                 module.openDebugMode(deviceSn, new FlightHubCallback.OpenDebugModeCallback() {
                     @Override
                     public void onResult(FlightHubError error, OpenDebugModeResult result) {
@@ -194,12 +215,16 @@ public class DeviceDebugDemo extends ModuleDemo {
                     }
                 })
             );
+            if (o != Outcome.FAILED) {
+                // 用户<b>手动</b>开的, 退出时不能替他关掉(见 debugModeOpenedByUser 字段注释)。
+                debugModeOpenedByUser = true;
+            }
 
             printBidMsg("openDebugMode", ref.get() != null ? ref.get().getBid() : null, ref.get() != null ? ref.get().getMessage() : null);
         } else {
             final Await<FlightHubError> await = new Await<>(name() + ".closeDebugMode");
             final AtomicReference<CloseDebugModeResult> ref = new AtomicReference<>();
-            runOutcome("关闭调试模式", timeout, await, () ->
+            Outcome o = runOutcome("关闭调试模式", timeout, await, () ->
                 module.closeDebugMode(deviceSn, new FlightHubCallback.CloseDebugModeCallback() {
                     @Override
                     public void onResult(FlightHubError error, CloseDebugModeResult result) {
@@ -208,6 +233,10 @@ public class DeviceDebugDemo extends ModuleDemo {
                     }
                 })
             );
+            if (o == Outcome.SUCCESS) {
+                // 已确认关闭: 用户手动开启的前提不再成立, 后续自动开启可以正常登记为「demo 开的」。
+                debugModeOpenedByUser = false;
+            }
 
             printBidMsg("closeDebugMode", ref.get() != null ? ref.get().getBid() : null, ref.get() != null ? ref.get().getMessage() : null);
         }
@@ -1018,7 +1047,8 @@ public class DeviceDebugDemo extends ModuleDemo {
      *   <li>{@code dongle_device_sn}：飞机或机场 SN(机场的 Dongle 用机场 SN, 飞机的 Dongle 用飞机 SN)；</li>
      *   <li>{@code dongle_imei}：目标 Dongle 的 IMEI(从 device_state.dongle_infos[*].imei 获取)；</li>
      *   <li>{@code dongle_device_type}：设备类型字符串(如机场 Dongle 填 "dock", 参考上云 API 文档)；</li>
-     *   <li>{@code esim_operator}：eSIM 运营商枚举(1=电信 2=联通 3=移动, 以上云 API 文档为准)；</li>
+     *   <li>{@code esim_operator}：目标 eSIM 运营商枚举(1=电信 2=联通 3=移动, 以上云 API 文档为准),
+     *       同名透传为请求体字段 {@code esim_operator}；</li>
      *   <li>{@code sim_slot}：SIM 卡槽编号(从 device_state.dongle_infos[*].sim_slot 获取)。</li>
      * </ul>
      *
@@ -1095,7 +1125,7 @@ public class DeviceDebugDemo extends ModuleDemo {
             return;
         }
         console("   eSIM 运营商切换: sn=" + dongleSn + " imei=" + imei
-            + " operator=" + operator + " device_type=" + devType);
+            + " esim_operator=" + operator + " device_type=" + devType);
 
         final Await<FlightHubError> await = new Await<>(name() + ".esimOperatorSwitch");
         final AtomicReference<EsimOperatorSwitchResult> ref = new AtomicReference<>();
@@ -2112,9 +2142,11 @@ public class DeviceDebugDemo extends ModuleDemo {
                 openResultRef.get() != null ? openResultRef.get().getMessage() : null);
 
         if (openOutcome == Outcome.SUCCESS) {
+            markDebugModeOpenedByDemo();
             hint("远程调试模式开启成功, 继续执行 " + operation);
             return true;
         } else if (openOutcome == Outcome.TIMEOUT) {
+            markDebugModeOpenedByDemo();   // 超时 = 命令可能已生效, 保守置位以便收尾还原。
             hint("openDebugMode 超时(命令可能已生效), 继续尝试执行 " + operation);
             return true; // 超时按「可能已生效」放行
         } else {
@@ -2122,6 +2154,26 @@ public class DeviceDebugDemo extends ModuleDemo {
                 + "。请检查机场状态后重试。");
             return false;
         }
+    }
+
+    /**
+     * 登记「本 demo 自动开启了远程调试模式」, 供 {@link #run} 收尾时 {@code closeDebugMode} 还原。
+     *
+     * <p><b>为什么要判 {@link #debugModeOpenedByUser}</b>: 子菜单 [1] 允许用户手动开启调试模式。
+     * 若用户先经 [1] 手动开启, 随后进 [2]/[3]/[4]/[6] 时 {@code listenDockModeCode} 首帧未在超时内到达
+     * (本地联调常见, 见 {@link #checkAndEnsureDebugMode} 的 WS 超时分支), 自动流程会无条件再调一次
+     * {@code openDebugMode} 并成功——此时若登记为「demo 开的」, 退出时就会把<b>用户自己开的</b>调试模式
+     * 静默关掉, 正是 DESIGN.md「不得越权改用户显式设置的状态」所禁止的。
+     *
+     * <p>仅交互主线程访问(菜单动作与 {@code run} 的 finally 同线程), 故基类的非 volatile 字段可见性无忧;
+     * 切勿把置位挪进 SDK 回调 {@code onResult}(跑在 JNI 回调线程, 跨线程写非 volatile 字段会漏还原)。
+     */
+    private void markDebugModeOpenedByDemo() {
+        if (debugModeOpenedByUser) {
+            hint("检测到调试模式此前由用户经 [1] 手动开启, 退出时不会自动关闭");
+            return;
+        }
+        debugModeOpenedByDemo = true;
     }
 
     /** mode_code 枚举描述(0-9, 见 SDK bean {@link DockModeCode} 类注释)。 */
@@ -2180,7 +2232,7 @@ public class DeviceDebugDemo extends ModuleDemo {
     }
 
     /** 危险动作二次确认：须输入 {@code yes} 才执行。 */
-    private boolean confirmDangerous(String action) {
+    protected boolean confirmDangerous(String action) {
         String line = Utils.readLine(input, "\n   警告: 即将执行「" + action + "」\n   输入 yes 确认执行, 其他任意输入取消: ");
         boolean ok = line != null && line.equalsIgnoreCase("yes");
         if (!ok) hint("已取消: " + action);
@@ -2208,9 +2260,9 @@ public class DeviceDebugDemo extends ModuleDemo {
         return choice == 1 ? 1 : 0;
     }
 
-    private void console(String line) { System.out.println(line); }
+    protected void console(String line) { System.out.println(line); }
 
-    private void hint(String msg) {
+    protected void hint(String msg) {
         DemoLog.info(name(), msg);
         console("   " + msg);
     }

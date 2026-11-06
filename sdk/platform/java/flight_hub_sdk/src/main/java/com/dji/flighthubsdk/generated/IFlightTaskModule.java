@@ -58,6 +58,10 @@ public class IFlightTaskModule {
     flighthubsdkmoduleJNI.IFlightTaskModule_change_ownership(this, swigCPtr, true);
   }
 
+  public void getFlightRisks(GetFlightRisksParams params, SWIGTYPE_p_std__functionT_void_fflight_hub_sdk__FlightHubError_flight_hub_sdk__GetFlightRisksResults_const_RF_t callback) {
+    flighthubsdkmoduleJNI.IFlightTaskModule_getFlightRisks(swigCPtr, this, GetFlightRisksParams.getCPtr(params), params, SWIGTYPE_p_std__functionT_void_fflight_hub_sdk__FlightHubError_flight_hub_sdk__GetFlightRisksResults_const_RF_t.getCPtr(callback));
+  }
+
   public void getFlightTaskListWrapper(FlightTaskListParams params, GetFlightTaskListCallback callback) {
     flighthubsdkmoduleJNI.IFlightTaskModule_getFlightTaskListWrapper(swigCPtr, this, FlightTaskListParams.getCPtr(params), params, GetFlightTaskListCallback.getCPtr(callback), callback);
   }
@@ -68,6 +72,10 @@ public class IFlightTaskModule {
 
   public void getFlightTaskTrackWrapper(GetFlightTaskTrackParams params, GetFlightTaskTrackCallback callback) {
     flighthubsdkmoduleJNI.IFlightTaskModule_getFlightTaskTrackWrapper(swigCPtr, this, GetFlightTaskTrackParams.getCPtr(params), params, GetFlightTaskTrackCallback.getCPtr(callback), callback);
+  }
+
+  public void getFlightRisksWrapper(GetFlightRisksParams params, GetFlightRisksCallback callback) {
+    flighthubsdkmoduleJNI.IFlightTaskModule_getFlightRisksWrapper(swigCPtr, this, GetFlightRisksParams.getCPtr(params), params, GetFlightRisksCallback.getCPtr(callback), callback);
   }
 
   public void createFlightTaskWrapper(CreateTaskReq req, CreateFlightTaskCallback callback) {

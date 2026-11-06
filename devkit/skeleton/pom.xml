@@ -8,14 +8,13 @@
     <packaging>pom</packaging>
 
     <name>FH Skeleton (Parent)</name>
-    <description>ISV-extensible skeleton on top of DJI FlightHub PaaS SDK.</description>
+    <description>Integrator-extensible skeleton on top of DJI FlightHub PaaS SDK.</description>
 
     <modules>
         <module>fh-skeleton-bom</module>
         <module>kernel/kernel-spi</module>
         <module>kernel/kernel-impl</module>
         <module>kernel/kernel-mock-sdk</module>
-        <module>kernel/kernel-real-sdk</module>
         <module>feature/feature-chat</module>
         <module>feature/feature-device</module>
         <module>feature/feature-media</module>
@@ -26,6 +25,14 @@
         <module>feature/feature-wayline</module>
         <module>app/fh-skeleton-app</module>
     </modules>
+
+    <licenses>
+        <license>
+            <name>Apache License 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -124,6 +131,14 @@
     </build>
 
     <profiles>
+        <!-- 集成商默认 Mock 构建：kernel-real-sdk 需私有 SDK JAR，移出默认模块列表，
+             仅当显式 -Psdk-real 时编译（与 app 的 sdk-real profile 叠加激活真实链路） -->
+        <profile>
+            <id>sdk-real</id>
+            <modules>
+                <module>kernel/kernel-real-sdk</module>
+            </modules>
+        </profile>
         <!-- CI 专用：JaCoCo 覆盖率检查 -->
         <profile>
             <id>ci</id>

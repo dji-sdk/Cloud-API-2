@@ -76,28 +76,20 @@
 ## 四、加载驾驶舱
 
 ```typescript
-loadCockpit(domId: string, params: ICockpitParams): {
-  getVideoType(): any
-  captureVideoFrame(params?: any): any
-}
+loadCockpit(domId: string, params: ICockpitParams): void
 ```
+
+> ⚠️ `loadCockpit` 返回值是 **`void`**，不要调用返回值上的 `getVideoType()`/`captureVideoFrame()`——`fh2.d.ts` 类型定义与真实接入代码（skeleton/web 的 `CockpitView.vue`）均未使用任何返回值。若需要获取视频类型/截帧，请通过 `cockpitConfig`/事件回调等其它机制（具体以平台方提供的最新 API 为准），不要假设 `loadCockpit` 的调用结果上挂了这两个方法。
 
 **ICockpitParams**：
 
 | 字段 | 类型 | 必需 | 说明 |
 |---|---|---|---|
 | `gateway_sn` | string | Y | 基站/机场序列号 |
-| `drone_sn` | string | Y | 无人机序列号 |
+| `drone_sn` | string | **N**（`fh2.d.ts` 为 `drone_sn?: string`，真实代码允许传空字符串） | 无人机序列号；虽然类型上可选，建议业务层仍尽量传入真实值以保证视频/遥测正常关联 |
 | `map` | boolean | N | 是否显示地图，默认 `true` |
 | `cockpitConfig` | CockpitConfig | N | 模块显隐 / 子功能开关 / 自定义按钮 / 布局配置，详见下方「模块显隐配置」 |
 | `theme` | string \| object | N | 主题定制：内置预设名或扁平 token 对象，详见下方「主题定制」 |
-
-返回对象的两个方法：
-
-| 方法 | 说明 |
-|---|---|
-| `getVideoType()` | 获取当前视频类型 |
-| `captureVideoFrame(params?)` | 捕获视频帧 |
 
 ## 五、模块显隐配置（cockpitConfig）
 
@@ -115,9 +107,9 @@ loadCockpit(domId: string, params: ICockpitParams): {
 
 - **整体显隐某个模块**：`modules.<id>.visible: false`
 - **开关模块内的子功能**：`modules.<id>.features.*`（如隐藏顶栏航线入口、飞行操控区）
-- **注入 ISV 自定义按钮**：`customButtons`（支持图标、跳转 URL 和点击回调）
+- **注入集成商自定义按钮**：`customButtons`（支持图标、跳转 URL 和点击回调）
 - **调整布局比例**：`layout.splitRatios`
-- **配置 ISV 跳转地址**：顶层字段 `waylinePlanUrl`（航线库）、`cameraAuthVerifyUrl`（外接摄像头验密页）
+- **配置集成商跳转地址**：顶层字段 `waylinePlanUrl`（航线库）、`cameraAuthVerifyUrl`（外接摄像头验密页）
 
 未配置的字段保持默认打开（**缺省全开原则**）。
 
@@ -130,24 +122,24 @@ cockpitConfig: {
     topBar: {
       features: {
         wayline: true,                     // 顶栏航线入口
-        customButtons: [                   // ISV 自定义按钮（渲染于顶栏右侧）
+        customButtons: [                   // 集成商自定义按钮（渲染于顶栏右侧）
           {
             id: 'doc',
             name: '文档',
-            tips: '打开 ISV 文档站',
+            tips: '打开集成商文档站',
             forwardUrl: 'https://isv.example.com/docs',   // 点击后新窗口跳转
           },
           {
             id: 'hi',
             name: '问候',
             iconUrl: 'https://cdn.example.com/icons/hi.png',
-            cb: function () { alert('hello from ISV button') },   // 点击回调
+            cb: function () { alert('hello from Integrator button') },   // 点击回调
           },
         ],
       },
     },
   },
-  waylinePlanUrl: 'https://isv.example.com/wayline',   // ISV 航线库地址（顶层字段）
+  waylinePlanUrl: 'https://isv.example.com/wayline',   // 集成商航线库地址（顶层字段）
   // cameraAuthVerifyUrl: 'https://isv.example.com/camera-auth',  // 外接摄像头验密页
 }
 ```
@@ -225,7 +217,7 @@ window.FH2.loadCockpit('cockpit-app-container', {
 | `FH2.resetCockpitTheme()` | 重置主题至默认预设 |
 
 ```javascript
-// 运行时把品牌色换成 ISV 品牌绿
+// 运行时把品牌色换成集成商品牌绿
 window.FH2.setCockpitTheme({
   function_brand_primary_enabled: '#34d399',
   function_brand_primary_hover:   '#5eead4',
@@ -267,7 +259,7 @@ token 命名规律为 `<分组>_<层级>_<状态>`（如 `bg_primary_hover`、`f
 驾驶舱内置了主题编辑面板，适合在接入阶段可视化调色：
 
 - 面板支持切换内置预设、逐个 token 调色、实时预览
-- 调好后可**导出 JSON**（扁平 token 键值对），该 JSON 与 `theme` / `setCockpitTheme` 的入参格式完全一致，可直接固化到 ISV 代码中随 `loadCockpit` 传入
+- 调好后可**导出 JSON**（扁平 token 键值对），该 JSON 与 `theme` / `setCockpitTheme` 的入参格式完全一致，可直接固化到集成商代码中随 `loadCockpit` 传入
 - 也可从本地 JSON 文件导入主题：读取 JSON 解析为 token 对象后直接调用 `FH2.setCockpitTheme(tokens)` 即可
 
 > **与页面级 CSS 变量的关系**：驾驶舱 token 会同步派生出 `--fh2-*` CSS 变量（如 `--fh2-primary-color`），与宿主页面通过 CSS 覆盖 `--fh2-*` 的旧方案兼容。推荐统一使用 token 方式，由主题引擎处理优先级与 portal（弹窗/下拉）同步。
@@ -278,7 +270,7 @@ token 命名规律为 `<分组>_<层级>_<状态>`（如 `bg_primary_hover`、`f
 >
 > 1. **`hostUrl` 必须指向 FH2 前端服务器**（如 `https://host`，端口 80），**不能**用 `localhost`、`window.location.origin` 或 Vite dev server 地址。qiankun 微应用根据 `hostUrl` 解析所有内部资源路径（子 chunk、CSS、图片），设为 localhost 后嵌套资源全部 404，cockpit 挂载失败（黑屏）。
 > 2. **`x-user-token` 必须是合法 JWT**（三段 base64url），**不能**是裸字符串如 `'paas_test'`。驾驶舱微应用内部用此 token 调 FH2 API，裸字符串过不了 JWT 校验，导致组件框架加载但内容全部空白。
-> 3. **`auth.headers` 必须同时包含 `X-User-Token`（JWT）和 `user_id`**，`authKeys` 数组需声明两个 key。缺 `user_id` 导致部分接口鉴权不通过。
+> 3. **`auth.headers` 必须包含 `X-User-Token`（JWT）**；平台方可能要求额外附加一个鉴权头（真实接入代码里是可配置的 `sdkAuthKey`/`sdkAuthValue`，`user_id`只是其中一种可能的 key 名，并非硬编码必填——为空则不附加）。是否需要第二个 key、key 名是什么，请以平台方实际要求为准，不要想当然地硬编码 `'user_id'`。
 
 ```javascript
 window.addEventListener('load', function () {
@@ -293,13 +285,13 @@ window.addEventListener('load', function () {
   })
 
   // 2. auth 对象（authKeys + 函数式 headers 闭包）
+  // 第二个 key（示例用 'user_id'）是否需要、key 名是什么，以平台方实际要求为准；
+  // 真实接入代码中对应 cfg.sdkAuthKey / cfg.sdkAuthValue，可配置、可为空（为空则不附加）
   var auth = {
-    authKeys: ['X-User-Token', 'user_id'],
+    authKeys: ['X-User-Token'],
     headers: function () {
-      return {
-        'X-User-Token': localStorage.getItem('x-user-token') || '',
-        'user_id': 'paas_test',
-      }
+      return { 'X-User-Token': localStorage.getItem('x-user-token') || '' }
+      // 如平台方要求附加额外鉴权头（key 名以实际要求为准，不要凭印象写 'user_id'），在此一并返回并加进 authKeys
     },
   }
 
@@ -318,7 +310,8 @@ window.addEventListener('load', function () {
   )
 
   // 5. 加载驾驶舱：支持传入 cockpitConfig（模块显隐配置）和 theme（主题定制）
-  var cockpitApi = window.FH2.loadCockpit('cockpit-app-container', {
+  // loadCockpit 返回 void，不要接收/使用返回值
+  window.FH2.loadCockpit('cockpit-app-container', {
     gateway_sn: 'YOUR_GATEWAY_SN',
     drone_sn:   'YOUR_DRONE_SN',
     map: true,
@@ -332,7 +325,7 @@ window.addEventListener('load', function () {
               {
                 id: 'doc',
                 name: '文档',
-                tips: '打开 ISV 文档站',
+                tips: '打开集成商文档站',
                 forwardUrl: 'https://isv.example.com/docs',
               },
             ],
@@ -343,9 +336,6 @@ window.addEventListener('load', function () {
     },
     // theme: 'tech-blue',   // 可选：主题定制
   })
-
-  // 6. （可选）取视频类型
-  console.log('视频类型:', cockpitApi.getVideoType())
 })
 ```
 
@@ -372,20 +362,20 @@ FH2.loadMap(serverUrl: string, auth: IAuth, wssUrl?: string): void
 ## 八、卸载
 
 ```typescript
-destroyCockpit(self?: boolean): Promise<boolean>
+destroyCockpit(isEffect?: boolean): void
 ```
 
-| `self` 取值 | 行为 |
+> ⚠️ **返回值是 `void`，不是 `Promise<boolean>`**——`fh2.d.ts` 与真实接入代码（`CockpitView.vue` 里 `window.FH2?.destroyCockpit()`）都是同步调用，不要写 `.then()/.catch()`。另外参数名实际是 **`isEffect`**，不是 `self`；真实代码只调用过无参数形式（等价于默认卸载驾驶舱+地图+项目视图），`isEffect: true` 的"仅卸载驾驶舱保留地图"语义来自本文档既有描述，未能在 `fh2.d.ts`（无 doc 注释）或 skeleton/web 的真实调用中找到直接验证，使用前建议向平台方确认该参数的准确语义。
+
+| `isEffect` 取值 | 行为（**未在真实代码中验证，待平台方确认**） |
 |---|---|
 | `false`（默认） | 卸载驾驶舱 + 地图 + 项目视图 |
 | `true` | 仅卸载驾驶舱应用，保留地图和项目视图（适用于切机场不切页面） |
 
 ```javascript
 window.FH2.destroyCockpit()
-  .then(function () { console.log('驾驶舱已卸载') })
-  .catch(function (err) { console.error('卸载失败:', err) })
 
-// 仅卸载驾驶舱本身
+// 仅卸载驾驶舱本身（语义待确认，见上）
 window.FH2.destroyCockpit(true)
 ```
 
@@ -410,7 +400,7 @@ window.FH2.destroyCockpit(true)
 4. `loadMap` 第 3 个参数（wssUrl）是否正确 —— 不传则地图元素不实时更新
 
 ### Q3：从驾驶舱切其他页面后地图残留
-切页面前必须 `await window.FH2.destroyCockpit()`（不传 `self`，让它清地图）。
+切页面前必须调用 `window.FH2.destroyCockpit()`（同步调用，不传参数即默认行为，清地图+项目视图；不要写 `await`，`destroyCockpit` 返回 `void`）。
 
 ### Q4：cockpitConfig 动态更新后 UI 未响应
 - `setCockpitConfig` 采用 explicit-only 深度合并语义 —— 只有显式传入的字段才会变更，未传入的字段保持原值
@@ -446,7 +436,7 @@ setTimeout(function () {
 }, 15000)
 ```
 
-> **注意**：此问题仅在 ISV 宿主页面（非 FH2 门户）中出现。FH2 门户本身已处理此跳转。确保 `hostUrl` 指向 FH2 前端服务器可减少跳转概率，但 `beforeunload` 守卫仍建议保留作为安全网。
+> **注意**：此问题仅在集成商宿主页面（非 FH2 门户）中出现。FH2 门户本身已处理此跳转。确保 `hostUrl` 指向 FH2 前端服务器可减少跳转概率，但 `beforeunload` 守卫仍建议保留作为安全网。
 
 ### Q7：驾驶舱主题/配色不对（FH2 CSS 变量未生效）
 
@@ -480,6 +470,6 @@ body.set-change-color {
 
 1. **`hostUrl` 是否指向 FH2 前端服务器？** — 最常见原因。设为 `localhost` 或 Vite dev server 地址会导致微应用资源全部 404。必须是 FH2 前端地址（端口 80）。
 2. **`x-user-token` 是否是合法 JWT？** — 裸字符串如 `'paas_test'` 过不了 JWT 校验，微应用内部 API 全部静默失败。
-3. **`auth.headers` 是否同时包含 `X-User-Token` 和 `user_id`？** — 缺 `user_id` 导致部分接口鉴权不通过。
+3. **`auth.headers` 是否包含 `X-User-Token`？第二个鉴权头（如有）key 名是否与平台方要求一致？** — 第二个 key 并非硬编码必须叫 `user_id`，是否需要、叫什么名以平台方实际要求为准；配错或漏配会导致部分接口鉴权不通过。
 4. **`#cockpit-app-container` 是否有高度？** — 容器无高度则内容塌陷不可见。
 5. **是否调了 `loadMap` 和 `initNotifyCenter`？** — 驾驶舱依赖 map 上下文和推送中心。

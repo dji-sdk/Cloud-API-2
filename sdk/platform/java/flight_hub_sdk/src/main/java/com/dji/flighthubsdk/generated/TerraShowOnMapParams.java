@@ -76,6 +76,38 @@ public class TerraShowOnMapParams {
     return new SWIGTYPE_p_std__optionalT_bool_t(flighthubsdkmoduleJNI.TerraShowOnMapParams_is_distributed_get(swigCPtr, this), true);
   }
 
+  public void setRestore(boolean value) {
+    flighthubsdkmoduleJNI.TerraShowOnMapParams_restore_set(swigCPtr, this, value);
+  }
+
+  public boolean getRestore() {
+    return flighthubsdkmoduleJNI.TerraShowOnMapParams_restore_get(swigCPtr, this);
+  }
+
+  public void setIs_displayed(SWIGTYPE_p_std__optionalT_bool_t value) {
+    flighthubsdkmoduleJNI.TerraShowOnMapParams_is_displayed_set(swigCPtr, this, SWIGTYPE_p_std__optionalT_bool_t.getCPtr(value));
+  }
+
+  public SWIGTYPE_p_std__optionalT_bool_t getIs_displayed() {
+    return new SWIGTYPE_p_std__optionalT_bool_t(flighthubsdkmoduleJNI.TerraShowOnMapParams_is_displayed_get(swigCPtr, this), true);
+  }
+
+  public void setIn_uniform_height(SWIGTYPE_p_std__optionalT_bool_t value) {
+    flighthubsdkmoduleJNI.TerraShowOnMapParams_in_uniform_height_set(swigCPtr, this, SWIGTYPE_p_std__optionalT_bool_t.getCPtr(value));
+  }
+
+  public SWIGTYPE_p_std__optionalT_bool_t getIn_uniform_height() {
+    return new SWIGTYPE_p_std__optionalT_bool_t(flighthubsdkmoduleJNI.TerraShowOnMapParams_in_uniform_height_get(swigCPtr, this), true);
+  }
+
+  public void setModel_display_mod(SWIGTYPE_p_std__optionalT_int_t value) {
+    flighthubsdkmoduleJNI.TerraShowOnMapParams_model_display_mod_set(swigCPtr, this, SWIGTYPE_p_std__optionalT_int_t.getCPtr(value));
+  }
+
+  public SWIGTYPE_p_std__optionalT_int_t getModel_display_mod() {
+    return new SWIGTYPE_p_std__optionalT_int_t(flighthubsdkmoduleJNI.TerraShowOnMapParams_model_display_mod_get(swigCPtr, this), true);
+  }
+
   public void setSelect_filter(SWIGTYPE_p_std__optionalT_flight_hub_sdk__TerraSelectFilterParams_t value) {
     flighthubsdkmoduleJNI.TerraShowOnMapParams_select_filter_set(swigCPtr, this, SWIGTYPE_p_std__optionalT_flight_hub_sdk__TerraSelectFilterParams_t.getCPtr(value));
   }

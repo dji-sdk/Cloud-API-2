@@ -93,6 +93,15 @@ public:
         const std::vector<std::string> &device_sns,
         const std::function<void(FlightHubError err, const GetAreasSyncStatusResults& results)>& callback) = 0;
 
+    /// @brief 获取飞行区文件下载地址
+    /// @param callback 结果回调，成功时返回飞行区文件名、签名下载地址（有效期 3600 秒）、SHA-256 校验值与文件大小
+    ///
+    /// @internal
+    /// 链路: HTTP | GET /safety/api/v1/flight-areas/url
+    /// @endinternal
+    virtual void getFlightAreasUrl(
+        const std::function<void(FlightHubError err, const GetFlightAreasUrlResults& results)>& callback) = 0;
+
     /// @brief 查询离线地图模型信息
     /// @param callback 结果回调，成功时返回离线地图模型信息
     ///

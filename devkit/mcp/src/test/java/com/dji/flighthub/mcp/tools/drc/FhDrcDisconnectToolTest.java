@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * FhDrcDisconnectTool 单元测试。
- * 覆盖 session 校验、drone_sn 校验、DRC 链路存在校验及 mock 模式正常流程与状态清除。
+ * 覆盖 session 校验、drone_sn 校验、无链路时的幂等断开、mock 模式正常流程与状态清除。
  *
  * @author DJI FlightHub SDK Team
  */
@@ -76,16 +76,27 @@ class FhDrcDisconnectToolTest {
     }
 
     @Test
-    void execute_shouldReturnError_whenNoDrcLink() {
-        // session 存在但无 DRC 链路
-        sessionManager.createSession("uuid", "ws");
+    @SuppressWarnings("unchecked")
+    void execute_shouldSucceedIdempotently_whenNoDrcLink() {
+        // 本地已无该设备的 DRC 链路（例如链路已在 SDK 侧掉线）：
+        // 用户显式 disconnect 仍应成功，并留下显式断开标记，避免后续飞行指令静默重连
+        SessionContext session = sessionManager.createSession("uuid", "ws");
 
         Map<String, Object> result = disconnectTool.execute(Map.of(
                 "drone_sn", DRONE_SN
         ));
 
-        assertEquals(false, result.get("success"));
-        assertTrue(result.get("error_message").toString().contains("No DRC link to " + DRONE_SN));
+        assertEquals(true, result.get("success"));
+
+        Map<String, Object> data = (Map<String, Object>) result.get("data");
+        assertNotNull(data);
+        assertEquals(DRONE_SN, data.get("drone_sn"));
+        assertEquals(false, data.get("drc_active"));
+        assertEquals(true, data.get("already_disconnected"));
+
+        assertTrue(session.isDrcExplicitlyDisconnected(DRONE_SN),
+                "无本地链路时显式断开也必须打标记，阻止静默自愈");
+        assertFalse(session.hasDrcLink());
     }
 
     @Test
@@ -127,6 +138,19 @@ class FhDrcDisconnectToolTest {
         assertFalse(session.hasDrcLink());
         // 控制权不受影响
         assertTrue(session.hasControlOf(DRONE_SN));
+    }
+
+    @Test
+    void execute_shouldMarkExplicitlyDisconnected_whenSuccessful() {
+        // 显式断开必须留下标记，供 ensureDrcLink() 拒绝后续静默重连
+        SessionContext session = sessionManager.createSession("uuid", "ws");
+        session.setActiveControlDevice(DRONE_SN);
+        session.setActiveDrcDevice(DRONE_SN);
+
+        disconnectTool.execute(Map.of("drone_sn", DRONE_SN));
+
+        assertTrue(session.isDrcExplicitlyDisconnected(DRONE_SN),
+                "显式断开后应记录标记，阻止静默自愈");
     }
 
     @Test

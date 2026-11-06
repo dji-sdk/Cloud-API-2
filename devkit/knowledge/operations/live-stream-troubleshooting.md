@@ -18,7 +18,7 @@ related:
 ## 排查顺序
 
 ```
-固件版本 → 上云方式 → DRTC 底座 .env → DJI CloudAPI2 底座 .env → DRTC 端口开放 → 日志提单
+固件版本 → 上云方式 → DRTC 底座 .env → DJI Cloud API 2 底座 .env → DRTC 端口开放 → 日志提单
 ```
 
 ## 1. 固件版本（后续所有排查的前提）
@@ -29,7 +29,7 @@ related:
 | EA340D | 00.06.0220 及以上 |
 | EA340T | 00.06.0220 及以上 |
 
-在 DJI CloudAPI2 设备管理页或司空 App 查看当前版本；低于要求先升级，否则配置全对也无法直播。
+在 DJI Cloud API 2 设备管理页或司空 App 查看当前版本；低于要求先升级，否则配置全对也无法直播。
 
 ## 2. 上云方式（MQTT 接入标识）
 
@@ -47,7 +47,7 @@ docker exec <mqtt-broker> <broker-cli> clients list | grep <设备SN>
 **前缀不符时**（顺序不可颠倒，否则要重复操作）：
 
 1. 升级设备端行服 APP（司空领航员/驾驶舱）到 **0.0.90 及以上**（依赖第 1 步固件已达标）
-2. 用**上云 API2** 方式重新扫码上云，让设备重新生成符合 `WZR2JJ` 规则的 username/clientid
+2. 用**DJI Cloud API 2** 方式重新扫码上云，让设备重新生成符合 `WZR2JJ` 规则的 username/clientid
 
 ## 3. DRTC 底座 `.env`
 
@@ -67,7 +67,7 @@ docker compose rm -f <drtc相关容器>
 docker compose up -d <drtc相关容器>
 ```
 
-## 4. DJI CloudAPI2 底座 `.env`
+## 4. DJI Cloud API 2 底座 `.env`
 
 | 变量 | 配置要求 |
 |------|---------|
@@ -76,7 +76,7 @@ docker compose up -d <drtc相关容器>
 | `INTERNAL_IP` | 内网 IP，须与 DRTC `HOST_IP` 一致 |
 | `EXTERNAL_IP` | 外网 IP，须与 DRTC `EXTERNAL_IP` 一致 |
 
-**交叉核对**：把两份 `.env` 对应变量并排比对，确认内外网 IP 成对一致，不要出现「DJI CloudAPI2 用外网 IP、DRTC `HOST_IP` 却配了另一个内网 IP」。
+**交叉核对**：把两份 `.env` 对应变量并排比对，确认内外网 IP 成对一致，不要出现「DJI Cloud API 2 用外网 IP、DRTC `HOST_IP` 却配了另一个内网 IP」。
 
 ## 5. DRTC 端口开放
 
@@ -117,10 +117,10 @@ docker compose up -d <drtc相关容器>
 
 - [ ] 固件达标（EA610 ≥ 01.02.2319，EA340D/EA340T ≥ 00.06.0220）
 - [ ] `<broker-cli> clients list | grep <SN>` 能查到连接，且 username 以 `{SN}&WZR2JJ`、clientid 以 `WZR2JJ` 开头
-- [ ] 上云方式不对时：行服 APP 已升到 0.0.90+，并已用上云 API2 重新扫码
+- [ ] 上云方式不对时：行服 APP 已升到 0.0.90+，并已用 DJI Cloud API 2 重新扫码
 - [ ] DRTC `.env`：`EXTERNAL_DOMAIN`/`EXTERNAL_IP` 为外部地址，`HOST_IP` 为内网 IP
 - [ ] 改过 IP 后 DRTC 容器已**删除重建**（非 restart）
-- [ ] DJI CloudAPI2 `.env`：`USE_SSL=true`、`OBJECT_STORAGE_USE_HTTPS=true`
+- [ ] DJI Cloud API 2 `.env`：`USE_SSL=true`、`OBJECT_STORAGE_USE_HTTPS=true`
 - [ ] 两侧 `INTERNAL_IP`/`EXTERNAL_IP` 成对一致
 - [ ] 全部端口已放行，且从设备网络侧验证可达
 - [ ] 仍无法定位 → 收集 MQTT Broker / 设备状态服务 / DRTC 容器日志，用 `diag.sh report` 出脱敏包后提单

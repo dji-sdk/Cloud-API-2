@@ -29,16 +29,19 @@ public:
     /// @brief 触发固件升级
     /// @param params 升级参数
     /// @param callback 回调，返回升级结果与错误信息
+    /// @note 后端响应仅 @c bid / @c status；@c device_code / @c devices 为历史字段，恒为 0 / 空。
     /// @internal
-    /// 链路: HTTP | POST /device/api/v1/manager/{uuid}/ota/upgrade
+    /// 链路: HTTP | POST /device/api/v1/manager/ota/upgrade
     /// @endinternal
     virtual void invokeFirmwareUpgrade(const FirmwareUpgradeParam& params, std::function<void(FlightHubError err, FirmwareUpgradeResult result)> callback) = 0;
 
     /// @brief 查询固件升级进度
     /// @param device_sn 设备序列号
     /// @param callback 回调，返回升级进度与错误信息
+    /// @note 升级进度位于 @c services.progress（percent/current_step）；@c ota /
+    ///       @c associate_drone / @c associate_relay 为兼容旧调用方保留，后端当前不再返回。
     /// @internal
-    /// 链路: HTTP | GET /device/api/v1/manager/ota/progress
+    /// 链路: HTTP | GET /device/api/v1/manager/ota/progress?sn={device_sn}
     /// @endinternal
     virtual void queryFirmwareUpgradeProgress(const std::string& device_sn, std::function<void(FlightHubError err, FirmwareUpgradeProgressResult progress_list)> callback) = 0;
 
@@ -79,6 +82,7 @@ public:
     /// @param page 页码
     /// @param page_size 每页数量
     /// @param callback 回调，返回固件列表与错误信息
+    /// @note 结果 @c FirmwareListResult.pagination 含当前页/每页数量/总数。
     /// @internal
     /// 链路: HTTP | GET /device/api/v1/manager/firmwares
     /// @endinternal

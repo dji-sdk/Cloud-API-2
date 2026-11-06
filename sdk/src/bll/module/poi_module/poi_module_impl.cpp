@@ -15,6 +15,7 @@
 #include <BusinessManager.h>
 
 #include <utility>
+#include "session/session_bm.h"
 
 namespace flight_hub_sdk {
 
@@ -36,14 +37,16 @@ POITaskInfo convertToPOITaskInfo(const POITaskResponse& internal_task) {
     return user_task;
 }
 
-PoiModuleImpl::PoiModuleImpl(std::shared_ptr<message_engine::IMessageEngine> message_engine, std::string drone_sn, const std::string& gateway_sn, const std::string& drone_model_key)
-    : message_engine_(std::move(message_engine)), drone_sn_(std::move(drone_sn)), gateway_sn_(gateway_sn), drone_model_key_(drone_model_key) {
+PoiModuleImpl::PoiModuleImpl(std::shared_ptr<message_engine::IMessageEngine> message_engine, std::string drone_sn, const std::string& gateway_sn, const std::string& drone_model_key, int session_id)
+    : message_engine_(std::move(message_engine)), drone_sn_(std::move(drone_sn)), gateway_sn_(gateway_sn), drone_model_key_(drone_model_key), session_id_(session_id) {
+    auto bm = ResolveBusinessManager(session_id_);
     const std::string host_gateway_sn =
         TopoRegistry::getInstance().resolveHostGatewaySn(drone_sn_).value_or(gateway_sn_);
     LOG_INFO("[PoiModuleImpl] constructor, drone_sn: %s, host_gateway_sn: %s",
              drone_sn_.c_str(), host_gateway_sn.c_str());
     WeakDummy(weak_ptr);
-    poi_task_event_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenPoiTaskEvent(
+    if (bm) {
+        poi_task_event_listen_id_ = bm->ListenPoiTaskEvent(
         [this, weak_ptr](const notification_center::PoiTaskEvent& msg)-> void {
             WeakDummyReturn(weak_ptr);
             PoiTaskEvent event;
@@ -72,8 +75,12 @@ PoiModuleImpl::PoiModuleImpl(std::shared_ptr<message_engine::IMessageEngine> mes
         },
         host_gateway_sn,
         notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 
-    flight_poi_progress_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenFlightPoiProgress(
+    if (bm) {
+        flight_poi_progress_listen_id_ = bm->ListenFlightPoiProgress(
         [this, weak_ptr](const notification_center::FlightPoiProgress& msg)-> void {
             WeakDummyReturn(weak_ptr);
             FlightPoiProgress res{};
@@ -98,15 +105,23 @@ PoiModuleImpl::PoiModuleImpl(std::shared_ptr<message_engine::IMessageEngine> mes
         },
         host_gateway_sn,
         notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
 }
 
 PoiModuleImpl::~PoiModuleImpl() {
+    auto bm = ResolveBusinessManager(session_id_);
     if (poi_task_event_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(poi_task_event_listen_id_);
+        if (bm) {
+            bm->CancelObserve(poi_task_event_listen_id_);
+        }
         poi_task_event_listen_id_ = -1;
     }
     if (flight_poi_progress_listen_id_ != -1) {
-        NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(flight_poi_progress_listen_id_);
+        if (bm) {
+            bm->CancelObserve(flight_poi_progress_listen_id_);
+        }
         flight_poi_progress_listen_id_ = -1;
     }
 }
@@ -128,12 +143,13 @@ void PoiModuleImpl::enter(const POIEnterParams& params, const std::function<void
         poi_enter(request,
                   [this, weak_ptr, callback](const POITaskResponse &response, FlightHubError err) {
                       WeakDummyReturn(weak_ptr);
-                      drc_sdk::common::Executors::Main()->Post([err, callback, response]()-> void {
+                      drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]()-> void {
+                        WeakDummyReturn(weak_ptr);
                         // 埋点: 进入 POI 环绕模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                        report_beacon_event_helper(kBeaconReportEvent_POI_ENTER, err, "[PoiModuleImpl]");
+                        report_beacon_event_helper(kBeaconReportEvent_POI_ENTER, err, session_id_, "[PoiModuleImpl]");
                         LOG_INFO("[PoiModuleImpl] callback, uuid: %s", response.uuid.c_str());
                           if (err.error_code == FlightHubSdkErrorCode::SUCCESS) {
                               callback(err, response.uuid);
@@ -141,7 +157,7 @@ void PoiModuleImpl::enter(const POIEnterParams& params, const std::function<void
                               callback(err, "");
                           }
                       });
-                  });
+                  }, session_id_);
     });
 }
 
@@ -156,15 +172,16 @@ void PoiModuleImpl::exit(const std::function<void(FlightHubError err)>& callback
         poi_exit(request,
                  [this, weak_ptr, callback](FlightHubError err) {
                      WeakDummyReturn(weak_ptr);
-                     drc_sdk::common::Executors::Main()->Post([err, callback]()-> void {
+                     drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]()-> void {
+                        WeakDummyReturn(weak_ptr);
                          // 埋点: 退出 POI 环绕模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                          // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                          // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                          // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                         report_beacon_event_helper(kBeaconReportEvent_POI_EXIT, err, "[PoiModuleImpl]");
+                         report_beacon_event_helper(kBeaconReportEvent_POI_EXIT, err, session_id_, "[PoiModuleImpl]");
                          callback(err);
                      });
-                 });
+                 }, session_id_);
     });
 }
 
@@ -180,15 +197,16 @@ void PoiModuleImpl::updateSpeed(double speed, const std::function<void(FlightHub
         poi_speed_update(request,
                         [this, weak_ptr, callback](FlightHubError err) {
                             WeakDummyReturn(weak_ptr);
-                            drc_sdk::common::Executors::Main()->Post([err, callback]()-> void {
+                            drc_sdk::common::Executors::Main()->Post([err, callback, this, weak_ptr]()-> void {
+                                WeakDummyReturn(weak_ptr);
                                 // 埋点: 更新 POI 环绕速度; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                                report_beacon_event_helper(kBeaconReportEvent_POI_UPDATE_SPEED, err, "[PoiModuleImpl]");
+                                report_beacon_event_helper(kBeaconReportEvent_POI_UPDATE_SPEED, err, session_id_, "[PoiModuleImpl]");
                                 callback(err);
                             });
-                        });
+                        }, session_id_);
     });
 }
 
@@ -203,12 +221,13 @@ void PoiModuleImpl::getTask(const std::function<void(FlightHubError err, const P
         get_poi_task(request,
                     [this, weak_ptr, callback](const POITaskResponse& response, FlightHubError err) {
                         WeakDummyReturn(weak_ptr);
-                        drc_sdk::common::Executors::Main()->Post([err, callback, response]()-> void {
+                        drc_sdk::common::Executors::Main()->Post([err, callback, response, this, weak_ptr]()-> void {
+                            WeakDummyReturn(weak_ptr);
                             // 埋点: 查询当前 POI 任务信息; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                             // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                             // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                             // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                            report_beacon_event_helper(kBeaconReportEvent_POI_GET_TASK, err, "[PoiModuleImpl]");
+                            report_beacon_event_helper(kBeaconReportEvent_POI_GET_TASK, err, session_id_, "[PoiModuleImpl]");
                             if (err.error_code == FlightHubSdkErrorCode::SUCCESS) {
                                 // 转换内部结构为用户接口结构
                                 POITaskInfo user_task = convertToPOITaskInfo(response);
@@ -217,7 +236,7 @@ void PoiModuleImpl::getTask(const std::function<void(FlightHubError err, const P
                                 callback(err, {});
                             }
                         });
-                    });
+                    }, session_id_);
     });
 }
 

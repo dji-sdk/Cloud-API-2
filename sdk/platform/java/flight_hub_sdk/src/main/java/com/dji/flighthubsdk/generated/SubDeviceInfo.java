@@ -125,6 +125,14 @@ public class SubDeviceInfo {
     return flighthubsdkmoduleJNI.SubDeviceInfo_nickname_get(swigCPtr, this);
   }
 
+  public void setDevice_state(String value) {
+    flighthubsdkmoduleJNI.SubDeviceInfo_device_state_set(swigCPtr, this, value);
+  }
+
+  public String getDevice_state() {
+    return flighthubsdkmoduleJNI.SubDeviceInfo_device_state_get(swigCPtr, this);
+  }
+
   public SubDeviceInfo() {
     this(flighthubsdkmoduleJNI.new_SubDeviceInfo(), true);
   }

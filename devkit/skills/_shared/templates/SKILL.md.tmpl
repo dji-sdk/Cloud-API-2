@@ -1,0 +1,84 @@
+---
+name: {{skill-name}}
+description: |
+  {{skill-name-title}} 助手。TODO: 一句话说明 Skill 做什么。
+  触发词：TODO: 关键词1, 关键词2, 关键词3。
+  不触发：TODO: 排除场景1, 排除场景2。
+version: 0.1.0
+author: {{author}}
+---
+
+# {{skill-name-title}}
+
+## 这个 Skill 是干什么的
+
+TODO: 1-2 句话说明 Skill 的作用，集成商开发者能看懂。
+
+## 何时触发
+
+- TODO: 触发场景 1
+- TODO: 触发场景 2
+- TODO: 触发场景 3
+
+## 不触发
+
+- TODO: 排除场景 1（用 xxx Skill）
+- TODO: 排除场景 2（不在本 Skill 范围）
+
+**不触发**：与本 Skill 无关的问题一律不介入。
+
+## 工作流
+
+本 Skill 遵循 `skills/_shared/sop-template.md` 定义的 7 章节 SOP。
+根据用户请求自动选择执行深度（L1/L2/L3）。
+
+以下为本 Skill 的特化规则：
+
+### Ch2 澄清问题
+
+当用户意图不明确时，从以下维度澄清：
+
+1. TODO: 澄清维度 1
+2. TODO: 澄清维度 2
+
+### Ch5 编码约束
+
+参见 `constraints.yaml`，所有 `critical` 规则在生成代码时必须满足。
+
+### Ch6 验证扩展
+
+除通用验证外，必须检查：
+- [ ] TODO: 领域特定验证项 1
+- [ ] TODO: 领域特定验证项 2
+
+## 决策树路由
+
+```
+用户问题
+├─ TODO: 意图分支 1
+│    → 加载 references/xxx.md
+├─ TODO: 意图分支 2
+│    → 加载 references/yyy.md
+└─ TODO: 兜底
+     → 加载 references/zzz.md
+```
+
+## 反幻觉规则（强制）
+
+1. **示例代码必须来源于本 Skill 的 references/ 或用户提供的文档**，不得凭模型记忆生成 API 签名、字段名、枚举值
+2. **禁止凭记忆编造**——如果不确定某个 API 是否存在或参数是否正确，必须明确告知用户"需要确认文档"
+3. **引用必须可溯源**——任何建议必须能追溯到 references/ 文档路径或官方文档
+
+## 共享规范
+
+> 跨 Skill 共享约束见 `skills/_shared/constraints-common.yaml`。
+> 跨 Skill 路由规则见 `skills/_shared/skill-routing.md`。当发现用户意图属于其他 Skill 职责时，按转交协议切换。
+> 输出格式见 `skills/_shared/output-format.md`。Reference 按需懒加载，不要一次性读取所有 references/。
+
+<!-- 推荐章节：根据 Skill 领域按需添加 -->
+
+<!-- ## 心智模型 -->
+<!-- TODO: 领域核心概念的简明描述 -->
+
+<!-- ## 核心规则 -->
+<!-- TODO: 领域硬约束 + 正反代码示例 -->

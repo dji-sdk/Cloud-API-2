@@ -1,0 +1,197 @@
+# DJI Cloud API 2 PSDK 负载域约束规则
+#
+# 共享约束见 _shared/constraints-common.yaml（SSOT），本文件只定义 PSDK 负载域特有规则。
+# 共享约束包括：initialize-check, error-code-check, listen-cancel-pairing,
+#   null-guard-instances, thread-safety, resource-cleanup
+#
+# level: critical — 违反必导致功能失败
+# level: warning  — 违反可能导致问题但不一定立即失败
+
+# extends: _shared/constraints-common.yaml
+
+# ============================================================
+# 模块归属与 null 语义
+# ============================================================
+
+- id: module-ownership
+  rule: PsdkControlModule 只能通过 drone.getPsdkControlModule() 获取，PsdkResourceModule 只能通过 workspace.getPsdkResourceModule() 获取，两个模块不能互换取用对象
+  violation: 生成 drone.getPsdkResourceModule() / workspace.getPsdkControlModule() 等不存在的方法，编译失败
+  level: critical
+
+- id: resource-module-null-guard
+  rule: Workspace.getPsdkResourceModule() 在底层模块缺失时返回 null（且只记 Logger.error），调用前必须判空
+  violation: NullPointerException
+  level: critical
+
+- id: control-module-no-null-branch
+  rule: Drone.getPsdkControlModule() 源码没有 null 返回分支（底层 raw module 为 null 时在构造阶段失败），不要写 if (control == null) return 来"防御"不存在的路径；业务层需保证设备侧确实装了 PSDK 负载
+  violation: 误以为判空能覆盖未装负载场景，问题被延后到更深处才暴露
+  level: warning
+
+# ============================================================
+# 能力边界（源码级不存在的方法，禁止生成）
+# ============================================================
+
+- id: no-realtime-speaker
+  rule: speakerRealTimeStart / speakerRealTimeStop 在 Java SDK 中已整段注释关闭（无 RTC 房间与音频采集能力），禁止生成或建议这两个调用；替代方案为 speakerTTSPlayStart（TTS）与 speakerAudioPlayStart（已上传音频）
+  violation: 编译失败；或按 javadoc 臆造浏览器侧流程混入服务端代码
+  level: critical
+
+- id: no-dropper-api
+  rule: PsdkControlModule 类 javadoc 提到"抛投器等负载控制"，但类中没有任何抛投器方法，禁止编造 dropperRelease / payloadDrop 之类 API
+  violation: 编译失败
+  level: critical
+
+- id: enum-value-is-not-capability
+  rule: MegaphoneWorkMode 的 LIVE_VOICE(3) / REAL_TIME(4) / PLAYING_IN_TRANSMISSION(5) 只用于解读状态订阅返回值，没有任何 Java 控制方法能进入这些模式
+  violation: 按枚举反推不存在的控制接口
+  level: critical
+
+# ============================================================
+# 传输链路与前置条件
+# ============================================================
+
+- id: drc-link-prerequisite
+  rule: 16 个 PsdkControlModule 控制方法（7 探照灯 + 7 喊话器 + 2 Widget）全部走 DRC，调用前必须先 drone.getDrcModule().connectDrcLink(...) 并在回调成功分支内下发；退出时配对 disconnectDrcLink
+  violation: 指令无明显错误但负载不响应
+  level: critical
+
+- id: drc-northbound-needs-drc
+  rule: 6 组 DRC Northbound 订阅（设备列表、状态摘要、喊话器状态、探照灯状态、播放进度、浮窗文本）同样依赖 DRC 链路，订阅前应确认链路已建立
+  violation: listen 返回成功但永远收不到推送
+  level: warning
+
+- id: resource-http-no-drc
+  rule: PsdkResourceModule 的 7 个方法都不需要 DRC 链路；但资源创建完成后去播放，又回到 PsdkControlModule 的 DRC 链路
+  violation: 在纯资源管理流程里生成多余的 DRC 建链代码
+  level: warning
+
+# ============================================================
+# 索引类型
+# ============================================================
+
+- id: psdk-index-is-int
+  rule: PSDK 负载索引 psdkIndex 是 int，来自 listenDrcPsdkStateSummaryInfo 回调的 PsdkStateSummaryInfo.getPsdkIndex() 或 PsdkDeviceInfo.getPsdkIndex()；相机负载索引是 String（"type-subtype-gimbalindex"，如 "99-0-0"），两者不可互换
+  violation: 编译失败，或把 "99-0-0" 传给 int 形参
+  level: critical
+
+- id: psdk-index-not-guessed
+  rule: 不得按设备顺序或硬编码 0 猜测 psdkIndex，必须先订阅设备列表 / 状态摘要拿到真实值
+  violation: 多负载场景下指令发给了错误的负载
+  level: warning
+
+- id: ui-resource-item-long
+  rule: PsdkUiResourceItem.getPsdkIndex() 与 getPsdkReady() 返回 long，其它 PSDK bean 的 psdkIndex 都是 int；传给控制方法时需显式收窄并确认取值范围
+  violation: 编译失败或隐式截断
+  level: warning
+
+- id: generated-snake-case-accessor
+  rule: WebSocket 播放进度消息 generated.PsdkSpeakerPlayStartProgress 的索引访问器是 getOutput().getPsdk_index()（snake_case），不是 getPsdkIndex()
+  violation: 编译失败
+  level: warning
+
+# ============================================================
+# 回调签名
+# ============================================================
+
+- id: listen-callback-single-arg
+  rule: PsdkControlModule 的全部 9 组 listen 回调都是单参数、无 FlightHubError 参数；订阅成败只能看返回的 int listenId（>= 0 成功，-1 失败）
+  violation: 写成 (error, bean) -> 编译失败；或试图从回调读 error
+  level: critical
+
+- id: listen-failure-behavior-split
+  rule: DRC Northbound listen 失败时以 null 转换后的 bean 回调一次再返回 -1（回调体必须判空）；WebSocket listen 失败时只记日志不回调（不能依赖回调感知失败，必须检查返回值）
+  violation: DRC Northbound 场景 NPE；WebSocket 场景静默失效
+  level: critical
+
+- id: cancel-signature-split
+  rule: cancelListenDrcPsdkStateSummaryInfo / StateSpeakerInfo / StateSearchlightInfo / SpeakerPlayProgressInfo / FloatingWindowTextInfo 是 (int psdkIndex, int listenId)，psdkIndex 在前；cancelListenDrcPsdkDeviceList 与 3 个 WebSocket cancel 只有 (int listenId)
+  violation: 编译失败，或不传 psdkIndex 导致取消不掉
+  level: critical
+
+- id: cancel-no-error-signal
+  rule: 所有 cancelListenXxx 返回 void，内部异常只记日志，没有错误信号；必须自行保存每个 listenId 并在 @PreDestroy 配对取消
+  violation: 订阅泄漏，进程退出后服务端仍持续推送
+  level: warning
+
+- id: setter-callback-shape
+  rule: 16 个控制方法的回调统一是 FlightHubCallback.ResultCallbackWithError，即 onResult(FlightHubError error) 单参数，没有 result
+  violation: 多写 result 参数导致编译失败
+  level: critical
+
+- id: resource-callback-error-first
+  rule: PsdkResourceModule 的 list/create/edit/getSTS/getPsdkWidgetResources 都是 (FlightHubError error, T result)，error 在前；delete 与 uploadSpeakerAudioFile 只有 (FlightHubError error)
+  violation: 参数顺序写反或虚构 result
+  level: critical
+
+# ============================================================
+# 入参类型不对称
+# ============================================================
+
+- id: searchlight-int-vs-speaker-enum
+  rule: searchlightModeSet 的第二个参数是 int（传 SearchLightWorkMode.OPEN.getValue()）；speakerPlayModeSet 的第二个参数是 MegaphonePlayMode 枚举。两个控制方法风格不同，不能照抄
+  violation: 编译失败
+  level: critical
+
+- id: tts-config-bean
+  rule: TTS 参数通过 PsdkSpeakerTTSconfig（volume / type / language / speed，其中 type/language 是枚举）传递，不要自己拼多个 int 参数
+  violation: 编译失败或参数错位
+  level: warning
+
+- id: resource-id-type-mismatch
+  rule: deletePsdkSpeakerResource 的 resourceId 是 int，EditPsdkSpeakerResourceParams.id 是 String；同一资源 ID 在两个方法上类型不同，编辑时需 String.valueOf(...)
+  violation: 编译失败
+  level: critical
+
+- id: widget-list-field-name
+  rule: PsdkSpeakerResourceList 用 getResources() 读取；PsdkWidgetResourceList 用 getUiResourceUrls() 读取；两个列表 bean 字段命名不对称
+  violation: 编译失败
+  level: warning
+
+# ============================================================
+# 音频资源流程
+# ============================================================
+
+- id: audio-upload-four-step
+  rule: 本地音频上传播放必须按 getSTS → uploadSpeakerAudioFile → createPsdkSpeakerResource → speakerAudioPlayStart 四步执行，每步失败都要中止后续步骤
+  violation: 跳过上传直接 create（对象不存在），或创建完不登记导致播放端无资源
+  level: critical
+
+- id: upload-not-by-backend
+  rule: uploadSpeakerAudioFile 由 SDK 原生层拿 STS 凭证直接 PUT 到对象存储，不经过公司后端；失败可能来自对象存储侧（网络 / 凭证过期），不能只查后端日志
+  violation: 排查方向错误，误判为后端接口故障
+  level: warning
+
+- id: sts-credential-ttl
+  rule: STS 凭证是临时凭证（STSCredential.expire），不要长期缓存复用，每次上传前重新 getSTS()
+  violation: 上传时凭证过期，报鉴权失败
+  level: warning
+
+- id: upload-no-result
+  rule: uploadSpeakerAudioFile 回调只有 (error)，没有结果对象；上传后的访问信息需要从 createPsdkSpeakerResource 返回的 PsdkSpeakerResource 中读取
+  violation: 虚构上传结果参数导致编译失败，或在回调里读不存在的 url
+  level: warning
+
+- id: upload-file-path-local
+  rule: uploadSpeakerAudioFile 的 filePath 是 SDK 进程所在机器的本地路径，容器化部署需确认文件在该容器文件系统内可访问
+  violation: 文件不存在导致上传失败
+  level: warning
+
+- id: create-is-not-upload
+  rule: createPsdkSpeakerResource / editPsdkSpeakerResource 只登记元数据，不上传文件；文件必须先经 uploadSpeakerAudioFile 进入对象存储
+  violation: 以为 create 后音频就可用，播放时找不到对象
+  level: critical
+
+# ============================================================
+# Widget / UI 资源
+# ============================================================
+
+- id: widget-object-key-source
+  rule: Widget 的 objectKey 来源是 listenDrcPsdkDeviceList 推送的 PsdkDeviceInfo.objectKey 或 listenDronePsdkUiResource 推送的 PsdkUiResourceItem.objectKey；要拿到可访问 URL 需调用 getPsdkWidgetResources 批量换取
+  violation: 把 objectKey 当 URL 直接下发，播放端 404
+  level: warning
+
+- id: widget-index-vs-psdk-index
+  rule: widgetValueSet(int psdkIndex, int index, int value) 的第一个参数是负载序号，第二个参数是 Widget 控件序号，两者不能混用
+  violation: 指令发到错误的控件或错误的负载
+  level: warning

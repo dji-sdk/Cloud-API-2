@@ -7,15 +7,15 @@
 #include "http_interface/request_message.h"
 #include "http_interface/http_interface.h"
 #include "api/flight_hub_sdk.h"
-#include "notification_center/notification_center.h"
 #include <BusinessManager.h>
 #include <common/executors/executors.h>
 #include "tool/flight_hub_utils.h"
+#include "session/session_bm.h"
 
 namespace flight_hub_sdk {
 
-PayloadCtrlMgr::PayloadCtrlMgr(const std::string& drone_sn, const std::string& gateway_sn, const std::shared_ptr<message_engine::IMessageEngine>& message_engine, int drone_instance_id)
-    : drone_sn_(drone_sn), gateway_sn_(gateway_sn), message_engine_(message_engine) {
+PayloadCtrlMgr::PayloadCtrlMgr(const std::string& drone_sn, const std::string& gateway_sn, const std::shared_ptr<message_engine::IMessageEngine>& message_engine, int drone_instance_id, int session_id)
+    : drone_sn_(drone_sn), gateway_sn_(gateway_sn), message_engine_(message_engine), session_id_(session_id) {
     instance_id_ = drone_instance_id;
     log_tag_ = drone_sn_ + "#" + std::to_string(instance_id_);
     LOG_INFO("[PayloadCtrlMgr] constructor, instance_id: %d, drone_sn: %s", instance_id_, drone_sn_.c_str());
@@ -23,14 +23,19 @@ PayloadCtrlMgr::PayloadCtrlMgr(const std::string& drone_sn, const std::string& g
 }
 
 PayloadCtrlMgr::~PayloadCtrlMgr() {
+    auto bm = ResolveBusinessManager(session_id_);
     LOG_INFO("[PayloadCtrlMgr][%s] destructor", log_tag_.c_str());
-    NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(aircraft_payloads_list_listen_id_);
+    if (bm) {
+        bm->CancelObserve(aircraft_payloads_list_listen_id_);
+    }
     camera_abs_map_.clear();
 }
 
 void PayloadCtrlMgr::initializeDeviceStatusListening() {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
-    aircraft_payloads_list_listen_id_ = NotificationCenter::getInstance()->getBusinessManager()->ListenAircraftPayloadsList(
+    if (bm) {
+        aircraft_payloads_list_listen_id_ = bm->ListenAircraftPayloadsList(
         [this, weak_ptr](const notification_center::AircraftPayloadsList& msg)-> void {
             WeakDummyReturn(weak_ptr);
             onReceiveAircraftPayloadsList(msg);
@@ -38,6 +43,9 @@ void PayloadCtrlMgr::initializeDeviceStatusListening() {
             WeakDummyReturn(weak_ptr);
             LOG_INFO("[PayloadCtrlMgr][%s] ListenAircraftPayloadsList, listen result: %d", log_tag_.c_str(), error_code);
         }, drone_sn_, notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     if (aircraft_payloads_list_listen_id_ < 0) {
         LOG_ERROR("[PayloadCtrlMgr][%s] ListenAircraftPayloadsList failed, aircraft_payloads_list_listen_id_ %d", log_tag_.c_str(), aircraft_payloads_list_listen_id_);
     }
@@ -66,7 +74,7 @@ void PayloadCtrlMgr::onReceiveAircraftPayloadsList(const notification_center::Ai
             new_camera_abs_map[payload_index] = camera_abs_map_[payload_index];
         } else {
             // 创建新的 CameraAbs 对象
-            new_camera_abs_map[payload_index] = std::make_shared<CameraAbs>(payload_index, drone_sn_, gateway_sn_, message_engine_, instance_id_);
+            new_camera_abs_map[payload_index] = std::make_shared<CameraAbs>(payload_index, drone_sn_, gateway_sn_, message_engine_, instance_id_, session_id_);
             LOG_INFO("[PayloadCtrlMgr][%s] Create CameraAbs, payload_index: %s", log_tag_.c_str(), payload_index.c_str());
         }
     }
@@ -97,56 +105,62 @@ void PayloadCtrlMgr::setAircraftPayloadsListCallback(std::function<void(const Ai
 }
 
 void PayloadCtrlMgr::acquirePayloadControlAuthority(const std::string& payload_index, const std::function<void(FlightHubError)>& callback) {
-    LOG_INFO("[PayloadCtrlMgr][%s] acquirePayloadControlAuthority", log_tag_.c_str());
-    if (camera_abs_map_.find(payload_index) == camera_abs_map_.end()) {
-        LOG_ERROR("[PayloadCtrlMgr][%s] acquirePayloadControlAuthority, payload_index: %s not found", log_tag_.c_str(), payload_index.c_str());
-        auto not_found_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_STATE);
-
-        // 埋点: 抢夺负载控制权(payload_index 无对应相机, 指令未下发); 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
-        // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
-        // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
-        // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_ACQUIRE_PAYLOAD_CONTROL_AUTHORITY, not_found_err, "[PayloadCtrlMgr]");
-
-        callback(not_found_err);
-        return;
-    }
-    auto camera_abs = camera_abs_map_[payload_index];
-    camera_abs->acquirePayloadControlAuthority([callback](FlightHubError err) {
-        // 埋点: 抢夺负载控制权; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
-        // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
-        // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
-        // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_ACQUIRE_PAYLOAD_CONTROL_AUTHORITY, err, "[PayloadCtrlMgr]");
-
-        callback(err);
+    acquirePayloadControlAuthorityWithResult(payload_index, [callback](FlightHubError err, const ControlAuthResult&) {
+        if (callback) {
+            callback(err);
+        }
     });
 }
 
 void PayloadCtrlMgr::releasePayloadControlAuthority(const std::string& payload_index, const std::function<void(FlightHubError)>& callback) {
-    LOG_INFO("[PayloadCtrlMgr][%s] releasePayloadControlAuthority", log_tag_.c_str());
+    releasePayloadControlAuthorityWithResult(payload_index, [callback](FlightHubError err, const ControlAuthResult&) {
+        if (callback) {
+            callback(err);
+        }
+    });
+}
+
+void PayloadCtrlMgr::acquirePayloadControlAuthorityWithResult(
+    const std::string& payload_index,
+    const std::function<void(FlightHubError, const ControlAuthResult&)>& callback) {
+    LOG_INFO("[PayloadCtrlMgr][%s] acquirePayloadControlAuthorityWithResult", log_tag_.c_str());
     if (camera_abs_map_.find(payload_index) == camera_abs_map_.end()) {
-        LOG_ERROR("[PayloadCtrlMgr][%s] releasePayloadControlAuthority, payload_index: %s not found", log_tag_.c_str(), payload_index.c_str());
+        LOG_ERROR("[PayloadCtrlMgr][%s] acquirePayloadControlAuthorityWithResult, payload_index: %s not found", log_tag_.c_str(), payload_index.c_str());
         auto not_found_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_STATE);
-
-        // 埋点: 释放负载控制权(payload_index 无对应相机, 指令未下发); 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
-        // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
-        // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
-        // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_RELEASE_PAYLOAD_CONTROL_AUTHORITY, not_found_err, "[PayloadCtrlMgr]");
-
-        callback(not_found_err);
+        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_ACQUIRE_PAYLOAD_CONTROL_AUTHORITY, not_found_err, session_id_, "[PayloadCtrlMgr]");
+        if (callback) {
+            callback(not_found_err, ControlAuthResult{});
+        }
         return;
     }
     auto camera_abs = camera_abs_map_[payload_index];
-    camera_abs->releasePayloadControlAuthority([callback](FlightHubError err) {
-        // 埋点: 释放负载控制权; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
-        // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
-        // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
-        // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_RELEASE_PAYLOAD_CONTROL_AUTHORITY, err, "[PayloadCtrlMgr]");
+    camera_abs->acquirePayloadControlAuthorityWithResult([callback, this](FlightHubError err, const ControlAuthResult& result) {
+        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_ACQUIRE_PAYLOAD_CONTROL_AUTHORITY, err, session_id_, "[PayloadCtrlMgr]");
+        if (callback) {
+            callback(err, result);
+        }
+    });
+}
 
-        callback(err);
+void PayloadCtrlMgr::releasePayloadControlAuthorityWithResult(
+    const std::string& payload_index,
+    const std::function<void(FlightHubError, const ControlAuthResult&)>& callback) {
+    LOG_INFO("[PayloadCtrlMgr][%s] releasePayloadControlAuthorityWithResult", log_tag_.c_str());
+    if (camera_abs_map_.find(payload_index) == camera_abs_map_.end()) {
+        LOG_ERROR("[PayloadCtrlMgr][%s] releasePayloadControlAuthorityWithResult, payload_index: %s not found", log_tag_.c_str(), payload_index.c_str());
+        auto not_found_err = FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_INVALID_STATE);
+        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_RELEASE_PAYLOAD_CONTROL_AUTHORITY, not_found_err, session_id_, "[PayloadCtrlMgr]");
+        if (callback) {
+            callback(not_found_err, ControlAuthResult{});
+        }
+        return;
+    }
+    auto camera_abs = camera_abs_map_[payload_index];
+    camera_abs->releasePayloadControlAuthorityWithResult([callback, this](FlightHubError err, const ControlAuthResult& result) {
+        report_beacon_event_helper(kBeaconReportEvent_CONTROL_AUTH_RELEASE_PAYLOAD_CONTROL_AUTHORITY, err, session_id_, "[PayloadCtrlMgr]");
+        if (callback) {
+            callback(err, result);
+        }
     });
 }
 
@@ -181,18 +195,18 @@ void PayloadCtrlMgr::drcSwitchLiveLens(const SwitchLiveLensParams& params, const
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SWITCH_LIVE_LENS, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SWITCH_LIVE_LENS, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcSwitchLiveLens(params, [callback](FlightHubError err) {
+    camera_abs->drcSwitchLiveLens(params, [callback, this](FlightHubError err) {
         // 埋点: 切换直播镜头; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SWITCH_LIVE_LENS, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SWITCH_LIVE_LENS, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -208,18 +222,18 @@ void PayloadCtrlMgr::drcSetPhotoStorageSettings(const SetPhotoStorageSettingsPar
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PHOTO_STORAGE_SETTINGS, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PHOTO_STORAGE_SETTINGS, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcSetPhotoStorageSettings(params, [callback](FlightHubError err) {
+    camera_abs->drcSetPhotoStorageSettings(params, [callback, this](FlightHubError err) {
         // 埋点: 设置照片存储参数; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PHOTO_STORAGE_SETTINGS, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PHOTO_STORAGE_SETTINGS, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -235,18 +249,18 @@ void PayloadCtrlMgr::drcSetVideoStorageSettings(const SetVideoStorageSettingsPar
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_VIDEO_STORAGE_SETTINGS, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_VIDEO_STORAGE_SETTINGS, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcSetVideoStorageSettings(params, [callback](FlightHubError err) {
+    camera_abs->drcSetVideoStorageSettings(params, [callback, this](FlightHubError err) {
         // 埋点: 设置视频存储参数; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_VIDEO_STORAGE_SETTINGS, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_VIDEO_STORAGE_SETTINGS, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -262,18 +276,18 @@ void PayloadCtrlMgr::drcSetNightSceneMode(const SetNightSceneModeParams& params,
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_NIGHT_SCENE_MODE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_NIGHT_SCENE_MODE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcSetNightSceneMode(params, [callback](FlightHubError err) {
+    camera_abs->drcSetNightSceneMode(params, [callback, this](FlightHubError err) {
         // 埋点: 设置夜景模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_NIGHT_SCENE_MODE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_NIGHT_SCENE_MODE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -288,18 +302,18 @@ void PayloadCtrlMgr::drcTakePhoto(const std::string& payload_index, const std::f
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_TAKE_PHOTO, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_TAKE_PHOTO, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[payload_index];
-    camera_abs->drcTakePhoto([callback](FlightHubError err) {
+    camera_abs->drcTakePhoto([callback, this](FlightHubError err) {
         // 埋点: 拍照; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_TAKE_PHOTO, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_TAKE_PHOTO, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -315,18 +329,18 @@ void PayloadCtrlMgr::drcSmartPhotoTakePhoto(const std::string& payload_index, co
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SMART_PHOTO_TAKE_PHOTO, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SMART_PHOTO_TAKE_PHOTO, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[payload_index];
-    camera_abs->drcSmartPhotoTakePhoto([callback](FlightHubError err) {
+    camera_abs->drcSmartPhotoTakePhoto([callback, this](FlightHubError err) {
         // 埋点: 智能低光拍照; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SMART_PHOTO_TAKE_PHOTO, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SMART_PHOTO_TAKE_PHOTO, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -753,18 +767,18 @@ void PayloadCtrlMgr::drcSetThermalGainMode(const ThermalGainModeSetParams& param
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_GAIN_MODE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_GAIN_MODE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcSetThermalGainMode(params, [callback](FlightHubError err) {
+    camera_abs->drcSetThermalGainMode(params, [callback, this](FlightHubError err) {
         // 埋点: 设置红外增益模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_GAIN_MODE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_GAIN_MODE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -781,18 +795,18 @@ void PayloadCtrlMgr::drcStartRecord(const std::string& payload_index, const std:
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_START_RECORD, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_START_RECORD, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[payload_index];
-    camera_abs->drcStartRecord([callback](FlightHubError err) {
+    camera_abs->drcStartRecord([callback, this](FlightHubError err) {
         // 埋点: 开始录像; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_START_RECORD, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_START_RECORD, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -808,18 +822,18 @@ void PayloadCtrlMgr::drcStopRecord(const std::string& payload_index, const std::
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_RECORD, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_RECORD, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[payload_index];
-    camera_abs->drcStopRecord([callback](FlightHubError err) {
+    camera_abs->drcStopRecord([callback, this](FlightHubError err) {
         // 埋点: 停止录像; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_RECORD, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_RECORD, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -836,18 +850,18 @@ void PayloadCtrlMgr::drcZoomAtTarget(const ZoomAtTargetParams& params, const std
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_ZOOM_AT_TARGET, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_ZOOM_AT_TARGET, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcZoomAtTarget(params, [callback](FlightHubError err) {
+    camera_abs->drcZoomAtTarget(params, [callback, this](FlightHubError err) {
         // 埋点: 框选变焦; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_ZOOM_AT_TARGET, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_ZOOM_AT_TARGET, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -865,18 +879,18 @@ void PayloadCtrlMgr::drcSetFocalLength(const CameraFocalLengthParams& params, co
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_FOCAL_LENGTH, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_FOCAL_LENGTH, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcSetFocalLength(params, [callback](FlightHubError err) {
+    camera_abs->drcSetFocalLength(params, [callback, this](FlightHubError err) {
         // 埋点: 设置焦距; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_FOCAL_LENGTH, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_FOCAL_LENGTH, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -894,18 +908,18 @@ void PayloadCtrlMgr::drcSetLinkageZoom(const LinkageZoomParams& params, const st
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_LINKAGE_ZOOM, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_LINKAGE_ZOOM, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcSetLinkageZoom(params, [callback](FlightHubError err) {
+    camera_abs->drcSetLinkageZoom(params, [callback, this](FlightHubError err) {
         // 埋点: 设置联动变焦; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_LINKAGE_ZOOM, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_LINKAGE_ZOOM, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -923,19 +937,19 @@ void PayloadCtrlMgr::drcResetGimbal(const GimbalResetParams& params, const std::
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_RESET_GIMBAL, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_RESET_GIMBAL, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
 
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcResetGimbal(params, [callback](FlightHubError err) {
+    camera_abs->drcResetGimbal(params, [callback, this](FlightHubError err) {
         // 埋点: 重置云台; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_RESET_GIMBAL, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_RESET_GIMBAL, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -953,18 +967,18 @@ void PayloadCtrlMgr::lookAtTarget(const LookAtTargetParams& params, const std::f
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_LOOK_AT_TARGET, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_LOOK_AT_TARGET, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->lookAtTarget(params, [callback](FlightHubError err) {
+    camera_abs->lookAtTarget(params, [callback, this](FlightHubError err) {
         // 埋点: 看向目标; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_LOOK_AT_TARGET, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_LOOK_AT_TARGET, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -980,18 +994,18 @@ void PayloadCtrlMgr::drcSendCameraScreenDrag(const CameraScreenDragParams& param
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SEND_CAMERA_SCREEN_DRAG, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SEND_CAMERA_SCREEN_DRAG, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcSendCameraScreenDrag(params, [callback](FlightHubError err) {
+    camera_abs->drcSendCameraScreenDrag(params, [callback, this](FlightHubError err) {
         // 埋点: 画面拖动控制云台转动速度; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SEND_CAMERA_SCREEN_DRAG, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SEND_CAMERA_SCREEN_DRAG, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1008,18 +1022,18 @@ void PayloadCtrlMgr::drcSwitchCameraMode(const SwitchCameraModeParams& params, c
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SWITCH_CAMERA_MODE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SWITCH_CAMERA_MODE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcSwitchCameraMode(params, [callback](FlightHubError err) {
+    camera_abs->drcSwitchCameraMode(params, [callback, this](FlightHubError err) {
         // 埋点: 切换相机模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SWITCH_CAMERA_MODE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SWITCH_CAMERA_MODE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1053,18 +1067,18 @@ void PayloadCtrlMgr::drcStartPanorama(const PanoramaParam& params, const std::fu
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_START_PANORAMA, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_START_PANORAMA, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcStartPanorama(params, [callback](FlightHubError err) {
+    camera_abs->drcStartPanorama(params, [callback, this](FlightHubError err) {
         // 埋点: 开始全景拍摄; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_START_PANORAMA, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_START_PANORAMA, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1080,18 +1094,18 @@ void PayloadCtrlMgr::drcStopPanorama(const std::string& payload_index, const std
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_PANORAMA, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_PANORAMA, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[payload_index];
-    camera_abs->drcStopPanorama([callback](FlightHubError err) {
+    camera_abs->drcStopPanorama([callback, this](FlightHubError err) {
         // 埋点: 停止全景拍摄; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_PANORAMA, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_PANORAMA, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1130,18 +1144,18 @@ void PayloadCtrlMgr::drcSetPhotoSize(const PhotoSizeParam& params, const std::fu
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PHOTO_SIZE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PHOTO_SIZE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcSetPhotoSize(params, [callback](FlightHubError err) {
+    camera_abs->drcSetPhotoSize(params, [callback, this](FlightHubError err) {
         // 埋点: 设置照片分辨率; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PHOTO_SIZE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PHOTO_SIZE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1157,18 +1171,18 @@ void PayloadCtrlMgr::drcSetIntervalTakePhoto(const IntervalTakePhotoSetParam& pa
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_INTERVAL_TAKE_PHOTO, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_INTERVAL_TAKE_PHOTO, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcSetIntervalTakePhoto(params, [callback](FlightHubError err) {
+    camera_abs->drcSetIntervalTakePhoto(params, [callback, this](FlightHubError err) {
         // 埋点: 设置定时拍参数; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_INTERVAL_TAKE_PHOTO, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_INTERVAL_TAKE_PHOTO, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1184,18 +1198,18 @@ void PayloadCtrlMgr::drcIntervalTakePhoto(const IntervalTakePhotoParam& params, 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_INTERVAL_TAKE_PHOTO, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_INTERVAL_TAKE_PHOTO, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcIntervalTakePhoto(params, [callback](FlightHubError err) {
+    camera_abs->drcIntervalTakePhoto(params, [callback, this](FlightHubError err) {
         // 埋点: 执行定时拍; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_INTERVAL_TAKE_PHOTO, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_INTERVAL_TAKE_PHOTO, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1211,18 +1225,18 @@ void PayloadCtrlMgr::drcStopTakePhoto(const std::string& payload_index, const st
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_TAKE_PHOTO, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_TAKE_PHOTO, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[payload_index];
-    camera_abs->drcStopTakePhoto([callback](FlightHubError err) {
+    camera_abs->drcStopTakePhoto([callback, this](FlightHubError err) {
         // 埋点: 停止拍照; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_TAKE_PHOTO, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_STOP_TAKE_PHOTO, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1260,18 +1274,18 @@ void PayloadCtrlMgr::drcCameraAimAtTarget(const CameraAimParam& params, const st
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CAMERA_AIM_AT_TARGET, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CAMERA_AIM_AT_TARGET, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
     auto camera_abs = camera_abs_map_[params.payload_index];
-    camera_abs->drcCameraAimAtTarget(params, [callback](FlightHubError err) {
+    camera_abs->drcCameraAimAtTarget(params, [callback, this](FlightHubError err) {
         // 埋点: 双击画面瞄准目标; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CAMERA_AIM_AT_TARGET, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CAMERA_AIM_AT_TARGET, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1290,17 +1304,17 @@ void PayloadCtrlMgr::drcSetCameraApertureValue(const CameraApertureValueSetParam
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_APERTURE_VALUE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_APERTURE_VALUE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetCameraApertureValue(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetCameraApertureValue(params, [callback, this](FlightHubError err) {
         // 埋点: 设置相机光圈值; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_APERTURE_VALUE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_APERTURE_VALUE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1315,17 +1329,17 @@ void PayloadCtrlMgr::drcSetCameraExposureMode(const CameraExposureModeSetParams&
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_EXPOSURE_MODE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_EXPOSURE_MODE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetCameraExposureMode(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetCameraExposureMode(params, [callback, this](FlightHubError err) {
         // 埋点: 设置相机曝光模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_EXPOSURE_MODE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_EXPOSURE_MODE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1340,17 +1354,17 @@ void PayloadCtrlMgr::drcSetCameraExposureValue(const CameraExposureSetParams& pa
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_EXPOSURE_VALUE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_EXPOSURE_VALUE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetCameraExposureValue(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetCameraExposureValue(params, [callback, this](FlightHubError err) {
         // 埋点: 设置相机曝光值; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_EXPOSURE_VALUE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_EXPOSURE_VALUE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1365,17 +1379,17 @@ void PayloadCtrlMgr::drcSetCameraFocusMode(const CameraFocusModeSetParams& param
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_FOCUS_MODE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_FOCUS_MODE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetCameraFocusMode(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetCameraFocusMode(params, [callback, this](FlightHubError err) {
         // 埋点: 设置相机对焦模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_FOCUS_MODE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_FOCUS_MODE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1390,17 +1404,17 @@ void PayloadCtrlMgr::drcSetCameraFocusValue(const CameraFocusValueSetParams& par
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_FOCUS_VALUE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_FOCUS_VALUE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetCameraFocusValue(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetCameraFocusValue(params, [callback, this](FlightHubError err) {
         // 埋点: 设置相机对焦值; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_FOCUS_VALUE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_FOCUS_VALUE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1415,17 +1429,17 @@ void PayloadCtrlMgr::drcSetCameraIso(const CameraIsoSetParams& params, const std
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_ISO, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_ISO, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetCameraIso(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetCameraIso(params, [callback, this](FlightHubError err) {
         // 埋点: 设置相机 ISO; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_ISO, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_ISO, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1440,17 +1454,17 @@ void PayloadCtrlMgr::drcSetCameraMechanicalShutter(const CameraMechanicalShutter
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_MECHANICAL_SHUTTER, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_MECHANICAL_SHUTTER, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetCameraMechanicalShutter(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetCameraMechanicalShutter(params, [callback, this](FlightHubError err) {
         // 埋点: 设置相机机械快门; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_MECHANICAL_SHUTTER, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_MECHANICAL_SHUTTER, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1465,17 +1479,17 @@ void PayloadCtrlMgr::drcCameraPointFocusAction(const CameraPointFocusActionParam
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CAMERA_POINT_FOCUS_ACTION, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CAMERA_POINT_FOCUS_ACTION, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcCameraPointFocusAction(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcCameraPointFocusAction(params, [callback, this](FlightHubError err) {
         // 埋点: 相机点对焦操作; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CAMERA_POINT_FOCUS_ACTION, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CAMERA_POINT_FOCUS_ACTION, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1490,17 +1504,17 @@ void PayloadCtrlMgr::drcSetCameraShutter(const CameraShutterSetParams& params, c
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_SHUTTER, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_SHUTTER, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetCameraShutter(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetCameraShutter(params, [callback, this](FlightHubError err) {
         // 埋点: 设置相机快门速度; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_SHUTTER, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_SHUTTER, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1515,17 +1529,17 @@ void PayloadCtrlMgr::drcSetCameraWatermark(const CameraWatermarkParams& params, 
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_WATERMARK, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_WATERMARK, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetCameraWatermark(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetCameraWatermark(params, [callback, this](FlightHubError err) {
         // 埋点: 设置相机水印; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_WATERMARK, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_WATERMARK, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1540,17 +1554,17 @@ void PayloadCtrlMgr::drcSetCameraDewarping(const CameraDewarpingSetParams& param
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_DEWARPING, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_DEWARPING, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetCameraDewarping(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetCameraDewarping(params, [callback, this](FlightHubError err) {
         // 埋点: 设置相机畸变矫正; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_DEWARPING, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_DEWARPING, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1567,17 +1581,17 @@ void PayloadCtrlMgr::drcSetCameraScreenSplit(const CameraScreenSplitParams& para
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_SCREEN_SPLIT, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_SCREEN_SPLIT, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetCameraScreenSplit(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetCameraScreenSplit(params, [callback, this](FlightHubError err) {
         // 埋点: 设置相机分屏显示; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_SCREEN_SPLIT, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_SCREEN_SPLIT, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1592,17 +1606,17 @@ void PayloadCtrlMgr::drcCleanFog(const CleanFogParams& params, const std::functi
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CLEAN_FOG, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CLEAN_FOG, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcCleanFog(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcCleanFog(params, [callback, this](FlightHubError err) {
         // 埋点: 镜头去雾; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CLEAN_FOG, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_CLEAN_FOG, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1619,17 +1633,17 @@ void PayloadCtrlMgr::drcSetThermalCurrentPalette(const ThermalCurrentPaletteSetP
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_CURRENT_PALETTE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_CURRENT_PALETTE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetThermalCurrentPalette(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetThermalCurrentPalette(params, [callback, this](FlightHubError err) {
         // 埋点: 设置热成像调色板; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_CURRENT_PALETTE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_CURRENT_PALETTE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1644,17 +1658,17 @@ void PayloadCtrlMgr::drcSetThermalSuperResolutionEnable(const ThermalSuperResolu
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_SUPER_RESOLUTION_ENABLE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_SUPER_RESOLUTION_ENABLE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetThermalSuperResolutionEnable(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetThermalSuperResolutionEnable(params, [callback, this](FlightHubError err) {
         // 埋点: 设置热成像超分辨率; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_SUPER_RESOLUTION_ENABLE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_THERMAL_SUPER_RESOLUTION_ENABLE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1669,17 +1683,17 @@ void PayloadCtrlMgr::drcSetIrMeteringMode(const IrMeteringModeSetParams& params,
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_MODE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_MODE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetIrMeteringMode(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetIrMeteringMode(params, [callback, this](FlightHubError err) {
         // 埋点: 设置红外测温模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_MODE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_MODE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1694,17 +1708,17 @@ void PayloadCtrlMgr::drcSetIrMeteringPoint(const IrMeteringPointSetParams& param
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_POINT, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_POINT, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetIrMeteringPoint(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetIrMeteringPoint(params, [callback, this](FlightHubError err) {
         // 埋点: 设置红外测温点; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_POINT, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_POINT, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1719,17 +1733,17 @@ void PayloadCtrlMgr::drcSetIrMeteringArea(const IrMeteringAreaSetParams& params,
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_AREA, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_AREA, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetIrMeteringArea(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetIrMeteringArea(params, [callback, this](FlightHubError err) {
         // 埋点: 设置红外测温区域; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_AREA, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_METERING_AREA, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1744,17 +1758,17 @@ void PayloadCtrlMgr::drcSetIrDisplayMode(const SetIrDisplayModeParams& params, c
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_DISPLAY_MODE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_DISPLAY_MODE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetIrDisplayMode(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetIrDisplayMode(params, [callback, this](FlightHubError err) {
         // 埋点: 设置红外显示模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_DISPLAY_MODE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_DISPLAY_MODE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1769,17 +1783,17 @@ void PayloadCtrlMgr::drcSetIrEnhanceMode(const SetIrEnhanceModeParams& params, c
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_ENHANCE_MODE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_ENHANCE_MODE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetIrEnhanceMode(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetIrEnhanceMode(params, [callback, this](FlightHubError err) {
         // 埋点: 设置红外增强模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_ENHANCE_MODE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_ENHANCE_MODE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1794,17 +1808,17 @@ void PayloadCtrlMgr::drcSetIrMixRate(const SetIrMixRateParams& params, const std
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_MIX_RATE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_MIX_RATE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetIrMixRate(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetIrMixRate(params, [callback, this](FlightHubError err) {
         // 埋点: 设置红外融合比例; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_MIX_RATE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_IR_MIX_RATE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1819,17 +1833,17 @@ void PayloadCtrlMgr::drcSetIsothermEnable(const SetIsothermEnableParams& params,
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_ENABLE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_ENABLE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetIsothermEnable(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetIsothermEnable(params, [callback, this](FlightHubError err) {
         // 埋点: 设置等温线开关; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_ENABLE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_ENABLE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1844,17 +1858,17 @@ void PayloadCtrlMgr::drcSetIsothermColorRenderingType(const SetIsothermColorRend
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_COLOR_RENDERING_TYPE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_COLOR_RENDERING_TYPE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetIsothermColorRenderingType(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetIsothermColorRenderingType(params, [callback, this](FlightHubError err) {
         // 埋点: 设置等温线着色类型; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_COLOR_RENDERING_TYPE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_COLOR_RENDERING_TYPE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1869,17 +1883,17 @@ void PayloadCtrlMgr::drcSetIsothermLowerUpperRange(const SetIsothermLowerUpperRa
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_LOWER_UPPER_RANGE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_LOWER_UPPER_RANGE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetIsothermLowerUpperRange(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetIsothermLowerUpperRange(params, [callback, this](FlightHubError err) {
         // 埋点: 设置等温线温度上下限; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_LOWER_UPPER_RANGE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_LOWER_UPPER_RANGE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1894,17 +1908,17 @@ void PayloadCtrlMgr::drcSetIsothermRenderingPolygon(const SetIsothermRenderingPo
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_RENDERING_POLYGON, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_RENDERING_POLYGON, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetIsothermRenderingPolygon(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetIsothermRenderingPolygon(params, [callback, this](FlightHubError err) {
         // 埋点: 设置等温线多边形渲染区域; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_RENDERING_POLYGON, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_RENDERING_POLYGON, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1919,17 +1933,17 @@ void PayloadCtrlMgr::drcSetIsothermRoiBasedRenderingEnable(const SetIsothermRoiB
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_ROI_BASED_RENDERING_ENABLE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_ROI_BASED_RENDERING_ENABLE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetIsothermRoiBasedRenderingEnable(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetIsothermRoiBasedRenderingEnable(params, [callback, this](FlightHubError err) {
         // 埋点: 设置按框选区域的等温线渲染使能; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_ROI_BASED_RENDERING_ENABLE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ISOTHERM_ROI_BASED_RENDERING_ENABLE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1944,17 +1958,17 @@ void PayloadCtrlMgr::drcSetInfraredFillLightEnable(const InfraredFillLightEnable
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_INFRARED_FILL_LIGHT_ENABLE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_INFRARED_FILL_LIGHT_ENABLE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetInfraredFillLightEnable(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetInfraredFillLightEnable(params, [callback, this](FlightHubError err) {
         // 埋点: 设置近红外补光灯使能; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_INFRARED_FILL_LIGHT_ENABLE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_INFRARED_FILL_LIGHT_ENABLE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1969,17 +1983,17 @@ void PayloadCtrlMgr::drcSetCameraNightVisionEnable(const CameraNightVisionEnable
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_NIGHT_VISION_ENABLE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_NIGHT_VISION_ENABLE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetCameraNightVisionEnable(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetCameraNightVisionEnable(params, [callback, this](FlightHubError err) {
         // 埋点: 设置黑白夜视使能; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_NIGHT_VISION_ENABLE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_NIGHT_VISION_ENABLE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -1994,17 +2008,17 @@ void PayloadCtrlMgr::drcResetCameraSettings(const CameraSettingsResetParams& par
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_RESET_CAMERA_SETTINGS, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_RESET_CAMERA_SETTINGS, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcResetCameraSettings(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcResetCameraSettings(params, [callback, this](FlightHubError err) {
         // 埋点: 重置相机设置; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_RESET_CAMERA_SETTINGS, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_RESET_CAMERA_SETTINGS, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -2021,17 +2035,17 @@ void PayloadCtrlMgr::drcSetCameraDenoiseLevelSet(const CameraDenoiseLevelSetPara
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_DENOISE_LEVEL_SET, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_DENOISE_LEVEL_SET, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetCameraDenoiseLevelSet(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetCameraDenoiseLevelSet(params, [callback, this](FlightHubError err) {
         // 埋点: 设置相机降噪等级; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_DENOISE_LEVEL_SET, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_DENOISE_LEVEL_SET, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -2046,17 +2060,17 @@ void PayloadCtrlMgr::drcSetVideoResolution(const VideoResolutionSetParams& param
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_VIDEO_RESOLUTION, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_VIDEO_RESOLUTION, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetVideoResolution(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetVideoResolution(params, [callback, this](FlightHubError err) {
         // 埋点: 设置视频分辨率; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_VIDEO_RESOLUTION, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_VIDEO_RESOLUTION, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -2071,17 +2085,17 @@ void PayloadCtrlMgr::drcSetCameraPhotoFormat(const CameraPhotoFormatSetParams& p
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_PHOTO_FORMAT, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_PHOTO_FORMAT, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetCameraPhotoFormat(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetCameraPhotoFormat(params, [callback, this](FlightHubError err) {
         // 埋点: 设置照片格式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_PHOTO_FORMAT, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_CAMERA_PHOTO_FORMAT, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -2096,17 +2110,17 @@ void PayloadCtrlMgr::drcSetPreRecordedStatus(const PreRecordedStatusSetParams& p
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PRE_RECORDED_STATUS, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PRE_RECORDED_STATUS, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetPreRecordedStatus(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetPreRecordedStatus(params, [callback, this](FlightHubError err) {
         // 埋点: 设置预录制状态; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PRE_RECORDED_STATUS, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PRE_RECORDED_STATUS, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -2121,17 +2135,17 @@ void PayloadCtrlMgr::drcSetPreRecordedTime(const PreRecordedTimeSetParams& param
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PRE_RECORDED_TIME, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PRE_RECORDED_TIME, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetPreRecordedTime(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetPreRecordedTime(params, [callback, this](FlightHubError err) {
         // 埋点: 设置预录制时长; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PRE_RECORDED_TIME, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_PRE_RECORDED_TIME, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -2146,17 +2160,17 @@ void PayloadCtrlMgr::drcSetCountDownAction(int count_down_type, int action_type,
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_COUNT_DOWN_ACTION, no_camera_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_COUNT_DOWN_ACTION, no_camera_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(no_camera_err);
         return;
     }
-    camera_abs_map_.begin()->second->drcSetCountDownAction(count_down_type, action_type, [callback](FlightHubError err) {
+    camera_abs_map_.begin()->second->drcSetCountDownAction(count_down_type, action_type, [callback, this](FlightHubError err) {
         // 埋点: 设置倒计时动作; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_COUNT_DOWN_ACTION, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_COUNT_DOWN_ACTION, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -2171,17 +2185,17 @@ void PayloadCtrlMgr::drcSetAssistantVideoMode(int mode, const std::function<void
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ASSISTANT_VIDEO_MODE, no_camera_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ASSISTANT_VIDEO_MODE, no_camera_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(no_camera_err);
         return;
     }
-    camera_abs_map_.begin()->second->drcSetAssistantVideoMode(mode, [callback](FlightHubError err) {
+    camera_abs_map_.begin()->second->drcSetAssistantVideoMode(mode, [callback, this](FlightHubError err) {
         // 埋点: 设置辅助画面模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ASSISTANT_VIDEO_MODE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ASSISTANT_VIDEO_MODE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -2196,17 +2210,17 @@ void PayloadCtrlMgr::drcSetAssistantVideoSwitch(int sw, const std::function<void
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ASSISTANT_VIDEO_SWITCH, no_camera_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ASSISTANT_VIDEO_SWITCH, no_camera_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(no_camera_err);
         return;
     }
-    camera_abs_map_.begin()->second->drcSetAssistantVideoSwitch(sw, [callback](FlightHubError err) {
+    camera_abs_map_.begin()->second->drcSetAssistantVideoSwitch(sw, [callback, this](FlightHubError err) {
         // 埋点: 设置辅助画面开关; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ASSISTANT_VIDEO_SWITCH, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ASSISTANT_VIDEO_SWITCH, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -2221,17 +2235,17 @@ void PayloadCtrlMgr::drcSetAlgorithmDehazeMode(const AlgorithmDehazeModeSetParam
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ALGORITHM_DEHAZE_MODE, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ALGORITHM_DEHAZE_MODE, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetAlgorithmDehazeMode(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetAlgorithmDehazeMode(params, [callback, this](FlightHubError err) {
         // 埋点: 设置相机电子去雾模式; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ALGORITHM_DEHAZE_MODE, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ALGORITHM_DEHAZE_MODE, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });
@@ -2246,17 +2260,17 @@ void PayloadCtrlMgr::drcSetAlgorithmDehazeLevel(const AlgorithmDehazeLevelSetPar
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ALGORITHM_DEHAZE_LEVEL, not_found_err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ALGORITHM_DEHAZE_LEVEL, not_found_err, session_id_, "[PayloadCtrlMgr]");
 
         callback(not_found_err);
         return;
     }
-    camera_abs_map_[params.payload_index]->drcSetAlgorithmDehazeLevel(params, [callback](FlightHubError err) {
+    camera_abs_map_[params.payload_index]->drcSetAlgorithmDehazeLevel(params, [callback, this](FlightHubError err) {
         // 埋点: 设置相机电子去雾等级; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
         // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
         // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
         // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ALGORITHM_DEHAZE_LEVEL, err, "[PayloadCtrlMgr]");
+        report_beacon_event_helper(kBeaconReportEvent_CAMERA_CTRL_DRC_SET_ALGORITHM_DEHAZE_LEVEL, err, session_id_, "[PayloadCtrlMgr]");
 
         callback(err);
     });

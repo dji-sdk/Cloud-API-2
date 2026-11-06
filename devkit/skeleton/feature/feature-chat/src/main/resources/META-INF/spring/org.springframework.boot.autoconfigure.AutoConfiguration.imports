@@ -1,2 +1,3 @@
 com.dji.fh.feature.chat.rag.RagAutoConfiguration
+com.dji.fh.feature.chat.ChatStatusAutoConfiguration
 com.dji.fh.feature.chat.ChatAutoConfiguration

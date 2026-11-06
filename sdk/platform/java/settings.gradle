@@ -11,4 +11,10 @@ gradle.ext.sdkVersion = "v${versionFile.text.trim()}"
 
 include 'flight_hub_sdk'
 include 'flight_hub_sdk_demo'
-include 'flight_hub_sdk_docs'
+// flight_hub_sdk_docs 依赖 Kotlin/Dokka 插件（需访问 Gradle Plugin Portal）。
+// 配置阶段只要 include 就会拉插件；CI 机 NAC 拦截外网 HTTPS 时会导致整次 Java 打包失败。
+// 打包只编 :flight_hub_sdk，默认不纳入。需要生成文档时：
+//   ./gradlew -PincludeDocs=true :flight_hub_sdk_docs:javadoc
+if (settings.hasProperty('includeDocs') && settings.includeDocs.toString() == 'true') {
+    include 'flight_hub_sdk_docs'
+}

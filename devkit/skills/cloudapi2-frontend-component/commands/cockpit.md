@@ -1,5 +1,5 @@
 ---
-description: 生成DJI 上云API 2 驾驶舱（FH2.loadCockpit）的最小可运行 HTML
+description: 生成DJI Cloud API 2 驾驶舱（FH2.loadCockpit）的最小可运行 HTML
 argument-hint: [frontHost] [gatewaySn] [droneSn]
 ---
 
@@ -29,7 +29,7 @@ $ARGUMENTS
 ## 不要做
 
 - 不要把 SDK 参数细节再讲一遍 —— 用户要的是能跑的代码，不是文档
-- 不要写 React/Vue 包装 —— DJI 上云API 2 是 vanilla JS / paas.js 模式
+- 不要写 React/Vue 包装 —— DJI Cloud API 2 是 vanilla JS / paas.js 模式
 - 不要省略 DOM 嵌套层级 —— 驾驶舱对 DOM 结构强依赖
 - 不要漏掉 `localStorage.setItem('x-user-token', ...)` —— SDK 不会自己写，闭包取不到 token 整套鉴权失效
 - 不要省略 `loadMap` / `initNotifyCenter` 的第二个 `auth` 参数 —— 否则后续请求无鉴权头

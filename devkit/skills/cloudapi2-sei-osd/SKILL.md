@@ -1,17 +1,17 @@
 ---
 name: cloudapi2-sei-osd
-description: Cloud API 2.0 SEI/OSD 实时遥测数据接入助手。当用户要获取无人机帧级位置数据（SEI，内嵌于视频流）、设备遥测数据（OSD，MQTT/DRC 通道）、在地图上可视化相机视锥/FOV/视频投影、接入 FHSDK LiveModule subscribeArSeiInfo/subscribeFovSeiInfo、或遇到 SEI 解析/OSD 频率/位置对齐视频等问题时调用。触发词：SEI、OSD、帧级位置、视锥、FOV、相机姿态、视频投影、ArSeiInfo、FovSeiInfo、subscribeArSeiInfo、subscribeFovSeiInfo、LiveModule、DRC OSD、MQTT OSD、osd_frequency、遥测数据、位置对齐、像素反算经纬度、视锥中心点、Cesium 地图、NED 坐标、相机位姿、畸变参数、HostDistortParam、帧同步、实时定位。
+description: DJI Cloud API 2 SEI/OSD 实时遥测数据接入助手。当用户要获取无人机帧级位置数据（SEI，内嵌于视频流）、设备遥测数据（OSD，MQTT/DRC 通道）、在地图上可视化相机视锥/FOV/视频投影、接入 FHSDK LiveModule subscribeArSeiInfo/subscribeFovSeiInfo、或遇到 SEI 解析/OSD 频率/位置对齐视频等问题时调用。触发词：SEI、OSD、帧级位置、视锥、FOV、相机姿态、视频投影、ArSeiInfo、FovSeiInfo、subscribeArSeiInfo、subscribeFovSeiInfo、LiveModule、DRC OSD、MQTT OSD、osd_frequency、遥测数据、位置对齐、像素反算经纬度、视锥中心点、Cesium 地图、NED 坐标、相机位姿、畸变参数、HostDistortParam、帧同步、实时定位。
 version: 1.2.0
-author: DJI CloudAPI2 Team
+author: DJI Cloud API 2 Team
 ---
 
-# DJI CloudAPI2 SEI/OSD 实时遥测数据接入助手
+# DJI Cloud API 2 SEI/OSD 实时遥测数据接入助手
 
 ## 这个 Skill 是干什么的
 
-帮 ISV 开发者正确接入 DJI CloudAPI2 的 **SEI（帧级位置数据）** 和 **OSD（设备遥测数据）**，覆盖服务端 FHSDK 数据获取 + 前端地图可视化两端。
+帮集成商开发者正确接入 DJI Cloud API 2 的 **SEI（帧级位置数据）** 和 **OSD（设备遥测数据）**，覆盖服务端 FHSDK 数据获取 + 前端地图可视化两端。
 
-**核心价值**：ISV 最集中的痛点是"怎么拿到每一帧画面对应的、准确的、足够高频的位置数据"。本 Skill 把 SEI/OSD 的 What/Why/How 讲透。
+**核心价值**：集成商最集中的痛点是"怎么拿到每一帧画面对应的、准确的、足够高频的位置数据"。本 Skill 把 SEI/OSD 的 What/Why/How 讲透。
 
 ## 何时触发
 
@@ -46,9 +46,13 @@ author: DJI CloudAPI2 Team
 
 | 通道 | 频率 | 前置条件 | 典型用途 |
 |------|------|----------|---------|
-| **MQTT OSD** | 0.5Hz（2s 一次，固定） | 设备在线即推 | 设备状态面板、粗轨迹 |
+| **MQTT OSD**（俗称；Java SDK 侧实为 `DroneOsdModule` 的 WebSocket 推送） | 0.5Hz（2s 一次，固定） | 设备在线 + SDK 已配置 `notificationServerAddress`（WebSocket 通知通道），**不是需要接 MQTT 客户端** | 设备状态面板、粗轨迹 |
 | **DRC OSD** | 默认 3Hz，可配 1~30Hz | 需建立 DRC 链路 | 操控反馈、中高频轨迹 |
 | **SEI** | ~30fps（每帧都有） | 需拉流（WebRTC） | **画面+位置融合**（AR、视锥、像素反算） |
+
+> ⚠️ **"MQTT OSD" 是内部对设备→云端上报链路的俗称**（机场侧 `dji-cloud-access` 用 MQTT 信令通道、2000ms 定时器硬编码上报），
+> 但 **集成商用 Java SDK 消费这份数据时走的是 `drone.getDroneOsdModule().listenXxx()`，推送通道是 WebSocket**
+> （依赖 SDK 配置里的 `notificationServerAddress` 与 `setWebSocketAuthHeaders()`），不要以为要自己接 MQTT。
 
 **判断流程**：
 - 要对齐视频画面 → 用 SEI
@@ -63,9 +67,9 @@ author: DJI CloudAPI2 Team
 | 技术架构（SEI vs OSD 完整梳理） | `references/sei-osd-architecture.md` |
 | 服务端 FHSDK 获取数据（Java） | `references/server-side-guide.md` |
 | 前端 Cesium 地图可视化 Demo | `references/frontend-visualization.md` |
-| ISV 常见问题与能力对照 | `references/faq-and-capability.md` |
+| 集成商常见问题与能力对照 | `references/faq-and-capability.md` |
 | 培训内容（概念讲解） | `references/training-guide.md` |
-| ISV 痛点汇总（需求背景） | `references/isv-pain-points.md` |
+| 集成商痛点汇总（需求背景） | `references/isv-pain-points.md` |
 
 ### 第 4 步：按路径输出
 
@@ -77,18 +81,25 @@ author: DJI CloudAPI2 Team
 [1] 初始化 SDK
 [2] getDroneInstance(sn) → Drone
 [3] 开直播：listenLiveAvailableRange → getLiveStream → LiveModule → start
-[3.5] 开启 SEI 上报：openDroneSeiMessageSend（ar_info_switch:1）
 [4] 订阅 SEI：live.subscribeArSeiInfo(cb) / subscribeFovSeiInfo(cb)
 [5] 回调中处理 ArSeiInfo / FovSeiInfo
 [6] 退订：live.unSubscribeArSeiInfo(id) / unSubscribeFovSeiInfo(id) + live.stop()
 ```
+
+> ⚠️ **`openDroneSeiMessageSend`（`ar_info_switch:1`）不是 Java SDK 方法**，是前端 PaaS 组件
+> （`uranus-cockpit-app`）内部通过设备影子 REST API 下发的开关指令，跟 Java SDK 的
+> `subscribeArSeiInfo`/`subscribeFovSeiInfo` 订阅流程不是一回事。**纯 Java SDK 用户是否也需要
+> 自行触发这个开关、还是拉流时已默认开启，目前没有官方文档确认**——遇到"订阅成功但 SEI
+> 数据全零/收不到回调"时，这是待排查方向之一，但不要把它当成 Java SDK 固定步骤写进代码。
 
 > **注意**：SEI 不依赖 DRC 链路。`disconnectDrcLink` 仅在使用了 DRC OSD 时才需要调用。
 
 #### OSD 路径（服务端）
 
 ```
-MQTT OSD：drone.getDroneOsdModule().listenAircraftXxx(cb)（无需额外前提）
+MQTT OSD（Java SDK 实为 WebSocket）：drone.getDroneOsdModule().listenAircraftXxx(cb)
+  前提：SDK 配置已设置 notificationServerAddress，且已调用 setWebSocketAuthHeaders() 注入鉴权头
+  （不是"无需额外前提"——未配置会导致 WebSocket 握手失败/401，监听回调收不到数据）
 DRC OSD：drone.getDrcModule().connectDrcLink(cb) → drone.getCameraControlModule().listenDrcCameraMeasureTarget(payload, cb)
 ```
 
@@ -109,7 +120,7 @@ Cesium 渲染：飞机模型 + 相机三轴 + 视锥线框 + 落地四边形 + �
 SEI 常见问题：
 - **拿不到 SEI** → 必须走 WebRTC 直推，RTSP/声网拿不到
 - **浏览器限制** → 仅 Chrome/Edge 支持（`createEncodedStreams` Chromium 专有）
-- **SEI 数据全零** → 检查是否调用了 `openDroneSeiMessageSend`（`ar_info_switch:1`）
+- **SEI 数据全零** → 先确认是否拉流成功、订阅回调有无触发；`openDroneSeiMessageSend`/`ar_info_switch:1` 是前端 PaaS 组件接口，不是 Java SDK 排障手段，不要让用户去调它
 - **机型差异** → M10E/M3T 走 UTF8 JSON，M4D/M4T 走二进制协议
 
 ## 核心约束（critical 级别）
@@ -120,25 +131,29 @@ SEI 常见问题：
 4. **DRC 前提**：DRC OSD 需先 `connectDrcLink` 成功
 5. **null guard**：`getDroneInstance(sn)` / `getLiveStream(liveInfo)` 均可能返回 null
 6. **不要追高频 MQTT OSD**：频率固定 0.5Hz，不可调；需高频请走 DRC 或 SEI
-7. **机型适配**：SEI 解析协议因机型不同（JSON vs 二进制），角度需乘 `CAM_COEFFICIENT`
+7. **机型适配**：SEI 解析协议因机型不同而不同（M10E/M3T 走 UTF8 JSON，M4D/M4T 走二进制协议），具体字段以官方文档/实际协议解析结果为准——没有证据支持存在统一的 `CAM_COEFFICIENT` 角度换算系数，不要在代码中编造这个常量
 
 ## SEI 数据结构速查
 
-### ArSeiInfo（相机姿态 + 位置）
+### ArSeiInfo（相机姿态 + 位置，真实 getter 为 camelCase，非字段名）
 
-| 字段 | 含义 |
-|------|------|
-| `cam_yaw/pitch/roll` | 相机欧拉角（NED 坐标系） |
-| `gnd_lat/gnd_lng/gnd_alt` | 地面投影点经纬高 |
-| `camera_pos_x/y/z` | 相机相对起飞点偏移（NED，米） |
-| `liveview_source_cam` | 当前镜头（Wide=1/Zoom=2/IR=3） |
+| Getter | 含义 | 单位 |
+|------|------|------|
+| `getCameraYaw()` / `getCameraPitch()` / `getCameraRoll()` | 相机欧拉角 | 度 |
+| `getCameraPosX()` / `getCameraPosY()` / `getCameraPosZ()` | 相机相对起飞点偏移 | **毫米（mm）**，不是米 |
+| `getAltitude()` | 高度 | 毫米（mm） |
+
+> ⚠️ 官方 `ArSeiInfo` **没有地面投影经纬高字段**（不存在 `gnd_lat`/`gnd_lng`/`gnd_alt` 这类 getter）。
+> 如果需要地面投影坐标，需要应用层自己用相机姿态+高度做像素反算，SDK 不直接提供。
 
 ### FovSeiInfo（视场信息）
 
-| 字段 | 含义 |
+> ⚠️ 官方文档未给出 `FovSeiInfo` 的精确 getter 名称列表，以下字段含义供参考，**生成代码前需用 IDE/javap 核实实际 getter 名**，不要照抄下面的占位写法：
+
+| 字段含义 | 说明 |
 |------|------|
-| `sensor_width/height` | 传感器尺寸（μm） |
-| `focal_length` | 焦距（μm） |
+| 传感器尺寸 | 推测单位 μm，需核实实际 getter |
+| 焦距 | 推测单位 μm，需核实实际 getter |
 
 ### DRC OSD（快速通道）
 
@@ -153,7 +168,7 @@ SEI 常见问题：
 ## 权威参考
 
 `references/` 下的 6 份文档覆盖 SEI/OSD 接入的完整知识体系：
-- 技术架构、服务端 API、前端可视化 Demo、ISV FAQ、培训内容、需求背景
+- 技术架构、服务端 API、前端可视化 Demo、集成商 FAQ、培训内容、需求背景
 
 ## 参考文档已知局限（生成代码时注意）
 

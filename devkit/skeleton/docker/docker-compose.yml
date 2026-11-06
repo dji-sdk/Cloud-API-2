@@ -12,16 +12,34 @@ services:
     # 有镜像仓库时：docker compose pull && docker compose up -d
     image: ${REGISTRY:-local}/paas-sdk-devkit/skeleton:${IMAGE_TAG:-latest}
     # 无镜像仓库时：docker compose up --build（从源码 multi-stage 构建）
+    # SDK 按架构分两个包，构建平台必须与 SDK 包一致，故两者由同一个 SDK_ARCH 控制：
+    #   x86_64 机器：docker compose up --build                        （默认 amd64）
+    #   aarch64 机器：SDK_ARCH=arm64 docker compose up --build
     build:
       context: ../..
       dockerfile: skeleton/docker/Dockerfile
+      args:
+        SDK_ARCH: ${SDK_ARCH:-amd64}
       platforms:
-        - linux/amd64
+        - linux/${SDK_ARCH:-amd64}
     container_name: pf-devkit-skeleton-server
     expose:
       - "8080"
     environment:
       SPRING_PROFILES_ACTIVE: ${FH_PROFILE:-mock}
+      # 必填项，缺失时 compose 直接失败退出，不带起任何容器。
+      # 若在此处留空或不写，变量不会进入容器，Spring 会把 application.yml 里的
+      # "${FH_JWT_SECRET}" 当作字面量绑定，报"长度不足（当前 16 字节）"——
+      # 现场很难看出是 compose 漏传而非密钥本身有问题。
+      # 生成方式：openssl rand -hex 32
+      FH_JWT_SECRET: "${FH_JWT_SECRET:?FH_JWT_SECRET must be set - run: openssl rand -hex 32}"
+      # 数据库连接：本文件不含 MySQL 服务，SaaS/自建库场景必须通过 FH_DB_URL 指向外部库。
+      # 此处显式透传，否则变量到不了容器；未配置时与
+      # application.yml 的 fallback 保持一致，即指向容器内 localhost（仅叠加
+      # deploy-local-mock.override.yml 时由覆盖文件改成指向 mysql 服务）。
+      FH_DB_URL: "${FH_DB_URL:-jdbc:mysql://localhost:3306/fh_skeleton?allowPublicKeyRetrieval=true&serverTimezone=UTC}"
+      FH_DB_USERNAME: ${FH_DB_USERNAME:-root}
+      FH_DB_PASSWORD: ${FH_DB_PASSWORD:-}
       FH_SKELETON_SDK_TOKEN: ${FH_SKELETON_SDK_TOKEN:-}
       FH_SKELETON_SDK_ADDRESS: ${FH_SKELETON_SDK_ADDRESS:-}
       FH_SKELETON_SDK_PORT: ${FH_SKELETON_SDK_PORT:-443}
@@ -54,6 +72,30 @@ services:
         VITE_TIANDITU_KEY:        ${TIANDITU_KEY:-}
     ports:
       - "80:8080"
+    # 运行时配置注入：容器入口 docker-entrypoint.sh 读取这些变量生成 config.js，
+    # 优先级高于构建期烙入的 VITE_* 默认值（见 src/utils/runtimeConfig.ts）。
+    environment:
+      VITE_FH2_ADDRESS: ${FH2_ADDRESS:-}
+      VITE_FH2_PORT: ${FH2_PORT:-30812}
+      # 同源反代前缀（可选）：留空则直连 VITE_FH2_ADDRESS
+      VITE_FH2_ASSET_HOST: ${FH2_ASSET_HOST:-}
+      VITE_FH2_BASE_URL: ${FH2_BASE_URL:-}
+      VITE_FH2_WSS_URL: ${FH2_WSS_URL:-}
+      VITE_FH2_PRJ_ID: ${FH2_PRJ_ID:-}
+      # 上游 TLS 校验：默认 off 兼容现场自签名证书；正式环境设 on，内部 CA 用 FH2_PROXY_SSL_CA 指定
+      FH2_PROXY_SSL_VERIFY: ${FH2_PROXY_SSL_VERIFY:-on}
+      FH2_PROXY_SSL_CA: ${FH2_PROXY_SSL_CA:-}
+      # FH2 网关鉴权凭据：仅由 nginx 反代注入，不写入 config.js
+      VITE_FH2_USER_TOKEN: ${FH2_USER_TOKEN:-}
+      VITE_FH2_SDK_AUTH_KEY: ${FH2_SDK_AUTH_KEY:-}
+      VITE_FH2_SDK_AUTH_VALUE: ${FH2_SDK_AUTH_VALUE:-}
+      VITE_DEFAULT_THEME: ${DEFAULT_THEME:-dark}
+      VITE_PRIMARY_COLOR: ${PRIMARY_COLOR:-#1a73e8}
+      VITE_PRIMARY_HOVER_COLOR: ${PRIMARY_HOVER_COLOR:-}
+      VITE_MOCK_ENABLED: ${MOCK_ENABLED:-false}
+      VITE_MAP_PROVIDER: ${MAP_PROVIDER:-esri}
+      VITE_BING_KEY: ${BING_KEY:-}
+      VITE_TIANDITU_KEY: ${TIANDITU_KEY:-}
     depends_on:
       - skeleton
     restart: unless-stopped

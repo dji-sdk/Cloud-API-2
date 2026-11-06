@@ -17,6 +17,10 @@ import com.dji.flighthubsdk.util.Logger;
 
 /**
  * 机载 AI 模块接口，提供 AI 识别开关/过滤/阈值配置、模型选择及 AI 数据订阅。
+ *
+ * <p>注意：AI SEI 框来源字段（协议 model_index / frame_source / model_info_type）不在本模块。
+ * AI SEI 订阅入口见 {@link com.dji.flighthubsdk.core.LiveModule#subscribeAiSeiInfo}，
+ * 来源字段见 {@link com.dji.flighthubsdk.bean.AiDetectionTarget}。</p>
  */
 public class OnboardAiModule {
 
@@ -108,9 +112,13 @@ public class OnboardAiModule {
     }
 
     /**
-     * 设置 AI 识别开关
+     * 设置 AI 识别开关（仅 AI 识别 1.0 机型有效）
+     * @deprecated AI 识别 2.0 机型（EA340/M5TD、PM355 等）已废弃本接口，识别开关统一由
+     *             {@link #DrcAIModelsConfig} 承载（开=下发广角+官方模型 index:0；关=下发空配置）。
+     *             在 2.0 机型上调用将返回 ERROR_INVALID_STATE，请改用 DrcAIModelsConfig。
      * @implNote 链路: DRC | method: drc_ai_identify_set
      */
+    @Deprecated
     public void AIIdentifySet(AiIdentifySetParam param, FlightHubCallback.ResultCallback callback) {
         invokeAction((id, swigCallback) -> this.onboardAiModule.AIIdentifySetWrapper(param, swigCallback), callback);
     }
@@ -316,8 +324,8 @@ public class OnboardAiModule {
     }
 
     /**
-     * AI模型配置
-     * @param params AI 模型配置参数
+     * 配置 AI 模型（EA340 起 AI 识别 2.0 机型识别开关的正式入口）
+     * @param params AI 模型配置参数；开启识别=下发对应码流+模型（如广角+官方模型 index:0），关闭识别=下发空配置
      * @param callback 结果回调
      * @implNote 链路: DRC | method: drc_ai_models_config
      */

@@ -1,4 +1,4 @@
-# DJI 上云API 2 前端组件接入约束规则
+# DJI Cloud API 2 前端组件接入约束规则
 #
 # 共享约束见 _shared/constraints-common.yaml（SSOT）。
 # 前端组件 Skill 的约束全部为领域特有规则，与共享约束无重叠。
@@ -39,8 +39,8 @@
   level: critical
 
 - id: singleton-constraint
-  rule: 同一页面不能同时挂多个 WaylineEditor 或 FlyDataReplay 实例
-  violation: 全局 mapAppState 冲突，渲染异常
+  rule: 同一页面只挂一个 WaylineEditor 或 FlyDataReplay 实例（切换航线/任务用 destroy() 后重建）
+  violation: 两个实例会向同一批页面级固定挂载点（#wayline-header / .right-micro-app 等）重复投递，UI 互相覆盖
   level: critical
 
 - id: destroy-on-unmount
@@ -87,9 +87,9 @@
   level: critical
 
 - id: auth-headers-user-id
-  rule: auth.headers 除 X-User-Token 外还必须包含 user_id 字段（值为平台用户标识），authKeys 数组需同时声明两个 key
-  violation: 部分接口鉴权不通过，驾驶舱功能不完整
-  level: critical
+  rule: auth.headers 除 X-User-Token 外，平台方可能要求附加一个额外鉴权 header（真实接入代码里是可配置的 sdkAuthKey/sdkAuthValue，'user_id' 只是其中一种可能的 key 名，并非硬编码必填）；是否需要、key 名是什么以平台方实际要求为准，不要想当然地硬编码 'user_id'
+  violation: 若平台方确实要求额外鉴权头但未配置，部分接口鉴权不通过；若不需要却硬编码了错误的 key，可能被网关忽略或报错
+  level: warning
 
 - id: hosturl-must-be-fh2-frontend
   rule: initConfig 的 hostUrl 必须指向 FH2 前端服务器地址（如 https://host，端口 80），不能用 localhost 或 Vite dev server 地址。qiankun 微应用根据 hostUrl 解析内部资源路径，设为 localhost 后微应用子 chunk/CSS/图片等嵌套资源无法正确加载
@@ -127,6 +127,17 @@
   level: warning
 
 - id: media-url-must-not-be-presigned-direct
-  rule: 照片预览 / 视频播放 / 下载的地址必须指向本服务的代理端点，禁止把 SDK 或平台接口返回的对象存储预签名 URL（`http://<主机>:30802/<桶>/...?X-Amz-*`）直接赋给 `<img src>` / `<video src>` 或下载链接。回放页 FlyDataReplay 的媒体面板由 FH2 托管的 UMD 自行取流、ISV 无法改写，该场景只能贴证据走平台侧修复（见 cloudapi2-troubleshooting 的 references/replay-media-troubleshooting.md）
+  rule: 照片预览 / 视频播放 / 下载的地址必须指向本服务的代理端点，禁止把 SDK 或平台接口返回的对象存储预签名 URL（`http://<主机>:30802/<桶>/...?X-Amz-*`）直接赋给 `<img src>` / `<video src>` 或下载链接。回放页 FlyDataReplay 的媒体面板由 FH2 托管的 UMD 自行取流、集成商无法改写，该场景只能贴证据走平台侧修复（见 cloudapi2-troubleshooting 的 references/replay-media-troubleshooting.md）
   violation: 媒体列表正常加载（元数据走 FH2 网关 :30812），点开文件后照片全黑、视频进度条停在 0:00、下载无反应 —— :30802 是对象存储的服务端口，客户网段不可达，请求静默超时
   level: critical
+
+- id: wayline-flydata-hosturl-required
+  rule: WaylineEditor / FlyDataReplay 的 hostUrl 字段不是废弃字段，是必填（non-optional）字段，必须传入前端服务地址；runtimeDepsBasePath + map.env.cesiumBaseUrl 是额外新增的依赖资源路径配置，与 hostUrl 同时传入，不是替代关系，不要删除 hostUrl
+  violation: 缺少必填字段，严格类型检查下编译报错；或 SDK 内部依赖 hostUrl 解析的资源路径缺失导致功能异常
+  level: critical
+
+- id: self-contained-sdk-cesium-sync-load
+  rule: 自包含 SDK（WaylineEditor / WaylineView / FlyDataReplay）必须先同步加载 Cesium.js（无 defer/async），再 defer 加载 SDK 自身的 index.js
+  violation: SDK 初始化时 window.Cesium 未就绪，地图初始化失败（错误码 6002/6003）
+  level: critical
+

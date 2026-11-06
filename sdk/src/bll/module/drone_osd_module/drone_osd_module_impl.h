@@ -6,6 +6,7 @@
 #include "api/drone_osd_module.h"
 #include "common/util/async_capture_protect.h"
 #include "tool/callback_container.h"
+#include <memory>
 
 namespace flight_hub_sdk {
 
@@ -14,12 +15,11 @@ class PayloadCtrlMgr;
 
 class DroneOsdModuleImpl : public IDroneOsdModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    DroneOsdModuleImpl(
-                       const std::string& drone_sn,
+    DroneOsdModuleImpl(const std::string& drone_sn,
                        const std::string& gateway_sn,
                        const std::string& log_tag,
                        std::shared_ptr<FlightCtrlMgr> flight_ctrl_mgr,
-                       std::shared_ptr<PayloadCtrlMgr> payload_ctrl_mgr);
+                       std::shared_ptr<PayloadCtrlMgr> payload_ctrl_mgr, int session_id);
     ~DroneOsdModuleImpl() override;
 
     int listenAircraftBatteryInfo(const std::function<void(const AircraftBatteryInfo& battery_info)>& callback) override;
@@ -104,6 +104,7 @@ public:
     void cancelListenHsiInfo(int listen_id) override;
 
 private:
+    int session_id_;
     void registerNotificationCenterListeners();
     void bindPayloadsListCallback();
 

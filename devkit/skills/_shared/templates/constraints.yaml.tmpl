@@ -1,0 +1,22 @@
+# {{skill-name-title}} 约束规则
+#
+# 共享约束见 _shared/constraints-common.yaml（SSOT），本文件只定义本 Skill 特有的规则。
+#
+# level: critical — 违反必导致功能失败或安全事故
+# level: warning  — 违反可能导致问题但不一定立即失败
+
+# extends: _shared/constraints-common.yaml
+
+# ============================================================
+# TODO: 领域特有约束
+# ============================================================
+
+- id: todo-constraint-1
+  rule: TODO 描述必须做什么
+  violation: TODO 违反后的具体后果
+  level: critical
+
+- id: todo-constraint-2
+  rule: TODO 描述建议做什么
+  violation: TODO 违反后可能的影响
+  level: warning

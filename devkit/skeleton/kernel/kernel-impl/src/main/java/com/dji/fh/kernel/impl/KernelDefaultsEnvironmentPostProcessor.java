@@ -27,14 +27,14 @@ import java.util.Map;
 /**
  * Kernel 默认实现层的环境后处理器 —— 启动期向 Spring Environment 注入 v0.1 缺省配置。
  *
- * <p>注入位置使用 {@code addLast}（最低优先级），让 ISV 在 {@code application.yml} 或
+ * <p>注入位置使用 {@code addLast}（最低优先级），让集成商在 {@code application.yml} 或
  * 命令行参数中显式设置的值优先生效。
  *
  * <p>当前注入：
  * <ul>
  *   <li>{@code spring.jpa.hibernate.ddl-auto = none}（D2-2）—— H2 文件模式 URL
  *       不被 Spring Boot 识别为 embedded DB，默认 ddl-auto 是 {@code none}；
- *       ISV 使用 JPA 时需在自家 application.yml 显式配置 {@code update}（本地试用）
+ *       集成商 使用 JPA 时需在自家 application.yml 显式配置 {@code update}（本地试用）
  *       或 {@code validate} + Flyway / Liquibase（生产），避免 Schema 变更不可控
  *       （ES320 v3.6 安全基线：生产不得默认自动改表）。</li>
  * </ul>

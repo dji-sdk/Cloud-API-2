@@ -1,0 +1,168 @@
+# DJI Cloud API 2 地图域约束规则
+#
+# 共享约束见 _shared/constraints-common.yaml（SSOT），本文件只定义地图域特有规则。
+# 共享约束包括：initialize-check, error-code-check, listen-cancel-pairing,
+#   null-guard-instances, thread-safety, resource-cleanup
+#
+# level: critical — 违反必导致功能失败
+# level: warning  — 违反可能导致问题但不一定立即失败
+
+# extends: _shared/constraints-common.yaml
+
+# ============================================================
+# 模块归属
+# ============================================================
+
+- id: workspace-level-modules
+  rule: SafetyServiceModule 与 ElementModule 都通过 workspace.getSafetyServiceModule() / workspace.getElementModule() 获取，不挂在 drone 或 dock 上
+  violation: 生成 drone.getSafetyServiceModule() 等不存在的方法，编译失败
+  level: critical
+
+- id: module-null-guard
+  rule: getSafetyServiceModule() / getElementModule() 可能返回 null（设备或套餐不支持），调用前必须判空
+  violation: NullPointerException
+  level: critical
+
+# ============================================================
+# 回调签名
+# ============================================================
+
+- id: callback-error-only-methods
+  rule: deleteCustomizedFlightAreas / updateOfflineMapsModelInfo / cancelOfflineMapsModelInfo / setOfflineMaps / switchUnlockLicense / submitUnlockLicense / clearDeviceUnlockLicense 的回调只有 (error)，没有 result 参数
+  violation: 多写一个 result 参数导致编译失败，或 lambda 里把 error 当结果用
+  level: critical
+
+- id: listen-callback-no-error
+  rule: listenDroneOfflineMapEnable 的回调 onResult 只接收 DroneOfflineMapEnable 消息体，没有 error 参数；订阅成败只能看返回的 listenId 是否 >= 0
+  violation: 试图从回调里读 error，逻辑永远不成立
+  level: critical
+
+- id: callback-error-first
+  rule: 本域所有双参数回调都是 (FlightHubError error, T result)，error 在前；不要套用 getDeviceList 的 data-first 例外
+  violation: 参数顺序写反导致 NPE 或类型不匹配
+  level: critical
+
+# ============================================================
+# 状态同步语义
+# ============================================================
+
+- id: sync-required-after-mutation
+  rule: 创建/更新/删除飞行区后必须调用 syncCustomizedFlightAreas 才能下发到设备；离线地图同理必须 syncOfflineMaps
+  violation: 云端定义已改但机场/飞行器侧不生效，用户以为功能坏了
+  level: critical
+
+- id: sync-accepts-gateway-sn-only
+  rule: syncCustomizedFlightAreas / syncOfflineMaps / getFlightAreasSyncStatus / getOfflineMapsSyncStatus 的入参只接受网关类型设备 SN（机场 1/2/3、地面站），传飞行器 SN 不会生效
+  violation: 同步静默无效，无错误提示
+  level: critical
+
+- id: sync-result-not-completion
+  rule: syncXxx 返回的逐设备 code 只是提交结果，同步完成状态必须轮询 getXxxSyncStatus 直到 status 为 synchronized 或 fail
+  violation: 误判同步成功，后续流程基于错误状态
+  level: critical
+
+- id: offline-map-generation-polling
+  rule: updateOfflineMapsModelInfo 触发的是异步模型生成，必须轮询 getOfflineMapsModelInfo 直到 percent == 100 或 status 落终态，才能 syncOfflineMaps
+  violation: 生成未完成就下发，得到空模型或失败
+  level: warning
+
+# ============================================================
+# 几何数据
+# ============================================================
+
+- id: geometry-type-area-match
+  rule: ContentsGeometryData.type 只能是 Circle / Polygon / Polyline；Polyline 仅禁降区（noland）可用，限飞区与作业区不支持折线
+  violation: 服务端校验失败
+  level: critical
+
+- id: polygon-closure
+  rule: 多边形坐标必须首尾闭合（最后一点等于第一点），顶点数 >= 3 且 < 255，坐标格式为 [经度, 纬度]
+  violation: 服务端校验失败，或地图渲染出异常区域
+  level: critical
+
+- id: circle-requires-center-radius
+  rule: 圆形区域必须提供 center=[经度, 纬度] 与 radius>0（单位米），coordinates 传空
+  violation: 创建失败或生成半径 0 的无效区域
+  level: critical
+
+- id: flight-area-quota
+  rule: 自定义飞行区数量上限为 nfz ≤ 100 个、noland ≤ 50 个；创建前应先查询现有数量
+  violation: 超过上限后创建请求被服务端拒绝
+  level: warning
+
+# ============================================================
+# 解锁证书
+# ============================================================
+
+- id: unlock-license-three-phase
+  rule: 解锁证书流程必须为 uploadUnlockLicenseFile → checkUnlockLicense → submitUnlockLicense 三段式，check 返回的 errFileNames / errCertMismatch 非空时必须中止
+  violation: 不合格证书被提交，解锁失败且浪费一次设备下发
+  level: critical
+
+- id: upload-result-needs-key-join
+  rule: uploadUnlockLicenseFile 只返回 fileStoreDir，不是完整 fileKey；checkUnlockLicense 的 fileKey 需由应用层按服务端约定用目录 + 文件名拼出
+  violation: check 时文件找不到，流程在第二步就失败
+  level: critical
+
+- id: license-id-type-mismatch
+  rule: SwitchUnlockLicenseParam.licenseId 是 int，QueryDeviceUnlockLicenseListParam.licenseId 是 String；两个 bean 不能复用同一个 DTO 字段
+  violation: 编译失败或传值截断
+  level: warning
+
+# ============================================================
+# 其他
+# ============================================================
+
+- id: no-control-authority-needed
+  rule: 地图域全部是 workspace 级业务接口，不需要 acquireFlightControlAuthority
+  violation: 生成多余的控制权抢占代码，导致与其他业务冲突
+  level: warning
+
+- id: delete-single-only
+  rule: deleteCustomizedFlightAreas 一次只接受单个 String flightAreaId，没有批量删除接口；批量删除需应用层循环并自行聚合失败
+  violation: 误传说 List 导致编译失败，或漏处理部分失败
+  level: warning
+
+# ============================================================
+# 地图元素（ElementModule）—— 几何模型与 SafetyService 不通用
+# ============================================================
+
+- id: element-geometry-not-flight-area-geometry
+  rule: ElementModule 的几何类型是 ElementGeometry.type = Point/LineString/Polygon，与 SafetyServiceModule 的 ContentsGeometryData.type = Circle/Polygon/Polyline 是两套互不通用的模型，字段名相似但取值不同
+  violation: 跨模块抄代码导致传入服务端不认识的枚举值，校验失败
+  level: critical
+
+- id: element-circle-reuses-point
+  rule: 圆形元素没有独立的 "Circle" 几何类型，复用 geometry.type="Point" + geometry.radius 表示；resourceType=7 才是圆
+  violation: 写 geometry.setType("Circle") 后台不识别该枚举，创建失败或渲染异常
+  level: critical
+
+- id: element-resource-type-not-contiguous
+  rule: ElementCreateParams.resourceType 源码里只定义了 0(点)/1(线)/2(面)/7(圆) 四个取值，3~6 未出现（没有源码注释证明是"预留"，只是实际不存在对应取值）
+  violation: 按连续枚举猜测写出 resourceType=3/4/5/6，服务端拒绝或行为未定义
+  level: critical
+
+- id: element-coordinates-is-json-string
+  rule: ElementGeometry.coordinates 字段类型是 String，必须用 JSON.toJSONString(...) 把坐标数组序列化后再赋值，SDK 不提供强类型坐标构建器
+  violation: 直接把 List/数组对象赋给 coordinates 导致编译失败或序列化异常
+  level: critical
+
+- id: element-update-display-null-semantics
+  rule: ElementUpdateParams.display 是包装类型 Integer；null 表示不更新可见性，0/1 才会真正改写；只改名字/样式时 display 必须留 null，不能图省事传 0
+  violation: 误传 0 把元素意外隐藏，用户以为元素丢失
+  level: critical
+
+- id: element-delete-basic-geometry-only
+  rule: deleteElement 仅保证对基础几何类型（点/线/面/圆，resourceType 0/1/2/7）生效；共享/C2C/视锥/DataHub 等特殊分组元素不保证能通过本接口删除
+  violation: 对特殊分组元素调用 deleteElement 并假设必定成功，实际未删除或报错
+  level: warning
+
+- id: element-ws-callback-no-error
+  rule: listenElementCreate/Update/Delete 的回调都是单参数（对应 Msg 对象），没有 FlightHubError 参数，和 listenDroneOfflineMapEnable 同构
+  violation: 写成 (error, msg) -> 导致编译失败
+  level: critical
+
+- id: element-batch-delete-skips-ws-notify
+  rule: deleteElement 的 fromBatchDelete=true 时，服务端会跳过该条的单独 WS 分发通知（topic_element_delete 不会为这条单独触发）；批量删除后若前端依赖 WS 事件刷新列表，必须改为主动调用 listElementHierarchy 拉取最新状态
+  violation: 批量删除后页面列表不刷新，用户以为删除失败
+  level: warning

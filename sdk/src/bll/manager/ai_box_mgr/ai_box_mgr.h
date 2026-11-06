@@ -16,7 +16,7 @@ namespace flight_hub_sdk {
 class AIBoxManager: public drc_sdk::common::AsyncCaptureProtect {
 public:
     // ctor;
-    AIBoxManager();
+    explicit AIBoxManager(int session_id);
     // dtor;
     virtual ~AIBoxManager();
 
@@ -94,6 +94,8 @@ private:
     );
 
     std::unique_ptr<ICloudStorageUploader> getCloudStorageUploader(const std::string& provider);
+
+    int session_id_;
 };
 
 }  // namespace flight_hub_sdk

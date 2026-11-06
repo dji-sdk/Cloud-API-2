@@ -18,6 +18,12 @@
 #include "notification_center/notification_center.h"
 #include "workspace/workspace_impl.h"
 #include "stream/stream_impl.h"
+#include "session/session.h"
+#include "session/session_manager.h"
+#include "api/session.h"
+#include "api/session_manager.h"
+#include "http_interface/http_interface.h"  // kBeaconReportAPI
+#include "cloud_storage_uploader/cloud_storage_factory.h"
 #if defined(__unix__) || defined(__APPLE__)
 #include "blocking_detector.h"
 #include <cstdlib>
@@ -28,14 +34,17 @@ using namespace flight_hub_sdk;
 
 namespace {
 
-std::map<std::string, std::string> headersToMap(const std::vector<HeaderKeyValue>& headers) {
-    std::map<std::string, std::string> result;
-    for (const auto& kv : headers) {
-        if (!kv.key.empty()) {
-            result[kv.key] = kv.value;
-        }
+// 日志级别白名单校验:大小写不敏感,仅放行 javadoc 声明的四值(debug/info/warn/error)。
+// 不做 trim 等静默归一,带空格或前后缀空白一律视为非法,避免掩盖调用方拼写失误。
+static bool isValidLogLevel(const std::string& level) {
+    std::string normalized;
+    normalized.reserve(level.size());
+    for (char c : level) {
+        normalized.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
     }
-    return result;
+
+    return normalized == "debug" || normalized == "info"
+        || normalized == "warn"  || normalized == "error";
 }
 
 // 解析日志级别字符串：大小写不敏感，并兼容 "warn" / "warning" 两种写法。
@@ -70,14 +79,16 @@ FlightHubSdkErrorCode FlightHubSdkImpl::initialize(const FlightHubSdkConfig& con
     // 解析日志级别（大小写不敏感，兼容 warn/warning），与 Java 层对齐
     auto log_level = parseLogLevel(config.log_level);
 
-    std::cout << "[FlightHubSdkImpl] log_level: " << static_cast<int>(log_level) << ", " << config.log_level << std::endl;
-
     drc_sdk::PlogLogger::InitializePlog(static_cast<int>(log_level),
                                        config.log_file_path.c_str(),
                                        config.log_to_console,
                                        config.log_max_file_size,
                                        config.log_max_files);
-    LOG_INFO("[FlightHubSdkImpl] log_to_console: %s, log_file: %s, max_file_size: %zu, max_files: %d",
+    // 日志级别的回显必须走 logger: 早先这里是一句裸 std::cout, 它不受 log_to_console
+    // 约束, log_to_console=false 时照样打到控制台。
+    LOG_INFO("[FlightHubSdkImpl] log_level: %s(%d), log_to_console: %s, log_file: %s, max_file_size: %zu, max_files: %d",
+             config.log_level.c_str(),
+             static_cast<int>(log_level),
              config.log_to_console ? "true" : "false",
              config.log_file_path.c_str(),
              config.log_max_file_size,
@@ -127,17 +138,21 @@ FlightHubSdkErrorCode FlightHubSdkImpl::initialize(const FlightHubSdkConfig& con
     // TODO: 都改为同一个类名，在common的Cmake中，需要根据平台来选择不同的实现
     drc_sdk::common::Network::Instance().Init();
 
+    // 数据上报是高频后台请求, 而 libcurl 的 verbose 抓包
+    // 会把请求/响应头直写 stderr, 绕开 plog 连 log_to_console=false 也拦不住；上报又跑在
+    // IO 线程上，回包时会插进宿主程序正在等待输入的提示行里。故单独把它的抓包关掉。
+    drc_sdk::common::Network::Instance().AddQuietUrlPattern(kBeaconReportAPI);
+
     // HTTPS 通道 TLS 证书验证配置统一下发。
-    // 与 WSS 通道(P0-01)共用 FlightHubSdkConfig 的 verify_ssl/ssl_ca_path 字段:
+    // 与 WSS 通道共用 FlightHubSdkConfig 的 verify_ssl/ssl_ca_path 字段:
     // verify_ssl 安全默认开启(校验证书链+主机名), 私有化自签名部署经 ssl_ca_path 提供私有 CA,
     // verify_ssl=false 会产生 WARN 日志(不安全, 仅限受控测试环境)。
     drc_sdk::common::Network::Instance().SetTlsConfig(config.verify_ssl, config.ssl_ca_path);
+    // S3 直传通道（独立 AWS SDK/libcurl 静态栈）同一套 TLS 配置来源
+    CloudStorageFactory::SetTlsConfig(config.verify_ssl, config.ssl_ca_path);
 
     // 如果注入了 WebSocket，先传递给 NotificationCenter（必须在 initialize 之前）
-    if (websocket_) {
-        LOG_INFO("[FlightHubSdkImpl] 注入 WebSocket 到 NotificationCenter: %p", websocket_.get());
-        NotificationCenter::getInstance()->setWebSocket(websocket_.get());
-    }
+    // NC 现在由 Session 持有，通过 SessionManager 初始化
 
     std::ostringstream ws_headers_log;
     bool first_ws_header = true;
@@ -151,16 +166,21 @@ FlightHubSdkErrorCode FlightHubSdkImpl::initialize(const FlightHubSdkConfig& con
     LOG_INFO("[FlightHubSdkImpl] initialize websocket_auth_headers_: size=%zu, values=%s",
              websocket_auth_headers_.size(), ws_headers_log.str().c_str());
 
-    // notification center sdk 初始化（会在内部调用 connect，此时 WebSocket 应该已经注入）
-    // 透传 WSS TLS 证书验证配置(verify_ssl 安全默认开启; 私有化部署经 ssl_ca_path 提供 CA)
-    NotificationCenter::getInstance()->initialize(
-        "",
-        static_cast<int>(log_level),
-        config.log_to_console,
-        config.notification_server_address,
-        headersToMap(websocket_auth_headers_),
-        config.verify_ssl,
-        config.ssl_ca_path);
+    // 拼 SessionManager 初始化参数 + session 0（之后只认 int session_id）
+    SessionManagerInitParams sm_params;
+    // deps：rtc / mqtt / ws 同类注入；Web SDK 历史入口，Java 不用
+    sm_params.deps.rtc = rtc_channel_manager_;
+    sm_params.deps.mqtt = mqtt_client_manager_;
+    sm_params.deps.ws = websocket_ ? websocket_.get() : nullptr;
+    sm_params.notify_base_url = config.notification_server_address;
+    sm_params.websocket_auth_headers = websocket_auth_headers_;
+    sm_params.verify_ssl = config.verify_ssl;
+    sm_params.ssl_ca_path = config.ssl_ca_path;
+
+    if (!session_manager_->initialize(sm_params)) {
+        LOG_ERROR("[FlightHubSdkImpl] SessionManager::initialize failed");
+        return FlightHubSdkErrorCode::ERROR_INIT_FAILED;
+    }
 
     initialized_.store(true);
     LOG_INFO("SDK startup done");
@@ -177,25 +197,14 @@ FlightHubSdkErrorCode FlightHubSdkImpl::shutdown() {
     // 先置标志位，阻止其他线程进入 get*Instance（修复 TOCTOU）
     initialized_.store(false);
 
-    // 清理所有设备对象，确保定时器和监听被正确停止
+    // 清理 SessionManager（所有 Session 及其设备/NC）；成员本身不销毁，可再次 initialize
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        LOG_INFO("Cleaning up drone instances, count: %zu", drone_instances_.size());
-        drone_instances_.clear();
-        LOG_INFO("Cleaning up dock instances, count: %zu", dock_instances_.size());
-        dock_instances_.clear();
-        LOG_INFO("Cleaning up remote controller instances, count: %zu", remote_controller_instances_.size());
-        remote_controller_instances_.clear();
-        LOG_INFO("Cleaning up base station instances, count: %zu", base_station_instances_.size());
-        base_station_instances_.clear();
-        LOG_INFO("Cleaning up relay instances, count: %zu", relay_instances_.size());
-        relay_instances_.clear();
-        workspace_instance_.reset();
         stream_instance_.reset();
     }
+    session_manager_->shutdown();
 
-    // 清理 notification center
-    NotificationCenter::getInstance()->cleanup();
+    // NC cleanup 已由 Session 析构处理
 
 #if defined(__unix__) || defined(__APPLE__)
     if (blocking_detector_) {
@@ -262,6 +271,13 @@ FlightHubSdkErrorCode FlightHubSdkImpl::setLogLevel(const std::string& level) {
     }
 
     std::lock_guard<std::mutex> lock(mutex_);
+
+    // 先校验：白名单外的级别串直接拒绝，不落盘、不生效，保证"拒绝即不变更"
+    if (!isValidLogLevel(level)) {
+        LOG_ERROR("Invalid log level: %s", level.c_str());
+        return FlightHubSdkErrorCode::ERROR_INVALID_PARAM;
+    }
+
     auto log_level = parseLogLevel(level);
     config_.log_level = level;
     // 先在旧级别下记录一次变更，再应用新级别（否则提升级别后这条确认日志会被自身过滤掉）
@@ -280,7 +296,14 @@ FlightHubSdkErrorCode FlightHubSdkImpl::setWebSocketAuthHeaders(const std::vecto
                  websocket_auth_headers_.size(), initialized_.load() ? "true" : "false");
     }
 
-    NotificationCenter::getInstance()->setWebSocketAuthHeaders(headersToMap(headers));
+    // 更新已存在 Session 的 NC 鉴权（含 session 0；全量刷新）
+    if (session_manager_) {
+        for (const auto& info : session_manager_->getAllSessionInfo()) {
+            if (auto s = session_manager_->getSession(info.session_id)) {
+                s->updateWebsocketAuthHeaders(headers);
+            }
+        }
+    }
 
     return FlightHubSdkErrorCode::SUCCESS;
 }
@@ -305,145 +328,105 @@ std::vector<HeaderKeyValue> FlightHubSdkImpl::getHttpHeaders() {
 // ---- 设备实例获取 ----
 
 std::shared_ptr<IWorkspace> FlightHubSdkImpl::getWorkspaceInstance() {
+    return getWorkspaceInstance(kDefaultSessionId);
+}
+
+std::shared_ptr<IWorkspace> FlightHubSdkImpl::getWorkspaceInstance(int session_id) {
     if (!initialized_.load()) {
         LOG_ERROR("getWorkspaceInstance: SDK not initialized");
         return nullptr;
     }
-
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (!workspace_instance_) {
-        workspace_instance_ = std::make_shared<WorkspaceImpl>();
-        LOG_INFO("getWorkspaceInstance: created global workspace singleton");
+    auto session = session_manager_->getSession(session_id);
+    if (!session) {
+        LOG_ERROR("getWorkspaceInstance: session_id=%d not found", session_id);
+        return nullptr;
     }
-    return workspace_instance_;
+    return session->getWorkspaceInstance();
 }
 
 std::shared_ptr<IDrone> FlightHubSdkImpl::getDroneInstance(const std::string& sn) {
+    return getDroneInstance(kDefaultSessionId, sn);
+}
+
+std::shared_ptr<IDrone> FlightHubSdkImpl::getDroneInstance(int session_id, const std::string& sn) {
     if (!initialized_.load()) {
         LOG_ERROR("getDroneInstance: SDK not initialized");
         return nullptr;
     }
-    if (sn.empty()) {
-        LOG_ERROR("getDroneInstance: sn is empty");
+    auto session = session_manager_->getSession(session_id);
+    if (!session) {
+        LOG_ERROR("getDroneInstance: session_id=%d not found", session_id);
         return nullptr;
     }
-
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    auto it = drone_instances_.find(sn);
-    if (it != drone_instances_.end()) {
-        return it->second;
-    }
-
-    // 从 workspace 的设备列表中查找并创建
-    if (!workspace_instance_) {
-        LOG_ERROR("getDroneInstance: workspace not created, call getWorkspaceInstance first");
-        return nullptr;
-    }
-    auto device_topo_list = workspace_instance_->getDeviceList();
-    for (const auto& device_topo : device_topo_list) {
-        if (!device_topo.sub_devices.empty() && device_topo.sub_devices[0].device_sn == sn) {
-            auto drone = std::make_shared<DroneImpl>(device_topo, rtc_channel_manager_, mqtt_client_manager_);
-            drone_instances_[sn] = drone;
-            LOG_INFO("getDroneInstance: created sn=%s", sn.c_str());
-            return drone;
-        }
-    }
-
-    LOG_ERROR("getDroneInstance: sn=%s not found in device list", sn.c_str());
-    return nullptr;
+    return session->getDroneInstance(sn);
 }
 
 std::shared_ptr<IDock> FlightHubSdkImpl::getDockInstance(const std::string& sn) {
+    return getDockInstance(kDefaultSessionId, sn);
+}
+
+std::shared_ptr<IDock> FlightHubSdkImpl::getDockInstance(int session_id, const std::string& sn) {
     if (!initialized_.load()) {
         LOG_ERROR("getDockInstance: SDK not initialized");
         return nullptr;
     }
-    if (sn.empty()) {
-        LOG_ERROR("getDockInstance: sn is empty");
+    auto session = session_manager_->getSession(session_id);
+    if (!session) {
+        LOG_ERROR("getDockInstance: session_id=%d not found", session_id);
         return nullptr;
     }
-
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    auto it = dock_instances_.find(sn);
-    if (it != dock_instances_.end()) {
-        return it->second;
-    }
-
-    auto dock = std::make_shared<DockImpl>(sn, rtc_channel_manager_, mqtt_client_manager_);
-    dock_instances_[sn] = dock;
-    LOG_INFO("getDockInstance: created sn=%s", sn.c_str());
-    return dock;
+    return session->getDockInstance(sn);
 }
 
 std::shared_ptr<IRemoteController> FlightHubSdkImpl::getRemoteControllerInstance(const std::string& sn) {
+    return getRemoteControllerInstance(kDefaultSessionId, sn);
+}
+
+std::shared_ptr<IRemoteController> FlightHubSdkImpl::getRemoteControllerInstance(int session_id, const std::string& sn) {
     if (!initialized_.load()) {
         LOG_ERROR("getRemoteControllerInstance: SDK not initialized");
         return nullptr;
     }
-    if (sn.empty()) {
-        LOG_ERROR("getRemoteControllerInstance: sn is empty");
+    auto session = session_manager_->getSession(session_id);
+    if (!session) {
+        LOG_ERROR("getRemoteControllerInstance: session_id=%d not found", session_id);
         return nullptr;
     }
-
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    auto it = remote_controller_instances_.find(sn);
-    if (it != remote_controller_instances_.end()) {
-        return it->second;
-    }
-
-    auto instance = std::make_shared<RemoteControllerImpl>(sn);
-    remote_controller_instances_[sn] = instance;
-    LOG_INFO("getRemoteControllerInstance: created sn=%s", sn.c_str());
-    return instance;
+    return session->getRemoteControllerInstance(sn);
 }
 
 std::shared_ptr<IBaseStation> FlightHubSdkImpl::getBaseStationInstance(const std::string& sn) {
+    return getBaseStationInstance(kDefaultSessionId, sn);
+}
+
+std::shared_ptr<IBaseStation> FlightHubSdkImpl::getBaseStationInstance(int session_id, const std::string& sn) {
     if (!initialized_.load()) {
         LOG_ERROR("getBaseStationInstance: SDK not initialized");
         return nullptr;
     }
-    if (sn.empty()) {
-        LOG_ERROR("getBaseStationInstance: sn is empty");
+    auto session = session_manager_->getSession(session_id);
+    if (!session) {
+        LOG_ERROR("getBaseStationInstance: session_id=%d not found", session_id);
         return nullptr;
     }
-
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    auto it = base_station_instances_.find(sn);
-    if (it != base_station_instances_.end()) {
-        return it->second;
-    }
-
-    auto instance = std::make_shared<BaseStationImpl>(sn, rtc_channel_manager_, mqtt_client_manager_);
-    base_station_instances_[sn] = instance;
-    LOG_INFO("getBaseStationInstance: created sn=%s", sn.c_str());
-    return instance;
+    return session->getBaseStationInstance(sn);
 }
 
 std::shared_ptr<IRelay> FlightHubSdkImpl::getRelayInstance(const std::string& sn) {
+    return getRelayInstance(kDefaultSessionId, sn);
+}
+
+std::shared_ptr<IRelay> FlightHubSdkImpl::getRelayInstance(int session_id, const std::string& sn) {
     if (!initialized_.load()) {
         LOG_ERROR("getRelayInstance: SDK not initialized");
         return nullptr;
     }
-    if (sn.empty()) {
-        LOG_ERROR("getRelayInstance: sn is empty");
+    auto session = session_manager_->getSession(session_id);
+    if (!session) {
+        LOG_ERROR("getRelayInstance: session_id=%d not found", session_id);
         return nullptr;
     }
-
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    auto it = relay_instances_.find(sn);
-    if (it != relay_instances_.end()) {
-        return it->second;
-    }
-
-    auto instance = std::make_shared<RelayImpl>(sn);
-    relay_instances_[sn] = instance;
-    LOG_INFO("getRelayInstance: created sn=%s", sn.c_str());
-    return instance;
+    return session->getRelayInstance(sn);
 }
 
 std::shared_ptr<IStream> FlightHubSdkImpl::getStream() {
@@ -455,6 +438,26 @@ std::shared_ptr<IStream> FlightHubSdkImpl::getStream() {
         stream_instance_ = std::make_shared<StreamImpl>(rtc_channel_manager_, mqtt_client_manager_);
     }
     return stream_instance_;
+}
+
+std::shared_ptr<ICascadeModule> FlightHubSdkImpl::getCascadeModule() {
+    if (!initialized_.load()) {
+        LOG_ERROR("getCascadeModule: SDK not initialized");
+        return nullptr;
+    }
+    if (!cascade_module_) {
+        cascade_module_ = std::make_shared<CascadeModuleImpl>(kDefaultSessionId);
+        LOG_INFO("[FlightHubSdkImpl] getCascadeModule: created global cascade singleton");
+    }
+    return cascade_module_;
+}
+
+std::shared_ptr<ISessionManager> FlightHubSdkImpl::getSessionManager() {
+    if (!initialized_.load()) {
+        LOG_ERROR("getSessionManager: SDK not initialized");
+        return nullptr;
+    }
+    return session_manager_;
 }
 
 FlightHubSdkErrorCode FlightHubSdkImpl::injectRtcChannelManager(std::shared_ptr<message_engine::IRtcChannelManagerBridge> rtc_channel_manager) {

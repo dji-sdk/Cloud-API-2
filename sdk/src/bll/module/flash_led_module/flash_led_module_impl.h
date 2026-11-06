@@ -10,7 +10,7 @@ namespace flight_hub_sdk {
 
 class FlashLedModuleImpl : public IFlashLedModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    FlashLedModuleImpl();
+    FlashLedModuleImpl(int session_id);
     ~FlashLedModuleImpl() override = default;
 
     void getFlashLedConfigList(
@@ -28,6 +28,8 @@ public:
     void deleteFlashLedConfig(
         const std::string& config_id,
         std::function<void(FlightHubError err)> callback) override;
+private:
+    int session_id_;
 };
 
 }  // namespace flight_hub_sdk

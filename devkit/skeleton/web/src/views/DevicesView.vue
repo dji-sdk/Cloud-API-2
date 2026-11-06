@@ -18,6 +18,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchDevices } from '@/api/devices'
+import { buildDroneGatewayIndex } from '@/utils/deviceGroup'
 import StatusBadge from '@/components/StatusBadge.vue'
 import type { DeviceState } from '@/types/api'
 
@@ -28,18 +29,16 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 let intervalId: ReturnType<typeof setInterval> | null = null
 
-/** 构建 drone SN → 所属 dock SN 的映射表 */
-const droneToGateway = computed<Map<string, string>>(() => {
-  const map = new Map<string, string>()
-  for (const d of devices.value) {
-    if (d.deviceType === 'DOCK' && d.childDevices) {
-      for (const child of d.childDevices) {
-        map.set(child.sn, d.sn)
-      }
-    }
-  }
-  return map
-})
+/**
+ * 构建 drone SN → 进驾驶舱网关 SN 的映射表。
+ *
+ * <p>复用 {@link buildDroneGatewayIndex} 统一网关解析逻辑：普通机场拓扑映射到机场 SN，
+ * 340 / O4 组网拓扑映射到飞行器自身 SN（网络无人机直连云端，直播 RTC 网关为飞机自身）。
+ * 避免此前「直接取顶层 DOCK SN」在 340 下误取基站 SN、导致驾驶舱 RTC 连不上。
+ *
+ * <p>该索引不按机场在线状态过滤：机场临时掉线时其下属飞行器仍保留驾驶舱入口。
+ */
+const droneToGateway = computed<Map<string, string>>(() => buildDroneGatewayIndex(devices.value))
 
 async function loadDevices() {
   try {

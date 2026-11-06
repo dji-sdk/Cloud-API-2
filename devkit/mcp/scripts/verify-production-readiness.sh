@@ -7,7 +7,7 @@ set -e
 
 PORT=18080
 JAR="target/flighthub-mcp-server-1.0.0.jar"
-TOKEN="test-secret-token-12345"
+TOKEN="${FH_TEST_TOKEN:-test-secret-token-12345}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

@@ -7,8 +7,10 @@
 #include <climits>
 #include <vector>
 #include <string>
+#include <map>
 #include <optional>
 #include <AIGCJson.hpp>
+#include "raw_json_string.h"
 
 namespace flight_hub_sdk {
 
@@ -205,9 +207,11 @@ struct TaskDetailResponse {
     std::vector<TaskDetailObstacleResponse> obstacles;
     std::string run_at;
     std::vector<std::string> tags;
+    std::string cloud_to_cloud_id;
+    bool fast_reconstruction = false;
     std::string updated_at;
     double wayline_duration = 0;
-    AIGC_JSON_HELPER(uuid, name, task_type, status, sn, landing_dock_sn, wayline_uuid, begin_at, end_at, out_of_control_action_in_flight, rth_altitude, rth_mode, min_battery_capacity, wayline_precision_type, wayline_segment_indexes, current_waypoint_index, total_waypoints, time_zone, device_type, bid, break_point, completed_at, created_at, deleted_at, is_break_point_resume, media_upload_status, obstacles, run_at, tags, updated_at, wayline_duration);
+    AIGC_JSON_HELPER(uuid, name, task_type, status, sn, landing_dock_sn, wayline_uuid, begin_at, end_at, out_of_control_action_in_flight, rth_altitude, rth_mode, min_battery_capacity, wayline_precision_type, wayline_segment_indexes, current_waypoint_index, total_waypoints, time_zone, device_type, bid, break_point, completed_at, created_at, deleted_at, is_break_point_resume, media_upload_status, obstacles, run_at, tags, cloud_to_cloud_id, fast_reconstruction, updated_at, wayline_duration);
 };
 
 struct FlightTaskListDataResponse {
@@ -276,16 +280,45 @@ struct GetFlightTaskTrackDataResponse {
     AIGC_JSON_HELPER(uuid, run_at, completed_at, name, status, wayline_uuid, track);
 };
 
+// 飞行安全风险 - 单条风险;
+struct FlightRiskItemResponse {
+    int risk_type = 0;
+    double latitude = 0.0;
+    double longitude = 0.0;
+    double height = 0.0;
+
+    AIGC_JSON_HELPER(risk_type, latitude, longitude, height);
+};
+
+// 飞行安全风险 - 响应; data 为 JSON 数组（不能走 CommonResponse.data=string）
+struct GetFlightRisksRawResponse {
+    int code = -1;
+    std::string message;
+    std::vector<FlightRiskItemResponse> data;
+
+    AIGC_JSON_HELPER(code, message, data);
+};
+
 struct CreateFlightTaskResponse {
     std::string uuid;
     std::vector<int> wayline_validity_check_codes;
     AIGC_JSON_HELPER(uuid, wayline_validity_check_codes);
 };
 
+struct TCAZoneStatusResponse {
+    uint32_t status = 0;
+    std::string sn;
+    uint32_t radius = 0;
+    AIGC_JSON_HELPER(status, sn, radius);
+};
+
 struct TCAInfoResponse {
     std::string center_sn;
+    std::vector<TCAZoneStatusResponse> tca;
+    std::string tca_status;
+    int64_t version = 0;
     std::string data_json;  // 可扩展为具体字段
-    AIGC_JSON_HELPER(center_sn);
+    AIGC_JSON_HELPER(center_sn, tca, tca_status, version);
 };
 
 struct GetTCAInfosDataResponse {
@@ -323,14 +356,15 @@ struct OpenDataChannelResponseRtChannel {
 };
 
 struct OpenDataChannelResponse {
-    OpenDataChannelResponseRtChannel data_channel;
-    AIGC_JSON_HELPER(data_channel);
+    OpenDataChannelResponseRtChannel rt_channel;
+    AIGC_JSON_HELPER(rt_channel);
 };
 
 /// FlyToPointResponse
 struct FlyToPointResponse {
     std::string fly_to_id;
-    AIGC_JSON_HELPER(fly_to_id);
+    std::string flight_id;
+    AIGC_JSON_HELPER(fly_to_id, flight_id);
 };
 
 /// CreateInFlightWaylineTaskResponse 创建空中下发航线任务
@@ -473,16 +507,53 @@ struct POITaskResponse {
                      poi_center_point, speed, circle_radius, payload_index);
 };
 
+struct ControlAuthGatewayResponse {
+    std::string sn;
+    std::string id;
+    std::vector<std::string> auth_control_keys;
+    std::string device_model_class;
+    AIGC_JSON_HELPER(sn, id, auth_control_keys, device_model_class);
+};
+
+struct ControlAuthUserResponse {
+    std::string call_sign;
+    std::string user_id;
+    std::string type;
+    AIGC_JSON_HELPER(call_sign, user_id, type);
+};
+
+struct ControlAuthSpecResponse {
+    bool is_locked = false;
+    std::string payload_index;
+    bool is_cloud_control_auth = false;
+    std::string waiting_for_auth_user;
+    AIGC_JSON_HELPER(is_locked, payload_index, is_cloud_control_auth, waiting_for_auth_user);
+};
+
+struct DrcControllerResponse {
+    std::string key;
+    std::string type;
+    int64_t version = 0;
+    ControlAuthGatewayResponse gateway;
+    ControlAuthUserResponse user;
+    ControlAuthSpecResponse spec;
+    AIGC_JSON_HELPER(key, type, version, gateway, user, spec);
+};
+
 /// AcquireCtrlAuthorityResponse
 struct AcquireCtrlAuthorityResponse {
     std::string drone_sn;
-    AIGC_JSON_HELPER(drone_sn);
+    std::string bid;  // 手飞机型授权 bid
+    std::vector<DrcControllerResponse> controls;
+    AIGC_JSON_HELPER(drone_sn, bid, controls);
 };
 
 /// ReleaseCtrlAuthorityResponse
 struct ReleaseCtrlAuthorityResponse {
     std::string drone_sn;
-    AIGC_JSON_HELPER(drone_sn);
+    std::string bid;
+    std::vector<DrcControllerResponse> controls;
+    AIGC_JSON_HELPER(drone_sn, bid, controls);
 };
 
 struct NonRealtimeCmdResponse {
@@ -507,13 +578,17 @@ struct SpeakerResourceResponse {
     std::string pcm_object_url;
     int64_t pcm_size = 0;
     std::string pcm_md5_sum;
+    std::string opus_object_key;
+    int64_t opus_size = 0;
+    std::string opus_md5_sum;
     std::string content;
     std::string md5_sum;
     int64_t created_at = 0;
     
     AIGC_JSON_HELPER(id, name, file_type, object_key, object_url, format, size, 
                      duration, state, state_message, pcm_object_key, pcm_object_url, 
-                     pcm_size, pcm_md5_sum, content, md5_sum, created_at);
+                     pcm_size, pcm_md5_sum, opus_object_key, opus_size, opus_md5_sum,
+                     content, md5_sum, created_at);
 };
 
 struct PsdkSpeakerResourceListResponse {
@@ -548,6 +623,7 @@ struct CreateSpeakerResourceResponse {
 
 struct EditSpeakerResourceResponse {
     uint32_t id = 0;
+    std::string project_id;
     std::string name;
     std::string file_type;
     std::string object_key;
@@ -555,19 +631,25 @@ struct EditSpeakerResourceResponse {
     std::string format;
     int64_t size = 0;
     int64_t duration = 0;
+    bool visible = false;
     std::string state;
     std::string state_message;
     std::string pcm_object_key;
     std::string pcm_object_url;
     int64_t pcm_size = 0;
     std::string pcm_md5_sum;
+    std::string opus_object_key;
+    int64_t opus_size = 0;
+    std::string opus_md5_sum;
     std::string content;
     std::string md5_sum;
+    std::string create_scene;
     int64_t created_at = 0;
     
-    AIGC_JSON_HELPER(id, name, file_type, object_key, object_url, format, size, 
-                     duration, state, state_message, pcm_object_key, pcm_object_url, 
-                     pcm_size, pcm_md5_sum, content, md5_sum, created_at);
+    AIGC_JSON_HELPER(id, project_id, name, file_type, object_key, object_url, format, size, 
+                     duration, visible, state, state_message, pcm_object_key, pcm_object_url, 
+                     pcm_size, pcm_md5_sum, opus_object_key, opus_size, opus_md5_sum,
+                     content, md5_sum, create_scene, created_at);
 };
 
 struct STSCredentialResponse {
@@ -576,8 +658,9 @@ struct STSCredentialResponse {
     int expire = 0;
     std::string security_token;
     int platform = 0;  // 直播专用，后续再废弃
+    std::string expiration;
 
-    AIGC_JSON_HELPER(access_key_id, access_key_secret, expire, security_token, platform);
+    AIGC_JSON_HELPER(access_key_id, access_key_secret, expire, security_token, platform, expiration);
 };
 
 struct STSInfoResponse {
@@ -611,6 +694,12 @@ struct DroneTakeoffResponse {
     AIGC_JSON_HELPER(flight_id, fly_to_id);
 };
 
+/// GroundTakeoffResponse — 舱外起飞响应
+struct GroundTakeoffResponse {
+    std::string flight_id;  // 飞行任务 ID
+    AIGC_JSON_HELPER(flight_id);
+};
+
 /// GenerateTryFlightWaylineResponse (试飞航线生成响应，用于 JSON 解析)
 struct GenerateTryFlightWaylineResponseData {
     std::string key;
@@ -623,9 +712,10 @@ struct GenerateTryFlightWaylineResponseData {
 /// CreateTestFlightTaskResponseData (试飞航线下发响应)
 struct CreateTestFlightTaskResponseTask {
     std::string uuid;
-    int begin_at = 0;
-    int end_at = 0;
-    AIGC_JSON_HELPER(uuid, begin_at, end_at);
+    int64_t begin_at = 0;
+    int64_t end_at = 0;
+    std::vector<int64_t> wayline_validity_check_codes;
+    AIGC_JSON_HELPER(uuid, begin_at, end_at, wayline_validity_check_codes);
 };
 
 struct CreateTestFlightTaskResponseData {
@@ -745,8 +835,9 @@ struct ManualBatterySwapProgressResponse {
 
 struct DonglePowerSwitchResponse {
     std::string bid;
-    std::string status;
-    AIGC_JSON_HELPER(bid, status);
+    // 来自统一响应 envelope.message(成功一般为 "OK", 失败为错误信息), 不参与 data 解析
+    std::string message;
+    AIGC_JSON_HELPER(bid);
 };
 
 struct LowPowerSwitchResponse {
@@ -979,7 +1070,7 @@ struct DockStatusBackupBattery {
 
 struct DockStatusNetworkState {
     int quality = 0;
-    int rate = 0;
+    double rate = 0.0;
     int type = 0;
     AIGC_JSON_HELPER(quality, rate, type);
 };
@@ -1074,18 +1165,18 @@ struct DockAirConditionerResponse {
 // 信号网格数据;
 struct GridItem {
     std::string h3_index;        // Uber H3网格下标，等级为 11;
-    int sdr_avg = 0;             // 平均sdr信号强度;
+    double sdr_avg = 0;          // 平均sdr信号强度;
     int sdr_max = 0;             // 最大sdr信号强度;
     int sdr_min = 0;             // 最小sdr信号强度;
 
-    int signal_4g_avg = 0;       // 平均4g信号强度, 如果没有插入4G模块, 则无此字段;
+    double signal_4g_avg = 0;    // 平均4g信号强度, 如果没有插入4G模块, 则无此字段;
     int signal_4g_max = 0;       // 最大4g信号强度, 如果没有插入4G模块, 则无此字段;
     int signal_4g_min = 0;       // 最小4g信号强度, 如果没有插入4G模块, 则无此字段;
 
     // register class-members;
     AIGC_JSON_HELPER(h3_index, sdr_avg, sdr_max, sdr_min, signal_4g_avg, signal_4g_max, signal_4g_min);
     // rename class-members;
-    AIGC_JSON_HELPER_RENAME("h3_index", "sdr_avg", "sdr_max", "sdr_min", "4g_avg", "4g_max", "4g_min");
+    AIGC_JSON_HELPER_RENAME("h3_index", "sdr_avg", "sdr_max", "sdr_min", "signal4g_avg", "signal4g_max", "signal4g_min");
 };
 
 
@@ -1116,18 +1207,70 @@ struct CreateFlightAreasResponse {
 
 
 // 自定义飞行区域: Geometry;
+// coordinates 需多态解析——Circle 类型服务端可能返回一维 [lng,lat]，
+// Polygon/Polyline 返回三层嵌套 [[[lng,lat],...]]; 因此不能直接用 AIGC_JSON_HELPER 宏，
+// 需手写 AIGCJsonToObject 兼容两种格式。
 struct ContentsGeometryResponse {
     // type: "Circle", 圆形: 限飞区和作业区支持;
     // type: "Polygon", 多边形: 限飞区和作业区支持;
-    // type: "Polyline", 自定义(折线): 折线仅禁降区支持;  
+    // type: "Polyline", 自定义(折线): 折线仅禁降区支持;
     std::string type;
     std::vector<std::vector<std::vector<double>>> coordinates;  // [折线] [多边形] 顶点坐标;
 
     std::vector<double> center;  // 创建圆形区域的时候传入： 圆心坐标;
     double radius = 0;           // 半径, 创建圆形区域的时候传入;
 
-    // register class-members;
-    AIGC_JSON_HELPER(type, coordinates, center, radius);
+    std::map<std::string, std::string> __aigcDefaultValues;
+
+    bool AIGCJsonToObject(aigc::JsonHelperPrivate &handle,
+                          rapidjson::Value &jsonValue,
+                          std::vector<std::string> &names)
+    {
+        // 先解析 type / center / radius 三个确定性字段
+        std::vector<std::string> standardNames = handle.GetMembersNames("type, center, radius");
+        if (names.size() <= standardNames.size()) {
+            for (int i = names.size(); i < (int)standardNames.size(); i++)
+                names.push_back(standardNames[i]);
+        }
+        if (!handle.SetMembers(names, 0, jsonValue, __aigcDefaultValues, type, center, radius))
+            return false;
+
+        // 多态解析 coordinates
+        if (jsonValue.IsObject() && jsonValue.HasMember("coordinates")) {
+            auto &coordsVal = jsonValue["coordinates"];
+            if (coordsVal.IsArray() && !coordsVal.Empty()) {
+                if (coordsVal[0].IsNumber()) {
+                    // 一维 [lng, lat] — Circle 类型服务端直接透传 DB 格式
+                    std::vector<double> point;
+                    for (auto &v : coordsVal.GetArray()) {
+                        if (v.IsNumber()) point.push_back(v.GetDouble());
+                    }
+                    coordinates = { { point } };
+                    if (center.empty()) {
+                        center = point;
+                    }
+                } else if (coordsVal[0].IsArray()) {
+                    // 三层嵌套 [[[lng,lat],...]] — Polygon / Polyline / V2 Circle
+                    if (!handle.JsonToObject(coordinates, coordsVal))
+                        return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    bool AIGCObjectToJson(aigc::JsonHelperPrivate &handle,
+                          rapidjson::Value &jsonValue,
+                          rapidjson::Document::AllocatorType &allocator,
+                          std::vector<std::string> &names)
+    {
+        std::vector<std::string> standardNames = handle.GetMembersNames("type, coordinates, center, radius");
+        if (names.size() <= standardNames.size()) {
+            for (int i = names.size(); i < (int)standardNames.size(); i++)
+                names.push_back(standardNames[i]);
+        }
+        return handle.GetMembers(names, 0, jsonValue, allocator, type, coordinates, center, radius);
+    }
 };
 
 
@@ -1268,6 +1411,22 @@ struct GetAreasSyncStatusResponse {
 };
 
 
+// 获取飞行区文件下载地址;
+struct GetFlightAreasUrlResponse {
+    // 文件名;
+    std::string name;
+    // 签名下载地址(有效期 3600 秒);
+    std::string url;
+    // 文件内容 SHA-256, 十六进制;
+    std::string checksum;
+    // 文件大小(字节);
+    long long size = 0;
+
+    // register class-members;
+    AIGC_JSON_HELPER(name, url, checksum, size);
+};
+
+
 struct OfflineMapsModelInfo {
     std::string uuid;
 
@@ -1279,7 +1438,7 @@ struct OfflineMapsModelInfoResponse {
     int id = 0;                // 离线地图模型ID;
     long updated_time = 0;     // 更新时间;
     std::vector<OfflineMapsModelInfo> models;  // 模型信息;
-    int percent = 0;
+    double percent = 0.0;      // 同步进度百分比，后端为 float32，支持小数;
     std::string status;
     int result = 0;
 
@@ -1378,6 +1537,7 @@ struct MediaFilesListItemExt {
 struct MediaFilesListItemInfo {
     int64_t file_id = -1;                      // 文件id(-1 表示默认无效的id);
     std::string flight_id;                     // 飞行记录id;
+    std::string wayline_uuid;                  // 航线 UUID;
     std::string wayline_action_uuid;           // 航点动作id;
     int64_t size = 0;                          // 文件大小(字节);
     std::string object_key;                    // 文件存储对象key;
@@ -1388,12 +1548,16 @@ struct MediaFilesListItemInfo {
     std::string file_path;                     // 文件路径;
     std::string device_sn;                     // 设备 SN;
     std::string payload_type;                  // 负载类型;
+    std::string preview_key;                   // 预览 key;
+    int pano_total_count     = 0;              // 全景源照片数量(文件夹字段; 成片文件为 0);
+    int pano_stitch_state    = 0;              // 拼接状态(成片字段, 取值见 PanoStitchState);
+    int pano_stitch_progress = 0;              // 拼接进度 [0, 100](成片字段);
     int type = 0;                              // 文件类型; 取值参见 MediaType 枚举; 媒体列表接口实际只会出现 0(未定义)/1(文件夹)/2(图片)/3(视频);
 
     // register class-members;
     AIGC_JSON_HELPER(
-        file_id, flight_id, wayline_action_uuid, size, object_key, file_name, suffix, ext, created_at,
-        file_path, device_sn, payload_type, type
+        file_id, flight_id, wayline_uuid, wayline_action_uuid, size, object_key, file_name, suffix, ext, created_at,
+        file_path, device_sn, payload_type, preview_key, pano_total_count, pano_stitch_state, pano_stitch_progress, type
     );
 };
 
@@ -1520,12 +1684,12 @@ struct NetworkSpeedTestDataResponse {
 };
 
 struct NetworkSpeedTestProgressResponse {
-    std::string bid;
+    // 后端 GET /speed-tests 结果不含 bid（Bid 字段在其响应结构中已注释），故不解析。
     std::string status;
     double create_time = 0;
     double update_time = 0;
     NetworkSpeedTestDataResponse speed_result;
-    AIGC_JSON_HELPER(bid, status, create_time, update_time, speed_result);
+    AIGC_JSON_HELPER(status, create_time, update_time, speed_result);
 };
 
 struct DeviceLogListResponseLogItem {
@@ -1588,6 +1752,8 @@ struct LogReportListResponsePagination {
     int page_size = 0;
     int total = 0;
     AIGC_JSON_HELPER(page, page_size, total);
+    // 后端分页响应键为 page_num（common.PageResp），成员 page 从 JSON 键 page_num 解析。
+    AIGC_JSON_HELPER_RENAME("page_num", "page_size", "total");
 };
 
 struct LogReportListResponseAppendixFileItem {
@@ -1767,12 +1933,12 @@ struct HistoryHmsDataResponseItem {
     std::string joint_key;
     std::string status_key;
     std::string sn;
-    // sub_hms_list 可为 null，暂不定义
+    std::vector<HistoryHmsDataResponseItem> sub_hms_list;  // hms 根因(递归, 可为 null/空)
     AIGC_JSON_HELPER(_id, bid, tid, level, module, message, 
                      status, code, device_data_create_time, 
                      device_data_update_time, create_time, 
                      update_time, args, device_type, domain_type, 
-                     imminent, in_the_sky, joint_key, status_key, sn);
+                     imminent, in_the_sky, joint_key, status_key, sn, sub_hms_list);
 };
 
 struct HistoryHmsDataResponse {
@@ -1809,26 +1975,29 @@ struct SubDeviceInfoResponse {
     int device_working_status = 0;
     std::string flysafe_database_version;
     std::vector<std::string> parent_sns;
+    std::string device_state;
     AIGC_JSON_HELPER(device_sn, device_callsign, model_info, device_online_status, device_firmware_version,
-                     device_firmware_status, device_working_status, flysafe_database_version, 
-                     parent_sns);
+                     device_firmware_status, device_working_status, flysafe_database_version,
+                     parent_sns, device_state);
 };
 
 struct DeviceDetailResponse {
     std::string device_sn;
     std::string device_callsign;
     ModelInfoResponse model_info;
-    int device_add_time = 0;
+    int64_t device_add_time = 0;
     bool device_online_status = false;
     std::string device_firmware_version;
     int device_firmware_status = 0;
     int device_working_status = 0;
     std::string complete_machine_sn;
     std::vector<SubDeviceInfoResponse> sub_devices;
-    AIGC_JSON_HELPER(device_sn, device_callsign, model_info, 
-                     device_add_time, device_online_status, 
-                     device_firmware_version, device_firmware_status, 
-                     device_working_status, complete_machine_sn, sub_devices);
+    std::string device_state;
+    AIGC_JSON_HELPER(device_sn, device_callsign, model_info,
+                     device_add_time, device_online_status,
+                     device_firmware_version, device_firmware_status,
+                     device_working_status, complete_machine_sn, sub_devices,
+                     device_state);
 };
 
 struct FirmwareReleaseNoteReponse {
@@ -1845,19 +2014,11 @@ struct FirmwareReleaseNoteListResponse {
     AIGC_JSON_HELPER(list);
 };
 
-struct FirmwareUpgradeResponseDeviceItemResponse {
-    int firmware_upgrade_type = 0;
-    std::string product_version;
-    std::string sn;
-    AIGC_JSON_HELPER(firmware_upgrade_type, product_version, sn);
-};
-
 struct FirmwareUpgradeResponse {
+    // 后端 POST /manager/ota/upgrade 成功仅返回 {bid, status}
     std::string bid;
-    int device_code = 0;
-    std::vector<FirmwareUpgradeResponseDeviceItemResponse> devices;
     std::string status;
-    AIGC_JSON_HELPER(bid, device_code, devices, status);
+    AIGC_JSON_HELPER(bid, status);
 };
 
 
@@ -1886,7 +2047,41 @@ struct FirmwareUpgradeAssociateRelayResponse {
     AIGC_JSON_HELPER(firmware_status, sn);
 };
 
+struct FirmwareServiceProgressResponse {
+    int percent = 0;
+    int current_step = 0;
+    AIGC_JSON_HELPER(percent, current_step);
+};
+
+struct FirmwareServiceDeviceResponse {
+    std::string sn;
+    int firmware_upgrade_type = 0;
+    std::string product_version;
+    AIGC_JSON_HELPER(sn, firmware_upgrade_type, product_version);
+};
+
+struct FirmwareServiceDataResponse {
+    std::vector<FirmwareServiceDeviceResponse> devices;
+    AIGC_JSON_HELPER(devices);
+};
+
+struct FirmwareServiceResponse {
+    std::string bid;
+    std::string status;
+    int64_t create_time = 0;
+    int64_t update_time = 0;
+    int device_code = 0;
+    FirmwareServiceProgressResponse progress;
+    FirmwareServiceDataResponse data;
+    AIGC_JSON_HELPER(bid, status, create_time, update_time, device_code, progress, data);
+};
+
 struct FirmwareUpgradeProgressItemResponse {
+    // 后端 GET /manager/ota/progress 实际返回字段
+    std::string firmware_version;
+    std::string device_model_key;
+    FirmwareServiceResponse services;
+    // 历史字段: 后端当前不返回, 保留以兼容旧调用方
     FirmwareUpgradeAssociateDroneResponse associate_drone;
     FirmwareUpgradeAssociateRelayResponse associate_relay;
     int device_code = 0;
@@ -1894,7 +2089,8 @@ struct FirmwareUpgradeProgressItemResponse {
     FirmwareUpgradeProgressOTAResponse ota;
     std::string sn;
     int working_status = 0;
-    AIGC_JSON_HELPER(associate_drone, associate_relay, device_code, firmware_status, ota, sn, working_status);
+    AIGC_JSON_HELPER(firmware_version, device_model_key, services,
+                     associate_drone, associate_relay, device_code, firmware_status, ota, sn, working_status);
 };
 
 struct FirmwareUpgradeProgressResponse {
@@ -1930,9 +2126,17 @@ struct FirmwareItemResponse {
     AIGC_JSON_HELPER(id, created_at, device_model_key, status, version, desc);
 };
 
+struct FirmwareListPaginationResponse {
+    int page_num = 0;
+    int page_size = 0;
+    int total = 0;
+    AIGC_JSON_HELPER(page_num, page_size, total);
+};
+
 struct FirmwareListResponse {
+    FirmwareListPaginationResponse pagination;
     std::vector<FirmwareItemResponse> list;
-    AIGC_JSON_HELPER(list);
+    AIGC_JSON_HELPER(pagination, list);
 };
 
 struct FirmwareCompatibilityRulesResponse {
@@ -1941,11 +2145,28 @@ struct FirmwareCompatibilityRulesResponse {
     AIGC_JSON_HELPER(min_version, max_version);
 };
 
+struct FirmwareCompatibilityValidateResponse {
+    std::string field;
+    std::string description;
+    std::string compare;
+    RawJsonString value;
+    AIGC_JSON_HELPER(field, description, compare, value);
+};
+
 struct FirmwareCompatibilityConfigItemResponse {
+    // 旧结构（保留兼容）
     std::string device_model_key;
     std::vector<std::string> compatible_versions;
     FirmwareCompatibilityRulesResponse rules;
-    AIGC_JSON_HELPER(device_model_key, compatible_versions, rules);
+    // 后端实际返回结构
+    std::string key;
+    std::vector<std::string> user_type;
+    std::string description;
+    std::vector<FirmwareCompatibilityValidateResponse> validates;
+    AIGC_JSON_HELPER(device_model_key, compatible_versions, rules,
+                     key, user_type, description, validates);
+    AIGC_JSON_HELPER_RENAME("device_model_key", "compatible_versions", "rules",
+                            "key", "userType", "description", "validates");
 };
 
 struct FirmwareCompatibilityConfigResponse {
@@ -1953,35 +2174,6 @@ struct FirmwareCompatibilityConfigResponse {
     std::string message;
     std::vector<FirmwareCompatibilityConfigItemResponse> data;
     AIGC_JSON_HELPER(code, message, data);
-};
-
-struct FirmwareServiceProgressResponse {
-    int percent = 0;
-    int current_step = 0;
-    AIGC_JSON_HELPER(percent, current_step);
-};
-
-struct FirmwareServiceDeviceResponse {
-    std::string sn;
-    int firmware_upgrade_type = 0;
-    std::string product_version;
-    AIGC_JSON_HELPER(sn, firmware_upgrade_type, product_version);
-};
-
-struct FirmwareServiceDataResponse {
-    std::vector<FirmwareServiceDeviceResponse> devices;
-    AIGC_JSON_HELPER(devices);
-};
-
-struct FirmwareServiceResponse {
-    std::string bid;
-    std::string status;
-    int64_t create_time = 0;
-    int64_t update_time = 0;
-    int device_code = 0;
-    FirmwareServiceProgressResponse progress;
-    FirmwareServiceDataResponse data;
-    AIGC_JSON_HELPER(bid, status, create_time, update_time, device_code, progress, data);
 };
 
 struct FirmwareStatusItemResponse {
@@ -2088,9 +2280,16 @@ struct CheckUnlockLicenseResponseItemResponse {
     AIGC_JSON_HELPER(file_name, name, type, begin_time, end_time, url);
 };
 
+struct ErrCertMismatchResponse {
+    std::string airport_sn;
+    std::string aircraft_sn;
+    std::string file_name;
+    AIGC_JSON_HELPER(airport_sn, aircraft_sn, file_name);
+};
+
 struct CheckUnlockLicenseResponse {
     std::vector<std::string> err_file_name;
-    std::vector<std::string> err_cert_mismatch;
+    std::vector<ErrCertMismatchResponse> err_cert_mismatch;
     std::vector<CheckUnlockLicenseResponseItemResponse> list;
     AIGC_JSON_HELPER(err_file_name, err_cert_mismatch, list);
 };
@@ -2120,6 +2319,16 @@ struct WaylineListPaginationResponse {
     AIGC_JSON_HELPER(page, page_size, total);
 };
 
+struct WaylineCollisionEventResponse {
+    std::string wayline_uuid;
+    std::string flight_task_uuid;
+    int64_t timestamp = 0;
+    double latitude = 0.0;
+    double longitude = 0.0;
+    double altitude = 0.0;
+    AIGC_JSON_HELPER(wayline_uuid, flight_task_uuid, timestamp, latitude, longitude, altitude);
+};
+
 struct WaylineListItemResponse {
     std::string wayline_uuid;
     std::vector<int> wayline_types;
@@ -2128,11 +2337,16 @@ struct WaylineListItemResponse {
     std::vector<std::string> payload_types;
     std::vector<std::string> payload_types_with_index;
     std::string drone_type;
-    int64_t updated_at = 0;
+    int64_t updated_at = 0;                      ///< 更新时间(unix 毫秒)
     bool with_megaphone = false;
     bool with_search_light = false;
     bool is_ai_wayline = false;
-    AIGC_JSON_HELPER(wayline_uuid, wayline_types, wayline_name, size, payload_types, payload_types_with_index, drone_type, updated_at, with_megaphone, with_search_light, is_ai_wayline);
+    std::map<std::string, std::string> editor_warnings;
+    std::map<std::string, std::string> execute_warnings;
+    bool has_collisions = false;
+    std::vector<WaylineCollisionEventResponse> collision_positions;
+    AIGC_JSON_HELPER(wayline_uuid, wayline_types, wayline_name, size, payload_types, payload_types_with_index, drone_type, updated_at, with_megaphone, with_search_light, is_ai_wayline,
+                     editor_warnings, execute_warnings, has_collisions, collision_positions);
 };
 
 struct GetWaylineListResponse {
@@ -2201,6 +2415,7 @@ struct WaylineDetailKmzDataResponse {
     std::unordered_map<std::string, std::string> audio_action_uuid_to_file_path_map;
     std::unordered_map<std::string, std::string> ai_audio_action_uuid_to_file_path_map;
     WaylineDetailSurveyAreaScopeResponse survey_area_scope;
+    std::string md5;
     AIGC_JSON_HELPER(wayline_type, wayline_point_count, exit_on_rc_lost_type,
         exit_on_rc_lost_behavior, start_record_action_count, stop_record_action_count,
         ortho_camera_overlap_h, ortho_camera_overlap_w,
@@ -2220,7 +2435,38 @@ struct WaylineDetailKmzDataResponse {
         res_file_md5s, audio_file_md5s,
         target_detect_action_uuids, ai_audio_file_md5s,
         action_uuid_to_md5_map, audio_action_uuid_to_file_path_map,
-        ai_audio_action_uuid_to_file_path_map, survey_area_scope);
+        ai_audio_action_uuid_to_file_path_map, survey_area_scope, md5);
+};
+
+/// 贴近摄影模型边界（详情 ext_data.models 复用拼接模型结构）
+struct ConcatWaylineExtDataModelBoundaryResponse {
+    double latitude = 0;
+    double longitude = 0;
+    double altitude = 0;
+    double half_x = 0;
+    double half_y = 0;
+    double half_z = 0;
+    std::vector<double> transform;
+    AIGC_JSON_HELPER(latitude, longitude, altitude, half_x, half_y, half_z, transform);
+};
+
+struct ConcatWaylineExtDataModelBoundingPointResponse {
+    double lng = 0;
+    double lat = 0;
+    AIGC_JSON_HELPER(lng, lat);
+};
+
+struct ConcatWaylineExtDataModelBoundingResponse {
+    std::vector<ConcatWaylineExtDataModelBoundingPointResponse> points;
+    AIGC_JSON_HELPER(points);
+};
+
+struct ConcatWaylineExtDataModelResponse {
+    std::string uuid;
+    std::string file_key;
+    ConcatWaylineExtDataModelBoundaryResponse boundary;
+    ConcatWaylineExtDataModelBoundingResponse bounding;
+    AIGC_JSON_HELPER(uuid, file_key, boundary, bounding);
 };
 
 struct WaylineDetailExtDataResponse {
@@ -2229,9 +2475,12 @@ struct WaylineDetailExtDataResponse {
     std::string target_area_file_object_key;
     std::string business_file_object_key;
     std::vector<std::string> model_file_object_keys;
+    std::vector<std::string> elevation_file_object_keys;
+    int64_t content_length = 0;
+    std::vector<ConcatWaylineExtDataModelResponse> models;
     AIGC_JSON_HELPER(kmz_without_res_object_key, kmz_without_res_md5,
         target_area_file_object_key, business_file_object_key,
-        model_file_object_keys);
+        model_file_object_keys, elevation_file_object_keys, content_length, models);
 };
 
 struct GetWaylineDetailResponse {
@@ -2242,13 +2491,20 @@ struct GetWaylineDetailResponse {
     std::string url;
     std::string suffix;
     int64_t deleted_at = 0;
-    int64_t updated_at = 0;
+    int64_t updated_at = 0;                      ///< 更新时间(unix 秒)
     std::string kmz_without_res_url;
     std::string target_area_file_url;
     std::string business_file_url;
     WaylineDetailKmzDataResponse kmz_data;
     WaylineDetailExtDataResponse ext_data;
-    AIGC_JSON_HELPER(wayline_uuid, md5, wayline_name, kmz_object_key, url, suffix, deleted_at, updated_at, kmz_without_res_url, target_area_file_url, business_file_url, kmz_data, ext_data);
+    int wayline_point_nums = 0;
+    std::vector<TaskDetailObstacleResponse> obstacles;
+    std::string elevation_uuid;
+    std::vector<WaylineCollisionEventResponse> collision_positions;
+    std::unordered_map<std::string, std::string> editor_warnings;
+    std::unordered_map<std::string, std::string> execute_warnings;
+    AIGC_JSON_HELPER(wayline_uuid, md5, wayline_name, kmz_object_key, url, suffix, deleted_at, updated_at, kmz_without_res_url, target_area_file_url, business_file_url, kmz_data, ext_data,
+                     wayline_point_nums, obstacles, elevation_uuid, collision_positions, editor_warnings, execute_warnings);
 };
 
 struct BatchDeleteWaylinesResponse {
@@ -2295,36 +2551,6 @@ struct CopyWaylineResponse {
     AIGC_JSON_HELPER(wayline_uuid, wayline_name);
 };
 
-struct ConcatWaylineExtDataModelBoundaryResponse {
-    double latitude = 0;
-    double longitude = 0;
-    double altitude = 0;
-    double half_x = 0;
-    double half_y = 0;
-    double half_z = 0;
-    std::vector<double> transform;
-    AIGC_JSON_HELPER(latitude, longitude, altitude, half_x, half_y, half_z, transform);
-};
-
-struct ConcatWaylineExtDataModelBoundingPointResponse {
-    double lng = 0;
-    double lat = 0;
-    AIGC_JSON_HELPER(lng, lat);
-};
-
-struct ConcatWaylineExtDataModelBoundingResponse {
-    std::vector<ConcatWaylineExtDataModelBoundingPointResponse> points;
-    AIGC_JSON_HELPER(points);
-};
-
-struct ConcatWaylineExtDataModelResponse {
-    std::string uuid;
-    std::string file_key;
-    ConcatWaylineExtDataModelBoundaryResponse boundary;
-    ConcatWaylineExtDataModelBoundingResponse bounding;
-    AIGC_JSON_HELPER(uuid, file_key, boundary, bounding);
-};
-
 struct ConcatWaylineExtDataResponse {
     std::string kmz_without_res_object_key;
     std::string kmz_without_res_md5;
@@ -2348,9 +2574,10 @@ struct ConcatWaylineResponse {
 
 struct ImportKmzItemResponse {
     std::string kmz_object_key;
+    std::string wayline_uuid;
     std::string wayline_name;
     std::string async_request_id;
-    AIGC_JSON_HELPER(kmz_object_key, wayline_name, async_request_id);
+    AIGC_JSON_HELPER(kmz_object_key, wayline_uuid, wayline_name, async_request_id);
 };
 
 struct ImportKmzResponse {
@@ -2386,9 +2613,13 @@ struct AIInsideModelItemResponse {
     std::vector<int> image_source;
     std::vector<int> digital_effect;
     std::vector<int> vl_resolution;
+    std::optional<std::vector<int>> model_types;  // 后端无值时为 null
+    std::string model_combination;
+    std::string status;
     AIGC_JSON_HELPER(signed_name, model_name, signed_id, model_param,
                      signed_utc, expired_utc, labels, sn_list,
-                     signed_version, image_source, digital_effect, vl_resolution);
+                     signed_version, image_source, digital_effect, vl_resolution,
+                     model_types, model_combination, status);
 };
 
 struct GetAIInsideModelsResponse {
@@ -2399,9 +2630,13 @@ struct GetAIInsideModelsResponse {
 struct AIInsideDeviceModelResponse {
     std::string device_model_key;  // JSON key: "key"
     std::string domain;
+    std::string type;
+    std::string sub_type;
     std::string name;
-    AIGC_JSON_HELPER(device_model_key, domain, name);
-    AIGC_JSON_HELPER_RENAME("key", "domain", "name");
+    std::string device_model_class;  // JSON key: "class"
+    std::string develop_code;
+    AIGC_JSON_HELPER(device_model_key, domain, type, sub_type, name, device_model_class, develop_code);
+    AIGC_JSON_HELPER_RENAME("key", "domain", "type", "sub_type", "name", "class", "develop_code");
 };
 
 // 对齐现网 DeviceServiceStatus：status 为 string，progress 为嵌套对象
@@ -2433,7 +2668,7 @@ struct AIInsideAssociateDroneResponse {
     std::string device_sn;
     AIInsideDeviceModelResponse device_model;
     bool device_online_status = false;
-    int device_working_status = 0;
+    double device_working_status = 0.0;
     AIInsideModelInfoResponse ai_model_info;
     AIGC_JSON_HELPER(device_sn, device_model, device_online_status,
                      device_working_status, ai_model_info);
@@ -2444,7 +2679,7 @@ struct AIInsideDeviceItemResponse {
     AIInsideDeviceModelResponse device_model;
     std::string complete_machine_sn;
     bool device_online_status = false;
-    int device_working_status = 0;
+    double device_working_status = 0.0;
     AIInsideOperateProgressResponse operate_ai_model;
     AIInsideAssociateDroneResponse associate_drone_device_info;
     AIGC_JSON_HELPER(device_sn, device_model, complete_machine_sn,
@@ -2459,11 +2694,14 @@ struct AIInsideDevicesPaginationResponse {
     AIGC_JSON_HELPER(page, page_size, total);
 };
 
-// 现网 GinPagy：data.pagination + data.list（非扁平 page/total）
+// 现网实际返回 data.pagination + data.list；同时兼容 PaaS proto 的平铺 page/page_size/total。
 struct GetAIInsideModelDevicesResponse {
     std::vector<AIInsideDeviceItemResponse> list;
     AIInsideDevicesPaginationResponse pagination;
-    AIGC_JSON_HELPER(list, pagination);
+    int page = 0;
+    int page_size = 0;
+    int64_t total = 0;
+    AIGC_JSON_HELPER(list, pagination, page, page_size, total);
 };
 
 struct GetAIInsideModelDevicesSummaryResponse {
@@ -2592,6 +2830,39 @@ struct DeviceShadowSyncResult {
     AIGC_JSON_HELPER(status, results);
 };
 
+/// GET /manage/api/v1/flight/configs/safe 的平铺响应
+struct PoleQuantityAxisConfigResponse {
+    int max = 0;
+    int min = 0;
+    double low_speed_gear_factor = 0;
+    AIGC_JSON_HELPER(max, min, low_speed_gear_factor);
+};
+
+struct PoleQuantityConfigResponse {
+    PoleQuantityAxisConfigResponse pitch;
+    PoleQuantityAxisConfigResponse roll;
+    PoleQuantityAxisConfigResponse yaw;
+    PoleQuantityAxisConfigResponse throttle;
+    AIGC_JSON_HELPER(pitch, roll, yaw, throttle);
+};
+
+struct FlightSafeConfigFlatResponse {
+    std::optional<double> rth_altitude;
+    std::string out_of_control_action;
+    std::optional<double> flight_task_height;
+    std::optional<int> commander_flight_mode;     // 后端可能返回 null
+    std::optional<double> commander_flight_height;
+    std::optional<int> rth_mode;                  // 后端可能返回 null
+    std::optional<int> smart_planning_mode;
+    PoleQuantityConfigResponse pole_quantity_config;
+    std::optional<int> terminal_control_area_status;
+    std::optional<double> security_takeoff_height;
+    AIGC_JSON_HELPER(rth_altitude, out_of_control_action, flight_task_height,
+                     commander_flight_mode, commander_flight_height, rth_mode,
+                     smart_planning_mode, pole_quantity_config,
+                     terminal_control_area_status, security_takeoff_height);
+};
+
 struct SmartPlanSetting {
     int smart_planning_mode = 0;                             // 智能规划模式，0:开启 1:关闭
     
@@ -2637,7 +2908,7 @@ struct FlightOutOfControlActionApiResponse {
 
 // ---- 飞行作业高度 ----
 struct TaskHeightSettings {
-    int commander_flight_height = 0;   // 飞行作业高度（米）
+    double commander_flight_height = 0;   // 飞行作业高度（米）
     AIGC_JSON_HELPER(commander_flight_height);
 };
 
@@ -2997,13 +3268,15 @@ struct ModelFileItem {
     int sub_file_type = 0;                  // 文件子类型
     int state = 0;
     std::vector<int> reconstruction_type;   // 重建类型（数组）
-    std::string thumbnail_url;
-    std::string zip_url;                    // 打包下载 URL
-    std::string created_at;
-    std::string updated_at;
+    std::string preview_url;                // 后端列表返回的预览图 URL
+    long long create_at = 0;                // 后端 create_at，毫秒时间戳
+    long long update_at = 0;                // 后端 update_at，毫秒时间戳
+    std::string thumbnail_url;              // 兼容字段：映射时回填 preview_url
+    std::string zip_url;                    // 兼容字段：列表接口不返回
+    std::string created_at;                 // 兼容字段：由 create_at 转 ISO 8601
+    std::string updated_at;                 // 兼容字段：由 update_at 转 ISO 8601
     AIGC_JSON_HELPER(id, uuid, name, file_type, sub_file_type, state,
-                     reconstruction_type, thumbnail_url, zip_url,
-                     created_at, updated_at);
+                     reconstruction_type, preview_url, create_at, update_at);
 };
 
 /// ModelFileListPaginationInfo — 分页元信息
@@ -3091,6 +3364,12 @@ struct TerraUploadCallbackResponseData {
 struct TerraShowOnMapResponseData {
     std::vector<int> ids;   // 实际被操作的文件 ID 列表
     AIGC_JSON_HELPER(ids);
+};
+
+/// DeleteModelFileResponseData — 模型删除响应（lock_files 为被锁定文件的原始 JSON 数组）
+struct DeleteModelFileResponseData {
+    std::vector<std::string> lock_files;
+    AIGC_JSON_HELPER(lock_files);
 };
 
 // ── GetModelDetail 内部解析结构体 ──────────────────────────────────────
@@ -3229,7 +3508,15 @@ struct ElementPropertiesResp {
     bool is_transparent = false;
     int font_size = 0;
     int icon = 0;
-    AIGC_JSON_HELPER(color, clamp_to_ground, is3d, is_transparent, font_size, icon)
+    std::string icon_url;
+    int width = 0;
+    int start_cap = 0;
+    int end_cap = 0;
+    AIGC_JSON_HELPER(color, clamp_to_ground, is3d, is_transparent, font_size, icon,
+                     icon_url, width, start_cap, end_cap)
+    // JSON 键对齐后端驼峰: clamp_to_ground -> clampToGround、icon -> iconId 等。
+    AIGC_JSON_HELPER_RENAME("color", "clampToGround", "is3d", "is_transparent", "font_size",
+                            "iconId", "iconUrl", "width", "startCap", "endCap")
 };
 
 /// ElementGeometryResp — 响应中的要素几何数据
@@ -3239,6 +3526,8 @@ struct ElementGeometryResp {
     std::string coordinates;     // raw JSON，多态形状（Point/LineString/Polygon）
     std::string bread_crumbs;    // raw JSON
     AIGC_JSON_HELPER(type, radius, coordinates, bread_crumbs)
+    // JSON 键对齐后端驼峰: bread_crumbs -> breadCrumbs
+    AIGC_JSON_HELPER_RENAME("type", "radius", "coordinates", "breadCrumbs")
 };
 
 /// ElementMediaImageResp — 响应中的要素媒体图片
@@ -3246,7 +3535,13 @@ struct ElementMediaImageResp {
     std::string object_key;
     int media_file_id = 0;
     std::string media_file_uuid;
-    AIGC_JSON_HELPER(object_key, media_file_id, media_file_uuid)
+    std::string url;
+    std::string preview_url;
+    std::string webp_url;
+    int file_type = 0;
+    int sub_file_type = 0;
+    AIGC_JSON_HELPER(object_key, media_file_id, media_file_uuid, url, preview_url,
+                     webp_url, file_type, sub_file_type)
 };
 
 /// ElementMediaResourcesResp — 响应中的要素媒体资源
@@ -3376,15 +3671,53 @@ struct MediaFileGeoPositionData {
     double lat = 0.0;     // 纬度
     double lng = 0.0;     // 经度
     double abs_alt = 0.0; // 绝对高度（米）
-    AIGC_JSON_HELPER(lat, lng, abs_alt)
+    double rel_alt = 0.0; // 相对高度（米）
+    AIGC_JSON_HELPER(lat, lng, abs_alt, rel_alt)
 };
 
-/// MediaFileDetailExtData — 媒体文件扩展信息
+/// MediaFileDetailExtData — 媒体文件扩展信息（对齐 media.proto FileDetailExt）
 struct MediaFileDetailExtData {
     int width = 0;                            // 图片宽度（像素）
     int height = 0;                           // 图片高度（像素）
     MediaFileGeoPositionData photo_position;  // 照片 GPS 位置
-    AIGC_JSON_HELPER(width, height, photo_position)
+    std::string resolution;                   // 分辨率
+    std::string photographer;                 // 拍摄者
+    std::string task_name;                    // 任务名称
+    std::string line_name;                    // 航线名称
+    std::string wayline_uuid;                 // 航线 UUID
+    std::string origin_wayline_uuid;          // 原始航线 UUID
+    std::string wayline_action_uuid;          // 航线动作 UUID
+    std::string payload_model_key;            // 负载型号 Key
+    std::string drone_model_key;              // 飞行器型号 Key
+    bool is_original = false;                 // 是否原片
+    double digital_zoom_ratio = 0.0;          // 数码变焦倍数
+    double length_in35mm_film = 0.0;          // 35mm 等效焦距
+    double gimbal_roll = 0.0;                 // 云台横滚角
+    double gimbal_yaw = 0.0;                  // 云台偏航角
+    double gimbal_yaw_degree = 0.0;           // 云台偏航角（度）
+    std::string flight_id;                    // 飞行任务 ID
+    double duration = 0.0;                    // 时长（秒）
+    MediaFileGeoPositionData shoot_position;  // 拍摄位置
+    double absolute_altitude = 0.0;           // 绝对高度（米）
+    double relative_altitude = 0.0;           // 相对高度（米）
+    std::string created_time;                 // 创建时间
+    std::string creation_time;                // 创建时间
+    std::string create_time;                  // 创建时间
+    std::string encoder;                      // 编码器
+    std::string format_long_name;             // 格式长名称
+    std::string format_name;                  // 格式名称
+    std::string ext_size;                     // 扩展大小（字符串）
+    double flight_yaw = 0.0;                  // 飞行偏航角
+    double focal_length = 0.0;                // 焦距
+    double gimbal_pitch = 0.0;                // 云台俯仰角
+    std::string image_type;                   // 图片类型
+    AIGC_JSON_HELPER(width, height, photo_position, resolution, photographer, task_name, line_name,
+                     wayline_uuid, origin_wayline_uuid, wayline_action_uuid, payload_model_key,
+                     drone_model_key, is_original, digital_zoom_ratio, length_in35mm_film,
+                     gimbal_roll, gimbal_yaw, gimbal_yaw_degree, flight_id, duration, shoot_position,
+                     absolute_altitude, relative_altitude, created_time, creation_time, create_time,
+                     encoder, format_long_name, format_name, ext_size, flight_yaw, focal_length,
+                     gimbal_pitch, image_type)
 };
 
 /// GetMediaFileDetailByIdResponseData — 根据 ID 获取媒体文件详情响应
@@ -3397,16 +3730,47 @@ struct GetMediaFileDetailByIdResponseData {
     long long size = 0;          // 文件大小（字节）
     std::string create_at;       // 创建时间（ISO 字符串）
     MediaFileDetailExtData ext;  // 扩展信息
-    AIGC_JSON_HELPER(url, thumbnail_url, alert_image_url, name, suffix, size, create_at, ext)
+    int pano_stitch_state = 0;   // 全景拼接状态：0=未处理 1=等待资源 2=处理中 3=成功 4=失败 5=取消 6=余额不足
+    int pano_stitch_progress = 0; // 全景拼接进度 [0, 100]
+    int pano_error_code = 0;     // 全景拼接错误码（成功时为 0）
+    AIGC_JSON_HELPER(url, thumbnail_url, alert_image_url, name, suffix, size, create_at, ext,
+                     pano_stitch_state, pano_stitch_progress, pano_error_code)
+};
+
+// === 3X 超清全景拼接响应结构体 ===
+
+/// HttpCookieDto — CDN Cookie 单项（后端 http.Cookie 关键字段）
+/// `expires` 用 string 承载（后端序列化格式待联调确认：RFC1123 / ISO8601 / Unix 时间戳）。
+/// TODO: Impl 层当前将 expires_unix_sec 硬编码为 0（未解析），待与后端确认 expires 序列化格式后实现
+///       parse_cookie_expires 并回填 PanoTierCookie::expires_unix_sec。PaaS 通道当前不使用 cookies，
+///       改动优先级低；若后续需要 cookie 鉴权路径则必须补全。
+struct HttpCookieDto {
+    std::string name;
+    std::string value;
+    std::string path;
+    std::string expires;  // 到期时间字符串，Impl 层解析
+    AIGC_JSON_HELPER(name, value, path, expires)
+};
+
+/// GetPanoTierTileUrlResponseData — 获取全景瓦片 CDN URL 响应
+/// 仅 `state == 3(Success)` 时 `base_url` / `cookies` / `query_params` 有效。
+struct GetPanoTierTileUrlResponseData {
+    int state = 0;
+    std::string base_url;
+    std::vector<HttpCookieDto> cookies;
+    std::map<std::string, std::string> query_params;
+    AIGC_JSON_HELPER(state, base_url, cookies, query_params)
 };
 
 /// StsCredentials — STS 临时凭证
 struct StsCredentials {
     std::string access_key_id;      // STS 临时 AccessKeyId
     std::string access_key_secret;  // STS 临时 AccessKeySecret
-    int expire = 0;                 // 凭证有效期（秒）
     std::string security_token;     // STS SecurityToken
-    AIGC_JSON_HELPER(access_key_id, access_key_secret, expire, security_token);
+    int expire = 0;                 // 凭证有效期（秒）
+    std::string expiration;         // 凭证绝对过期时间
+    int platform = 0;               // 平台标识
+    AIGC_JSON_HELPER(access_key_id, access_key_secret, security_token, expire, expiration, platform);
 };
 
 /// GetMediaUploadStsResponseData — 获取媒体上传 STS 凭证响应
@@ -3417,7 +3781,8 @@ struct GetMediaUploadStsResponseData {
     std::string endpoint;            // OSS 访问端点
     std::string provider;            // 存储提供商（ali/aws/minio 等）
     std::string region;              // 存储区域
-    AIGC_JSON_HELPER(bucket, credentials, object_key_prefix, endpoint, provider, region);
+    std::string ext;                 // 扩展信息原始 JSON（如 cloud_to_cloud_configs）
+    AIGC_JSON_HELPER(bucket, credentials, object_key_prefix, endpoint, provider, region, ext);
 };
 
 /// MediaUploadCallbackResponseData — 媒体上传完成回调响应
@@ -3543,6 +3908,16 @@ struct GetSelfDiagnosisReportResponse {
     DiagnosisDeviceReportProgress device_report_progress;
     std::string qr_code_content;
     std::string qr_guide_text;
+    std::string cloud_submit_status;
+    std::string qr_code_url;
+    std::string qr_code_sign;
+    std::string qr_code_nonce;
+    std::optional<std::string> device_callback_updated_at;
+    std::string created_at;
+    std::string updated_at;
+    std::string organization_uuid;
+    std::string project_uuid;
+    std::string device_type;
 
     // register class-members;
     AIGC_JSON_HELPER(
@@ -3562,7 +3937,17 @@ struct GetSelfDiagnosisReportResponse {
         self_diagnostic_result,
         device_report_progress,
         qr_code_content,
-        qr_guide_text
+        qr_guide_text,
+        cloud_submit_status,
+        qr_code_url,
+        qr_code_sign,
+        qr_code_nonce,
+        device_callback_updated_at,
+        created_at,
+        updated_at,
+        organization_uuid,
+        project_uuid,
+        device_type
     );
 };
 
@@ -3839,11 +4224,22 @@ struct AiAlertLocationResponse {
     AIGC_JSON_HELPER(latitude, longitude, altitude);
 };
 
+struct AiAlertTriggerActionResponse {
+    int action = 0;    // 触发动作类型
+    int duration = 0;  // 动作持续时间（秒）
+    AIGC_JSON_HELPER(action, duration);
+};
+
 struct AiAlertTargetAlertInfoResponse {
     int target_type = 0;
-    int target_value = 0;
+    double target_value = 0.0;
+    bool use_min_threshold = false;
+    bool use_max_threshold = false;
+    double target_max_threshold = 0.0;
+    double target_min_threshold = 0.0;
     std::string label;
-    AIGC_JSON_HELPER(target_type, target_value, label);
+    AIGC_JSON_HELPER(target_type, target_value, use_min_threshold, use_max_threshold,
+                     target_max_threshold, target_min_threshold, label);
 };
 
 struct AiAlertFlightItemResponse {
@@ -3852,26 +4248,35 @@ struct AiAlertFlightItemResponse {
     std::string flight_task_name;
     int status = 0;
     long long start_time = 0;
-    AIGC_JSON_HELPER(flight_id, count, flight_task_name, status, start_time);
+    int flight_task_type = 0;   // 飞行任务类型: 0=未知 1=航线任务 2=指令任务
+    bool is_commented = false;  // 该架次是否已评论
+    AIGC_JSON_HELPER(flight_id, count, flight_task_name, status, start_time,
+                     flight_task_type, is_commented);
 };
 
 struct AiAlertRecordItemResponse {
     std::string alert_uuid;
     std::string flight_id;
+    std::string project_id;
     std::string drone_sn;
     std::string gateway_sn;
     int status = 0;
+    std::string reason;
     int algorithm_source = 0;
     AiAlertLocationResponse location;
+    int64_t file_id = 0;
+    std::vector<AiAlertTriggerActionResponse> trigger_actions;
     std::vector<AiAlertTargetAlertInfoResponse> target_alert_infos;
     std::string thumbnail_url;
     std::vector<std::string> labels;
     long long timestamp = 0;
     std::string task_name;
-    int media_index = 0;
-    AIGC_JSON_HELPER(alert_uuid, flight_id, drone_sn, gateway_sn, status, algorithm_source,
-                     location, target_alert_infos, thumbnail_url, labels, timestamp,
-                     task_name, media_index);
+    int64_t media_index = 0;
+    int interval_seconds = 0;
+    AIGC_JSON_HELPER(alert_uuid, flight_id, project_id, drone_sn, gateway_sn,
+                     status, reason, algorithm_source, location, file_id,
+                     trigger_actions, target_alert_infos, thumbnail_url, labels,
+                     timestamp, task_name, media_index, interval_seconds);
 };
 
 // ---- POST /device-setting Response（成功只看 code=0，data 为空）----
@@ -3959,6 +4364,34 @@ struct UpdateFlashLedConfigResponse {
     AIGC_JSON_HELPER(id, name, flash_segments);
 };
 
+/// 自动录制配置项（HTTP GET 响应，对齐 drc.proto PaasAutoRecordItem）
+struct AutoRecordItemResponse {
+    std::string sn;
+    std::string camera_index;      // 形如 "39-0-7"，drc.proto 中为 string
+    std::string camera_sn;
+    int recording_strategy = 0;    // 只读：服务端按设备类型计算，0=任务录制 1=持续录制
+    AIGC_JSON_HELPER(sn, camera_index, camera_sn, recording_strategy);
+};
+
+/// 自动录制配置（HTTP GET 响应，对齐 drc.proto GetAutoRecordConfigResponse；
+/// 配置不存在时服务端返回空 data，各字段取零值，非错误）
+struct GetAutoRecordConfigHttpResponse {
+    uint32_t id = 0;
+    std::string project_id;
+    int64_t created_at = 0;
+    int64_t updated_at = 0;
+    int32_t auto_cleaning_time = 0;
+    bool disabled_auto_clean = false;
+    bool disable_dock_recording = false;
+    bool disable_drone_recording = false;
+    bool disable_base_station_recording = false;
+    bool disable_rtmp_recording = false;
+    std::vector<AutoRecordItemResponse> recording_items;
+    AIGC_JSON_HELPER(id, project_id, created_at, updated_at, auto_cleaning_time,
+        disabled_auto_clean, disable_dock_recording, disable_drone_recording,
+        disable_base_station_recording, disable_rtmp_recording, recording_items);
+};
+
 // ===================== Live Sync Response Begin =====================
 
 /// Http 版 schema_option（供 request/response 序列化使用）
@@ -3988,10 +4421,19 @@ struct LiveSyncVideoCapacityHttp {
     AIGC_JSON_HELPER(video_type, video_index);
 };
 
-struct LiveSyncCameraCapacityHttp {
+// camera_capacity 由服务端 base64 字符串解码后的内层结构。
+// 真实 JSON: {available_video_number, camera_list:[{camera_index, video_list:[{video_type, video_index}]}], ...}
+// video_list 的字段名与对外 videos_list 不同，此处按真实下发命名。
+struct LiveSyncCameraCapacityDecodedHttp {
     std::string camera_index;
-    std::vector<LiveSyncVideoCapacityHttp> videos_list;
-    AIGC_JSON_HELPER(camera_index, videos_list);
+    std::vector<LiveSyncVideoCapacityHttp> video_list;
+    AIGC_JSON_HELPER(camera_index, video_list);
+};
+
+struct LiveSyncCameraCapacityPayloadHttp {
+    std::string sn;
+    std::vector<LiveSyncCameraCapacityDecodedHttp> camera_list;
+    AIGC_JSON_HELPER(sn, camera_list);
 };
 
 struct LiveSyncItemHttp {
@@ -4081,7 +4523,9 @@ struct LiveSyncDeviceV2Http {
     std::string name;
     std::string device_model_key;
     std::string device_type;
-    std::vector<LiveSyncCameraCapacityHttp> camera_capacity;
+    // 服务端下发为 base64 编码的字符串（非对象数组），此处以 std::string 接住，
+    // 业务层 base64 解码后再解析为结构化能力。
+    std::string camera_capacity;
     AIGC_JSON_HELPER(sn, name, device_model_key, device_type, camera_capacity);
 };
 

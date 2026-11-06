@@ -15,7 +15,7 @@ namespace flight_hub_sdk {
 
 class PsdkCtrlMgr : public drc_sdk::common::AsyncCaptureProtect {
 public:
-    PsdkCtrlMgr(std::string  drone_sn, std::string  gateway_sn, const std::shared_ptr<message_engine::IMessageEngine>& message_engine);
+    PsdkCtrlMgr(std::string  drone_sn, std::string  gateway_sn, const std::shared_ptr<message_engine::IMessageEngine>& message_engine, int session_id);
     ~PsdkCtrlMgr() override;
 
     /// psdk osd info
@@ -61,6 +61,9 @@ public:
     void DrcSearchlightLightGimbalControlSet(int psdk_index, int light_gimbal_control, const std::function<void(FlightHubError err)>& callback);
     void DrcSearchlightTypeSet(int psdk_index, int type, const std::function<void(FlightHubError err)>& callback);
 
+    /// 下发 PSDK 自定义数据透传（云端→PSDK，无 psdk_index，经 message_engine services 直发）
+    void sendPsdkCustomDataTransmissionToPsdk(const std::string& value, const std::function<void(FlightHubError err)>& callback);
+
     /// SN accessors（供 module impl 订阅 NC / DRC 时构造 topic）
     const std::string& getDroneSn() const { return drone_sn_; }
     const std::string& getGatewaySn() const { return gateway_sn_; }
@@ -76,6 +79,7 @@ private:
     /// params
     std::string drone_sn_;
     std::string gateway_sn_;
+    int session_id_;
 
     /// listen id
     int psdk_ui_resource_listen_id_ = -1;

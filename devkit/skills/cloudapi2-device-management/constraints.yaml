@@ -1,4 +1,4 @@
-# DJI FlightHub PaaS SDK 设备管理模块约束规则
+# DJI Cloud API 2 SDK 设备管理模块约束规则
 #
 # 共享约束见 _shared/constraints-common.yaml（SSOT），本文件只定义设备管理 Skill 特有的规则。
 # 共享约束包括：initialize-check, error-code-check, listen-cancel-pairing,
@@ -16,7 +16,7 @@
 
 - id: feature-module-pattern
   rule: 新功能必须作为独立 feature 模块（feature/feature-xxx/），包含 AutoConfiguration + @ConditionalOnProperty
-  violation: 破坏 skeleton 模块化架构，ISV 无法按需开关
+  violation: 破坏 skeleton 模块化架构，集成商无法按需开关
   level: warning
 
 - id: event-bus-only
@@ -25,8 +25,8 @@
   level: warning
 
 - id: conditional-on-missing-bean
-  rule: Service 和 Controller Bean 必须加 @ConditionalOnMissingBean，允许 ISV 覆盖默认实现
-  violation: ISV 无法替换默认行为，违反"可替换"设计原则
+  rule: Service 和 Controller Bean 必须加 @ConditionalOnMissingBean，允许集成商覆盖默认实现
+  violation: 集成商无法替换默认行为，违反"可替换"设计原则
   level: warning
 
 - id: auto-configuration-registration

@@ -37,6 +37,52 @@ namespace flight_hub_sdk {
         /// @param listen_id 监听 ID
         virtual void cancelListenWaylineTaskEvent(int listen_id) = 0;
 
+        /// @brief 订阅多机场返航路径信息事件（网关设备）
+        /// @return 监听 ID，用于 cancelListenReturnHomeInfoEvent 取消订阅
+        ///
+        /// @note 推送语义：内容去重。与上一条完全相同的事件不会重复回调。
+        ///       如需收到每一条原始推送，请使用 listenReturnHomeInfoEventByDevice。
+        ///
+        /// @internal
+        /// 链路: MQTT/WS | topic_atc_return_home_info_event
+        /// @endinternal
+        virtual int listenReturnHomeInfoEvent(const std::function<void(const ReturnHomeInfoEvent& msg)>& callback) = 0;
+        /// @brief 取消订阅多机场返航路径信息事件（网关设备）
+        /// @param listen_id listenReturnHomeInfoEvent 返回的监听 ID
+        /// @note 该 ID 与 listenReturnHomeInfoEventByDevice 返回的 ID 属于不同的 ID 空间，
+        ///       不可交叉传入。
+        virtual void cancelListenReturnHomeInfoEvent(int listen_id) = 0;
+
+        /// @brief 订阅指定设备的多机场返航路径信息事件
+        /// @param device_sn 订阅设备 SN。蛙跳场景下应传目标降落机场 SN，
+        ///                  与后端该 topic 的路由 SN 对齐。
+        /// @return 监听 ID，用于 cancelListenReturnHomeInfoEventByDevice 取消订阅；
+        ///         失败时返回负值
+        ///
+        /// @note 推送语义：不去重。每条到达的事件都会回调，
+        ///       与 listenReturnHomeInfoEvent 的去重行为不同。
+        ///
+        /// @internal
+        /// 链路: MQTT/WS | topic_atc_return_home_info_event
+        /// @endinternal
+        virtual int listenReturnHomeInfoEventByDevice(const std::string& device_sn, const std::function<void(const ReturnHomeInfoEvent& msg)>& callback) = 0;
+        /// @brief 取消订阅指定设备的多机场返航路径信息事件
+        /// @param listen_id listenReturnHomeInfoEventByDevice 返回的监听 ID
+        /// @note 该 ID 与 listenReturnHomeInfoEvent 返回的 ID 属于不同的 ID 空间，
+        ///       不可交叉传入。
+        virtual void cancelListenReturnHomeInfoEventByDevice(int listen_id) = 0;
+
+        /// @brief 订阅任务异常事件
+        /// @return 监听 ID，用于取消订阅
+        ///
+        /// @internal
+        /// 链路: MQTT/WS | topic_atc_task_exception_event
+        /// @endinternal
+        virtual int listenTaskExceptionEvent(const std::function<void(const TaskExceptionEvent& msg)>& callback) = 0;
+        /// @brief 取消订阅任务异常事件
+        /// @param listen_id 监听 ID
+        virtual void cancelListenTaskExceptionEvent(int listen_id) = 0;
+
     };
 
 }

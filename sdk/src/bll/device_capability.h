@@ -131,7 +131,6 @@ namespace flight_hub_sdk {
         PSDK_SearchLight,                   // PSDK 探照灯;
 
         AIControl,
-        VisualScoutDeploy,                  // 踏勘部署模块;
         WaylineManage,                      // 航线管理模块;
         FlightTaskControl,                  // 飞行任务控制(航线任务控制)模块;
         FlightTask,                         // 飞行任务管理(航线任务管理)模块;

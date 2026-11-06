@@ -27,6 +27,21 @@ protected:
     Swig::BoolArray<1> swig_override;
 };
 
+class SwigDirector_AirsenseWarningCallback : public AirsenseWarningCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_AirsenseWarningCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_AirsenseWarningCallback();
+    virtual void onAirsenseWarning(flight_hub_sdk::AirsenseWarning const &msg);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
 class SwigDirector_AircraftPayloadsOsdInfoListCallback : public AircraftPayloadsOsdInfoListCallback, public Swig::Director {
 
 public:
@@ -522,6 +537,21 @@ protected:
     Swig::BoolArray<1> swig_override;
 };
 
+class SwigDirector_ControlAuthResultCallback : public ControlAuthResultCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_ControlAuthResultCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_ControlAuthResultCallback();
+    virtual void onResult(flight_hub_sdk::FlightHubError const &err,flight_hub_sdk::ControlAuthResult const &result);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
 class SwigDirector_LiveStreamStartCallback : public LiveStreamStartCallback, public Swig::Director {
 
 public:
@@ -574,6 +604,21 @@ public:
     SwigDirector_FlyToPointStartCallback(JNIEnv *jenv);
     virtual ~SwigDirector_FlyToPointStartCallback();
     virtual void onFlyToPointStart(flight_hub_sdk::FlightHubError err,std::string const &fly_to_id);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_FlyToPointStartResultCallback : public FlyToPointStartResultCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_FlyToPointStartResultCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_FlyToPointStartResultCallback();
+    virtual void onFlyToPointStartResult(flight_hub_sdk::FlightHubError err,flight_hub_sdk::FlyToPointStartResult const &result);
 public:
     bool swig_overrides(int n) {
       return (n < 1 ? swig_override[n] : false);
@@ -784,6 +829,21 @@ public:
     SwigDirector_TakeoffResultCallback(JNIEnv *jenv);
     virtual ~SwigDirector_TakeoffResultCallback();
     virtual void onResult(flight_hub_sdk::FlightHubError const &err,flight_hub_sdk::TakeoffResult const &result);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_GroundTakeoffResultCallback : public GroundTakeoffResultCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_GroundTakeoffResultCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_GroundTakeoffResultCallback();
+    virtual void onResult(flight_hub_sdk::FlightHubError const &err,flight_hub_sdk::GroundTakeoffResult const &result);
 public:
     bool swig_overrides(int n) {
       return (n < 1 ? swig_override[n] : false);
@@ -1309,6 +1369,21 @@ public:
     SwigDirector_GetFlightTaskTrackCallback(JNIEnv *jenv);
     virtual ~SwigDirector_GetFlightTaskTrackCallback();
     virtual void onGetFlightTaskTrack(flight_hub_sdk::FlightHubError err,flight_hub_sdk::GetFlightTaskTrackResults const &results);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_GetFlightRisksCallback : public GetFlightRisksCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_GetFlightRisksCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_GetFlightRisksCallback();
+    virtual void onGetFlightRisks(flight_hub_sdk::FlightHubError err,flight_hub_sdk::GetFlightRisksResults const &results);
 public:
     bool swig_overrides(int n) {
       return (n < 1 ? swig_override[n] : false);
@@ -1894,6 +1969,36 @@ public:
     SwigDirector_WaylineTaskEventCallback(JNIEnv *jenv);
     virtual ~SwigDirector_WaylineTaskEventCallback();
     virtual void onWaylineTaskEvent(flight_hub_sdk::WaylineTaskEvent const &event);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_ReturnHomeInfoEventCallback : public ReturnHomeInfoEventCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_ReturnHomeInfoEventCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_ReturnHomeInfoEventCallback();
+    virtual void onReturnHomeInfoEvent(flight_hub_sdk::ReturnHomeInfoEvent const &event);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_TaskExceptionEventCallback : public TaskExceptionEventCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_TaskExceptionEventCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_TaskExceptionEventCallback();
+    virtual void onTaskExceptionEvent(flight_hub_sdk::TaskExceptionEvent const &event);
 public:
     bool swig_overrides(int n) {
       return (n < 1 ? swig_override[n] : false);
@@ -3012,6 +3117,51 @@ protected:
     Swig::BoolArray<1> swig_override;
 };
 
+class SwigDirector_PanoStitchActionCallback : public PanoStitchActionCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_PanoStitchActionCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_PanoStitchActionCallback();
+    virtual void onPanoStitchAction(flight_hub_sdk::FlightHubError err);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_GetPanoTierTileUrlCallback : public GetPanoTierTileUrlCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_GetPanoTierTileUrlCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_GetPanoTierTileUrlCallback();
+    virtual void onGetPanoTierTileUrl(flight_hub_sdk::FlightHubError err,flight_hub_sdk::GetPanoTierTileUrlResult const &result);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_PanoStitchProgressCallback : public PanoStitchProgressCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_PanoStitchProgressCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_PanoStitchProgressCallback();
+    virtual void onPanoStitchProgress(flight_hub_sdk::PanoStitchProgressMsg const &msg);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
 class SwigDirector_GetWaylineEditorStsCallback : public GetWaylineEditorStsCallback, public Swig::Director {
 
 public:
@@ -3312,6 +3462,21 @@ protected:
     Swig::BoolArray<1> swig_override;
 };
 
+class SwigDirector_TerraDeleteModelFilesCallback : public TerraDeleteModelFilesCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_TerraDeleteModelFilesCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_TerraDeleteModelFilesCallback();
+    virtual void onTerraDeleteModelFiles(flight_hub_sdk::FlightHubError err,flight_hub_sdk::TerraDeleteModelFilesResult const &result);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
 class SwigDirector_TerraUnzipProgressCallback : public TerraUnzipProgressCallback, public Swig::Director {
 
 public:
@@ -3499,6 +3664,21 @@ public:
     SwigDirector_GetFlightAreasSyncStatusCallback(JNIEnv *jenv);
     virtual ~SwigDirector_GetFlightAreasSyncStatusCallback();
     virtual void onGetFlightAreasSyncStatus(flight_hub_sdk::FlightHubError err,flight_hub_sdk::GetAreasSyncStatusResults const &result);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_GetFlightAreasUrlCallback : public GetFlightAreasUrlCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_GetFlightAreasUrlCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_GetFlightAreasUrlCallback();
+    virtual void onGetFlightAreasUrl(flight_hub_sdk::FlightHubError err,flight_hub_sdk::GetFlightAreasUrlResults const &result);
 public:
     bool swig_overrides(int n) {
       return (n < 1 ? swig_override[n] : false);
@@ -4677,6 +4857,21 @@ protected:
     Swig::BoolArray<1> swig_override;
 };
 
+class SwigDirector_AiAlertRecordsNotifyCallback : public AiAlertRecordsNotifyCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_AiAlertRecordsNotifyCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_AiAlertRecordsNotifyCallback();
+    virtual void onAiAlertRecordsNotify(flight_hub_sdk::AiAlertRecordsNotifyResult result);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
 class SwigDirector_CreateLiveSyncCallback : public CreateLiveSyncCallback, public Swig::Director {
 
 public:
@@ -5157,111 +5352,6 @@ protected:
     Swig::BoolArray<1> swig_override;
 };
 
-class SwigDirector_DockDeparturePointCallback : public DockDeparturePointCallback, public Swig::Director {
-
-public:
-    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
-    SwigDirector_DockDeparturePointCallback(JNIEnv *jenv);
-    virtual ~SwigDirector_DockDeparturePointCallback();
-    virtual void onDockDeparturePoint(flight_hub_sdk::DockDeparturePoint const &msg);
-public:
-    bool swig_overrides(int n) {
-      return (n < 1 ? swig_override[n] : false);
-    }
-protected:
-    Swig::BoolArray<1> swig_override;
-};
-
-class SwigDirector_AircraftVisualScoutStatusCallback : public AircraftVisualScoutStatusCallback, public Swig::Director {
-
-public:
-    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
-    SwigDirector_AircraftVisualScoutStatusCallback(JNIEnv *jenv);
-    virtual ~SwigDirector_AircraftVisualScoutStatusCallback();
-    virtual void onAircraftVisualScoutStatus(flight_hub_sdk::AircraftVisualScoutStatus const &msg);
-public:
-    bool swig_overrides(int n) {
-      return (n < 1 ? swig_override[n] : false);
-    }
-protected:
-    Swig::BoolArray<1> swig_override;
-};
-
-class SwigDirector_AircraftVisualScoutAbnormalInfoCallback : public AircraftVisualScoutAbnormalInfoCallback, public Swig::Director {
-
-public:
-    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
-    SwigDirector_AircraftVisualScoutAbnormalInfoCallback(JNIEnv *jenv);
-    virtual ~SwigDirector_AircraftVisualScoutAbnormalInfoCallback();
-    virtual void onAircraftVisualScoutAbnormalInfo(flight_hub_sdk::AircraftVisualScoutAbnormalInfo const &msg);
-public:
-    bool swig_overrides(int n) {
-      return (n < 1 ? swig_override[n] : false);
-    }
-protected:
-    Swig::BoolArray<1> swig_override;
-};
-
-class SwigDirector_AircraftVisualScoutObstacleInfoCallback : public AircraftVisualScoutObstacleInfoCallback, public Swig::Director {
-
-public:
-    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
-    SwigDirector_AircraftVisualScoutObstacleInfoCallback(JNIEnv *jenv);
-    virtual ~SwigDirector_AircraftVisualScoutObstacleInfoCallback();
-    virtual void onAircraftVisualScoutObstacleInfo(flight_hub_sdk::AircraftVisualScoutObstacleInfo const &msg);
-public:
-    bool swig_overrides(int n) {
-      return (n < 1 ? swig_override[n] : false);
-    }
-protected:
-    Swig::BoolArray<1> swig_override;
-};
-
-class SwigDirector_EphemerisDownloadStateCallback : public EphemerisDownloadStateCallback, public Swig::Director {
-
-public:
-    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
-    SwigDirector_EphemerisDownloadStateCallback(JNIEnv *jenv);
-    virtual ~SwigDirector_EphemerisDownloadStateCallback();
-    virtual void onEphemerisDownloadState(flight_hub_sdk::EphemerisDownloadState const &msg);
-public:
-    bool swig_overrides(int n) {
-      return (n < 1 ? swig_override[n] : false);
-    }
-protected:
-    Swig::BoolArray<1> swig_override;
-};
-
-class SwigDirector_EphemerisInfoCallback : public EphemerisInfoCallback, public Swig::Director {
-
-public:
-    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
-    SwigDirector_EphemerisInfoCallback(JNIEnv *jenv);
-    virtual ~SwigDirector_EphemerisInfoCallback();
-    virtual void onEphemerisInfo(flight_hub_sdk::EphemerisInfo const &msg);
-public:
-    bool swig_overrides(int n) {
-      return (n < 1 ? swig_override[n] : false);
-    }
-protected:
-    Swig::BoolArray<1> swig_override;
-};
-
-class SwigDirector_InOutWaylineFlightSettingResultCallback : public InOutWaylineFlightSettingResultCallback, public Swig::Director {
-
-public:
-    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
-    SwigDirector_InOutWaylineFlightSettingResultCallback(JNIEnv *jenv);
-    virtual ~SwigDirector_InOutWaylineFlightSettingResultCallback();
-    virtual void onResult(flight_hub_sdk::InOutWaylineFlightSettingParams const &params,flight_hub_sdk::FlightHubError err);
-public:
-    bool swig_overrides(int n) {
-      return (n < 1 ? swig_override[n] : false);
-    }
-protected:
-    Swig::BoolArray<1> swig_override;
-};
-
 class SwigDirector_DeviceOtaProgressCallback : public DeviceOtaProgressCallback, public Swig::Director {
 
 public:
@@ -5314,6 +5404,51 @@ public:
     SwigDirector_PsdkSpeakerTtsPlayStartProgressCallback(JNIEnv *jenv);
     virtual ~SwigDirector_PsdkSpeakerTtsPlayStartProgressCallback();
     virtual void onPsdkSpeakerTtsPlayStartProgress(flight_hub_sdk::PsdkSpeakerPlayStartProgress const &msg);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_PsdkCustomDataTransmissionFromPsdkCallback : public PsdkCustomDataTransmissionFromPsdkCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_PsdkCustomDataTransmissionFromPsdkCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_PsdkCustomDataTransmissionFromPsdkCallback();
+    virtual void onPsdkCustomDataTransmissionFromPsdk(flight_hub_sdk::PsdkCustomDataTransmission const &msg);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_EsdkCustomDataTransmissionFromEsdkCallback : public EsdkCustomDataTransmissionFromEsdkCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_EsdkCustomDataTransmissionFromEsdkCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_EsdkCustomDataTransmissionFromEsdkCallback();
+    virtual void onEsdkCustomDataTransmissionFromEsdk(flight_hub_sdk::EsdkCustomDataTransmission const &msg);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_HighestPriorityUploadFlighttaskMediaCallback : public HighestPriorityUploadFlighttaskMediaCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_HighestPriorityUploadFlighttaskMediaCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_HighestPriorityUploadFlighttaskMediaCallback();
+    virtual void onHighestPriorityUploadFlighttaskMedia(flight_hub_sdk::HighestPriorityUploadFlighttaskMedia const &msg);
 public:
     bool swig_overrides(int n) {
       return (n < 1 ? swig_override[n] : false);
@@ -5382,6 +5517,21 @@ protected:
     Swig::BoolArray<1> swig_override;
 };
 
+class SwigDirector_DrcLandingMissionStateCallback : public DrcLandingMissionStateCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_DrcLandingMissionStateCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_DrcLandingMissionStateCallback();
+    virtual void onDrcLandingMissionState(flight_hub_sdk::DrcLandingMissionState const &info);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
 class SwigDirector_FlashLedStateInfoCallback : public FlashLedStateInfoCallback, public Swig::Director {
 
 public:
@@ -5419,6 +5569,21 @@ public:
     SwigDirector_FlashLedConfigCallback(JNIEnv *jenv);
     virtual ~SwigDirector_FlashLedConfigCallback();
     virtual void onFlashLedConfig(flight_hub_sdk::FlightHubError err,flight_hub_sdk::FlashLedConfig const &config);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_AutoRecordConfigCallback : public AutoRecordConfigCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_AutoRecordConfigCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_AutoRecordConfigCallback();
+    virtual void onAutoRecordConfig(flight_hub_sdk::FlightHubError err,flight_hub_sdk::AutoRecordConfig const &config);
 public:
     bool swig_overrides(int n) {
       return (n < 1 ? swig_override[n] : false);
@@ -5682,6 +5847,201 @@ protected:
     Swig::BoolArray<1> swig_override;
 };
 
+class SwigDirector_CascadeAddChildNodeCallback : public CascadeAddChildNodeCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_CascadeAddChildNodeCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_CascadeAddChildNodeCallback();
+    virtual void onCascadeAddChildNode(flight_hub_sdk::FlightHubError err,flight_hub_sdk::AddChildNodeResult const &result);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_CascadeEnableChildNodesCallback : public CascadeEnableChildNodesCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_CascadeEnableChildNodesCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_CascadeEnableChildNodesCallback();
+    virtual void onCascadeEnableChildNodes(flight_hub_sdk::FlightHubError err,flight_hub_sdk::CascadeBatchOpResult const &result);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_CascadeDisableChildNodesCallback : public CascadeDisableChildNodesCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_CascadeDisableChildNodesCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_CascadeDisableChildNodesCallback();
+    virtual void onCascadeDisableChildNodes(flight_hub_sdk::FlightHubError err,flight_hub_sdk::CascadeBatchOpResult const &result);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_CascadeDeleteChildNodeCallback : public CascadeDeleteChildNodeCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_CascadeDeleteChildNodeCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_CascadeDeleteChildNodeCallback();
+    virtual void onCascadeDeleteChildNode(flight_hub_sdk::FlightHubError err);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_CascadeGetReachableChildrenCallback : public CascadeGetReachableChildrenCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_CascadeGetReachableChildrenCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_CascadeGetReachableChildrenCallback();
+    virtual void onCascadeGetReachableChildren(flight_hub_sdk::FlightHubError err,flight_hub_sdk::CascadeChildNodeListResult const &result);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_CascadeGetParentNodeCallback : public CascadeGetParentNodeCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_CascadeGetParentNodeCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_CascadeGetParentNodeCallback();
+    virtual void onCascadeGetParentNode(flight_hub_sdk::FlightHubError err,flight_hub_sdk::CascadeParentNodeInfo const &info);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_CascadeRespondToParentCallback : public CascadeRespondToParentCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_CascadeRespondToParentCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_CascadeRespondToParentCallback();
+    virtual void onCascadeRespondToParent(flight_hub_sdk::FlightHubError err);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_CascadeGetNodeIndexCallback : public CascadeGetNodeIndexCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_CascadeGetNodeIndexCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_CascadeGetNodeIndexCallback();
+    virtual void onCascadeGetNodeIndex(flight_hub_sdk::FlightHubError err,flight_hub_sdk::CascadeChildNodeListResult const &result);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_CascadeGetConnectivityCallback : public CascadeGetConnectivityCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_CascadeGetConnectivityCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_CascadeGetConnectivityCallback();
+    virtual void onCascadeGetConnectivity(flight_hub_sdk::FlightHubError err,flight_hub_sdk::CascadeConnectivityResult const &result);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_CascadeGetParentConnectivityCallback : public CascadeGetParentConnectivityCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_CascadeGetParentConnectivityCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_CascadeGetParentConnectivityCallback();
+    virtual void onCascadeGetParentConnectivity(flight_hub_sdk::FlightHubError err,flight_hub_sdk::CascadeParentConnectivity const &result);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_CascadePostToNodeCallback : public CascadePostToNodeCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_CascadePostToNodeCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_CascadePostToNodeCallback();
+    virtual void onCascadePostToNode(flight_hub_sdk::FlightHubError err);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_CascadeNodeStatusEventCallback : public CascadeNodeStatusEventCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_CascadeNodeStatusEventCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_CascadeNodeStatusEventCallback();
+    virtual void onCascadeNodeStatusEvent(flight_hub_sdk::CascadeNodeStatusEvent const &event);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
+class SwigDirector_CascadeNotifyEventCallback : public CascadeNotifyEventCallback, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_CascadeNotifyEventCallback(JNIEnv *jenv);
+    virtual ~SwigDirector_CascadeNotifyEventCallback();
+    virtual void onCascadeNotifyEvent(flight_hub_sdk::CascadeNotifyEvent const &event);
+public:
+    bool swig_overrides(int n) {
+      return (n < 1 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<1> swig_override;
+};
+
 class SwigDirector_IFlightTaskModule : public flight_hub_sdk::IFlightTaskModule, public Swig::Director {
 
 public:
@@ -5691,6 +6051,7 @@ public:
     virtual void getFlightTaskList(flight_hub_sdk::FlightTaskListParams const &params,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::FlightTaskListResult const &) > callback);
     virtual void getCommandTaskList(flight_hub_sdk::GetCommandTaskListParams const &params,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::GetCommandTaskListResults const &) > callback);
     virtual void getFlightTaskTrack(flight_hub_sdk::GetFlightTaskTrackParams const &params,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::GetFlightTaskTrackResults const &) > callback);
+    virtual void getFlightRisks(flight_hub_sdk::GetFlightRisksParams const &params,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::GetFlightRisksResults const &) > callback);
     virtual void createFlightTask(flight_hub_sdk::CreateTaskReq const &req,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::CreateTaskResp const &) > callback);
     virtual void getFlightTaskDetail(std::string const &task_uuid,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::TaskDetail const &) > callback);
     virtual void editFlightTask(std::string const &task_uuid,flight_hub_sdk::EditTaskReq const &req,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::CreateTaskResp const &) > callback);
@@ -5707,8 +6068,10 @@ public:
     virtual void cancelListenTaskTopoChanged(int listen_id);
 public:
     bool swig_overrides(int n) {
-      return false;
+      return (n < 1 ? swig_override[n] : false);
     }
+protected:
+    Swig::BoolArray<1> swig_override;
 };
 
 class SwigDirector_IMaintenanceManagementModule : public flight_hub_sdk::IMaintenanceManagementModule, public Swig::Director {
@@ -5852,6 +6215,7 @@ public:
     SwigDirector_IFlyToPointModule(JNIEnv *jenv);
     virtual ~SwigDirector_IFlyToPointModule();
     virtual void start(flight_hub_sdk::FlyToPointParams const &params,std::function< void (flight_hub_sdk::FlightHubError,std::string) > const callback);
+    virtual void startWithResult(flight_hub_sdk::FlyToPointParams const &params,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::FlyToPointStartResult const &) > const callback);
     virtual void drcStop(std::function< void (flight_hub_sdk::FlightHubError) > const callback);
     virtual void updateTargetPoints(flight_hub_sdk::FlyToUpdateTargetPointsParams const &params,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
     virtual int listenFlyToTaskEvent(std::function< void (flight_hub_sdk::FlyToTaskEvent const &) > const &callback);
@@ -5898,6 +6262,12 @@ public:
     virtual void resume(std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
     virtual int listenWaylineTaskEvent(std::function< void (flight_hub_sdk::WaylineTaskEvent const &) > const &callback);
     virtual void cancelListenWaylineTaskEvent(int listen_id);
+    virtual int listenReturnHomeInfoEvent(std::function< void (flight_hub_sdk::ReturnHomeInfoEvent const &) > const &callback);
+    virtual void cancelListenReturnHomeInfoEvent(int listen_id);
+    virtual int listenReturnHomeInfoEventByDevice(std::string const &device_sn,std::function< void (flight_hub_sdk::ReturnHomeInfoEvent const &) > const &callback);
+    virtual void cancelListenReturnHomeInfoEventByDevice(int listen_id);
+    virtual int listenTaskExceptionEvent(std::function< void (flight_hub_sdk::TaskExceptionEvent const &) > const &callback);
+    virtual void cancelListenTaskExceptionEvent(int listen_id);
 public:
     bool swig_overrides(int n) {
       return false;
@@ -5919,6 +6289,20 @@ public:
     virtual void cancelListenDroneCurrentCommanderFlightMode(int listen_id);
     virtual int listenDroneCommanderModeLostAction(std::function< void (flight_hub_sdk::DroneCommanderModeLostAction const &) > const &callback);
     virtual void cancelListenDroneCommanderModeLostAction(int listen_id);
+public:
+    bool swig_overrides(int n) {
+      return false;
+    }
+};
+
+class SwigDirector_IGroundFlightModule : public flight_hub_sdk::IGroundFlightModule, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_IGroundFlightModule(JNIEnv *jenv);
+    virtual ~SwigDirector_IGroundFlightModule();
+    virtual void groundTakeoff(flight_hub_sdk::GroundTakeoffParams const &params,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::GroundTakeoffResult const &) > const &callback);
+    virtual void groundLanding(int cmd,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
 public:
     bool swig_overrides(int n) {
       return false;
@@ -5952,10 +6336,12 @@ public:
     virtual void drcEmergencyLanding(std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
     virtual void drcForceLanding(std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
     virtual void returnHome(std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
+    virtual void returnHome(std::string const &target_dock_sn,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
     virtual void returnHomeCancel(std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
     virtual void drcSendStickControl(flight_hub_sdk::StickControlData const &data);
     virtual void drcSetDroneHover(int duration,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
     virtual void drcSetFollowMouseParameter(int speed,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
+    virtual void drcSetFlyingMaxSpeed(double speed,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
     virtual void drcSetNightLightsState(int night_lights_state,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
     virtual void drcSetStealthState(int stealth_state,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
     virtual void drcOpenParachute(int force,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
@@ -5969,6 +6355,8 @@ public:
     virtual void cancelListenDrcBatteriesInfo(int listen_id);
     virtual int listenDrcParachuteInfo(std::function< void (flight_hub_sdk::DrcParachuteInfo const &) > const &callback);
     virtual void cancelListenDrcParachuteInfo(int listen_id);
+    virtual int listenDrcLandingMissionState(std::function< void (flight_hub_sdk::DrcLandingMissionState const &) > const &callback);
+    virtual void cancelListenDrcLandingMissionState(int listen_id);
 public:
     bool swig_overrides(int n) {
       return false;
@@ -5983,10 +6371,14 @@ public:
     virtual ~SwigDirector_IControlAuthModule();
     virtual void acquireFlightControlAuthority(std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
     virtual void releaseFlightControlAuthority(std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
+    virtual void acquireFlightControlAuthorityWithResult(flight_hub_sdk::IControlAuthModule::ControlAuthResultHandler const &callback);
+    virtual void releaseFlightControlAuthorityWithResult(flight_hub_sdk::IControlAuthModule::ControlAuthResultHandler const &callback);
     virtual int listenFlightControlAuthority(std::function< void (bool) > const &callback);
     virtual void cancelListenFlightControlAuthority(int listen_id);
     virtual void acquirePayloadControlAuthority(std::string const &payload_index,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
     virtual void releasePayloadControlAuthority(std::string const &payload_index,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
+    virtual void acquirePayloadControlAuthorityWithResult(std::string const &payload_index,flight_hub_sdk::IControlAuthModule::ControlAuthResultHandler const &callback);
+    virtual void releasePayloadControlAuthorityWithResult(std::string const &payload_index,flight_hub_sdk::IControlAuthModule::ControlAuthResultHandler const &callback);
     virtual int listenPayloadControlAuthority(std::string const &payload_index,std::function< void (bool) > const &callback);
     virtual void cancelListenPayloadControlAuthority(std::string const &payload_index,int listen_id);
 public:
@@ -6026,7 +6418,7 @@ public:
     virtual ~SwigDirector_IFlightSettingsModule();
     virtual void setFlightSmartPlanMode(std::string const &device_sn,int mode,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::FlightSmartPlanModeResult const &) > callback);
     virtual void setOutOfControlAction(std::string const &device_sn,std::string const &action,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::FlightOutOfControlActionResult const &) > callback);
-    virtual void setFlightTaskHeight(std::string const &device_sn,int height,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::FlightCommanderHeightResult const &) > callback);
+    virtual void setFlightTaskHeight(std::string const &device_sn,double height,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::FlightCommanderHeightResult const &) > callback);
     virtual void setRthAltitude(std::string const &device_sn,int altitude,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::FlightRthAltitudeResult const &) > callback);
     virtual void setAirTransferEnable(std::string const &device_sn,bool enabled,std::function< void (flight_hub_sdk::FlightHubError) > callback);
 public:
@@ -6121,6 +6513,39 @@ public:
     virtual void cancelListenPsdkSpeakerTtsPlayStartProgress(int listen_id);
     virtual int listenDronePsdkUiResource(std::function< void (flight_hub_sdk::DronePsdkUiResource const &) > const &callback);
     virtual void cancelListenDronePsdkUiResource(int listen_id);
+    virtual int listenPsdkCustomDataTransmissionFromPsdk(std::function< void (flight_hub_sdk::PsdkCustomDataTransmission const &) > const &callback);
+    virtual void cancelListenPsdkCustomDataTransmissionFromPsdk(int listen_id);
+    virtual void sendPsdkCustomDataTransmissionToPsdk(std::string const &value,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
+public:
+    bool swig_overrides(int n) {
+      return false;
+    }
+};
+
+class SwigDirector_IEsdkControlModule : public flight_hub_sdk::IEsdkControlModule, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_IEsdkControlModule(JNIEnv *jenv);
+    virtual ~SwigDirector_IEsdkControlModule();
+    virtual int listenEsdkCustomDataTransmissionFromEsdk(std::function< void (flight_hub_sdk::EsdkCustomDataTransmission const &) > const &callback);
+    virtual void cancelListenEsdkCustomDataTransmissionFromEsdk(int listen_id);
+    virtual void sendEsdkCustomDataTransmissionToEsdk(std::string const &value,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
+public:
+    bool swig_overrides(int n) {
+      return false;
+    }
+};
+
+class SwigDirector_IFlightTaskMediaUploadModule : public flight_hub_sdk::IFlightTaskMediaUploadModule, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_IFlightTaskMediaUploadModule(JNIEnv *jenv);
+    virtual ~SwigDirector_IFlightTaskMediaUploadModule();
+    virtual void uploadFlighttaskMediaPrioritize(std::string const &flight_id,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
+    virtual int listenHighestPriorityUploadFlighttaskMedia(std::function< void (flight_hub_sdk::HighestPriorityUploadFlighttaskMedia const &) > const &callback);
+    virtual void cancelListenHighestPriorityUploadFlighttaskMedia(int listen_id);
 public:
     bool swig_overrides(int n) {
       return false;
@@ -6459,6 +6884,7 @@ public:
     virtual std::shared_ptr< flight_hub_sdk::ILiveRecordModule > getLiveRecord(flight_hub_sdk::LiveInfo const &params);
     virtual std::shared_ptr< flight_hub_sdk::ILiveDeviceModule > getLiveDeviceModule();
     virtual std::shared_ptr< flight_hub_sdk::ITakeoffModule > getTakeoffModule();
+    virtual std::shared_ptr< flight_hub_sdk::IGroundFlightModule > getGroundFlightModule();
     virtual std::shared_ptr< flight_hub_sdk::IFlightControlModule > getFlightControlModule();
     virtual std::shared_ptr< flight_hub_sdk::IControlAuthModule > getControlAuthModule();
     virtual std::shared_ptr< flight_hub_sdk::IDrcModule > getDrcModule();
@@ -6466,6 +6892,8 @@ public:
     virtual std::shared_ptr< flight_hub_sdk::ITestFlightModule > getTestFlightModule();
     virtual std::shared_ptr< flight_hub_sdk::IOnboardAiModule > getOnboardAiModule();
     virtual std::shared_ptr< flight_hub_sdk::IPsdkControlModule > getPsdkControlModule();
+    virtual std::shared_ptr< flight_hub_sdk::IEsdkControlModule > getEsdkControlModule();
+    virtual std::shared_ptr< flight_hub_sdk::IFlightTaskMediaUploadModule > getFlightTaskMediaUploadModule();
     virtual std::shared_ptr< flight_hub_sdk::ICameraControlModule > getCameraControlModule();
     virtual std::shared_ptr< flight_hub_sdk::IFlyToPointModule > getFlyToPointModule();
     virtual std::shared_ptr< flight_hub_sdk::IFlightTaskControlModule > getFlightTaskControlModule();
@@ -6474,14 +6902,15 @@ public:
     virtual std::shared_ptr< flight_hub_sdk::IDroneOsdModule > getDroneOsdModule();
     virtual std::shared_ptr< flight_hub_sdk::IDeviceStateModule > getDeviceStateModule();
     virtual std::shared_ptr< flight_hub_sdk::IDeviceHMSModule > getDeviceHMSModule();
+    virtual std::shared_ptr< flight_hub_sdk::IAirsenseWarningModule > getAirsenseWarningModule();
     virtual std::shared_ptr< flight_hub_sdk::IDeviceDebugModule > getDeviceDebugModule();
     virtual std::shared_ptr< flight_hub_sdk::IAIBoxModule > getAIBoxModule();
 public:
     bool swig_overrides(int n) {
-      return (n < 21 ? swig_override[n] : false);
+      return (n < 25 ? swig_override[n] : false);
     }
 protected:
-    Swig::BoolArray<21> swig_override;
+    Swig::BoolArray<25> swig_override;
 };
 
 class SwigDirector_IDeviceStateModule : public flight_hub_sdk::IDeviceStateModule, public Swig::Director {
@@ -6514,6 +6943,20 @@ public:
     }
 };
 
+class SwigDirector_IAirsenseWarningModule : public flight_hub_sdk::IAirsenseWarningModule, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_IAirsenseWarningModule(JNIEnv *jenv);
+    virtual ~SwigDirector_IAirsenseWarningModule();
+    virtual int listenAirsenseWarning(std::function< void (flight_hub_sdk::AirsenseWarning const &) > const &callback);
+    virtual void cancelListenAirsenseWarning(int listen_id);
+public:
+    bool swig_overrides(int n) {
+      return false;
+    }
+};
+
 class SwigDirector_ILiveDeviceModule : public flight_hub_sdk::ILiveDeviceModule, public Swig::Director {
 
 public:
@@ -6527,34 +6970,6 @@ public:
     virtual void cancelListenDockLiveStatus(int listen_id);
     virtual int listenDockLiveCapacity(std::function< void (flight_hub_sdk::DockLiveCapacity const &) > const &callback);
     virtual void cancelListenDockLiveCapacity(int listen_id);
-public:
-    bool swig_overrides(int n) {
-      return false;
-    }
-};
-
-class SwigDirector_IDeployModule : public flight_hub_sdk::IDeployModule, public Swig::Director {
-
-public:
-    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
-    SwigDirector_IDeployModule(JNIEnv *jenv);
-    virtual ~SwigDirector_IDeployModule();
-    virtual int listenDockDeparturePoint(std::function< void (flight_hub_sdk::DockDeparturePoint const &) > const &callback);
-    virtual void cancelListenDockDeparturePoint(int listen_id);
-    virtual int listenAircraftVisualScoutStatus(std::function< void (flight_hub_sdk::AircraftVisualScoutStatus const &) > const &callback);
-    virtual void cancelListenAircraftVisualScoutStatus(int listen_id);
-    virtual int listenAircraftVisualScoutAbnormalInfo(std::function< void (flight_hub_sdk::AircraftVisualScoutAbnormalInfo const &) > const &callback);
-    virtual void cancelListenAircraftVisualScoutAbnormalInfo(int listen_id);
-    virtual int listenAircraftVisualScoutObstacleInfo(std::function< void (flight_hub_sdk::AircraftVisualScoutObstacleInfo const &) > const &callback);
-    virtual void cancelListenAircraftVisualScoutObstacleInfo(int listen_id);
-    virtual int listenAircraftEphemerisDownloadState(std::function< void (flight_hub_sdk::EphemerisDownloadState const &) > const &callback);
-    virtual void cancelListenAircraftEphemerisDownloadState(int listen_id);
-    virtual int listenAircraftEphemerisInfo(std::function< void (flight_hub_sdk::EphemerisInfo const &) > const &callback);
-    virtual void cancelListenAircraftEphemerisInfo(int listen_id);
-    virtual void downloadEphemeris(flight_hub_sdk::DownloadEphemerisParams const &params,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
-    virtual void executeInOutWaylineDetect(flight_hub_sdk::InOutWaylineDetectParams const &params,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
-    virtual void setInOutWaylineFlight(flight_hub_sdk::InOutWaylineFlightSettingParams const &params,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
-    virtual void getInOutWaylineFlightSetting(std::function< void (flight_hub_sdk::InOutWaylineFlightSettingParams const &,flight_hub_sdk::FlightHubError) > const &callback);
 public:
     bool swig_overrides(int n) {
       return false;
@@ -6592,7 +7007,6 @@ public:
     virtual std::shared_ptr< flight_hub_sdk::ILiveRecordModule > getLiveRecord(flight_hub_sdk::LiveInfo const &params);
     virtual std::shared_ptr< flight_hub_sdk::ILiveDeviceModule > getLiveDeviceModule();
     virtual std::shared_ptr< flight_hub_sdk::IDockOsdModule > getDockOsdModule();
-    virtual std::shared_ptr< flight_hub_sdk::IDeployModule > getDeployModule();
     virtual std::shared_ptr< flight_hub_sdk::IDockControlModule > getDockControlModule();
     virtual std::shared_ptr< flight_hub_sdk::IRtkCalibrationModule > getRtkCalibrationModule();
     virtual std::shared_ptr< flight_hub_sdk::INetworkTestModule > getNetworkTestModule();
@@ -6601,10 +7015,10 @@ public:
     virtual std::shared_ptr< flight_hub_sdk::IDeviceHMSModule > getDeviceHMSModule();
 public:
     bool swig_overrides(int n) {
-      return (n < 11 ? swig_override[n] : false);
+      return (n < 10 ? swig_override[n] : false);
     }
 protected:
-    Swig::BoolArray<11> swig_override;
+    Swig::BoolArray<10> swig_override;
 };
 
 class SwigDirector_IRemoteController : public flight_hub_sdk::IRemoteController, public Swig::Director {
@@ -6781,6 +7195,33 @@ public:
     }
 };
 
+class SwigDirector_ICascadeModule : public flight_hub_sdk::ICascadeModule, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_ICascadeModule(JNIEnv *jenv);
+    virtual ~SwigDirector_ICascadeModule();
+    virtual void addChildNode(flight_hub_sdk::AddChildNodeRequest const &req,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::AddChildNodeResult const &) > callback);
+    virtual void enableChildNodes(std::vector< std::string > const &node_ids,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::CascadeBatchOpResult const &) > callback);
+    virtual void disableChildNodes(std::vector< std::string > const &node_ids,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::CascadeBatchOpResult const &) > callback);
+    virtual void deleteChildNode(std::string const &node_id,std::function< void (flight_hub_sdk::FlightHubError) > callback);
+    virtual void getReachableChildren(flight_hub_sdk::CascadeChildrenQuery const &query,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::CascadeChildNodeListResult const &) > callback);
+    virtual void getParentNode(std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::CascadeParentNodeInfo const &) > callback);
+    virtual void respondToParent(flight_hub_sdk::CascadeParentRespondRequest const &req,std::function< void (flight_hub_sdk::FlightHubError) > callback);
+    virtual void getNodeIndex(int32_t page,int32_t size,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::CascadeChildNodeListResult const &) > callback);
+    virtual void getConnectivity(std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::CascadeConnectivityResult const &) > callback);
+    virtual void getParentConnectivity(std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::CascadeParentConnectivity const &) > callback);
+    virtual void postToNode(std::string const &dst_node_id,std::string const &body,std::function< void (flight_hub_sdk::FlightHubError) > callback);
+    virtual int listenNodeStatusChanged(std::function< void (flight_hub_sdk::CascadeNodeStatusEvent const &) > callback);
+    virtual void cancelListenNodeStatusChanged(int listen_id);
+    virtual int listenNotifyPayload(std::function< void (flight_hub_sdk::CascadeNotifyEvent const &) > callback);
+    virtual void cancelListenNotifyPayload(int listen_id);
+public:
+    bool swig_overrides(int n) {
+      return false;
+    }
+};
+
 class SwigDirector_IMediaServiceModule : public flight_hub_sdk::IMediaServiceModule, public Swig::Director {
 
 public:
@@ -6799,6 +7240,13 @@ public:
     virtual void mediaUploadCallback(flight_hub_sdk::MediaUploadCallbackParams const &params,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::MediaUploadCallbackResult const &) > const &callback);
     virtual void uploadGeoMediaFile(flight_hub_sdk::UploadGeoMediaFileParams const &params,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::UploadGeoMediaFileResult const &) > const &callback);
     virtual void getMediaFileDetailById(int file_id,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::GetMediaFileDetailByIdResult const &) > const &callback);
+    virtual void startPanoStitch(long long file_id,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
+    virtual void stopPanoStitch(long long file_id,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
+    virtual void retryPanoStitch(long long file_id,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
+    virtual void startPanoTier(long long file_id,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
+    virtual void getPanoTierTileUrl(long long file_id,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::GetPanoTierTileUrlResult const &) > const &callback);
+    virtual int subscribePanoStitchProgress(std::function< void (flight_hub_sdk::PanoStitchProgressMsg const &) > const &callback);
+    virtual void cancelListenPanoStitchProgress(int listen_id);
 public:
     bool swig_overrides(int n) {
       return false;
@@ -6821,6 +7269,8 @@ public:
     virtual void getSfmResult(std::string const &file_uuid,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::TerraBuildSfmResult const &) > callback);
     virtual void deleteModelFile(int file_id,std::function< void (flight_hub_sdk::FlightHubError) > callback);
     virtual void batchDeleteModelFiles(std::vector< int > const &file_ids,std::function< void (flight_hub_sdk::FlightHubError) > callback);
+    virtual void deleteModelFileWithResult(int file_id,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::TerraDeleteModelFilesResult const &) > callback);
+    virtual void batchDeleteModelFilesWithResult(std::vector< int > const &file_ids,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::TerraDeleteModelFilesResult const &) > callback);
     virtual void createPanorama(flight_hub_sdk::CreatePanoramaParams const &params,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::TerraBuildCreatePanoramaResult const &) > callback);
     virtual void getReconstructionImages(std::string const &file_uuid,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::TerraBuildReconstructionImagesResult const &) > callback);
     virtual int listenReconstructionStatusChanged(std::function< void (flight_hub_sdk::TerraBuildReconstructionStatusChanged const &) > const &callback);
@@ -6859,6 +7309,7 @@ public:
     virtual void deleteCustomizedFlightAreas(std::string const &flight_area_id,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
     virtual void syncCustomizedFlightAreas(std::vector< std::string > const &device_sns,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::SyncFlightAreasResults const &) > const &callback);
     virtual void getFlightAreasSyncStatus(std::vector< std::string > const &device_sns,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::GetAreasSyncStatusResults const &) > const &callback);
+    virtual void getFlightAreasUrl(std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::GetFlightAreasUrlResults const &) > const &callback);
     virtual void getOfflineMapsModelInfo(std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::GetOfflineMapsModelInfoResults const &) > const &callback);
     virtual void updateOfflineMapsModelInfo(flight_hub_sdk::UpdateOfflineMapsParams const &request_params,std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
     virtual void cancelOfflineMapsModelInfo(std::function< void (flight_hub_sdk::FlightHubError) > const &callback);
@@ -6968,9 +7419,10 @@ public:
     SwigDirector_IPsdkResourceModule(JNIEnv *jenv);
     virtual ~SwigDirector_IPsdkResourceModule();
     virtual void getPsdkSpeakerResourceList(std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::PsdkSpeakerResourceList const &) > callback);
+    virtual void getPsdkSpeakerResourceListWithFilter(flight_hub_sdk::PsdkSpeakerResourceListParams const &params,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::PsdkSpeakerResourceList const &) > callback);
     virtual void createPsdkSpeakerResource(flight_hub_sdk::CreatePsdkSpeakerResourceParams const &params,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::PsdkSpeakerResource const &) > callback);
     virtual void editPsdkSpeakerResource(flight_hub_sdk::EditPsdkSpeakerResourceParams const &params,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::PsdkSpeakerResource const &) > callback);
-    virtual void deletePsdkSpeakerResource(int resource_id,std::function< void (flight_hub_sdk::FlightHubError) > callback);
+    virtual void deletePsdkSpeakerResource(int64_t resource_id,std::function< void (flight_hub_sdk::FlightHubError) > callback);
     virtual void getSTS(std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::STSInfo const &) > callback);
     virtual void getPsdkWidgetResources(flight_hub_sdk::GetPsdkWidgetResourceParams const &params,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::PsdkWidgetResourceList const &) > callback);
     virtual void uploadSpeakerAudioFile(std::string const &file_path,flight_hub_sdk::STSInfo const &sts_info,std::function< void (flight_hub_sdk::FlightHubError) > callback);
@@ -6990,6 +7442,20 @@ public:
     virtual void createFlashLedConfig(flight_hub_sdk::FlashLedConfigParams const &params,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::FlashLedConfig const &) > callback);
     virtual void updateFlashLedConfig(std::string const &config_id,flight_hub_sdk::FlashLedConfigParams const &params,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::FlashLedConfig const &) > callback);
     virtual void deleteFlashLedConfig(std::string const &config_id,std::function< void (flight_hub_sdk::FlightHubError) > callback);
+public:
+    bool swig_overrides(int n) {
+      return false;
+    }
+};
+
+class SwigDirector_IAutoRecordModule : public flight_hub_sdk::IAutoRecordModule, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_IAutoRecordModule(JNIEnv *jenv);
+    virtual ~SwigDirector_IAutoRecordModule();
+    virtual void getAutoRecordConfig(std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::AutoRecordConfig const &) > callback);
+    virtual void saveAutoRecordConfig(flight_hub_sdk::SaveAutoRecordConfigParams const &params,std::function< void (flight_hub_sdk::FlightHubError) > callback);
 public:
     bool swig_overrides(int n) {
       return false;
@@ -7053,6 +7519,9 @@ public:
     virtual void getAlgorithmSetting(flight_hub_sdk::GetAiAlertAlgorithmSettingParam const &param,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::GetAiAlertAlgorithmSettingResult) > callback);
     virtual void getAiAlertFlights(flight_hub_sdk::GetAiAlertFlightsParam const &param,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::GetAiAlertFlightsResult) > callback);
     virtual void getAiAlertRecords(flight_hub_sdk::GetAiAlertRecordsParam const &param,std::function< void (flight_hub_sdk::FlightHubError,flight_hub_sdk::GetAiAlertRecordsResult) > callback);
+    virtual int listenAiAlertRecords(std::string const &device_sn,std::function< void (flight_hub_sdk::AiAlertRecordsNotifyResult) > callback);
+    virtual void cancelListenAiAlertRecords(int listen_id);
+    virtual void deleteAiAlertRecord(flight_hub_sdk::DeleteAiAlertRecordParam const &param,std::function< void (flight_hub_sdk::FlightHubError) > callback);
 public:
     bool swig_overrides(int n) {
       return false;
@@ -7132,6 +7601,7 @@ public:
     virtual std::shared_ptr< flight_hub_sdk::IWaylineManageModule > getWaylineManageModule();
     virtual std::shared_ptr< flight_hub_sdk::IPsdkResourceModule > getPsdkResourceModule();
     virtual std::shared_ptr< flight_hub_sdk::IFlashLedModule > getFlashLedModule();
+    virtual std::shared_ptr< flight_hub_sdk::IAutoRecordModule > getAutoRecordModule();
     virtual std::shared_ptr< flight_hub_sdk::ITerraBuildModule > getTerraBuildModule();
     virtual std::shared_ptr< flight_hub_sdk::IAIInsideManageModule > getAIInsideManageModule();
     virtual std::shared_ptr< flight_hub_sdk::IElementModule > getElementModule();
@@ -7139,10 +7609,26 @@ public:
     virtual std::shared_ptr< flight_hub_sdk::ILiveSyncModule > getLiveSyncModule();
 public:
     bool swig_overrides(int n) {
-      return (n < 18 ? swig_override[n] : false);
+      return (n < 19 ? swig_override[n] : false);
     }
 protected:
-    Swig::BoolArray<18> swig_override;
+    Swig::BoolArray<19> swig_override;
+};
+
+class SwigDirector_ISessionManager : public flight_hub_sdk::ISessionManager, public Swig::Director {
+
+public:
+    void swig_connect_director(JNIEnv *jenv, jobject jself, jclass jcls, bool swig_mem_own, bool weak_global);
+    SwigDirector_ISessionManager(JNIEnv *jenv);
+    virtual ~SwigDirector_ISessionManager();
+    virtual int registerSession(flight_hub_sdk::SessionConfig const &config);
+    virtual std::vector< flight_hub_sdk::SessionInfo > getAllSessionInfo() const;
+public:
+    bool swig_overrides(int n) {
+      return (n < 2 ? swig_override[n] : false);
+    }
+protected:
+    Swig::BoolArray<2> swig_override;
 };
 
 class SwigDirector_FlightHubSdk : public flight_hub_sdk::FlightHubSdk, public Swig::Director {

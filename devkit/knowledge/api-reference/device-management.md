@@ -84,7 +84,8 @@ public class DeviceDiscoveryService {
             return;
         }
 
-        workspace.getDeviceManageModule().getDeviceList((error, topoList) -> {
+        // ⚠️ 参数顺序：getDeviceList 是 data 在前、error 在后（全仓少见的例外，见 SKILL.md 回调顺序表）
+        workspace.getDeviceManageModule().getDeviceList((topoList, error) -> {
             // ✅ 规则 2：检查 errorCode
             if (error.getErrorCode() != FlightHubSdkErrorCode.SUCCESS) {
                 log.error("获取设备列表失败: {}", error.getErrorCode());
@@ -179,5 +180,5 @@ workspace.getDeviceDetailInfo(deviceSn, (error, detail) -> {
 | 问题 | 原因 | 解决 |
 |------|------|------|
 | getDeviceList 回调返回空列表 | orgUuid 不匹配或无设备绑定 | 确认 Workspace 配置正确 |
-| subDevices 为空 | 机场已绑定但无人机未入网 | 检查无人机是否已在 DJI CloudAPI2 注册 |
+| subDevices 为空 | 机场已绑定但无人机未入网 | 检查无人机是否已在 DJI Cloud API 2 注册 |
 | getDroneInstance 返回 null 但列表中有 | 设备刚离线，缓存已清除 | 监听 onlineStatus，离线时移除 |

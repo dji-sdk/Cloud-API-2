@@ -76,6 +76,22 @@ public class UpdateCustomizedFlightAreasParams {
     return (cPtr == 0) ? null : new FlightAreasContentData(cPtr, false);
   }
 
+  public void setStatus(String value) {
+    flighthubsdkmoduleJNI.UpdateCustomizedFlightAreasParams_status_set(swigCPtr, this, value);
+  }
+
+  public String getStatus() {
+    return flighthubsdkmoduleJNI.UpdateCustomizedFlightAreasParams_status_get(swigCPtr, this);
+  }
+
+  public void setType(String value) {
+    flighthubsdkmoduleJNI.UpdateCustomizedFlightAreasParams_type_set(swigCPtr, this, value);
+  }
+
+  public String getType() {
+    return flighthubsdkmoduleJNI.UpdateCustomizedFlightAreasParams_type_get(swigCPtr, this);
+  }
+
   public void setUpdate_by(String value) {
     flighthubsdkmoduleJNI.UpdateCustomizedFlightAreasParams_update_by_set(swigCPtr, this, value);
   }

@@ -43,7 +43,9 @@ class RealSdkPropertiesTest {
                 5,
                 "user_id",
                 "your-auth-value",
-                Duration.ofMinutes(3));
+                Duration.ofMinutes(3),
+                true,
+                "/etc/ssl/fh2-ca.pem");
 
         assertThat(props.token()).isEqualTo("token-123");
         assertThat(props.address()).isEqualTo("api.example.com");
@@ -58,12 +60,14 @@ class RealSdkPropertiesTest {
         assertThat(props.httpAuthHeaderKey()).isEqualTo("user_id");
         assertThat(props.httpAuthHeaderValue()).isEqualTo("your-auth-value");
         assertThat(props.reconcileInterval()).isEqualTo(Duration.ofMinutes(3));
+        assertThat(props.verifySsl()).isTrue();
+        assertThat(props.sslCaPath()).isEqualTo("/etc/ssl/fh2-ca.pem");
     }
 
     @Test
     void constructor_shouldFallbackDefault_whenLogLevelBlank() {
         RealSdkProperties props = new RealSdkProperties(
-                "t", "h", "p", "wss://x", "  ", null, 0L, null, null, 0, null, null, null);
+                "t", "h", "p", "wss://x", "  ", null, 0L, null, null, 0, null, null, null, null, null);
 
         assertThat(props.logLevel()).isEqualTo("info");
         assertThat(props.deviceListTimeout()).isEqualTo(Duration.ofSeconds(10));
@@ -72,12 +76,14 @@ class RealSdkPropertiesTest {
         assertThat(props.dockListenRetryDelay()).isEqualTo(Duration.ofSeconds(20));
         assertThat(props.dockListenMaxRetries()).isEqualTo(3);
         assertThat(props.reconcileInterval()).isEqualTo(Duration.ofMinutes(2));
+        assertThat(props.verifySsl()).isTrue();
+        assertThat(props.sslCaPath()).isNull();
     }
 
     @Test
     void constructor_shouldFallbackDefault_whenLogLevelNull() {
         RealSdkProperties props = new RealSdkProperties(
-                "t", "h", "p", "wss://x", null, null, -10L, null, null, -1, null, null, null);
+                "t", "h", "p", "wss://x", null, null, -10L, null, null, -1, null, null, null, null, null);
 
         assertThat(props.logLevel()).isEqualTo("info");
         assertThat(props.osdIntervalMillis()).isEqualTo(1000L);
@@ -85,11 +91,27 @@ class RealSdkPropertiesTest {
     }
 
     @Test
+    void constructor_shouldDefaultVerifySslTrue_whenNull() {
+        RealSdkProperties props = new RealSdkProperties(
+                "t", "h", "p", "wss://x", null, null, 0L, null, null, 0, null, null, null, null, null);
+
+        assertThat(props.verifySsl()).isTrue();
+    }
+
+    @Test
+    void constructor_shouldKeepVerifySslFalse_whenProvidedFalse() {
+        RealSdkProperties props = new RealSdkProperties(
+                "t", "h", "p", "wss://x", null, null, 0L, null, null, 0, null, null, null, false, null);
+
+        assertThat(props.verifySsl()).isFalse();
+    }
+
+    @Test
     void constructor_shouldFallbackOsdInterval_whenNonPositive() {
         RealSdkProperties props = new RealSdkProperties(
                 "t", "h", "p", "wss://x", "info",
                 Duration.ofSeconds(10), -5L, Duration.ofSeconds(5),
-                Duration.ofSeconds(20), 3, null, null, null);
+                Duration.ofSeconds(20), 3, null, null, null, null, null);
 
         assertThat(props.osdIntervalMillis()).isEqualTo(1000L);
     }

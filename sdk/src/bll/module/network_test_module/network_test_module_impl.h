@@ -5,12 +5,13 @@
 
 #include "api/network_test_module.h"
 #include "common/util/async_capture_protect.h"
+#include <memory>
 
 namespace flight_hub_sdk {
 
 class NetworkTestModuleImpl : public INetworkTestModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    NetworkTestModuleImpl(const std::string& sn);
+    NetworkTestModuleImpl(const std::string& sn, int session_id);
     ~NetworkTestModuleImpl() override;
 
     void startNetworkTest(
@@ -28,6 +29,7 @@ public:
     void unsubscribeNetworkTestProgress(int listen_id) override;
 
 private:
+    int session_id_;
     std::string sn_;
 };
 

@@ -669,7 +669,7 @@ public class RealSdkStarter {
      *
      * <p>SDK 2.0.0 FlightHubSdkConfig 字段（javap 实查）：address / port /
      * notificationServerAddress / logLevel / logToConsole / showVersionInfo / logFilePath /
-     * logMaxFileSize / logMaxFiles。
+     * logMaxFileSize / logMaxFiles / verify_ssl / ssl_ca_path。
      */
     private FlightHubSdkConfig buildConfig() {
         FlightHubSdkConfig config = new FlightHubSdkConfig();
@@ -677,7 +677,37 @@ public class RealSdkStarter {
         config.setPort(props.port());
         config.setNotificationServerAddress(props.notificationServerAddress());
         config.setLogLevel(props.logLevel());
+        configureTls(config);
         return config;
+    }
+
+    /**
+     * 配置通知 WebSocket（WSS）的 TLS 证书校验。
+     *
+     * <p>私有化 FH2 自签名证书场景：{@code verifySsl=false} 跳过校验，或保持校验并通过
+     * {@code sslCaPath} 指定自签 CA。为空的 {@code sslCaPath} 不设置，沿用 SDK 默认信任库。
+     *
+     * @param config 待填充的 SDK 配置
+     */
+    private void configureTls(FlightHubSdkConfig config) {
+        // null 视为默认值 true（与 RealSdkProperties 紧凑构造器保持一致），只有显式 false 才关闭
+        boolean verifySsl = !Boolean.FALSE.equals(props.verifySsl());
+        boolean hasCaPath = props.sslCaPath() != null && !props.sslCaPath().isBlank();
+        config.setVerifySsl(verifySsl);
+        if (hasCaPath) {
+            config.setSslCaPath(props.sslCaPath());
+        }
+
+        // 注意分支顺序：verify-ssl=false 时即使配了 CA 路径也不做校验，
+        // 必须先判关闭，否则日志会误报"开启"
+        if (!verifySsl) {
+            LOG.warn("SDK WSS 证书校验：已关闭（verify-ssl=false），仅建议用于内网私有化自签名部署{}",
+                    hasCaPath ? "；ssl-ca-path 在校验关闭时不生效" : "");
+        } else if (hasCaPath) {
+            LOG.info("SDK WSS 证书校验：开启，CA 路径={}", props.sslCaPath());
+        } else {
+            LOG.info("SDK WSS 证书校验：开启，使用 SDK 默认信任库");
+        }
     }
 
     /**

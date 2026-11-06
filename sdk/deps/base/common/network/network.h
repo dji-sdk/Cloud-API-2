@@ -17,6 +17,10 @@ public:
     DISALLOW_COPY_AND_ASSIGN(Network);
     void Init(std::shared_ptr<drc_sdk::common::injector::Network> network = nullptr);
 
+    /// 注册「不打印 libcurl verbose 抓包」的 URL 片段，供业务层屏蔽高频后台接口的抓包刷屏。
+    /// 只在初始化阶段调用。注入了自定义 injector::Network 时该设置不生效（自定义实现不走 libcurl）。
+    void AddQuietUrlPattern(const std::string &pattern) const;
+
     /// 设置 HTTPS 通道全局 TLS 证书验证配置(与 WSS 通道共用 FlightHubSdkConfig
     /// 的 verify_ssl/ssl_ca_path 字段, 由 SDK 初始化时统一下发)。
     /// verify_ssl=true: 校验证书链与主机名; ca_path 为空用系统 CA, 非空用指定 PEM 文件

@@ -27,14 +27,14 @@ java -version
 
 ```bash
 # 对外文档（不含 @implNote 链路信息）
-./gradlew :flight_hub_sdk_docs:javadoc        # Javadoc HTML
-./gradlew :flight_hub_sdk_docs:dokkaHtml      # Dokka HTML
-./gradlew :flight_hub_sdk_docs:dokkaGfm       # Dokka GFM Markdown
-./gradlew :flight_hub_sdk_docs:docsAll        # 以上三者一起生成
+./gradlew -PincludeDocs=true :flight_hub_sdk_docs:javadoc        # Javadoc HTML
+./gradlew -PincludeDocs=true :flight_hub_sdk_docs:dokkaHtml      # Dokka HTML
+./gradlew -PincludeDocs=true :flight_hub_sdk_docs:dokkaGfm       # Dokka GFM Markdown
+./gradlew -PincludeDocs=true :flight_hub_sdk_docs:docsAll        # 以上三者一起生成
 
 # 对内文档（含 @implNote 链路信息：HTTP path / WebSocket topic / DRC method）
-./gradlew :flight_hub_sdk_docs:javadocInternal   # 对内 Javadoc HTML
-./gradlew :flight_hub_sdk_docs:docsInternal      # 对内全套文档
+./gradlew -PincludeDocs=true :flight_hub_sdk_docs:javadocInternal   # 对内 Javadoc HTML
+./gradlew -PincludeDocs=true :flight_hub_sdk_docs:docsInternal      # 对内全套文档
 ```
 
 ## 对外 vs 对内文档

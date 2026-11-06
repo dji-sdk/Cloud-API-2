@@ -36,6 +36,7 @@ import { useSDKLoader } from '@/composables/useSDKLoader'
 import { ensureFH2Init } from '@/composables/useFH2'
 import { useFH2ThemeBus } from '@/composables/useFH2ThemeBus'
 import { injectLink, injectScriptUMD } from '@/utils/sdk'
+import { formatPaasResourceErrorMessage } from '@/utils/paasMessages'
 import SDKLoadingMask from '@/components/SDKLoadingMask.vue'
 import FlightRecordList from '@/components/flight-record/FlightRecordList.vue'
 import { checkWaylineExists } from '@/api/wayline'
@@ -77,7 +78,10 @@ onMounted(async () => {
     await injectScriptUMD(jsUrl, 'FlyDataReplay')
 
     if (!window.FlyDataReplay || typeof window.FlyDataReplay !== 'function') {
-      throw new Error('FlyDataReplay SDK 加载完毕，但 window.FlyDataReplay 未暴露。')
+      throw new Error(
+        `${formatPaasResourceErrorMessage('飞行回放 SDK', jsUrl)}\n`
+        + '脚本已加载但未注册 window.FlyDataReplay，通常是 SDK 版本不兼容，请核对底座版本。',
+      )
     }
 
     // ③ 鉴权配置

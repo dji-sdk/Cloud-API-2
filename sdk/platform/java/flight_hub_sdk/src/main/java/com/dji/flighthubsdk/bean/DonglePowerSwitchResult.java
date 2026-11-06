@@ -7,7 +7,9 @@ package com.dji.flighthubsdk.bean;
 import java.util.Objects;
 /** Dongle 电源开关结果。 */
 public final class DonglePowerSwitchResult {
+    /** 网关响应消息（成功通常为 "OK"，失败为错误信息） */
     private String message;
+    /** 业务 ID */
     private String bid;
     public DonglePowerSwitchResult() {
     }
@@ -15,25 +17,25 @@ public final class DonglePowerSwitchResult {
     /**
      * 构造 DonglePowerSwitchResult。
      *
-     * @param message 消息
-     * @param bid 业务ID
+     * @param message 网关响应消息（成功通常为 "OK"，失败为错误信息）
+     * @param bid 业务 ID
      */
     public DonglePowerSwitchResult(String message, String bid) {
         this.message = message != null ? message : "";
         this.bid = bid != null ? bid : "";
     }
 
-    /** 消息 */
+    /** 网关响应消息（成功通常为 "OK"，失败为错误信息） */
     public String getMessage() { return message; }
-    /** 业务ID */
+    /** 业务 ID */
     public String getBid() { return bid; }
 
-    /** 消息 */
+    /** 网关响应消息（成功通常为 "OK"，失败为错误信息） */
     public void setMessage(String message) {
         this.message = message;
     }
 
-    /** 业务ID */
+    /** 业务 ID */
     public void setBid(String bid) {
         this.bid = bid;
     }

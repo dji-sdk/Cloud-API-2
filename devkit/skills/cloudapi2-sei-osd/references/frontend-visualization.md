@@ -94,7 +94,7 @@ cesium/map.ts               → seiMapLayer
 
 ```
 浏览器 ──5173──► 前端 Vite Dev Server
-                  │  proxy /api  ──8080──► 后端 fhsdk-demo-server ──30812──► DJI CloudAPI2 服务器(<fhsdk-server-host>)
+                  │  proxy /api  ──8080──► 后端 fhsdk-demo-server ──30812──► DJI Cloud API 2 服务器(<fhsdk-server-host>)
                   └  proxy /oryx ──2022──► Oryx(SRS) 流媒体  ◄──WHIP 推流── 后端
 浏览器 ◄──WHEP 拉流(经 /oryx 代理 → 2022)── Oryx
 ```
@@ -104,8 +104,8 @@ cesium/map.ts               → seiMapLayer
 | 配置项 | 默认值 | 作用 | 谁要跟它一致 |
 |---|---|---|---|
 | `server.port` | `8080` | 后端 HTTP + WebSocket 服务端口 | 前端 vite proxy `/api` 的 target |
-| `fhsdk.address` | `http://<fhsdk-server-host>` | DJI CloudAPI2 服务器地址 | —（换环境时改，前端无感） |
-| `fhsdk.port` | `30812` | DJI CloudAPI2 端口 | — |
+| `fhsdk.address` | `http://<fhsdk-server-host>` | DJI Cloud API 2 服务器地址 | —（换环境时改，前端无感） |
+| `fhsdk.port` | `30812` | DJI Cloud API 2 端口 | — |
 | `fhsdk.notification-server` | `ws://<fhsdk-server-host>:30812/...` | FH 通知 WS（含 `x-auth-token`） | 与 address/port 同源 |
 | `oryx.whip-url-template` | `…127.0.0.1:2022…` | 后端把直播 WHIP 推到 Oryx | Oryx 实际地址 |
 | `oryx.whep-url-template` | `…127.0.0.1:2022…` | 返回给前端的 WHEP 拉流地址 | 前端 proxy `/oryx` + `whep.ts` 正则 |
@@ -126,7 +126,7 @@ cesium/map.ts               → seiMapLayer
    - 前端 `vite.config.ts` 的 `/oryx` proxy target
    - 前端 `src/utils/whep.ts` 的正则 `^https?:\/\/127\.0\.0\.1:2022`
      （后端返回的 WHEP URL 里带 `127.0.0.1:2022`，前端靠这条正则把它改写成 `/oryx` 代理来规避跨域）
-3. **DJI CloudAPI2 环境**（`fhsdk.address/port/notification-server`、token）：只在后端，换内网/正式环境时改；默认是内网测试环境写死值，详见服务端指南 §3。
+3. **DJI Cloud API 2 环境**（`fhsdk.address/port/notification-server`、token）：只在后端，换内网/正式环境时改；默认是内网测试环境写死值，详见服务端指南 §3。
 
 ### 前后端契约：WS 消息格式
 
@@ -168,7 +168,8 @@ mkdir -p src/api src/ws src/cesium src/utils src/views src/styles public/models
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
     "axios": "^1.7.9",
@@ -181,12 +182,16 @@ mkdir -p src/api src/ws src/cesium src/utils src/views src/styles public/models
     "typescript": "~5.6.3",
     "vite": "^6.0.5",
     "vite-plugin-cesium": "^1.2.23",
-    "vue-tsc": "^2.2.0"
+    "vue-tsc": "^3.3.14"
   }
 }
 ```
 
-> `build` 只跑 `vite build`（esbuild 转译，不做类型检查）。如需类型检查另跑 `npx vue-tsc --noEmit`。
+> `build` 只跑 `vite build`（esbuild 转译，不做类型检查）。类型检查用 `npm run typecheck`。
+>
+> `vue-tsc` 必须用 3.x：2.x 依赖的 `@vue/language-core` 会带入 `minimatch@9`，命中
+> GHSA-g3hv-75wg-m249（globparts 放大导致 DoS，`npm audit` 报 3 个 moderate）。3.x 已改用
+> `picomatch`，该依赖链整体消失。2.x → 3.x 对本工程的构建产物无影响（实测产物文件名与体积不变）。
 
 ### `vite.config.ts`
 
@@ -2724,7 +2729,7 @@ npm run dev          # http://localhost:5173
 4. 转动云台：视锥与黄色四边形、贴地视频应**一起旋转**
 5. 顶栏 `SEI · FOV 就绪` 徽章亮 = 视锥在渲染
 
-类型检查（可选）：`npx vue-tsc --noEmit`（会有 `groundVideoFootprint.ts` 一处 Cesium 类型告警，可忽略）。
+类型检查（可选）：`npm run typecheck`。完整实现 `fov-demo/frontend/fhsdk-demo-web` 在 vue-tsc 3.3.x 下实测 0 报错；若自行精简后出现 `groundVideoFootprint.ts` 的 Cesium 类型告警，属 SDK 类型定义缺失，可忽略。
 
 ---
 

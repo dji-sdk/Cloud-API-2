@@ -6,6 +6,7 @@ package com.dji.flighthubsdk.core;
 import com.dji.flighthubsdk.FlightHubCallback;
 import com.dji.flighthubsdk.generated.FlightHubSdkErrorCode;
 import com.dji.flighthubsdk.generated.IControlAuthModule;
+import com.dji.flighthubsdk.internal.convert.FlightHubSdkConvert;
 import com.dji.flighthubsdk.util.Logger;
 
 /**
@@ -37,6 +38,7 @@ public class ControlAuthModule {
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> releaseFlightControlAuthorityCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> acquirePayloadControlAuthorityCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> releasePayloadControlAuthorityCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<Integer, CallbackRefContainer> controlAuthResultCallbackRef = new java.util.concurrent.ConcurrentHashMap<>();
 
     private int id_counter = 0;
     private synchronized int generateActionCallbackId() {
@@ -117,6 +119,72 @@ public class ControlAuthModule {
             Logger.error("ControlAuthModule", "releaseFlightControlAuthority error: " + e.getMessage(), e);
             if (callback != null) {
                 callback.onResult(new com.dji.flighthubsdk.bean.FlightHubError(FlightHubSdkErrorCode.ERROR_OPERATION_FAILED));
+            }
+        }
+    }
+
+    /**
+     * 抢夺飞行控制权并返回 controls/bid
+     */
+    public void acquireFlightControlAuthorityWithResult(FlightHubCallback.ControlAuthResultCallback callback) {
+        callControlAuthWithResult(0, null, callback);
+    }
+
+    /**
+     * 释放飞行控制权并返回 controls/bid
+     */
+    public void releaseFlightControlAuthorityWithResult(FlightHubCallback.ControlAuthResultCallback callback) {
+        callControlAuthWithResult(1, null, callback);
+    }
+
+    private void callControlAuthWithResult(int action, String payloadIndex,
+                                           FlightHubCallback.ControlAuthResultCallback callback) {
+        try {
+            int id = generateActionCallbackId();
+            com.dji.flighthubsdk.generated.ControlAuthResultCallback swigCallback =
+                    new com.dji.flighthubsdk.generated.ControlAuthResultCallback() {
+                        @Override
+                        public void onResult(com.dji.flighthubsdk.generated.FlightHubError err,
+                                             com.dji.flighthubsdk.generated.ControlAuthResult result) {
+                            try {
+                                if (callback != null) {
+                                    callback.onResult(
+                                            FlightHubSdkConvert.toFlightHubError(err),
+                                            FlightHubSdkConvert.toControlAuthResult(result));
+                                }
+                            } catch (Exception e) {
+                                Logger.error("ControlAuthModule", "control auth result callback error: " + e.getMessage(), e);
+                            } finally {
+                                controlAuthResultCallbackRef.remove(id);
+                            }
+                        }
+                    };
+
+            final CallbackRefContainer container = new CallbackRefContainer(swigCallback, callback);
+            synchronized (controlAuthResultCallbackRef) {
+                controlAuthResultCallbackRef.put(id, container);
+                switch (action) {
+                    case 0:
+                        this.controlAuthModule.acquireFlightControlAuthorityWithResultWrapper(swigCallback);
+                        break;
+                    case 1:
+                        this.controlAuthModule.releaseFlightControlAuthorityWithResultWrapper(swigCallback);
+                        break;
+                    case 2:
+                        this.controlAuthModule.acquirePayloadControlAuthorityWithResultWrapper(payloadIndex, swigCallback);
+                        break;
+                    case 3:
+                        this.controlAuthModule.releasePayloadControlAuthorityWithResultWrapper(payloadIndex, swigCallback);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        } catch (Exception e) {
+            Logger.error("ControlAuthModule", "callControlAuthWithResult error: " + e.getMessage(), e);
+            if (callback != null) {
+                callback.onResult(new com.dji.flighthubsdk.bean.FlightHubError(FlightHubSdkErrorCode.ERROR_OPERATION_FAILED),
+                        new com.dji.flighthubsdk.bean.ControlAuthResult());
             }
         }
     }
@@ -238,6 +306,24 @@ public class ControlAuthModule {
                 callback.onResult(new com.dji.flighthubsdk.bean.FlightHubError(FlightHubSdkErrorCode.ERROR_OPERATION_FAILED));
             }
         }
+    }
+
+    /**
+     * 抢夺负载控制权并返回 controls/bid
+     * @param payloadIndex 负载索引
+     */
+    public void acquirePayloadControlAuthorityWithResult(String payloadIndex,
+                                                         FlightHubCallback.ControlAuthResultCallback callback) {
+        callControlAuthWithResult(2, payloadIndex, callback);
+    }
+
+    /**
+     * 释放负载控制权并返回 controls/bid
+     * @param payloadIndex 负载索引
+     */
+    public void releasePayloadControlAuthorityWithResult(String payloadIndex,
+                                                         FlightHubCallback.ControlAuthResultCallback callback) {
+        callControlAuthWithResult(3, payloadIndex, callback);
     }
 
     /**

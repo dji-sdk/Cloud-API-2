@@ -64,6 +64,18 @@ public class SdkFlightTaskCommandService implements FlightTaskCommandService {
     /** plan_type 的「普通计划」取值，前端无条件下发的默认值，属无副作用字段 */
     private static final int PLAN_TYPE_DEFAULT = 0;
 
+    /**
+     * 前端 resumable_status=1（开启自动续飞）对应的 SDK 取值。
+     *
+     * <p>{@code CreateTaskReq#resumable_status} 是字符串枚举而非整数，
+     * {@code 1} 必须映射为 {@code "auto"} 下发，不能写进 {@code is_break_point_resume}——
+     * 后者表达的是「本任务是否为断点续飞任务」，与续飞策略是两个概念。
+     */
+    private static final String RESUMABLE_STATUS_AUTO = "auto";
+
+    /** 前端 resumable_status=0（不开启自动续飞）对应的 SDK 取值。 */
+    private static final String RESUMABLE_STATUS_MANUAL = "manual";
+
     @Override
     public CreateResult createTask(CreateFlightTaskDto dto) {
         FlightTaskModule ftm = getFlightTaskModule();
@@ -220,8 +232,21 @@ public class SdkFlightTaskCommandService implements FlightTaskCommandService {
         return ftm;
     }
 
+    /**
+     * 把前端的整型 {@code resumable_status} 映射为 SDK 的字符串枚举。
+     *
+     * <p>{@code CreateTaskReq#setResumableStatus(String)} 内部对 null 的处理是把字段
+     * 写成空串 {@code ""} 而非跳过，因此调用方必须先判空，不能把 null 透传进去。
+     *
+     * @param resumableStatus 前端取值：1=自动续飞，其余=手动续飞
+     * @return SDK 字符串枚举："auto" 或 "manual"
+     */
+    private static String mapResumableStatus(int resumableStatus) {
+        return resumableStatus == 1 ? RESUMABLE_STATUS_AUTO : RESUMABLE_STATUS_MANUAL;
+    }
+
     private CreateTaskReq buildCreateReq(CreateFlightTaskDto dto) {
-        warnUnsupportedFields(dto);
+        warnUnsupportedFields(dto, false);
 
         CreateTaskReq req = new CreateTaskReq();
         req.setName(dto.getName());
@@ -248,7 +273,7 @@ public class SdkFlightTaskCommandService implements FlightTaskCommandService {
             req.setMinBatteryCapacity(dto.getMinBatteryCapacity());
         }
         if (dto.getResumableStatus() != null) {
-            req.setBreakPointResume(dto.getResumableStatus() == 1);
+            req.setResumableStatus(mapResumableStatus(dto.getResumableStatus()));
         }
         // 显式下发航线预估时长：平台按 int(wayline_duration) + preflight_prepare_duration 计算任务时间窗，
         // 不传时窗口退化为仅准备时长，会让冲突校验的时间窗与实际执行窗不一致。
@@ -267,12 +292,16 @@ public class SdkFlightTaskCommandService implements FlightTaskCommandService {
      * 可选字段（beginAt/endAt 等）仅非 null 时 set，与 {@link #buildCreateReq(CreateFlightTaskDto)}
      * 保持相同的条件 set 策略。
      *
+     * <p><b>能力边界</b>：{@code EditTaskReq} 没有 {@code resumableStatus} 承载位，
+     * 编辑任务无法改变自动续飞策略（创建时下发的策略保持不变）；{@code vlm_enabled}
+     * 在创建与编辑两侧均无承载位。两者均由 {@link #warnUnsupportedFields} 显式告警。
+     *
      * @param taskUuid 待编辑任务的 UUID
      * @param dto      编辑请求 DTO
      * @return SDK 编辑请求对象
      */
     private EditTaskReq buildEditReq(String taskUuid, CreateFlightTaskDto dto) {
-        warnUnsupportedFields(dto);
+        warnUnsupportedFields(dto, true);
 
         EditTaskReq req = new EditTaskReq();
         req.setUuid(taskUuid);
@@ -299,9 +328,9 @@ public class SdkFlightTaskCommandService implements FlightTaskCommandService {
         if (dto.getMinBatteryCapacity() != null) {
             req.setMinBatteryCapacity(dto.getMinBatteryCapacity());
         }
-        if (dto.getResumableStatus() != null) {
-            req.setBreakPointResume(dto.getResumableStatus() == 1);
-        }
+        // resumable_status 在 EditTaskReq 上无承载位（该类未暴露 resumableStatus setter），
+        // 故编辑路径不 set 任何续飞字段：既不再错写成 isBreakPointResume，
+        // 也无法改变服务端的续飞策略。该限制由 warnUnsupportedFields 显式告警。
 
         return req;
     }
@@ -309,11 +338,15 @@ public class SdkFlightTaskCommandService implements FlightTaskCommandService {
     /**
      * 对 SDK 无法承载的请求字段显式告警，替代原先的静默丢弃。
      *
-     * <p>截至 SDK 3.3.5，{@code CreateTaskReq} / {@code EditTaskReq} 仍没有
+     * <p>截至 SDK 3.3.7，{@code CreateTaskReq} / {@code EditTaskReq} 仍没有
      * {@code repeat_type} / {@code interval} / {@code plan_type} / {@code vlm_enabled} /
      * {@code continuous_task_periods} 的 setter，这些字段在 BFF 层就被丢弃。
      * 历史实现对此毫无反馈，导致「界面选了重复定时、提交后无任何提示、任务却按单次执行」
      * 的现场问题。本方法让该丢失在 BFF 日志中可见。
+     *
+     * <p>{@code resumable_status} 需要分路径看待：创建路径由
+     * {@link CreateTaskReq#setResumableStatus(String)} 真正下发，不告警；编辑路径
+     * {@code EditTaskReq}（独立类，非 CreateTaskReq 子类）没有该 setter，只能丢弃并告警。
      *
      * <p>仅当字段真正表达了非默认语义时才告警：{@code plan_type=0}（普通计划）、
      * {@code repeat_type=0}（不重复）、{@code vlm_enabled=false} 是前端无条件下发的默认值，
@@ -321,9 +354,10 @@ public class SdkFlightTaskCommandService implements FlightTaskCommandService {
      *
      * <p><b>根治需要 SDK 侧补齐字段并由 PaaS 服务端支持重复调度，devkit 单侧无法闭环。</b>
      *
-     * @param dto 待提交的任务请求
+     * @param dto    待提交的任务请求
+     * @param isEdit 是否为编辑路径
      */
-    private void warnUnsupportedFields(CreateFlightTaskDto dto) {
+    private void warnUnsupportedFields(CreateFlightTaskDto dto, boolean isEdit) {
         List<String> dropped = new ArrayList<>();
         if (dto.getRepeatType() != null && dto.getRepeatType() != REPEAT_TYPE_NONE) {
             dropped.add("repeat_type=" + dto.getRepeatType());
@@ -340,10 +374,13 @@ public class SdkFlightTaskCommandService implements FlightTaskCommandService {
         if (Boolean.TRUE.equals(dto.getVlmEnabled())) {
             dropped.add("vlm_enabled=true");
         }
+        if (isEdit && dto.getResumableStatus() != null) {
+            dropped.add("resumable_status=" + dto.getResumableStatus());
+        }
 
         if (!dropped.isEmpty()) {
-            LOG.warn("请求含 SDK 无法承载的字段，已丢弃，服务端不会按此调度: taskType={}, 丢弃字段=[{}]",
-                    dto.getTaskType(), String.join(", ", dropped));
+            LOG.warn("请求含 SDK 无法承载的字段，已丢弃，服务端不会按此调度: isEdit={}, taskType={}, 丢弃字段=[{}]",
+                    isEdit, dto.getTaskType(), String.join(", ", dropped));
         }
     }
 }

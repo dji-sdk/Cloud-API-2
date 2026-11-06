@@ -58,16 +58,25 @@ bool ShouldKeepTarget(uint8_t type) {
            type == kYoloeBoat || IsYoloeIndependentType(type);
 }
 
-bool SkipV4ModelInfo(const std::shared_ptr<drc_sdk::ByteBuffer>& buffer, uint32_t& offset) {
+bool ParseV4ModelInfo(const std::shared_ptr<drc_sdk::ByteBuffer>& buffer,
+                      uint32_t& offset,
+                      int* model_info_type,
+                      int* model_index,
+                      int* frame_source) {
     if (offset >= buffer->size()) {
         return false;
     }
-    const uint8_t model_info_type = buffer->data()[offset++];
-    if (model_info_type == kModelInfoBase) {
+
+    *model_info_type = buffer->data()[offset++];
+    *model_index = -1;
+    *frame_source = -1;
+
+    if (*model_info_type == kModelInfoBase) {
         if (offset + 2 > buffer->size()) {
             return false;
         }
-        offset += 2;  // model_index + frame_source
+        *model_index = buffer->data()[offset++];
+        *frame_source = buffer->data()[offset++];
     }
     return true;
 }
@@ -144,9 +153,15 @@ bool AiSeiParser::parse() {
                 target_counts_.push_back(target_count);
             }
 
-            if (version_ == 4 && !SkipV4ModelInfo(sei_buffer_, offset)) {
-                LOG_ERROR("sei_buffer_ size is too small to parse v4 model info");
-                return false;
+            if (version_ == 4) {
+                int model_info_type = 0;
+                int model_index = -1;
+                int frame_source = -1;
+                if (!ParseV4ModelInfo(sei_buffer_, offset,
+                                      &model_info_type, &model_index, &frame_source)) {
+                    LOG_ERROR("sei_buffer_ size is too small to parse v4 model info");
+                    return false;
+                }
             }
             continue;
         }
@@ -156,6 +171,9 @@ bool AiSeiParser::parse() {
                 LOG_ERROR("sei_buffer_ size is too small to parse, size: %d", sei_buffer_->size());
                 return false;
             }
+
+            std::vector<Target> group_targets;
+            group_targets.reserve(group_count);
 
             for (int j = 0; j < group_count; j++) {
                 Target target;
@@ -184,13 +202,26 @@ bool AiSeiParser::parse() {
                 offset += 4;
 
                 if (ShouldKeepTarget(target.target_type)) {
-                    targets_.push_back(target);
+                    group_targets.push_back(target);
                 }
             }
 
-            if (version_ == 4 && !SkipV4ModelInfo(sei_buffer_, offset)) {
+            int model_info_type = 0;
+            int model_index = -1;
+            int frame_source = -1;
+            if (version_ == 4 && !ParseV4ModelInfo(sei_buffer_, offset,
+                                                   &model_info_type,
+                                                   &model_index,
+                                                   &frame_source)) {
                 LOG_ERROR("sei_buffer_ size is too small to parse v4 model info");
                 return false;
+            }
+
+            for (auto& target : group_targets) {
+                target.model_info_type = model_info_type;
+                target.model_index = model_index;
+                target.frame_source = frame_source;
+                targets_.push_back(target);
             }
             continue;
         }
@@ -213,6 +244,9 @@ AiSeiInfo AiSeiParser::get_ai_sei_info() const {
         ai_detection_target.target_w = target.target_w;
         ai_detection_target.target_h = target.target_h;
         ai_detection_target.target_distance = target.target_distance;
+        ai_detection_target.model_index = target.model_index;
+        ai_detection_target.frame_source = target.frame_source;
+        ai_detection_target.model_info_type = target.model_info_type;
         ai_sei_info.targets.push_back(ai_detection_target);
     }
     return ai_sei_info;

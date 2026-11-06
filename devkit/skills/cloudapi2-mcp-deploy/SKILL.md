@@ -1,25 +1,25 @@
 ---
 name: cloudapi2-mcp-deploy
 description: |
-  仅在用户要求将 DJI CloudAPI2 MCP Server 部署到自有环境时使用。
-  不要在处理飞行控制、设备管理、遥测查询等运行时运维操作时加载本 skill（那些由 DJI CloudAPI2 MCP Server 直接处理）。
+  仅在用户要求将 DJI Cloud API 2 MCP Server 部署到自有环境时使用。
+  不要在处理飞行控制、设备管理、遥测查询等运行时运维操作时加载本 skill（那些由 DJI Cloud API 2 MCP Server 直接处理）。
   适用场景：Docker Compose 远程 SSE 部署、stdio 本地开发（Docker 代理或 Mock JAR）、
   环境探测、配置生成、密钥生成、Claude Code MCP 接入配置、部署排障。
   关键词：MCP 部署, MCP deploy, mcp server 部署, docker 部署 mcp, SSE 部署,
   stdio 配置, 本地运行 mcp, run-mcp-local, deploy.sh, 远程部署,
   FH_SSE_AUTH_TOKEN, FH_SERVER_ADDRESS, MCP Server 安装, mcp 接入,
   Claude Code 配置 MCP, .claude.json, docker build mcp, mcp 镜像
-author: DJI CloudAPI2 Team
+author: DJI Cloud API 2 Team
 version: 1.0.0
 ---
 
-# DJI CloudAPI2 MCP Server 部署 Skill
+# DJI Cloud API 2 MCP Server 部署 Skill
 
 ## 适用场景
 
 当开发者描述以下场景时触发本 Skill：
 
-- 将 DJI CloudAPI2 MCP Server 部署到远程服务器（Docker Compose + SSE 模式）
+- 将 DJI Cloud API 2 MCP Server 部署到远程服务器（Docker Compose + SSE 模式）
 - 在本地配置 Claude Code / Cursor 接入 MCP Server（stdio 或 SSE）
 - 部署前的环境准备、密钥生成、配置填写
 - MCP Server 构建（Maven + Docker 镜像）
@@ -51,7 +51,7 @@ version: 1.0.0
 → 按以下逻辑推荐路径：
 
 路径 A：远程 SSE 部署（推荐生产形态）
-├─ 有远程 Linux x86_64 服务器 + Docker 24+
+├─ 有远程 Linux x86_64 / aarch64 服务器 + Docker 24+
 ├─ 目标：多客户端共享一个 MCP Server 实例
 ├─ 加载 references/docker-sse-部署步骤.md
 └─ 步骤：配置 .env → 构建镜像 → deploy.sh 一键部署 → 客户端配置接入
@@ -63,9 +63,10 @@ version: 1.0.0
 ├─ 加载 references/stdio-本地开发步骤.md
 └─ 步骤：构建 → 配置 MCP 客户端 → 验证工具列表
 
-→ 若探测到非 amd64 架构 + 用户要跑真 SDK：
-  明确提示"SDK JNI 原生库仅支持 Linux x86_64（amd64），
-  本机只能用 Mock 模式或 Docker --platform linux/amd64 代理"
+→ 架构判断 + 用户要跑真 SDK：
+  SDK 分 amd64 / arm64 两个包，Linux x86_64 与 Linux aarch64 都可用；
+  构建镜像时 --build-arg SDK_ARCH 必须与 --platform 指向同一架构。
+  Windows / Intel Mac 只能用 Mock 模式或 Docker 代理
 → 与用户确认路径后，进入对应 references 逐步推进
 ```
 
@@ -82,9 +83,9 @@ version: 1.0.0
 
 | 变量 | 生成命令 | 说明 |
 |---|---|---|
-| `FH_SERVER_ADDRESS` | — | DJI CloudAPI2 服务器地址（含协议） |
-| `FH_ACCESS_TOKEN` | 从 DJI CloudAPI2 控制台获取 | 工作空间访问令牌 |
-| `FH_WORKSPACE_UUID` | 从 DJI CloudAPI2 控制台获取 | 工作空间 UUID |
+| `FH_SERVER_ADDRESS` | — | DJI Cloud API 2 服务器地址（含协议） |
+| `FH_ACCESS_TOKEN` | 从 DJI Cloud API 2 控制台获取 | 工作空间访问令牌 |
+| `FH_WORKSPACE_UUID` | 从 DJI Cloud API 2 控制台获取 | 工作空间 UUID |
 | `FH_SSE_AUTH_TOKEN` | `openssl rand -hex 32` | SSE 鉴权 token（留空拒绝启动） |
 
 ## 排障路由

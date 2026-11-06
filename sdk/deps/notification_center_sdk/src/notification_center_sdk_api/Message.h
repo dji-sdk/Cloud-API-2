@@ -1179,10 +1179,10 @@ class DockNetworkState {
 public:
     int type = -1;     // int, "网络类型", { 1: 4G, 2: 以太网 };  默认无效值: -1;
     int quality = -1;  // int, "网络质量(当网络类型为4G时才具有网络质量信息)", { 0: 差, 1: 中, 2: 好 }; 默认无效值: -1;
-    int rate = 0;      // int, "网络速率(单位KB/秒)"; 默认值: 0;
+    double rate = 0.0;  // double, "网络速率(单位KB/秒)"; 默认值: 0.0;
 
     bool operator==(const DockNetworkState &rhs) const {
-        return (type == rhs.type) && (quality == rhs.quality) && (rate == rhs.rate);
+        return (type == rhs.type) && (quality == rhs.quality) && floatEqual(rate, rhs.rate);
     }
 
     bool operator!=(const DockNetworkState &rhs) const {
@@ -2596,6 +2596,32 @@ public:
 };
 
 
+// "topic_pano_stitch_progress";
+// 3X 超清全景拼接进度推送（PaaS 通道，经云端通知服务下发）
+class PanoStitchProgress {
+public:
+    std::string workspace_id;            // 工作空间 UUID
+    int64_t     file_id = -1;            // 成片文件 ID
+    std::string name;                    // 成片文件名
+    int pano_stitch_state    = 0;        // 拼接状态 0~6，与后端 PanoStitchState 枚举一致
+    int pano_stitch_progress = 0;        // 拼接进度 [0, 100]
+    int pano_error_code      = 0;        // 错误码，0 表示无错误
+
+    bool operator==(const PanoStitchProgress &rhs) const {
+        return workspace_id == rhs.workspace_id &&
+               file_id == rhs.file_id &&
+               name == rhs.name &&
+               pano_stitch_state == rhs.pano_stitch_state &&
+               pano_stitch_progress == rhs.pano_stitch_progress &&
+               pano_error_code == rhs.pano_error_code;
+    }
+
+    bool operator!=(const PanoStitchProgress &rhs) const {
+        return !(*this == rhs);
+    }
+};
+
+
 
 // ImportWaylineEvent
 class PointsItem {
@@ -3074,6 +3100,102 @@ public:
 };
 
 // ─────────────────────────────────────────────────────────
+// "topic_atc_return_home_info_event"
+// 多机场返航路径信息事件
+// ─────────────────────────────────────────────────────────
+
+class Waypoint {
+public:
+    double latitude = 0.0;
+    double longitude = 0.0;
+    double height = 0.0;
+
+    bool operator==(const Waypoint &o) const {
+        return latitude == o.latitude && longitude == o.longitude && height == o.height;
+    }
+    bool operator!=(const Waypoint &o) const { return !(*this == o); }
+};
+
+class MultiDockHomeInfo {
+public:
+    std::string sn;
+    int plan_status = 0;
+    int estimated_battery_consumption = 0;
+    double home_distance = 0.0;
+
+    bool operator==(const MultiDockHomeInfo &o) const {
+        return sn == o.sn && plan_status == o.plan_status
+            && estimated_battery_consumption == o.estimated_battery_consumption
+            && home_distance == o.home_distance;
+    }
+    bool operator!=(const MultiDockHomeInfo &o) const { return !(*this == o); }
+};
+
+class ReturnHomeInfo {
+public:
+    int64_t timestamp = 0;
+    std::vector<Waypoint> planned_path_points;
+    int last_point_type = 0;
+    std::string home_dock_sn;
+    std::vector<MultiDockHomeInfo> multi_dock_home_info;
+
+    bool operator==(const ReturnHomeInfo &o) const {
+        return timestamp == o.timestamp && planned_path_points == o.planned_path_points
+            && last_point_type == o.last_point_type && home_dock_sn == o.home_dock_sn
+            && multi_dock_home_info == o.multi_dock_home_info;
+    }
+    bool operator!=(const ReturnHomeInfo &o) const { return !(*this == o); }
+};
+
+class ReturnHomeInfoEvent {
+public:
+    std::string flight_id;
+    std::string sn;
+    ReturnHomeInfo info;
+
+    bool operator==(const ReturnHomeInfoEvent &o) const {
+        return flight_id == o.flight_id && sn == o.sn && info == o.info;
+    }
+    bool operator!=(const ReturnHomeInfoEvent &o) const { return !(*this == o); }
+};
+
+// ─────────────────────────────────────────────────────────
+// "topic_atc_task_exception_event"
+// 任务异常事件
+// ─────────────────────────────────────────────────────────
+
+class TaskExceptionItem {
+public:
+    int code = 0;
+    std::string message;
+    std::string sn;
+    int64_t happen_at = 0;
+
+    bool operator==(const TaskExceptionItem &o) const {
+        return code == o.code && message == o.message && sn == o.sn && happen_at == o.happen_at;
+    }
+    bool operator!=(const TaskExceptionItem &o) const { return !(*this == o); }
+};
+
+class TaskExceptionEvent {
+public:
+    std::string uuid;
+    std::string name;
+    std::string sn;
+    int task_type = 0;
+    int status = 0;
+    int64_t timestamp = 0;
+    std::vector<TaskExceptionItem> exceptions;
+
+    bool operator==(const TaskExceptionEvent &o) const {
+        return uuid == o.uuid && name == o.name && sn == o.sn
+            && task_type == o.task_type && status == o.status
+            && timestamp == o.timestamp && exceptions == o.exceptions;
+    }
+    bool operator!=(const TaskExceptionEvent &o) const { return !(*this == o); }
+};
+
+// ─────────────────────────────────────────────────────────
 // "in_flight_wayline_task_notify"
 // 空中航线任务进度推送
 // ─────────────────────────────────────────────────────────
@@ -3266,20 +3388,31 @@ public:
     std::string uuid;
     std::string sn;
     std::string device_sn;
+    std::string drone_sn;
     FlightPoiProgressCenterPoint poi_center_point;
     double speed = 0.0;
+    double circle_speed = 0.0;
+    double max_circle_speed = 0.0;
     double circle_radius = 0.0;
     std::string payload_index;
-    int status = 0;
+    std::string status;
+    int reason = 0;
+    long timestamp = 0;
+    int execute_duration = 0;
     int err_code = 0;
 
     bool operator==(const FlightPoiProgress &o) const {
         return uuid == o.uuid && sn == o.sn && device_sn == o.device_sn
+            && drone_sn == o.drone_sn
             && poi_center_point == o.poi_center_point
             && floatEqual(speed, o.speed)
+            && floatEqual(circle_speed, o.circle_speed)
+            && floatEqual(max_circle_speed, o.max_circle_speed)
             && floatEqual(circle_radius, o.circle_radius)
             && payload_index == o.payload_index
-            && status == o.status && err_code == o.err_code;
+            && status == o.status && reason == o.reason
+            && timestamp == o.timestamp && execute_duration == o.execute_duration
+            && err_code == o.err_code;
     }
     bool operator!=(const FlightPoiProgress &o) const { return !(*this == o); }
 };
@@ -3415,7 +3548,7 @@ public:
 };
 
 // ─────────────────────────────────────────────────────────────────────
-// "topic_media_file_hide_on_map"  模型隐藏地图推送（来自 file-storage）
+// "topic_media_file_hide_on_map"  模型隐藏地图推送（来自云端媒体服务）
 // ─────────────────────────────────────────────────────────────────────
 
 /// 模型隐藏地图消息（Delete/BatchDelete 触发）
@@ -3428,7 +3561,7 @@ public:
 };
 
 // ─────────────────────────────────────────────────────────────────────
-// "topic_media_file_show_on_map"  模型显示地图推送（来自 file-storage）
+// "topic_media_file_show_on_map"  模型显示地图推送（来自云端媒体服务）
 // ─────────────────────────────────────────────────────────────────────
 
 /// 单个上图模型文件摘要
@@ -3681,6 +3814,77 @@ public:
 };
 
 // ─────────────────────────────────────────────────────────
+// PSDK 自定义数据透传上行 (topic_custom_data_transmission_from_psdk)
+// ─────────────────────────────────────────────────────────
+
+class PsdkCustomDataTransmission {
+public:
+    std::string value;
+
+    bool operator==(const PsdkCustomDataTransmission &o) const { return value == o.value; }
+    bool operator!=(const PsdkCustomDataTransmission &o) const { return !(*this == o); }
+};
+
+// ─────────────────────────────────────────────────────────
+// ESDK 自定义数据透传上行 (topic_custom_data_transmission_from_esdk)
+// ─────────────────────────────────────────────────────────
+
+class EsdkCustomDataTransmission {
+public:
+    std::string value;
+
+    bool operator==(const EsdkCustomDataTransmission &o) const { return value == o.value; }
+    bool operator!=(const EsdkCustomDataTransmission &o) const { return !(*this == o); }
+};
+
+// ─────────────────────────────────────────────────────────
+// 飞行任务媒体最高优先级上传上行 (topic_highest_priority_upload_flighttask_media)
+// ─────────────────────────────────────────────────────────
+
+class HighestPriorityUploadFlighttaskMedia {
+public:
+    std::string flight_id;
+
+    bool operator==(const HighestPriorityUploadFlighttaskMedia &o) const { return flight_id == o.flight_id; }
+    bool operator!=(const HighestPriorityUploadFlighttaskMedia &o) const { return !(*this == o); }
+};
+
+// ─────────────────────────────────────────────────────────
+// AirSense 民航飞机告警上行 (topic_airsense_warning)
+// ─────────────────────────────────────────────────────────
+
+class AirsenseWarningItem {
+public:
+    std::string icao;              // ICAO 民航飞机地址
+    int warning_level = 0;         // 告警等级 0~4（≥3 建议避让）
+    double latitude = 0.0;         // 纬度 [-90,90]
+    double longitude = 0.0;        // 经度 [-180,180]
+    int altitude = 0;              // 绝对高度（米）
+    int altitude_type = 0;         // 0 椭球高 / 1 海拔高
+    double heading = 0.0;          // 航向角（0 正北, 90 正东）
+    int relative_altitude = 0;     // 相对无人机高度（米）
+    int vert_trend = 0;            // 0 不变 / 1 上升 / 2 下降
+    int distance = 0;              // 与无人机水平距离（米）
+
+    bool operator==(const AirsenseWarningItem &o) const {
+        return icao == o.icao && warning_level == o.warning_level &&
+               latitude == o.latitude && longitude == o.longitude &&
+               altitude == o.altitude && altitude_type == o.altitude_type &&
+               heading == o.heading && relative_altitude == o.relative_altitude &&
+               vert_trend == o.vert_trend && distance == o.distance;
+    }
+    bool operator!=(const AirsenseWarningItem &o) const { return !(*this == o); }
+};
+
+class AirsenseWarning {
+public:
+    std::vector<AirsenseWarningItem> data;
+
+    bool operator==(const AirsenseWarning &o) const { return data == o.data; }
+    bool operator!=(const AirsenseWarning &o) const { return !(*this == o); }
+};
+
+// ─────────────────────────────────────────────────────────
 // 飞行器进入当前状态原因推送 (topic_drone_mode_code_reason)
 // ─────────────────────────────────────────────────────────
 
@@ -3767,6 +3971,145 @@ public:
             && user_custom_string == o.user_custom_string && layout == o.layout;
     }
     bool operator!=(const DroneCameraWatermarkSettingsPush &o) const { return !(*this == o); }
+};
+
+// ─────────────────────────────────────────────────────────
+// 级联节点状态变更 (topic_cascade_node_status)
+// 对齐 docs/superpowers/specs/级联接口文档-v1.1.md §事件推送
+// status 取值：enabled / disabled / deleted，仅承载操作结果，不承载在线态。
+// 事件体是全量快照，幂等自愈。
+// ─────────────────────────────────────────────────────────
+
+class CascadeChildNodeStatus {
+public:
+    std::string node_id;   // wire: nodeID
+    std::string status;    // v1.1: enabled / disabled / deleted
+
+    bool operator==(const CascadeChildNodeStatus &o) const {
+        return node_id == o.node_id && status == o.status;
+    }
+    bool operator!=(const CascadeChildNodeStatus &o) const { return !(*this == o); }
+};
+
+class CascadeParentNodeStatus {
+public:
+    std::string node_id;   // wire: nodeID
+    std::string status;    // v1.1: enabled / disabled / deleted
+
+    bool operator==(const CascadeParentNodeStatus &o) const {
+        return node_id == o.node_id && status == o.status;
+    }
+    bool operator!=(const CascadeParentNodeStatus &o) const { return !(*this == o); }
+};
+
+class CascadeNodeStatusEvent {
+public:
+    std::vector<CascadeChildNodeStatus> child_node_status_list; // wire: childNodeStatusList
+    CascadeParentNodeStatus parent_node_status;                 // wire: parentNodeStatus
+    int64_t changed_at = 0;                                     // wire: changedAt (Unix 秒)
+
+    bool operator==(const CascadeNodeStatusEvent &o) const {
+        return child_node_status_list == o.child_node_status_list
+            && parent_node_status == o.parent_node_status
+            && changed_at == o.changed_at;
+    }
+    bool operator!=(const CascadeNodeStatusEvent &o) const { return !(*this == o); }
+};
+
+// ─────────────────────────────────────────────────────────
+// v1.1 §跨节点通道消息：topic_cascade_notify
+// 对端节点通过 POST /cascade/api/notify/{dstNode} 发过来的原始 payload；
+// SDK 不解析（任意字节透传，与 postToNode 的 body 语义对称）。
+// ─────────────────────────────────────────────────────────
+
+class CascadeNotifyEvent {
+public:
+    std::string payload;   // wire: payload
+
+    bool operator==(const CascadeNotifyEvent &o) const {
+        return payload == o.payload;
+    }
+    bool operator!=(const CascadeNotifyEvent &o) const { return !(*this == o); }
+};
+
+// AI 告警记录推送 (alert_records.alert_records_notify)
+// ─────────────────────────────────────────────────────────
+
+class AiAlertRecordLocation {
+public:
+    double latitude = 0.0;
+    double longitude = 0.0;
+    double altitude = 0.0;
+
+    bool operator==(const AiAlertRecordLocation &o) const {
+        return floatEqual(latitude, o.latitude) && floatEqual(longitude, o.longitude) && floatEqual(altitude, o.altitude);
+    }
+    bool operator!=(const AiAlertRecordLocation &o) const { return !(*this == o); }
+};
+
+class AiAlertRecordTargetInfo {
+public:
+    int target_type = 0;
+    double target_value = 0.0;
+    bool use_min_threshold = false;
+    bool use_max_threshold = false;
+    double target_max_threshold = 0.0;
+    double target_min_threshold = 0.0;
+    std::string label;
+
+    bool operator==(const AiAlertRecordTargetInfo &o) const {
+        return target_type == o.target_type && floatEqual(target_value, o.target_value)
+            && use_min_threshold == o.use_min_threshold && use_max_threshold == o.use_max_threshold
+            && floatEqual(target_max_threshold, o.target_max_threshold)
+            && floatEqual(target_min_threshold, o.target_min_threshold)
+            && label == o.label;
+    }
+    bool operator!=(const AiAlertRecordTargetInfo &o) const { return !(*this == o); }
+};
+
+class AiAlertRecordNotifyItem {
+public:
+    std::string alert_uuid;
+    std::string flight_id;
+    std::string drone_sn;
+    std::string gateway_sn;
+    int status = 0;
+    int algorithm_source = 0;
+    AiAlertRecordLocation location;
+    int64_t file_id = 0;
+    int64_t media_index = 0;
+    std::string task_name;
+    std::vector<AiAlertRecordTargetInfo> target_alert_infos;
+    int64_t timestamp = 0;
+    std::string thumbnail_url;
+    std::vector<std::string> labels;
+
+    bool operator==(const AiAlertRecordNotifyItem &o) const {
+        return alert_uuid == o.alert_uuid && flight_id == o.flight_id && drone_sn == o.drone_sn
+            && gateway_sn == o.gateway_sn && status == o.status && algorithm_source == o.algorithm_source
+            && timestamp == o.timestamp;
+    }
+    bool operator!=(const AiAlertRecordNotifyItem &o) const { return !(*this == o); }
+};
+
+class AiAlertFlightNotifyData {
+public:
+    std::string flight_id;
+    std::string flight_task_name;
+    std::vector<AiAlertRecordNotifyItem> records;
+
+    bool operator==(const AiAlertFlightNotifyData &o) const {
+        return flight_id == o.flight_id && flight_task_name == o.flight_task_name;
+    }
+    bool operator!=(const AiAlertFlightNotifyData &o) const { return !(*this == o); }
+};
+
+class AiAlertRecordsNotification {
+public:
+    std::vector<AiAlertFlightNotifyData> data;
+
+    bool operator==(const AiAlertRecordsNotification &o) const { return data == o.data; }
+    bool operator!=(const AiAlertRecordsNotification &o) const { return !(*this == o); }
 };
 
 } // namespace notification_center

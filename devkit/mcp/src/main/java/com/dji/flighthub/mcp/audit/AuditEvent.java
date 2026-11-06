@@ -21,16 +21,18 @@ import java.time.Instant;
 /**
  * 审计事件 — 记录每一次 MCP Tool 执行的上下文。
  *
- * @param eventId       唯一事件 ID（aud_ 前缀）
- * @param timestamp     事件时间
- * @param sessionId     Session ID（可为 null，如未创建 session 时的调用）
- * @param clientId      客户端标识（SSE clientId 或 "stdio"）
- * @param requestId     JSON-RPC request id
- * @param toolName      工具名（如 "fh_takeoff"）
- * @param durationMs    执行耗时（毫秒）
- * @param success       是否成功
- * @param errorMessage  失败时的错误信息
- * @param idempotentHit 是否命中幂等缓存
+ * @param eventId        唯一事件 ID（aud_ 前缀）
+ * @param timestamp      事件时间
+ * @param sessionId      Session ID（可为 null，如未创建 session 时的调用）
+ * @param clientId       客户端标识（SSE clientId 或 "stdio"）
+ * @param requestId      JSON-RPC request id
+ * @param toolName       工具名（如 "fh_takeoff"）
+ * @param durationMs     执行耗时（毫秒）
+ * @param success        是否成功
+ * @param errorMessage   失败时的错误信息
+ * @param idempotentHit  是否命中幂等缓存
+ * @param rateLimited    是否被工具级限流拒绝
+ * @param securityDenied 是否被派发层安全等级门控拒绝
  * @author DJI FlightHub SDK Team
  */
 public record AuditEvent(
@@ -43,6 +45,8 @@ public record AuditEvent(
         long durationMs,
         boolean success,
         String errorMessage,
-        boolean idempotentHit
+        boolean idempotentHit,
+        boolean rateLimited,
+        boolean securityDenied
 ) {
 }

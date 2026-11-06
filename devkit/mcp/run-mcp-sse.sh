@@ -1,5 +1,5 @@
 #!/bin/bash
-# FlightHub MCP Server launcher — SSE 模式（本地调试用）
+# DJI Cloud API 2 MCP Server launcher — SSE 模式（本地调试用）
 #
 # 用于配合 Claude Desktop / Cursor 等 SSE 客户端本地调试。
 # 生产部署请使用 docker-compose.yml。
@@ -34,7 +34,7 @@ fi
 # SSE 模式比 stdio 多 ~100MB（WebFlux/Netty），所以上限设为 512m
 JVM_OPTS="${JAVA_OPTS:- -Xms64m -Xmx512m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC}"
 
-echo "[INFO] Starting FlightHub MCP Server (SSE mode)" >&2
+echo "[INFO] Starting DJI Cloud API 2 MCP Server (SSE mode)" >&2
 echo "[INFO] JVM opts: ${JVM_OPTS}" >&2
 echo "[INFO] SSE endpoint: http://localhost:${FH_SSE_PORT:-8080}/pf-devkit/ai-plugin/mcp/sse" >&2
 

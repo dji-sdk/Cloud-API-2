@@ -149,9 +149,9 @@ bool DrtcUserEngineImpl::Init(const std::string &client_id) {
     }
 
     const std::string config_to_use = ResolveConfigPath(config_path_, provider_url_);
-    drtc_sdk_ = drtc::DrtcDeviceSdkFactory::getInstance(config_to_use.c_str());
-    if (drtc_sdk_ == nullptr) {
-        LOG_ERROR("[DrtcUserEngineImpl] DrtcDeviceSdkFactory::getInstance returned nullptr");
+    drtc_sdk_ = drtc::DrtcDeviceSdkFactory::Create(config_to_use.c_str());
+    if (!drtc_sdk_) {
+        LOG_ERROR("[DrtcUserEngineImpl] DrtcDeviceSdkFactory::Create returned nullptr");
         return false;
     }
 
@@ -163,7 +163,7 @@ bool DrtcUserEngineImpl::Init(const std::string &client_id) {
     auto ret = drtc_sdk_->DrtcInit(this, drtc_user_log_function, DEVICESDK_LOG_LEVEL_INFO, self_client_);
     if (ret != DEVICESDK_SUCCESS) {
         LOG_ERROR("[DrtcUserEngineImpl] DrtcInit failed, code = %d", ret);
-        drtc_sdk_ = nullptr;
+        drtc_sdk_.reset();
         return false;
     }
 
@@ -178,8 +178,8 @@ bool DrtcUserEngineImpl::DeInit() {
     if (!is_inited_) {
         return true;
     }
-    if (drtc_sdk_ == nullptr) {
-        LOG_ERROR("[DrtcUserEngineImpl] drtc_sdk_ is nullptr");
+    if (!drtc_sdk_) {
+        LOG_ERROR("[DrtcUserEngineImpl] drtc_sdk_ is null");
         return false;
     }
 
@@ -197,7 +197,7 @@ bool DrtcUserEngineImpl::DeInit() {
 
     is_inited_ = false;
     join_state_ = DrtcUserJoinRoomState::IDLE;
-    drtc_sdk_ = nullptr;
+    drtc_sdk_.reset();
     return true;
 }
 
@@ -243,7 +243,7 @@ int DrtcUserEngineImpl::JoinRoom(const std::string &app_id, const std::string &r
     LOG_INFO("[DrtcUserEngineImpl] JoinRoom paas_room_id(reference_sn): %s, app_id: %s",
              room_id.c_str(), app_id.c_str());
     (void)provider_url;
-    if (!is_inited_ || drtc_sdk_ == nullptr) {
+    if (!is_inited_ || !drtc_sdk_) {
         LOG_ERROR("[DrtcUserEngineImpl] JoinRoom failed: not inited");
         return DRTC_USER_ERROR_NOT_INIT;
     }
@@ -292,7 +292,7 @@ int DrtcUserEngineImpl::JoinRoom(const std::string &app_id, const std::string &r
 int DrtcUserEngineImpl::LeaveRoom() {
     LOG_INFO("[DrtcUserEngineImpl] LeaveRoom room_id: %s, state=%d",
              room_id_.c_str(), static_cast<int>(join_state_.load()));
-    if (!is_inited_ || drtc_sdk_ == nullptr) {
+    if (!is_inited_ || !drtc_sdk_) {
         return DRTC_USER_ERROR_NOT_INIT;
     }
     if (join_state_ == DrtcUserJoinRoomState::EXCHANGING ||
@@ -321,7 +321,7 @@ int DrtcUserEngineImpl::LeaveRoom() {
 
 int DrtcUserEngineImpl::Publish(const DrtcStream &stream, const DrtcUserPublishCallback &callback) {
     LOG_INFO("[DrtcUserEngineImpl] Publish stream_id: %s, type: %d", stream.stream_id, stream.stream_type);
-    if (!is_inited_ || drtc_sdk_ == nullptr) {
+    if (!is_inited_ || !drtc_sdk_) {
         return DRTC_USER_ERROR_NOT_INIT;
     }
 
@@ -347,7 +347,7 @@ int DrtcUserEngineImpl::Publish(const DrtcStream &stream, const DrtcUserPublishC
 
 int DrtcUserEngineImpl::Unpublish(const DrtcStream &stream) {
     LOG_INFO("[DrtcUserEngineImpl] Unpublish stream_id: %s", stream.stream_id);
-    if (!is_inited_ || drtc_sdk_ == nullptr) {
+    if (!is_inited_ || !drtc_sdk_) {
         return DRTC_USER_ERROR_NOT_INIT;
     }
 
@@ -364,8 +364,8 @@ int DrtcUserEngineImpl::Unpublish(const DrtcStream &stream) {
 int DrtcUserEngineImpl::Subscribe(const DrtcClient &producer_client, const DrtcStream &producer_stream,
                                    const DrtcUserSubscribeCallback &callback) {
     LOG_INFO("[DrtcUserEngineImpl] Subscribe producer: %s, stream: %s, type: %d",
-             producer_client.client_id, producer_stream.stream_id, producer_stream.stream_type);
-    if (!is_inited_ || drtc_sdk_ == nullptr) {
+              producer_client.client_id, producer_stream.stream_id, producer_stream.stream_type);
+    if (!is_inited_ || !drtc_sdk_) {
         return DRTC_USER_ERROR_NOT_INIT;
     }
 
@@ -394,7 +394,7 @@ int DrtcUserEngineImpl::Subscribe(const DrtcClient &producer_client, const DrtcS
 int DrtcUserEngineImpl::Unsubscribe(const DrtcClient &producer_client, const DrtcStream &producer_stream) {
     LOG_INFO("[DrtcUserEngineImpl] Unsubscribe producer: %s, stream: %s",
              producer_client.client_id, producer_stream.stream_id);
-    if (!is_inited_ || drtc_sdk_ == nullptr) {
+    if (!is_inited_ || !drtc_sdk_) {
         return DRTC_USER_ERROR_NOT_INIT;
     }
 
@@ -410,7 +410,7 @@ int DrtcUserEngineImpl::Unsubscribe(const DrtcClient &producer_client, const Drt
 }
 
 int DrtcUserEngineImpl::SendData(const DrtcStream &stream, const std::shared_ptr<drc_sdk::ByteBuffer> &data) {
-    if (!is_inited_ || drtc_sdk_ == nullptr) {
+    if (!is_inited_ || !drtc_sdk_) {
         return DRTC_USER_ERROR_NOT_INIT;
     }
 
@@ -425,7 +425,7 @@ int DrtcUserEngineImpl::SendData(const DrtcStream &stream, const std::shared_ptr
 
 int DrtcUserEngineImpl::UpdateToken(const std::string &token) {
     LOG_INFO("[DrtcUserEngineImpl] UpdateToken");
-    if (!is_inited_ || drtc_sdk_ == nullptr) {
+    if (!is_inited_ || !drtc_sdk_) {
         return DRTC_USER_ERROR_NOT_INIT;
     }
     token_ = token;
@@ -436,7 +436,7 @@ int DrtcUserEngineImpl::UpdateToken(const std::string &token) {
 
 int DrtcUserEngineImpl::RequestVideoKeyFrame(const DrtcClient &producer_client,
                                               const DrtcStream &producer_stream) {
-    if (!is_inited_ || drtc_sdk_ == nullptr) {
+    if (!is_inited_ || !drtc_sdk_) {
         return DRTC_USER_ERROR_NOT_INIT;
     }
     auto ret = drtc_sdk_->DrtcRequestVideoKeyFrame(producer_client, producer_stream);
@@ -919,7 +919,9 @@ void DrtcUserEngineImpl::DrtcOnNetworkQualityNotify(const DrtcNetworkQualityNoti
               notify.uplink_quality, notify.downlink_quality);
 }
 
-void DrtcUserEngineImpl::DrtcOnClientBandwidthNotify(const DrtcClient &peer_client, uint32_t bw_kbps) {
-    LOG_DEBUG("[DrtcUserEngineImpl] DrtcOnClientBandwidthNotify client: %s, bw: %u kbps",
-              peer_client.client_id, bw_kbps);
+void DrtcUserEngineImpl::DrtcOnClientBandwidthNotify(const std::vector<DrtcPeerBandwidthNotify> &peer_bws) {
+    for (const auto &bw : peer_bws) {
+        LOG_DEBUG("[DrtcUserEngineImpl] DrtcOnClientBandwidthNotify client: %s, bw: %u kbps",
+                  bw.peer_client.client_id, bw.bw_kbps);
+    }
 }

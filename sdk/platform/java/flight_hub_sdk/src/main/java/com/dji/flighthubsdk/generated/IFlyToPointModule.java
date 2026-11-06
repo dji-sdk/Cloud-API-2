@@ -70,6 +70,10 @@ public class IFlyToPointModule {
     flighthubsdkmoduleJNI.IFlyToPointModule_startWrapper(swigCPtr, this, FlyToPointParams.getCPtr(params), params, FlyToPointStartCallback.getCPtr(callback), callback);
   }
 
+  public void startWithResultWrapper(FlyToPointParams params, FlyToPointStartResultCallback callback) {
+    flighthubsdkmoduleJNI.IFlyToPointModule_startWithResultWrapper(swigCPtr, this, FlyToPointParams.getCPtr(params), params, FlyToPointStartResultCallback.getCPtr(callback), callback);
+  }
+
   public void drcStopWrapper(ResultCallbackWithError callback) {
     flighthubsdkmoduleJNI.IFlyToPointModule_drcStopWrapper(swigCPtr, this, ResultCallbackWithError.getCPtr(callback), callback);
   }

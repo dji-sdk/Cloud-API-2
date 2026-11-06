@@ -7,7 +7,7 @@ package com.dji.flighthubsdk.bean;
 import java.util.Objects;
 /** 飞行作业高度回调结果 */
 public final class FlightCommanderHeightResult {
-    private int commanderFlightHeight;
+    private double commanderFlightHeight;
     private FlightSafeSyncResult deviceShadowSync;
     public FlightCommanderHeightResult() {
     }
@@ -18,18 +18,18 @@ public final class FlightCommanderHeightResult {
      * @param commanderFlightHeight 飞行作业高度（米）
      * @param deviceShadowSync 设备影子同步结果
      */
-    public FlightCommanderHeightResult(int commanderFlightHeight, FlightSafeSyncResult deviceShadowSync) {
+    public FlightCommanderHeightResult(double commanderFlightHeight, FlightSafeSyncResult deviceShadowSync) {
         this.commanderFlightHeight = commanderFlightHeight;
         this.deviceShadowSync = deviceShadowSync;
     }
 
     /** 飞行作业高度（米） */
-    public int getCommanderFlightHeight() { return commanderFlightHeight; }
+    public double getCommanderFlightHeight() { return commanderFlightHeight; }
     /** 设备影子同步结果 */
     public FlightSafeSyncResult getDeviceShadowSync() { return deviceShadowSync; }
 
     /** 飞行作业高度（米） */
-    public void setCommanderFlightHeight(int commanderFlightHeight) {
+    public void setCommanderFlightHeight(double commanderFlightHeight) {
         this.commanderFlightHeight = commanderFlightHeight;
     }
 

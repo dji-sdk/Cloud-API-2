@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 400" role="img" aria-label="文档地图">
+  <rect width="920" height="400" fill="#0f172a" rx="12"/>
+  <text x="460" y="38" text-anchor="middle" fill="#e2e8f0" font-size="18" font-weight="700" font-family="PingFang SC, sans-serif">集成商自研集成 — 本仓库文档体系</text>
+  <circle cx="460" cy="210" r="72" fill="#1e293b" stroke="#38bdf8" stroke-width="3"/>
+  <text x="460" y="205" text-anchor="middle" fill="#38bdf8" font-size="13" font-weight="700" font-family="PingFang SC, sans-serif">0_整体方案</text>
+  <text x="460" y="228" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="PingFang SC, sans-serif">架构 · API · 三层数据</text>
+  <rect x="60" y="80" width="180" height="70" rx="10" fill="#422006" stroke="#f59e0b"/>
+  <text x="150" y="118" text-anchor="middle" fill="#fcd34d" font-size="13" font-weight="600" font-family="PingFang SC, sans-serif">需求说明</text>
+  <rect x="680" y="80" width="180" height="70" rx="10" fill="#042f2e" stroke="#14b8a6"/>
+  <text x="770" y="118" text-anchor="middle" fill="#5eead4" font-size="11" font-weight="600" font-family="PingFang SC, sans-serif">1_后端方案</text>
+  <rect x="60" y="280" width="180" height="70" rx="10" fill="#172554" stroke="#60a5fa"/>
+  <text x="150" y="318" text-anchor="middle" fill="#93c5fd" font-size="12" font-weight="600" font-family="PingFang SC, sans-serif">2_前端方案</text>
+  <rect x="370" y="320" width="180" height="60" rx="10" fill="#3b0764" stroke="#c084fc"/>
+  <text x="460" y="355" text-anchor="middle" fill="#e9d5ff" font-size="12" font-weight="600" font-family="PingFang SC, sans-serif">实战案例</text>
+  <rect x="680" y="280" width="180" height="70" rx="10" fill="#14532d" stroke="#4ade80"/>
+  <text x="770" y="318" text-anchor="middle" fill="#86efac" font-size="11" font-weight="600" font-family="PingFang SC, sans-serif">turtorial/</text>
+  <rect x="340" y="55" width="240" height="50" rx="8" fill="#1e293b" stroke="#64748b" stroke-dasharray="4"/>
+  <text x="460" y="85" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="PingFang SC, sans-serif">PaaS 嵌入（平台官方文档 · 与本 Demo 互斥）</text>
+  <line x1="240" y1="115" x2="395" y2="175" stroke="#f59e0b" stroke-width="1.5"/>
+  <line x1="680" y1="115" x2="525" y2="175" stroke="#14b8a6" stroke-width="1.5"/>
+  <line x1="240" y1="315" x2="395" y2="235" stroke="#60a5fa" stroke-width="1.5"/>
+  <line x1="680" y1="315" x2="525" y2="235" stroke="#4ade80" stroke-width="1.5"/>
+</svg>

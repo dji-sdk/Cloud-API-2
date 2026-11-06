@@ -1,12 +1,12 @@
 #!/bin/bash
-# FlightHub MCP Server 环境探测脚本
+# DJI Cloud API 2 MCP Server 环境探测脚本
 # AI 让用户在目标机器上执行，回报输出后分析推荐部署路径
 #
 # 用法：bash env-probe.sh（或复制内容逐段执行）
 
 set -uo pipefail
 
-echo "===== FlightHub MCP Server 环境探测 ====="
+echo "===== DJI Cloud API 2 MCP Server 环境探测 ====="
 echo ""
 
 echo "--- 操作系统 ---"
@@ -17,9 +17,11 @@ echo ""
 echo "--- CPU 架构 ---"
 ARCH=$(uname -m)
 echo "Architecture: $ARCH"
-if [ "$ARCH" != "x86_64" ] && [ "$ARCH" != "amd64" ]; then
-  echo "⚠️  非 x86_64 架构：真实 SDK 模式需 Docker --platform linux/amd64 或远程 x86_64 服务器"
-fi
+case "$ARCH" in
+  x86_64|amd64) echo "  → 构建镜像时用 --build-arg SDK_ARCH=amd64" ;;
+  aarch64|arm64) echo "  → 构建镜像时用 --build-arg SDK_ARCH=arm64（macOS 上需在 Docker 内以 linux 运行）" ;;
+  *) echo "⚠️  未知架构：真实 SDK 模式仅支持 Linux x86_64 / Linux aarch64，请改用远程 Linux 服务器" ;;
+esac
 echo ""
 
 echo "--- Docker ---"

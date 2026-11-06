@@ -115,6 +115,30 @@ public class AiDetectionTarget {
     return flighthubsdkmoduleJNI.AiDetectionTarget_target_distance_get(swigCPtr, this);
   }
 
+  public void setModel_index(int value) {
+    flighthubsdkmoduleJNI.AiDetectionTarget_model_index_set(swigCPtr, this, value);
+  }
+
+  public int getModel_index() {
+    return flighthubsdkmoduleJNI.AiDetectionTarget_model_index_get(swigCPtr, this);
+  }
+
+  public void setFrame_source(int value) {
+    flighthubsdkmoduleJNI.AiDetectionTarget_frame_source_set(swigCPtr, this, value);
+  }
+
+  public int getFrame_source() {
+    return flighthubsdkmoduleJNI.AiDetectionTarget_frame_source_get(swigCPtr, this);
+  }
+
+  public void setModel_info_type(int value) {
+    flighthubsdkmoduleJNI.AiDetectionTarget_model_info_type_set(swigCPtr, this, value);
+  }
+
+  public int getModel_info_type() {
+    return flighthubsdkmoduleJNI.AiDetectionTarget_model_info_type_get(swigCPtr, this);
+  }
+
   public AiDetectionTarget() {
     this(flighthubsdkmoduleJNI.new_AiDetectionTarget(), true);
   }

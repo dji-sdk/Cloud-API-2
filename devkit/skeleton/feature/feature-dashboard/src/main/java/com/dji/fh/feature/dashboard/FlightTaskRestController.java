@@ -629,8 +629,8 @@ public class FlightTaskRestController {
      *
      * <p>唯一性范围为整个工作空间，与任务列表的展示范围一致。
      * 查询能力缺失或异常时按 fail-open 处理并记录 WARN：
-     * 存量 ISV 未实现 {@code existsTaskWithName} 时会抛 {@link UnsupportedOperationException}，
-     * 若此时直接报错会让存量 ISV 的创建/编辑功能整体不可用，回归风险大于漏拦一个重名。
+     * 存量集成商未实现 {@code existsTaskWithName} 时会抛 {@link UnsupportedOperationException}，
+     * 若此时直接报错会让存量集成商的创建/编辑功能整体不可用，回归风险大于漏拦一个重名。
      *
      * @param name            任务名称（调用方需先归一化）
      * @param excludeTaskUuid 需排除的任务 UUID（编辑场景传当前任务 UUID），创建场景传 null

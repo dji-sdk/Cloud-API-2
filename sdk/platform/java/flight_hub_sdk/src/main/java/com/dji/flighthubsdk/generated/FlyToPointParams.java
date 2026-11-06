@@ -51,28 +51,22 @@ public class FlyToPointParams {
     }
   }
 
-  public void setLatitude(double value) {
-    flighthubsdkmoduleJNI.FlyToPointParams_latitude_set(swigCPtr, this, value);
+  public void setStart_point(FlyToTargetPoint value) {
+    flighthubsdkmoduleJNI.FlyToPointParams_start_point_set(swigCPtr, this, FlyToTargetPoint.getCPtr(value), value);
   }
 
-  public double getLatitude() {
-    return flighthubsdkmoduleJNI.FlyToPointParams_latitude_get(swigCPtr, this);
+  public FlyToTargetPoint getStart_point() {
+    long cPtr = flighthubsdkmoduleJNI.FlyToPointParams_start_point_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new FlyToTargetPoint(cPtr, false);
   }
 
-  public void setLongitude(double value) {
-    flighthubsdkmoduleJNI.FlyToPointParams_longitude_set(swigCPtr, this, value);
+  public void setPoints(FlyToTargetPointVector value) {
+    flighthubsdkmoduleJNI.FlyToPointParams_points_set(swigCPtr, this, FlyToTargetPointVector.getCPtr(value), value);
   }
 
-  public double getLongitude() {
-    return flighthubsdkmoduleJNI.FlyToPointParams_longitude_get(swigCPtr, this);
-  }
-
-  public void setHeight(double value) {
-    flighthubsdkmoduleJNI.FlyToPointParams_height_set(swigCPtr, this, value);
-  }
-
-  public double getHeight() {
-    return flighthubsdkmoduleJNI.FlyToPointParams_height_get(swigCPtr, this);
+  public FlyToTargetPointVector getPoints() {
+    long cPtr = flighthubsdkmoduleJNI.FlyToPointParams_points_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new FlyToTargetPointVector(cPtr, false);
   }
 
   public void setMax_speed(int value) {
@@ -81,6 +75,30 @@ public class FlyToPointParams {
 
   public int getMax_speed() {
     return flighthubsdkmoduleJNI.FlyToPointParams_max_speed_get(swigCPtr, this);
+  }
+
+  public void setSpeed_mode(int value) {
+    flighthubsdkmoduleJNI.FlyToPointParams_speed_mode_set(swigCPtr, this, value);
+  }
+
+  public int getSpeed_mode() {
+    return flighthubsdkmoduleJNI.FlyToPointParams_speed_mode_get(swigCPtr, this);
+  }
+
+  public void setReal_height_cap_enabled(int value) {
+    flighthubsdkmoduleJNI.FlyToPointParams_real_height_cap_enabled_set(swigCPtr, this, value);
+  }
+
+  public int getReal_height_cap_enabled() {
+    return flighthubsdkmoduleJNI.FlyToPointParams_real_height_cap_enabled_get(swigCPtr, this);
+  }
+
+  public void setReal_height_cap_limit(int value) {
+    flighthubsdkmoduleJNI.FlyToPointParams_real_height_cap_limit_set(swigCPtr, this, value);
+  }
+
+  public int getReal_height_cap_limit() {
+    return flighthubsdkmoduleJNI.FlyToPointParams_real_height_cap_limit_get(swigCPtr, this);
   }
 
   public FlyToPointParams() {

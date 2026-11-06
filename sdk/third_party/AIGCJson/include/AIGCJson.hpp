@@ -1132,6 +1132,9 @@ public:
     bool JsonToObject(std::vector<TYPE> &obj, rapidjson::Value &jsonValue)
     {
         obj.clear();
+        // 服务端空结果常以 null 表达容器，视为空集合，避免解析失败
+        if (jsonValue.IsNull())
+            return true;
         if (!jsonValue.IsArray())
         {
             m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is std::vector<TYPE>.";
@@ -1153,6 +1156,8 @@ public:
     bool JsonToObject(std::list<TYPE> &obj, rapidjson::Value &jsonValue)
     {
         obj.clear();
+        if (jsonValue.IsNull())
+            return true;
         if (!jsonValue.IsArray())
         {
             m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is std::list<TYPE>.";
@@ -1174,6 +1179,8 @@ public:
     bool JsonToObject(std::set<TYPE> &obj, rapidjson::Value &jsonValue)
     {
         obj.clear();
+        if (jsonValue.IsNull())
+            return true;
         if (!jsonValue.IsArray())
         {
             m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is std::set<TYPE>.";
@@ -1195,6 +1202,8 @@ public:
     bool JsonToObject(std::unordered_set<TYPE> &obj, rapidjson::Value &jsonValue)
     {
         obj.clear();
+        if (jsonValue.IsNull())
+            return true;
         if (!jsonValue.IsArray())
         {
             m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is std::unordered_set<TYPE>.";
@@ -1216,6 +1225,8 @@ public:
     bool JsonToObject(std::map<std::string, TYPE> &obj, rapidjson::Value &jsonValue)
     {
         obj.clear();
+        if (jsonValue.IsNull())
+            return true;
         if (!jsonValue.IsObject())
         {
             m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is std::map<std::string, TYPE>.";
@@ -1240,6 +1251,8 @@ public:
     bool JsonToObject(std::unordered_map<std::string, TYPE> &obj, rapidjson::Value &jsonValue)
     {
         obj.clear();
+        if (jsonValue.IsNull())
+            return true;
         if (!jsonValue.IsObject())
         {
             m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is std::unordered_map<std::string, TYPE>.";

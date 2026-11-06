@@ -21,7 +21,7 @@ package com.dji.fh.kernel.spi.auth;
  *
  * <p>{@code @RequirePermission} 注解触发时调用本接口。
  * Kernel 默认提供基于 {@code SecurityContext.attributes()["permissions"]} 的实现；
- * ISV 想接自家权限引擎（如 Casbin / OPA）→ 实现此接口覆盖默认 Bean。
+ * 集成商 想接自家权限引擎（如 Casbin / OPA）→ 实现此接口覆盖默认 Bean。
  *
  * <p>与 RBAC（{@code @RequireRole}）解耦 —— RBAC 走 {@code roles}，
  * 细粒度权限走 attributes / 自家引擎。

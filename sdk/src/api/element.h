@@ -23,6 +23,10 @@ struct ElementProperties {
     bool is_transparent = false; ///< 要素是否透明渲染
     int font_size = 0;          ///< 字体大小
     int icon = 0;               ///< 图标 ID
+    std::string icon_url;       ///< 图标 URL
+    int width = 0;              ///< 线宽
+    int start_cap = 0;          ///< 起点端样式
+    int end_cap = 0;            ///< 终点端样式
 };
 
 /// 地理坐标点（对应 {lng, lat, alt}）
@@ -51,6 +55,11 @@ struct ElementMediaImage {
     std::string object_key;    ///< OSS 对象 key
     int media_file_id = 0;     ///< 媒体库文件 ID
     std::string media_file_uuid; ///< 媒体库文件 UUID
+    std::string url;           ///< 签发后的原始 URL
+    std::string preview_url;   ///< 预览 URL
+    std::string webp_url;      ///< WebP URL
+    int file_type = 0;         ///< 文件类型
+    int sub_file_type = 0;     ///< 文件子类型
 };
 
 /// 要素绑定的媒体资源（对齐 proto ElementMediaResources）

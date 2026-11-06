@@ -86,6 +86,10 @@ public class ISafetyServiceModule {
     flighthubsdkmoduleJNI.ISafetyServiceModule_getFlightAreasSyncStatusWrapper(swigCPtr, this, StringVector.getCPtr(device_sns), device_sns, GetFlightAreasSyncStatusCallback.getCPtr(callback), callback);
   }
 
+  public void getFlightAreasUrlWrapper(GetFlightAreasUrlCallback callback) {
+    flighthubsdkmoduleJNI.ISafetyServiceModule_getFlightAreasUrlWrapper(swigCPtr, this, GetFlightAreasUrlCallback.getCPtr(callback), callback);
+  }
+
   public void getOfflineMapsModelInfoWrapper(GetOfflineMapsModelInfoCallback callback) {
     flighthubsdkmoduleJNI.ISafetyServiceModule_getOfflineMapsModelInfoWrapper(swigCPtr, this, GetOfflineMapsModelInfoCallback.getCPtr(callback), callback);
   }

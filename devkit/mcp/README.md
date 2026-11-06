@@ -11,7 +11,7 @@
 - [前置条件](#前置条件)
 - [快速开始](#快速开始一键接入)
 - [调用流程](#调用流程)
-- [工具目录（57 个）](#工具目录57-个)
+- [工具目录（67 个 fh_* + 4 个 sim_*）](#工具目录67-个-fh_-4-个-sim_)
 - [安全机制](#安全机制)
 - [配置参考](#配置参考)
 - [部署方案](#部署方案)
@@ -35,16 +35,16 @@ DJI Cloud API 2 MCP Server 是一个符合 [MCP 规范（2025-06-18）](https://
                                                                 │  JNI / SDK
                                                    ┌────────────▼────────────┐
                                                    │  DJI Cloud API 2 SDK    │
-                                                   │  (Linux x86_64 native)  │
+                                                   │  (Linux x86_64/aarch64) │
                                                    └────────────┬────────────┘
                                                                 │  HTTPS/WebSocket
                                                    ┌────────────▼────────────┐
-                                                   │  DJI Cloud API 2 云端平台    │
-                                                   │  (工作空间 / 设备 / 任务) │
+                                                   │ DJI Cloud API 2 云端平台│
+                                                   │ (工作空间 / 设备 / 任务)│
                                                    └────────────┬────────────┘
                                                                 │  4G/5G/RC
                                                    ┌────────────▼────────────┐
-                                                   │  无人机 + 机场 (Dock)    │
+                                                   │  无人机 + 机场 (Dock)   │
                                                    └─────────────────────────┘
 ```
 
@@ -145,9 +145,9 @@ fh_connect                           ← 必须第一步
     │       └── fh_wayline_control   ← 暂停/恢复 (L2)
     │
     └── [DRC 实时指挥]
-            ├── fh_control_acquire   ← 抢控制权 (L1) ─────────────────────────┐
+            ├── fh_control_acquire   ← 抢控制权 (L2) ─────────────────────────┐
             │                                                                   │
-            ├── fh_drc_connect       ← 建 DRC 链路 (L1) ──────────────────┐   │
+            ├── fh_drc_connect       ← 建 DRC 链路 (L2) ──────────────────┐   │
             │                                                               │   │
             ├── fh_takeoff           ← 起飞 (L2)                          │   │
             ├── fh_flyto             ← 指点飞行 (L2)                      │   │
@@ -163,13 +163,22 @@ fh_connect                           ← 必须第一步
 
 ---
 
-## 工具目录（57 个）
+## 工具目录（67 个 fh_* + 4 个 sim_*）
 
-> 此处为工具速查清单（安全等级 / 功能概述）。
+> 此处为工具速查清单（安全等级 / 功能概述）。参数说明、返回值结构和调用示例见 → **[MCP 工具使用手册](../docs/mcp-tools-guide.md)**
 > - **L0** 只读操作，无需确认
-> - **L1** 可逆操作，需要 `confirm=true` 或人工弹窗确认
-> - **L2** 飞行操作，需要飞行控制权 + DRC 链路 + 确认
-> - **L3** 高危不可逆操作，需要强制审计原因 + 确认
+> - **L1** 可逆操作，受 `FH_MAX_SECURITY_LEVEL` / session 上限门控；**是否要求人工确认取决于工具实现**，
+>   详见 → [人工确认（MCP Elicitation）](#人工确认mcp-elicitation)
+> - **L2** 飞行操作，需要飞行控制权 + DRC 链路 + 人工确认（注册期强制：L2 工具必须声明 `requiresHumanConfirmation()`）
+> - **L3** 高危不可逆操作，需要强制审计原因 + 运营商二次鉴权 + 确认
+>
+> 工具通过 `McpToolAutoRegistrar` 按 Spring bean 自动注册——新增工具无需改本清单，运行时以 `tools/list` 返回为准。本清单按业务模块分组，覆盖全部 67 个 `fh_*` 工具。
+
+> **安全等级列 = 门控基线**：单值即工具声明的门控等级；混合等级工具在括号内标注动作级差异
+> （`fh_ops`、`fh_inflight_wayline`、`fh_flight_task`、`fh_firmware`、`fh_unlock_license`、
+> `fh_camera`、`fh_device_manage`、`fh_diagnosis`、`fh_log`、`fh_maintenance`、`fh_workspace`）。动作级硬门控以代码内
+> `ACTION_SECURITY_LEVELS` / `enforceSecurityLevel(...)` 为准，以下方「安全声明」表为补充说明，
+> 两者冲突时以代码为准。
 
 ### 接入与会话（3 个）
 
@@ -177,19 +186,20 @@ fh_connect                           ← 必须第一步
 |------|------|----------|
 | `fh_connect` | 初始化 SDK 并建立工作空间会话（必须第一步调用） | L0 |
 | `fh_session_info` | 查询当前会话状态：连接时长、设备绑定、DRC 链路、飞行阶段 | L0 |
-| `fh_ops` | 运维操作：健康检查 / 调整日志级别 / 优雅关闭 | L0 |
+| `fh_ops` | 运维操作：健康检查 / 调整日志级别 / 优雅关闭 | L0（set_log_level 为 L1，shutdown 为 L3 + 人工确认） |
 
-### 设备管理（5 个）
+### 设备管理（6 个）
 
 | 工具 | 说明 | 安全等级 |
 |------|------|----------|
 | `fh_device_list` | 查询工作空间内所有设备，支持按类型、在线状态过滤 | L0 |
 | `fh_drone_snapshot` | 获取无人机实时快照：位置 / 电量 / 姿态 / 速度 / 飞行模式 | L0 |
 | `fh_dock_snapshot` | 获取机场实时快照：位置 / 舱盖状态 / 电源 / 存储 / 无人机在仓 | L0 |
-| `fh_device_manage` | 设备详情 / 重命名 / 解绑 / HMS 健康告警查询 | L0~L1 |
+| `fh_device_manage` | 设备详情 / 重命名 / 解绑 / HMS 健康告警查询 | L0（rename/unbind 为 L1） |
 | `fh_dock_control` | 控制机场：开/关舱盖、启/停充电、开/关补光灯 | L1 |
+| `fh_deploy_subscribe` | 机场部署事件订阅：视觉侦察任务状态 / 障碍物 / 异常信息 / 星历下载状态 | L0 |
 
-### 航线任务（5 个）
+### 航线任务（7 个）
 
 | 工具 | 说明 | 安全等级 |
 |------|------|----------|
@@ -197,15 +207,17 @@ fh_connect                           ← 必须第一步
 | `fh_wayline_execute` | 执行已创建的航线任务，触发设备起飞和执行 | L2 |
 | `fh_wayline_control` | 控制执行中的航线任务：暂停 / 恢复 / 取消 | L2 |
 | `fh_wayline_status` | 查询航线任务详情或任务列表（支持状态过滤） | L0 |
-| `fh_wayline_recommend` | 根据任务需求推荐航线参数（高度、速度、航点间距等） | L0 |
+| `fh_wayline_recommend` | 按机型匹配推荐机场可飞航线 | L0 |
+| `fh_inflight_wayline` | 空中无人机在飞航线管理：新建 / 暂停 / 恢复 / 取消 / 状态查询 | L0（create/control 为 L2 + 人工确认） |
+| `fh_testflight` | 试飞航线生成与任务创建（TestFlightModule） | L2 |
 
-### 实时指挥 DRC（14 个）
+### 实时指挥 DRC（18 个）
 
 | 工具 | 说明 | 安全等级 |
 |------|------|----------|
-| `fh_control_acquire` | 获取飞行控制权（全局互斥资源，同时只能一个 session 持有） | L1 |
+| `fh_control_acquire` | 获取飞行控制权（全局互斥资源，同时只能一个 session 持有） | L2 |
 | `fh_control_release` | 释放飞行控制权（完成操作后必须调用，即使出错） | L1 |
-| `fh_drc_connect` | 建立 DRC 低延迟控制链路（飞行指令前置条件） | L1 |
+| `fh_drc_connect` | 建立 DRC 低延迟控制链路（飞行指令前置条件） | L2 |
 | `fh_drc_disconnect` | 断开 DRC 链路 | L1 |
 | `fh_takeoff` | 一键起飞至指定高度（默认失控动作：return_home） | L2 |
 | `fh_return_home` | 返航 / 取消返航 | L2 |
@@ -213,12 +225,16 @@ fh_connect                           ← 必须第一步
 | `fh_poi` | 环绕飞行：围绕兴趣点以指定半径/速度/方向持续环绕 | L2 |
 | `fh_stick_move` | 受限摇杆控制：方向 + 时长 + 速度百分比（内部 50ms 循环） | L2 |
 | `fh_emergency_stop` | 紧急停止（不可逆，需要强制提供 reason 用于审计） | L3 |
-| `fh_payload_acquire` | 负载控制权获取：相机拍照/录像/变焦、云台旋转/指向 | L1 |
-| `fh_payload_release` | 负载控制权释放（操作完成后必须调用） | L1 |
+| `fh_payload_acquire` | 获取负载控制权（相机/云台/喊话器/探照灯等负载操作的前置） | L1 |
+| `fh_payload_release` | 释放负载控制权 | L1 |
 | `fh_live_start` | 直播推流控制：开始 / 停止 / 画质切换（支持无人机和机场） | L1 |
+| `fh_live_device` | 直播能力查询：可用码流（多路直播）/ 机场直播状态 | L0 |
+| `fh_live_sei` | 直播码流查询 / 启停 + SEI 数据订阅（ai/ar/fov/assistant/eis） | L1 |
+| `fh_live_sync` | 直播同步任务管理（LiveSync：RTMP / GB28181） | L1 |
 | `fh_osd_snapshot` | OSD 实时遥测快照：位置 / 姿态 / 电量 / GPS 信号 / 风速（比 drone_snapshot 更丰富） | L0 |
+| `fh_osd_listen` | OSD 遥测读取 / 订阅：字段目录 / 单次读取 / 持续订阅（Drone / Dock） | L0 |
 
-### 媒体管理（4 个）
+### 媒体管理（5 个）
 
 | 工具 | 说明 | 安全等级 |
 |------|------|----------|
@@ -226,77 +242,80 @@ fh_connect                           ← 必须第一步
 | `fh_media_download` | 获取媒体文件预签名下载 URL（临时有效 1~24 小时） | L0 |
 | `fh_media_delete` | 批量删除媒体文件（不可逆，支持 1~100 个文件 ID） | L1 |
 | `fh_media_record` | 直播录制控制：开始录制 / 停止录制 / 列出录制记录 | L1 |
+| `fh_media_upload` | 媒体上传：获取对象存储 STS 临时凭证后直传 | L1 |
 
 ### 任务管理（1 个）
 
 | 工具 | 说明 | 安全等级 |
 |------|------|----------|
-| `fh_flight_task` | 飞行任务 CRUD：list / detail / create / edit / delete / execute / update_status | L0~L2 |
+| `fh_flight_task` | 飞行任务 CRUD：list / detail / create / edit / delete / execute / update_status | L1（delete/execute 为 L2） |
 
 ### 固件管理（1 个）
 
 | 工具 | 说明 | 安全等级 |
 |------|------|----------|
-| `fh_firmware` | 固件全生命周期：检查状态 / 列表 / 查询进度 / 发布说明 / 兼容性 / 升级 / 上传 / 提交 / 发布 / 撤销 / 删除 | L0~L2 |
+| `fh_firmware` | 固件全生命周期：检查状态 / 列表 / 查询进度 / 发布说明 / 兼容性 / 升级 / 上传 / 提交 / 发布 / 撤销 / 删除 | L0（写操作：upgrade/upload/submit/release/unrelease/delete 为 L2） |
 
 ### 空域安全（4 个）
 
 | 工具 | 说明 | 安全等级 |
 |------|------|----------|
 | `fh_device_recommend` | 根据飞行任务需求推荐适合的设备类型 | L0 |
-| `fh_tcas` | TCAS 空中防撞系统：查询感知列表 / 设置告警阈值 | L0~L1 |
-| `fh_unlock_license` | 空域解锁许可证：列表 / 详情 / 导入 / 同步 / 删除 | L0~L1 |
-| `fh_flysafe` | FlySafe 飞行安全：查询禁飞区 / 限飞区 / 授权区域信息 | L0 |
+| `fh_tcas` | TCAS 空中防撞系统：查询感知列表 / 设置告警阈值 | L1 |
+| `fh_unlock_license` | 空域解锁许可证：列表 / 详情 / 导入 / 同步 / 删除 | L1（clear 为 L2） |
+| `fh_flysafe` | FlySafe 飞行安全：查询禁飞区 / 限飞区 / 授权区域信息 | L1 |
 
 ### 自定义飞行区（3 个）
 
 | 工具 | 说明 | 安全等级 |
 |------|------|----------|
 | `fh_flight_area_list` | 查询自定义飞行区列表（禁飞区、限高区等） | L0 |
-| `fh_flight_area_manage` | 创建 / 更新 / 删除自定义飞行区 | L1 |
+| `fh_flight_area_manage` | 创建 / 更新 / 删除自定义飞行区 | L2 |
 | `fh_flight_area_sync` | 同步自定义飞行区到设备端 | L1 |
 
-### 相机与负载（4 个）
+### 相机与负载（6 个）
 
 | 工具 | 说明 | 安全等级 |
 |------|------|----------|
-| `fh_camera` | 相机高级控制：单张/AEB 拍照、录像、变焦、红外、存储格式、AE 锁定、状态查询 | L0~L1 |
-| `fh_speaker` | PSDK 喊话器专用：音频播放 / TTS / 实时喊话 / 音量 / 模式 / TTS 配置 | L1 |
-| `fh_searchlight` | 探照灯高级控制：模式 / 校准 / 微调 / 云台 / 类型 / 广域模式 | L1 |
-| `fh_psdk_widget` | PSDK 自定义 Widget：设置控件值 / 输入文本 | L0 |
+| `fh_camera` | 相机高级控制：单张/AEB 拍照、录像、变焦、红外、存储格式、AE 锁定、状态查询 | L0（`get_camera_state` / `get_gimbal_state` / `get_lens_state` 外的动作为 L1） |
+| `fh_speaker` | PSDK 喊话器专用：音频播放 / TTS / 实时喊话 / 音量 / 模式 / TTS 配置 / 状态订阅 | L1 |
+| `fh_searchlight` | 探照灯高级控制：模式 / 校准 / 微调 / 云台 / 类型 / 广域模式 / 亮度 | L1 |
+| `fh_psdk_widget` | PSDK 自定义 Widget：设置控件值 / 输入文本 | L1 |
+| `fh_psdk_resource` | PSDK 喊话器音频 / TTS 资源与 Widget UI 资源管理 | L1 |
+| `fh_psdk_subscribe` | PSDK 负载状态订阅（listen_* → events 生命周期） | L0 |
 
 ### 设备健康与诊断（3 个）
 
 | 工具 | 说明 | 安全等级 |
 |------|------|----------|
 | `fh_hms` | HMS 健康管理系统：查询当前告警 / 历史告警 / 告警订阅 | L0 |
-| `fh_diagnosis` | 设备诊断：创建诊断报告 / 查询报告 / 列表 / 操作 | L0~L1 |
-| `fh_device_debug` | 设备调试（机场运维）：开关舱盖、无人机上下电、重启、格式化、限高/限距、障碍物规避、网络测试 | L0~L1 |
+| `fh_diagnosis` | 设备诊断：创建诊断报告 / 查询报告 / 列表 / 操作 | L0（create/operate 为 L1） |
+| `fh_device_debug` | 设备调试（机场运维）：开关舱盖、无人机上下电、重启、格式化、限高/限距、障碍物规避、网络测试 | L1 |
 
-### 运维工具（5 个）
+### 运维工具（6 个）
 
 | 工具 | 说明 | 安全等级 |
 |------|------|----------|
-| `fh_log` | 日志管理：查询 / 创建上报 / 列表 / 操作 / 上传（delete 需确认） | L0~L1 |
-| `fh_maintenance` | 维修工单：获取配置 / 创建工单 / 查询详情 / 列表 | L0 |
-| `fh_offline_map` | 离线地图：模型信息 / 更新 / 取消 / 启停 / 同步 / 同步状态 / FlySafe 升级 | L0~L1 |
+| `fh_log` | 日志管理：查询 / 创建上报 / 列表 / 操作 / 上传（delete 需确认） | L0（create_report/upload 为 L1；上传路径受 `FH_LOG_UPLOAD_DIR` 白名单约束） |
+| `fh_maintenance` | 维修工单：获取配置 / 创建工单 / 查询详情 / 列表 | L0（create_order 为 L1） |
+| `fh_offline_map` | 离线地图：模型信息 / 更新 / 取消 / 启停 / 同步 / 同步状态 / FlySafe 升级 | L1（sync 已达 L0 需 L1 门控） |
 | `fh_flight_record` | 飞行记录：列表 / 详情 / 统计 | L0 |
-| `fh_workspace` | 工作空间：列表 / 详情 / 提交 / 更新 / 复制 / 批量删除 / 批量下载 | L0~L1 |
+| `fh_workspace` | 工作空间：列表 / 详情 / 提交 / 更新 / 复制 / 批量删除 / 批量下载 | L0（submit/update/duplicate/batch_delete/concat 为 L1） |
+| `fh_setting` | 设置管理（持久化飞行参数：返航高度等，不直接触发飞行） | L1 |
 
 ### 三维重建（1 个）
 
 | 工具 | 说明 | 安全等级 |
 |------|------|----------|
-| `fh_terra` | DJI Terra 三维重建：任务管理、点云/模型生成、进度查询 | L0~L1 |
+| `fh_terra` | DJI Terra 三维重建：任务管理、点云/模型生成、进度查询 | L1 |
 
-### 模拟器（4 个）
+### AI 能力（3 个）
 
 | 工具 | 说明 | 安全等级 |
 |------|------|----------|
-| `sim_device` | 模拟设备管理：list / create / update / delete / start / stop / batch_create / batch_delete | L0~L1 |
-| `sim_flight_state` | 飞行状态注入：驱动模拟无人机物理引擎（状态注入 / 事件注入 / 飞行状态更新） | L0~L1 |
-| `sim_hms` | 模拟 HMS 故障注入：注入 / 批量注入 / 清除 / 查询预置故障码 | L0~L1 |
-| `sim_recording` | MQTT 流量录制：录制模拟设备真实流量并转为可复用的响应模板 | L0~L1 |
+| `fh_ai_identify` | AI 目标识别配置：开关 / 检测过滤 / 置信度阈值 / 阈值模式 | L1 |
+| `fh_ai_model` | AI 模型选择 / 绑定到相机码流 | L1 |
+| `fh_ai_subscribe` | AI 数据推送订阅（ai_data / alarm_state） | L0 |
 
 ---
 
@@ -308,12 +327,15 @@ DJI Cloud API 2 MCP Server 实现了多层安全防护，防止 AI Agent 执行�
 
 ```
 L0 READ_ONLY   — 只读查询，任何时候可直接执行
-L1 REVERSIBLE  — 可逆操作，需要 confirm=true 或人工弹窗
-L2 FLIGHT      — 飞行操作，需要控制权 + DRC 链路 + 确认
+L1 REVERSIBLE  — 可逆操作，按 session 上限门控；人工确认取决于工具实现（见「人工确认」一节）
+L2 FLIGHT      — 飞行操作，需要控制权 + DRC 链路 + 人工确认（注册期强制声明）
 L3 CRITICAL    — 紧急停止，需要强制 reason + 运营商二次鉴权（FH_OPERATOR_TOKEN）+ 确认（不可逆）
 ```
 
-每个 session 在 `fh_connect` 时设置 `max_security_level`，超出该等级的工具调用会被拒绝执行。
+每个 session 在 `fh_connect` 时设置 `max_security_level`；`McpToolRegistry.executeTool()`
+依据工具声明等级与 session 上限统一门控，超限调用直接拒绝（`ERR_SECURITY_LEVEL`）。
+`FH_MAX_SECURITY_LEVEL` 默认 2；`sim_*` 工具由模拟器自检、`fh_emergency_stop` 由工具自身
+按 L3 自检，均不在此门控范围。
 
 > **L3 二次鉴权说明**：`fh_emergency_stop` 除 session 凭据外，还必须提供
 > `operator_token`（对应环境变量 `FH_OPERATOR_TOKEN`）。该 token 由真人带外提供，AI 不可代填，
@@ -324,15 +346,34 @@ L3 CRITICAL    — 紧急停止，需要强制 reason + 运营商二次鉴权（
 
 ### 人工确认（MCP Elicitation）
 
-支持 MCP Elicitation 协议的客户端（如 Claude Code）在执行 L1+ 操作时，Server 会**主动向用户弹窗确认**，而不依赖 AI 自动传入 `confirm=true`：
+支持 MCP Elicitation 协议的客户端（如 Claude Code）在执行**声明了人工确认**的操作时，Server 会**主动向用户弹窗确认**，而不依赖 AI 自动传入 `confirm=true`：
 
 ```
 AI 调用 fh_takeoff →
-  Server 检测到 L2 操作 →
+  Server 检测到该工具 requiresHumanConfirmation() == true →
     通过 MCP elicitation 向用户弹窗："⚠️ 无人机 DRONE-001 即将起飞至 50.0 米高度，是否确认？" →
       用户点击确认 → 执行起飞
       用户拒绝/超时 → 返回拒绝响应，操作不执行
 ```
+
+> **适用范围**：弹窗只取决于工具自身声明的 `requiresHumanConfirmation()`，与安全等级高低无关。
+> 按实现方式分为三类，集成商需按类别评估：
+>
+> 1. **类级确认**（`requiresHumanConfirmation() == true`，传输层对**该工具的所有调用**统一弹窗）：
+>    `fh_takeoff`、`fh_flyto`、`fh_return_home`、`fh_stick_move`、`fh_poi`、`fh_emergency_stop`、
+>    `fh_wayline_execute`、`fh_wayline_control`、`fh_control_acquire`、`fh_drc_connect`、`fh_flight_area_manage`、
+>    `fh_media_delete`、`fh_wayline_upload`、`fh_testflight`、`fh_searchlight`、`fh_setting`、`fh_ai_identify`、`fh_ai_model`、
+>    `fh_device_debug`、`fh_live_sei`、`fh_psdk_resource` 等。这类工具的 `tools/list` 描述中带确认语义。
+> 2. **动作级确认**（类级返回 `false`，仅在 action 内对高危动作做确认校验；低危动作不弹窗）：
+>    `fh_ops`、`fh_inflight_wayline`、`fh_flight_task`、`fh_firmware`、`fh_unlock_license`、
+>    `fh_log`、`fh_workspace`、`fh_dock_control`、`fh_live_start`、`fh_media_record`、`fh_media_upload`、
+>    `fh_offline_map`、`fh_speaker`、`fh_terra`、`fh_flight_area_sync`、`fh_tcas`、`fh_flysafe`。
+>    其中绝大多数调用 `requireHumanConfirm(...)`——有 Elicitation 通道时弹窗，无通道时回退校验 `confirm` 参数；
+>    例外是 `fh_device_manage`，其 `rename` / `unbind` 直接校验 `confirm=true`，**不发起 Elicitation 弹窗**。
+> 3. **无确认，仅安全等级门控**（既无类级确认也无动作级确认，见下方「无人工确认的写操作」表）：
+>    这类工具的危险性只靠 `FH_MAX_SECURITY_LEVEL` / session 上限拦截，**不会弹窗**。
+>
+> 以 `tools/list` 返回的工具描述与各工具 inputSchema 为准。
 
 不支持 Elicitation 的客户端（如无弹窗能力的 HTTP 调用方）可通过 `confirm=true` 参数作为回退路径。
 注意：`confirm=true` 仅适用于 L1/L2；L3 紧急停止额外要求 `operator_token`（见上），不受该回退路径豁免。
@@ -343,7 +384,13 @@ AI 调用 fh_takeoff →
 
 ### dry_run 模式
 
-所有 L1+ 工具支持 `dry_run=true` 参数：参数校验和前置条件检查照常执行，但跳过实际 SDK 调用，返回"如果真正执行会做什么"的预览。
+**写入类工具**（`fh_takeoff`、`fh_flyto`、`fh_return_home`、`fh_stick_move`、`fh_poi`、`fh_emergency_stop`、
+`fh_wayline_execute`、`fh_wayline_control`、`fh_inflight_wayline`、`fh_dock_control`、`fh_device_manage`、
+`fh_flight_area_manage`、`fh_flight_area_sync`、`fh_speaker`、`fh_media_delete`、`fh_unlock_license` 等）
+支持 `dry_run=true` 参数：参数校验和前置条件检查照常执行，但跳过实际 SDK 调用，返回"如果真正执行会做什么"的预览。
+是否支持以各工具 `inputSchema` 中是否存在 `dry_run` 属性为准。
+
+> 例外：`fh_ops` shutdown 走独立的人工确认流程（L3 + `requireHumanConfirm`），不提供 `dry_run` 预览。
 
 ---
 
@@ -357,20 +404,61 @@ AI 调用 fh_takeoff →
 ### MCP 飞控安全控制已知风险
 
 以下 MCP 工具存在已知安全控制缺失（2026-08-21 审查确认，随开源发布以声明方式处理）。
-ISV 在生产环境使用前**必须自行补充对应安全措施**；未处理时任意外泄都会构成风险：
+集成商在生产环境使用前**必须自行补充对应安全措施**；未处理时任意外泄都会构成风险：
 
-| 工具 | 已知风险 | 生产环境需补充 |
-|------|---------|--------------|
-| `fh_ops` shutdown | `System.exit(0)` 无人类确认 | 加 CRITICAL 级别确认 |
-| `fh_control_acquire` | `requiresHumanConfirmation=false`，AI 可静默抢夺飞控权 | 改为 true |
-| `fh_drc_connect` | `requiresHumanConfirmation=false`，AI 可静默建立 DRC 实时控制链 | 改为 true |
-| `fh_firmware` upgrade/upload/submit/release/unrelease | `SecurityLevel=REVERSIBLE` | 升级至 FLIGHT |
-| `fh_log` upload | 无路径白名单校验 | 加路径校验 |
-| `fh_flight_area_manage` delete | `SecurityLevel=REVERSIBLE`（不可逆操作） | 升级至 FLIGHT |
-| `fh_offline_map` sync | 无 `enforceSecurityLevel` 拦截 | 加安全拦截 |
-| `fh_flight_task` execute | `SecurityLevel=REVERSIBLE` | 升级至 FLIGHT |
+> **本表为风险记录，不改变上方工具清单的门控基线**：实际拦截以代码内等级声明为准，
+> 本表列出尚未修复的项与生产环境需自行补充的措施。
+> 以下安全加固已于 2026-10-28 完成（分支 `fix/security-hardening-20261028`）：
+> * `fh_control_acquire` / `fh_drc_connect` 升级 L2（FLIGHT）+ 人工确认；
+> * `fh_firmware` 5 个写操作 / `fh_flight_task` `execute` / `fh_flight_area_manage` 全操作 → FLIGHT；
+> * `fh_log` upload 路径白名单、`fh_offline_map` sync 补 `enforceSecurityLevel`；
+> * 注册期静态断言：任何 FLIGHT 工具必须声明人工确认，否则拒绝注册（fail-closed）。
+> 剩余 `fh_workspace` 两项由业务侧按需评估是否升级。
+
+| 工具 | 已知风险 | 处理状态 |
+|------|---------|---------|
+| `fh_ops` shutdown | `System.exit(0)` 无人类确认 | ✅ 已修复（2026-10：L3 硬门控 + 人工确认） |
+| `fh_control_acquire` | 接管飞控权 | ✅ 已修复（2026-10-28：L2 硬门控 + 人工确认） |
+| `fh_drc_connect` | 建立 DRC 实时控制链 | ✅ 已修复（2026-10-28：L2 硬门控 + 人工确认） |
+| `fh_firmware` upgrade/upload/submit/release/unrelease | 固件写操作 | ✅ 已修复（2026-10-28：升级至 FLIGHT） |
+| `fh_log` upload | 任意路径上传 | ✅ 已修复（2026-10-28：路径白名单 `FH_LOG_UPLOAD_DIR`） |
+| `fh_flight_area_manage` create/update/delete | 飞行区变更（delete 不可逆） | ✅ 已修复（2026-10-28：升级至 FLIGHT） |
+| `fh_offline_map` sync | 批量推送无拦截 | ✅ 已修复（2026-10-28：补 `enforceSecurityLevel(REVERSIBLE)`） |
+| `fh_flight_task` execute | 实际下发飞行任务 | ✅ 已修复（2026-10-28：升级至 FLIGHT） |
+| `fh_workspace` batch_delete | 不可逆批量删除 | ⏳ 待业务评估（已有 L1 动作级门控 + confirm） |
+| `fh_workspace` submit | 本地 KMZ 真实上传入库 | ⏳ 待业务评估 |
 
 > **上述问题未处理时，AI Agent 可能在无人类确认的情况下执行危险飞控操作。**
+
+#### 无人工确认的写操作（2026-10-30 复审补充披露）
+
+以下工具存在**会改变远端状态的动作**，但既无类级 `requiresHumanConfirmation()`、也无动作级
+`requireHumanConfirm(...)` / `confirm` 校验，仅由安全等级门控（`FH_MAX_SECURITY_LEVEL` / session 上限 + 前置条件链）。
+在 SseTransport 下**不会弹窗**；传入 `confirm=true` 也不会被代码读取（这些工具根本不检查该参数）。
+集成商若在受控环境外暴露这些工具，必须自行补充确认或从 `tools/list` 中移除：
+
+| 工具 | 无确认的写操作 | 声明等级 | 说明 |
+|------|---------------|---------|------|
+| `fh_control_release` | `release` | L1 | 释放飞行控制权；误释放会让在途 DRC 操作失去控制权（代码注释明确「释放操作无需 confirm」） |
+| `fh_drc_disconnect` | 断开 DRC 链路 | L1 | 飞行中断链，正在执行的 DRC 指令中断（代码注释明确「断开操作无需 confirm」） |
+| `fh_payload_acquire` | 获取负载控制权 | L1 | 抢占相机/云台等负载，与其它 session 互斥 |
+| `fh_payload_release` | 释放负载控制权 | L1 | 误释放会使进行中的负载操作失败 |
+| `fh_live_sync` | `create` / `update` / `delete` | L1 | 直播同步任务（RTMP / GB28181）变更，`delete` 不可逆 |
+| `fh_psdk_widget` | `set_value` / `set_input_text` | L1 | 控制第三方 PSDK 负载；效果取决于具体负载，无法通用判断可逆性 |
+| `fh_maintenance` | `create_order` | L1 | 创建真实维修工单 |
+| `fh_diagnosis` | `create` / `operate` | L1 | 触发设备诊断、下发诊断操作 |
+| `fh_camera` | 拍照 / 录像 / 变焦 / 云台等（`get_*` 以外） | L0（动作级 L1） | 声明等级为 L0，实际由 `enforceSecurityLevel(REVERSIBLE)` 抬升；无确认 |
+| `sim_*` 全部工具 | 含 `sim_flight_state` 的 `takeoff` / `land` / `return_home` / `flyto` / `manual` / `reset_flight` / `inject_state`、`sim_hms` 注入、`sim_recording` 启停 | L1 | 模拟器工具，绕过 `McpToolRegistry` 门控（`SIM_TOOL_PREFIX`），由 `AbstractSimTool` 自行校验 `FH_MAX_SECURITY_LEVEL`；**仅 `sim_device` 的 `delete` / `batch_delete` 要求 `confirm=true`** |
+
+> 上表的模拟器写操作只影响模拟数据，不触碰真实飞机；但 `sim_*` 工具是常驻注册的
+> （无开关），任何可达本 Server 的客户端都能在 `tools/list` 中看到并按 `FH_MAX_SECURITY_LEVEL`
+> 调用。生产部署若不使用模拟器，应在网关/网络层拒绝对应调用，或在定制构建中剔除这些 Tool。
+> `fh_camera` 的等级声明与动作级门控不一致（工具级 L0 / 动作级 L1），排查时以代码为准。
+
+> `McpToolAutoRegistrar` 在启动时对**声明 L1 且无类级确认**的工具输出 WARN，列出未登记
+> 豁免的类名（当前 6 个释放/断开/同步类工具已登记在 `INTENTIONALLY_UNCONFIRMED_REVERSIBLE`，
+> 不会告警）。`fh_maintenance` / `fh_diagnosis` / `fh_camera` 属类级 L0、动作级抬升，
+> 反射无法识别，不在此告警覆盖范围内——上表是它们的唯一披露来源。
 
 ---
 
@@ -382,16 +470,17 @@ ISV 在生产环境使用前**必须自行补充对应安全措施**；未处理
 |------|------|--------|------|
 | `FH_SERVER_ADDRESS` | **是** | — | DJI Cloud API 2 服务器地址（如 `https://your-server.com`） |
 | `FH_SERVER_PORT` | 否 | `443` | 服务器端口 |
-| `FH_ACCESS_TOKEN` | 是* | — | 工作空间访问令牌（真实模式必填，须在服务启动前通过环境变量预设） |
-| `FH_WORKSPACE_UUID` | 是* | — | 工作空间绑定 UUID（真实模式必填，须在服务启动前通过环境变量预设） |
+| `FH_ACCESS_TOKEN` | 否* | — | 工作空间访问令牌（真实模式下连接真实服务端必填；缺失不影响服务启动，但 `fh_connect` 会失败。须在服务启动前通过环境变量预设） |
+| `FH_WORKSPACE_UUID` | 否* | — | 工作空间绑定 UUID（真实模式下连接真实服务端必填；缺失不影响服务启动，但 `fh_connect` 会失败。须在服务启动前通过环境变量预设） |
 | `FH_MOCK` | 否 | `false` | 设为 `true` 启用 Mock 模式（不调用真实 SDK） |
-| `FH_TRANSPORT` | 否 | `sse` | 传输模式：`sse` |
+| `FH_TRANSPORT` | 否 | `sse` | 传输模式：`sse` / `stdio`（代码默认 `stdio`，`.env.example` 预设 `sse`） |
 | `FH_SSE_PORT` | 否 | `8080` | SSE 模式监听端口 |
 | `FH_MAX_SECURITY_LEVEL` | 否 | `2` | 全局最大安全等级上限（0~3），需要 L3 紧急停机时显式设为 `3` |
 | `FH_OPERATOR_TOKEN` | 否* | — | L3 操作（紧急停止）所需的运营商二次鉴权 Token。启用 L3 时<b>必填</b>（缺失则 L3 拒绝执行），由真人带外提供，AI 不可代填 |
 | `FH_SSE_AUTH_TOKEN` | 是* | — | SSE 模式 Bearer Token。SSE profile 下<b>必填</b>（缺失或弱占位值将拒绝启动），请用 `openssl rand -hex 32` 生成 |
 
-> *`FH_ACCESS_TOKEN` 和 `FH_WORKSPACE_UUID` 在真实模式下必填，须在服务启动前通过环境变量配置；Mock 模式（`FH_MOCK=true`）下可不填。**这两个凭证不支持通过 `fh_connect` 参数运行时传入。**
+> *`FH_ACCESS_TOKEN` 和 `FH_WORKSPACE_UUID` 在真实模式下连接真实服务端时必填，须在服务启动前通过环境变量配置；Mock 模式（`FH_MOCK=true`）下可不填。**这两个凭证不支持通过 `fh_connect` 参数运行时传入。**
+> 注意：缺失这两个变量不会像 `FH_SSE_AUTH_TOKEN` 那样阻断服务启动（无启动时硬校验），只会导致真实模式下调用 `fh_connect` 时连接失败。
 
 复制 `.env.example` 并按需填写各配置项：
 
@@ -410,9 +499,9 @@ MCP Server 由平台侧统一部署（Docker + SSE），用户无需关注部署
 | **生产环境** | Docker 容器 + SSE 模式，参考 `docker-compose.yml` |
 | **测试环境** | 同上，启用 `FH_MOCK=true` 返回模拟数据 |
 
-> 容器规格、docker-compose 配置、健康检查命令和 SDK 原生库依赖清单详见 `docker-compose.yml` 和 `.env.example`。
+> 容器规格、docker-compose 配置、健康检查命令和 SDK 原生库依赖清单详见 → **[Docker 部署指南](docs/docker-deployment.md)**
 
-> **注意**：`.gitlab-ci.yml` 中的 `privatization-build-wibu-*` stage 为 DJI 内部私有化构建专用（依赖内部 Harbor 镜像和 Wibu AxProtector 工具链），外部 ISV fork 后**无法使用且可安全跳过**，不影响标准构建和部署流程。
+> **注意**：`.gitlab-ci.yml` 中的 `privatization-build-wibu-*` stage 为 DJI 内部私有化构建专用（依赖内部 Harbor 镜像和 Wibu AxProtector 工具链），外部集成商 fork 后**无法使用且可安全跳过**，不影响标准构建和部署流程。
 
 ---
 
@@ -432,14 +521,14 @@ mcp/
 │   ├── sdk/               # SDK 服务层（SdkService / SdkCallbackBridge）
 │   ├── security/          # 安全等级（SecurityLevel）
 │   ├── session/           # 会话管理（SessionContext / SessionManager）
-│   ├── tools/             # 57 个 MCP Tool 实现（按业务模块分包）
+│   ├── tools/             # MCP Tool 实现（67 个 fh_* 工具 + 4 个 sim_* 工具，按业务模块分包）
 │   │   ├── AbstractMcpTool.java   # 基类：参数解析、错误响应、确认门控
 │   │   ├── connect/       # fh_connect, fh_session_info, fh_ops
 │   │   ├── device/        # fh_device_list, fh_drone/dock_snapshot, 等
 │   │   ├── drc/           # fh_takeoff, fh_flyto, fh_emergency_stop, 等
 │   │   └── ...            # 其他模块
-│   └── transport/         # SseTransport
-├── src/test/              # 81 个测试类（100% 通过）
+│   └── transport/         # SseTransport（远程 Agent）/ StdioTransport（本地 IDE）
+├── src/test/              # 138 个测试类（100% 通过）
 ├── Dockerfile             # 多阶段构建（Maven build + JRE runtime）
 ├── docker-compose.yml     # 生产部署示例
 └── run-mcp-sse.sh         # 本地 SSE 启动脚本（含 JVM 内存限制：-Xmx512m，读取 .env）
@@ -448,12 +537,13 @@ mcp/
 ### 新增 Tool 的标准流程
 
 1. 在对应业务包下创建 `FhXxxTool.java`，继承 `AbstractMcpTool`，标注 `@Component`
-2. 用 `@McpTool` + `@McpParam` 注解声明工具元数据和参数，`SchemaGenerator` 自动生成 JSON Schema
-3. 覆写 `doExecute(ToolContext ctx)`：先检查 session，再校验参数，再调用 SDK
+2. 声明工具元数据：可用 `@McpTool` + `@McpParam` 注解（`SchemaGenerator` 自动生成 JSON Schema），也可沿用 Legacy 手写 `getToolDefinition()`
+3. 实现执行逻辑：注解模式覆写 `doExecute(ToolContext ctx)`，Legacy 模式覆写 `execute(Map<String, Object> args)`；先检查 session，再校验参数，再调用 SDK
 4. 编写测试类，覆盖：无 session / 参数缺失 / Mock 模式正常返回
 5. 编译（`mvn clean package -DskipTests`）+ 全量测试（`mvn test`）
 
-> Spring 会自动扫描并注册所有 `AbstractMcpTool` 实现 Bean，无需手动编辑注册表。
+> 当前 67 个 `fh_*` 工具**全部为 Legacy 手写模式**，注解驱动机制已支持但尚无工具使用（示例仅作参考）。
+> Spring 会自动扫描并注册所有 `AbstractMcpTool` 实现 Bean，无需手动编辑注册表。完整的 9 步流程（含 Checkstyle 检查、MR 规范）详见 → **[工具版本与更新指南](docs/tool-versioning.md)**
 
 ```java
 @Component
@@ -498,9 +588,9 @@ mvn test -Dtest=FhTakeoffToolTest
 开发者如需本地调试 MCP Server 源码：
 
 ```bash
-# 1. 安装私有 SDK JAR（仅首次）
+# 1. 安装私有 SDK JAR（仅首次；SDK 分 amd64/arm64 两个包，按本机架构选一个）
 mvn install:install-file \
-  -Dfile=libs/flight-hub-sdk-3.3.7.jar \
+  -Dfile=libs/amd64/flight-hub-sdk-3.3.7.jar \
   -DgroupId=com.dji.flighthubsdk \
   -DartifactId=flight-hub-sdk \
   -Dversion=3.3.7 \
@@ -521,10 +611,10 @@ SSE 端点默认：`http://localhost:8080/pf-devkit/ai-plugin/mcp/sse`
 
 | 限制 | 说明 |
 |------|------|
-| **Linux x86_64 专属** | DJI Cloud API 2 SDK JNI 原生库仅提供 Linux x86_64 版本，服务端必须在对应平台运行（Docker 解决）。Mock 模式无此限制。 |
+| **Linux 专属（amd64 / arm64 分包）** | DJI Cloud API 2 SDK JNI 原生库按架构分成两个包（`libs/amd64`、`libs/arm64`），构建镜像时用 `--build-arg SDK_ARCH=amd64\|arm64` 选包；用错架构会在 SDK 初始化时因找不到 JNI 主库而失败。Mock 模式无此限制。 |
 | **单 workspace** | 当前一个 MCP Server 实例对应一个工作空间。多 workspace 场景需要运行多个实例。 |
 | **单活跃 session** | SessionManager 当前只维护一个活跃 session，多客户端并发连接会共享同一个 SDK 实例。 |
-| **待开发 SDK 模块** | 以下 SDK 模块尚未覆盖：组织管理（OrgModule）、地图元素（MapElementModule）、通知告警、用户管理、AI 识别（AiModule）等（参见 docs/STATUS.md）。 |
+| **待开发 SDK 模块** | 以下 SDK 模块尚未覆盖：组织管理（OrgModule）、地图元素（MapElementModule）、通知告警、存储管理（StorageModule）、用户管理（UserModule）等。 |
 
 ---
 
@@ -542,10 +632,14 @@ SSE 端点默认：`http://localhost:8080/pf-devkit/ai-plugin/mcp/sse`
 
 ## License
 
-MIT
+Apache License 2.0（与仓库根 LICENSE 一致）
 
 ---
 
 ## 相关文档
 
-（以下文档待补充，当前不可用）
+| 文档 | 说明 |
+|------|------|
+| **[MCP 工具使用手册](../docs/mcp-tools-guide.md)** | 每个工具的参数、返回值结构、调用示例和注意事项 |
+| **[工具版本与更新指南](docs/tool-versioning.md)** | 当前版本工具清单、版本机制说明、新增/修改工具的完整流程 |
+| **[Docker 部署指南](docs/docker-deployment.md)** | 生产环境部署、健康检查、日志配置 |

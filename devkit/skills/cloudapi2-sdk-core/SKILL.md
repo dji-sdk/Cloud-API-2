@@ -1,17 +1,19 @@
 ---
 name: cloudapi2-sdk-core
 description: |
-  仅在需要编写、生成或审查 Cloud API 2.0 Java SDK 集成代码时使用。
-  不要在用户请求连接 DJI CloudAPI2、查看设备、控制无人机、查询遥测等运维操作时加载本 skill
-  （运维操作由 DJI CloudAPI2 MCP Server 直接处理，无需本 skill 介入）。
+  仅在需要编写、生成或审查 DJI Cloud API 2 Java SDK 集成代码时使用。
+  不要在用户请求连接 DJI Cloud API 2、查看设备、控制无人机、查询遥测等运维操作时加载本 skill
+  （运维操作由 DJI Cloud API 2 MCP Server 直接处理，无需本 skill 介入）。
   适用场景：写 Java 代码调用 SDK API、实现飞控逻辑、
   生成 Spring Boot Service 集成层、审查 SDK 调用代码质量。
-  关键词：DJI CloudAPI2, DJI, 无人机, 机场, drone, dock, listen, cancel,
+  关键词：DJI Cloud API 2, DJI, 无人机, 机场, drone, dock, listen, cancel,
   acquireFlightControlAuthority, releaseFlightControlAuthority, errorCode,
   initialize, getWorkspaceInstance, getDroneInstance, getDockInstance,
   getControlAuthModule, getFlightControlModule, getTakeoffModule,
   getDroneOsdModule, getDeviceStateModule, getDeviceHMSModule,
   getDrcModule, getFlyToPointModule, getCameraControlModule,
+  getWaylineManageModule, submitWaylineInfo, getWaylineEditorSts, importKmz,
+  listenImportWaylineEvent, 航线资产, 航线管理, wayline management,
   listenAircraftLocation, listenAircraftBatteryInfo, listenAircraftSpeed,
   listenAircraftAttitude, listenAircraftModeCode, listenAircraftHMS, listenDeviceHMS,
   cancelListenAircraftLocation, cancelListenAircraftBatteryInfo, livestream, live,
@@ -19,17 +21,17 @@ description: |
   急停, returnHome, returnHomeCancel, takeoff, drcEmergencyStop, FlightHubSDK,
   FlightHubSdkConfig, Workspace, DeviceTopo, FlightHubError,
   HeaderKeyValue, setHttpHeaders, setWebSocketAuthHeaders, JniLibraryLoader, loadLibrary, auth, 鉴权
-author: DJI CloudAPI2 Team
-version: 1.4.0
+author: DJI Cloud API 2 Team
+version: 1.6.0
 ---
 
-# DJI CloudAPI2 SDK 接入 Skill
+# DJI Cloud API 2 SDK 接入 Skill
 
 ## 适用场景
 
 当开发者描述以下场景时触发本 Skill：
 
-- 集成 / 接入 DJI CloudAPI2 SDK（Java）
+- 集成 / 接入 DJI Cloud API 2 SDK（Java）
 - 监听无人机或机场状态（OSD、在线状态、电量等）
 - 控制无人机（起飞、返航/取消返航、急停、指点飞行；降落通过 returnHome 实现）
 - 开始 / 停止直播流
@@ -39,7 +41,7 @@ version: 1.4.0
 
 ## SDK 心智模型
 
-DJI CloudAPI2 Java SDK 是**事件驱动**的，核心模式是 `listen / cancel`：
+DJI Cloud API 2 Java SDK 是**事件驱动**的，核心模式是 `listen / cancel`：
 
 ```
 FlightHubSDK（静态入口）
@@ -59,7 +61,7 @@ FlightHubSDK（静态入口）
 - `drone.getControlAuthModule()` — 飞控/负载控制权
 - `drone.getFlightControlModule()` — 返航、急停、摇杆、DRC 实时遥测（drcOsdInfo/drcBatteriesInfo）
 - `drone.getTakeoffModule()` — 起飞、指令任务事件（listenCommandTaskEvent）
-- `drone.getDroneOsdModule()` — MQTT 遥测监听（位置/电量/速度/姿态/负载等）
+- `drone.getDroneOsdModule()` — WebSocket 遥测监听（位置/电量/速度/姿态/负载等，推送通道走 `notificationServerAddress` 配置的 WebSocket，不是 MQTT）
 - `drone.getDeviceStateModule()` — 在线状态（listenDroneOnlineStatus）
 - `drone.getDeviceHMSModule()` — 健康管理告警（listenDeviceHMS）
 - `drone.getDrcModule()` — DRC 链路连接/断开、链路状态监听
@@ -70,12 +72,22 @@ FlightHubSDK（静态入口）
 - `dock.getDeviceStateModule()` — 机场在线状态（listenDockOnlineStatus）
 - `dock.getDeviceHMSModule()` — 机场健康管理告警
 - `dock.getDockOsdModule()` — 机场遥测（位置/气象/存储/网络等）
-- `dock.getDockControlModule()` — 机场远程操作（空调/补光灯等）
+- `dock.getDockControlModule()` — 机场辅助设备控制（摄像头切换/空调/补光灯/充电/舱盖），完整方法清单+枚举见 `cloudapi2-device-management/references/device-lifecycle.md`
+- `workspace.getWaylineManageModule()` — 航线资产管理（列表/详情/上传导入/重命名/复制/拼接/批量下载删除），详见 `prompts/add-wayline-management.md`
 
-**回调参数顺序不统一**（易踩坑）：
-- 查询类回调（如 `getDeviceList`）：`(data, error)` —— data 在前
-- 命令类回调（如 `takeoff`、`returnHome`）：`(error, result)` —— error 在前
-- 生成代码时务必用 javap 或编译器确认实际签名，不要凭记忆假设顺序
+**回调参数顺序不统一**（高频踩坑，**不要按"查询/命令"二分推断**）：
+
+> ⚠️ **没有统一规律**。同为查询类 API，`getDeviceList` 是 `(data, error)`，而 `getWaylineList` / `getWaylineDetail` 却是 `(error, result)`。按 API 名或"查询类/命令类"推断顺序**一定会写错**。
+
+| API | 真实签名 | 归类别 |
+|-----|----------|--------|
+| `getDeviceList` | `(deviceList, error)` —— **data 在前** | 查询（例外） |
+| `getWaylineList` | `(error, result)` —— **error 在前** | 查询（违反"查询=data 在前"） |
+| `getWaylineDetail` | `(error, result)` —— **error 在前** | 查询（违反"查询=data 在前"） |
+| `takeoff` / `returnHome` 等命令类 | `(error, result)` —— **error 在前** | 命令 |
+
+- 生成代码时**必须**用 `javap -p <Callback 接口>` 或直接让编译器报错来确认实际签名（参数顺序写反时形参名不会报错，但把 `error` 当结果用会在调用处 NPE / 类型不匹配——务必核对 `FlightHubCallback` 中的具体内部接口）。
+- 不确定时优先按 `(error, result)` 写，再用编译器验证；`getDeviceList` 是全仓少见的 data-first 例外。
 
 **错误响应统一结构**（所有回调共用）：
 
@@ -88,6 +100,79 @@ FlightHubError {
     String serverMessage;              // 服务端错误描述
 }
 ```
+
+## 标准 import 清单（复制即用，禁止凭记忆猜包路径）
+
+SDK 的类分布在四个包下，**同名类在多个包中重复存在**，导入错的包会被编译器
+以 `cannot find symbol` 或 `incompatible types` 直接拦下：
+
+| 包 | 内容 | 代表类 |
+|---|---|---|
+| `com.dji.flighthubsdk` | 静态入口与回调接口 | `FlightHubSDK`、`FlightHubCallback` |
+| `com.dji.flighthubsdk.bean` | 配置 / 错误 / 数据传输对象（**唯一正确来源**） | `FlightHubSdkConfig`、`HeaderKeyValue`、`FlightHubError`、`DeviceTopo` |
+| `com.dji.flighthubsdk.generated` | 错误码枚举、native 接口与回调参数 | `FlightHubSdkErrorCode` |
+| `com.dji.flighthubsdk.core` | 设备实例与能力模块 | `Workspace`、`Drone`、`DroneOsdModule` 等 |
+| `com.dji.flighthubsdk.value` | OSD / 参数里的业务枚举（40+ 个） | `DroneModeCode`、`CameraMode`、`DockAirConditionerState` |
+
+> ⚠️ `FlightHubSdkConfig` / `HeaderKeyValue` / `FlightHubError` / `DeviceTopo`
+> 在 `generated` 包里也有同名副本，但 **`FlightHubSDK` 的方法签名和回调参数
+> 用的是 `bean` 包**。导入 `generated` 版本会在回调 lambda 里报
+> `incompatible types`。
+>
+> ⚠️ `FlightHubSdkErrorCode` 在 `generated` 和 `value` 包里**各有一个同名枚举，
+> 二者不兼容**。`FlightHubSDK.initialize()` / `setHttpHeaders()` 的返回值、
+> `FlightHubError.getErrorCode()` 用的都是 **`generated` 包**；`value` 包那个
+> 只出现在部分 OSD 字段里（带 `getValue()` / `fromValue()`）。判断初始化结果时
+> 一律 import `com.dji.flighthubsdk.generated.FlightHubSdkErrorCode`。
+>
+> ⚠️ `value` 包里的枚举（如 `AircraftModeCode.getModeCode()` 返回的
+> `DroneModeCode`）**不需要也不能用 int 硬编码替代**，需要比较时直接
+> `import com.dji.flighthubsdk.value.DroneModeCode` 后按枚举常量写。
+>
+> ⚠️ 回调接口（`DeviceListCallback`、`AircraftLocationCallback` 等）都是
+> `FlightHubCallback` 的**内部接口**，不需要单独 import；需要显式写类型时
+> 使用 `FlightHubCallback.XxxCallback`。
+
+```java
+// 静态入口 + 回调接口
+import com.dji.flighthubsdk.FlightHubSDK;
+import com.dji.flighthubsdk.FlightHubCallback;
+
+// 配置 / 错误 / 数据传输对象
+import com.dji.flighthubsdk.bean.FlightHubSdkConfig;
+import com.dji.flighthubsdk.bean.HeaderKeyValue;
+import com.dji.flighthubsdk.bean.FlightHubError;
+import com.dji.flighthubsdk.bean.DeviceTopo;
+
+// 错误码枚举
+import com.dji.flighthubsdk.generated.FlightHubSdkErrorCode;
+
+// 实例与 JNI 加载器
+import com.dji.flighthubsdk.core.JniLibraryLoader;
+import com.dji.flighthubsdk.core.Workspace;
+import com.dji.flighthubsdk.core.Drone;
+import com.dji.flighthubsdk.core.Dock;
+
+// 能力模块（通过实例 getter 获取）
+import com.dji.flighthubsdk.core.DeviceManageModule;
+import com.dji.flighthubsdk.core.DroneOsdModule;
+import com.dji.flighthubsdk.core.DeviceStateModule;
+import com.dji.flighthubsdk.core.DeviceHMSModule;
+import com.dji.flighthubsdk.core.ControlAuthModule;
+import com.dji.flighthubsdk.core.FlightControlModule;
+import com.dji.flighthubsdk.core.TakeoffModule;
+import com.dji.flighthubsdk.core.DrcModule;
+import com.dji.flighthubsdk.core.FlyToPointModule;
+import com.dji.flighthubsdk.core.CameraControlModule;
+import com.dji.flighthubsdk.core.LiveDeviceModule;
+import com.dji.flighthubsdk.core.PoiModule;
+import com.dji.flighthubsdk.core.DockOsdModule;
+import com.dji.flighthubsdk.core.DockControlModule;
+import com.dji.flighthubsdk.core.WaylineManageModule;
+```
+
+> Spring Boot 3 的注解统一来自 `jakarta.*`（如 `jakarta.annotation.PostConstruct`、
+> `jakarta.annotation.PreDestroy`），不是 `javax.*`。
 
 ## 6 条核心规则（硬约束，生成代码时必须遵守）
 
@@ -328,6 +413,22 @@ public void executeWithCallback(Drone drone) {
 1. **示例代码必须来源于本 Skill 的 references/ 或用户提供的 SDK 文档**，不得凭模型记忆生成 API 签名、字段名、枚举值或代码片段
 2. **禁止凭记忆编造**——如果不确定某个 API 是否存在或参数是否正确，必须明确告知用户"需要确认 SDK 文档"
 3. **引用必须可溯源**——任何 SDK 调用建议必须能追溯到 references/ 文档路径或官方协议文档
+
+## 未覆盖模块（已知缺口，禁止编造）
+
+以下官方 SDK 模块本 Skill **明确不覆盖**，遇到相关需求时必须告知用户"需要确认 SDK 文档"，不得凭记忆编造调用方式：
+
+| 模块 | 说明 |
+|---|---|
+| `DeployModule` | 部署相关能力，走 `cloudapi2-skeleton-deploy` / `cloudapi2-mcp-deploy` Skill |
+| `TerraBuildModule` | 三维重建，仅 MCP 侧（`cloudapi2-mcp-guide`）有覆盖 |
+| `TestFlightModule` | 试飞功能 |
+| `CustomSEIModule` | 自定义 SEI 下发 |
+| `FlashLedModule` | 补光灯控制 |
+| `LiveSyncModule` | 直播同步 |
+| `PullStreamModule` | 拉流 |
+| `RelayControlModule` | 中继控制 |
+
 
 ## 共享规范
 

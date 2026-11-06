@@ -10,7 +10,17 @@ data:
   FH_SKELETON_SDK_ADDRESS: <REPLACE_ME>
   FH_SKELETON_SDK_PORT: "443"
   FH_SKELETON_SDK_NOTIFICATION_SERVER: <REPLACE_ME>
+  # 通知 WSS 证书校验：私有化 FH2 自签名证书时设为 "false" 跳过校验，
+  # 或保持 "true" 并用 FH_SKELETON_SDK_SSL_CA_PATH 指定自签 CA（默认 true）
+  FH_SKELETON_SDK_VERIFY_SSL: "true"
+  # 自签 CA 路径：需把 PEM 以 ConfigMap/Secret 挂载进容器后再启用（留空则用 SDK 默认信任库）
+  # FH_SKELETON_SDK_SSL_CA_PATH: /etc/fh-skeleton/fh2-ca.pem
   FH_CHAT_ENABLED: "false"
+  # Spring AI 的 Anthropic/OpenAI 自动配置只要 starter 在 classpath 上就会实例化，
+  # 即便 FH_CHAT_ENABLED=false 也要求 api-key 非空，否则启动期 Bean 创建失败。
+  # 这里给占位值兜底；真正启用 chat 时在 Secret 覆盖为真实 key。
+  SPRING_AI_ANTHROPIC_API_KEY: not-configured
+  SPRING_AI_OPENAI_API_KEY: not-configured
   FH_CHAT_MCP_URL: <REPLACE_ME>
   FH_DB_URL: jdbc:mysql://mysql:3306/fh_skeleton?useSSL=true&allowPublicKeyRetrieval=true&serverTimezone=UTC
   FH_DB_USERNAME: fh_skeleton

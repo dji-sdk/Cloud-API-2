@@ -77,6 +77,40 @@ public class FirmwareCompatibilityConfigItemResult {
     return (cPtr == 0) ? null : new FirmwareCompatibilityRulesResult(cPtr, false);
   }
 
+  public void setKey(String value) {
+    flighthubsdkmoduleJNI.FirmwareCompatibilityConfigItemResult_key_set(swigCPtr, this, value);
+  }
+
+  public String getKey() {
+    return flighthubsdkmoduleJNI.FirmwareCompatibilityConfigItemResult_key_get(swigCPtr, this);
+  }
+
+  public void setUser_type(StringVector value) {
+    flighthubsdkmoduleJNI.FirmwareCompatibilityConfigItemResult_user_type_set(swigCPtr, this, StringVector.getCPtr(value), value);
+  }
+
+  public StringVector getUser_type() {
+    long cPtr = flighthubsdkmoduleJNI.FirmwareCompatibilityConfigItemResult_user_type_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new StringVector(cPtr, false);
+  }
+
+  public void setDescription(String value) {
+    flighthubsdkmoduleJNI.FirmwareCompatibilityConfigItemResult_description_set(swigCPtr, this, value);
+  }
+
+  public String getDescription() {
+    return flighthubsdkmoduleJNI.FirmwareCompatibilityConfigItemResult_description_get(swigCPtr, this);
+  }
+
+  public void setValidates(FirmwareCompatibilityValidateResultVector value) {
+    flighthubsdkmoduleJNI.FirmwareCompatibilityConfigItemResult_validates_set(swigCPtr, this, FirmwareCompatibilityValidateResultVector.getCPtr(value), value);
+  }
+
+  public FirmwareCompatibilityValidateResultVector getValidates() {
+    long cPtr = flighthubsdkmoduleJNI.FirmwareCompatibilityConfigItemResult_validates_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new FirmwareCompatibilityValidateResultVector(cPtr, false);
+  }
+
   public FirmwareCompatibilityConfigItemResult() {
     this(flighthubsdkmoduleJNI.new_FirmwareCompatibilityConfigItemResult(), true);
   }

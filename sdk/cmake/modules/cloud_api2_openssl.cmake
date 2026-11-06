@@ -1,3 +1,6 @@
+# Copyright (c) 2026 SZ DJI Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 # macOS: 系统 / Homebrew OpenSSL。Linux: 仓内 1.1.1 动态库。
 
 if(CLOUD_API2_OS STREQUAL "macosx")
@@ -15,19 +18,26 @@ elseif(CLOUD_API2_OS STREQUAL "linux")
     cloud_api2_require_file("${_ssl_lib}/libssl.so.1.1")
     cloud_api2_require_file("${_ssl_lib}/libcrypto.so.1.1")
 
+    # opensslconf.h 按平台分份（x86_64 用 unsigned int 的 RC4_INT，aarch64 用 unsigned char）；
+    # 平台特定目录必须在通用 include 之前，让平台版 opensslconf.h 覆盖通用版。
+    set(_ssl_include_dirs
+        "${_ssl_dir}/include/${CLOUD_API2_PLAT}"
+        "${_ssl_dir}/include"
+    )
+
     add_library(cloud_api2_ssl SHARED IMPORTED GLOBAL)
     set_target_properties(cloud_api2_ssl PROPERTIES
         IMPORTED_LOCATION "${_ssl_lib}/libssl.so.1.1"
-        INTERFACE_INCLUDE_DIRECTORIES "${_ssl_dir}/include"
+        INTERFACE_INCLUDE_DIRECTORIES "${_ssl_include_dirs}"
     )
     add_library(cloud_api2_crypto SHARED IMPORTED GLOBAL)
     set_target_properties(cloud_api2_crypto PROPERTIES
         IMPORTED_LOCATION "${_ssl_lib}/libcrypto.so.1.1"
-        INTERFACE_INCLUDE_DIRECTORIES "${_ssl_dir}/include"
+        INTERFACE_INCLUDE_DIRECTORIES "${_ssl_include_dirs}"
     )
     add_library(cloud_api2_openssl INTERFACE)
     target_link_libraries(cloud_api2_openssl INTERFACE cloud_api2_ssl cloud_api2_crypto)
-    target_include_directories(cloud_api2_openssl INTERFACE "${_ssl_dir}/include")
+    target_include_directories(cloud_api2_openssl INTERFACE ${_ssl_include_dirs})
     message(STATUS "openssl: bundled 1.1.1 ${_ssl_lib}")
 else()
     message(FATAL_ERROR "openssl: no recipe for ${CLOUD_API2_PLAT}")

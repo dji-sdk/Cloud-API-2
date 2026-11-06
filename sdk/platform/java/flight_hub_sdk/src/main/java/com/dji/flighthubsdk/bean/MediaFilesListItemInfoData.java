@@ -11,6 +11,8 @@ public final class MediaFilesListItemInfoData {
     private long fileId;
     /** 飞行记录id; */
     private String flightId;
+    /** 航线 UUID; */
+    private String waylineUuid;
     /** 航点动作id; */
     private String waylineActionUuid;
     /** 文件大小(字节); */
@@ -31,6 +33,14 @@ public final class MediaFilesListItemInfoData {
     private String deviceSn;
     /** 负载类型 */
     private String payloadType;
+    /** 预览 key */
+    private String previewKey = "";
+    /** 全景源照片数量（文件夹字段；成片文件为 0） */
+    private int panoTotalCount;
+    /** 拼接状态（成片字段，取值与 C++ PanoStitchState 枚举一致，0~6） */
+    private int panoStitchState;
+    /** 拼接进度 [0, 100]（成片字段） */
+    private int panoStitchProgress;
     /** 文件类型; 取值参见 MediaType 枚举; 媒体列表接口实际只会出现 0(未定义)/1(文件夹)/2(图片)/3(视频) */
     private int type;
     public MediaFilesListItemInfoData() {
@@ -99,6 +109,16 @@ public final class MediaFilesListItemInfoData {
     /** @param flightId 飞行记录id; */
     public void setFlightId(String flightId) {
         this.flightId = flightId;
+    }
+
+    /** 航线 UUID; */
+    public String getWaylineUuid() {
+        return waylineUuid;
+    }
+
+    /** @param waylineUuid 航线 UUID; */
+    public void setWaylineUuid(String waylineUuid) {
+        this.waylineUuid = waylineUuid;
     }
 
     /** 航点动作id; */
@@ -201,6 +221,29 @@ public final class MediaFilesListItemInfoData {
         this.payloadType = payloadType;
     }
 
+    /** 预览 key */
+    public String getPreviewKey() {
+        return previewKey;
+    }
+
+    /** @param previewKey 预览 key */
+    public void setPreviewKey(String previewKey) {
+        this.previewKey = previewKey != null ? previewKey : "";
+    }
+
+    /** 全景源照片数量（文件夹字段；成片文件为 0） */
+    public int getPanoTotalCount() { return panoTotalCount; }
+    public void setPanoTotalCount(int panoTotalCount) { this.panoTotalCount = panoTotalCount; }
+
+    /** 拼接状态（成片字段；0=未处理 1=等待资源 2=处理中 3=成功 4=失败 5=取消 6=余额不足） */
+    public int getPanoStitchState() { return panoStitchState; }
+    public void setPanoStitchState(int panoStitchState) { this.panoStitchState = panoStitchState; }
+
+    /** 拼接进度 [0, 100]（成片字段） */
+    public int getPanoStitchProgress() { return panoStitchProgress; }
+    public void setPanoStitchProgress(int panoStitchProgress) { this.panoStitchProgress = panoStitchProgress; }
+
+
     /** 文件类型; 取值参见 MediaType 枚举; 媒体列表接口实际只会出现 0(未定义)/1(文件夹)/2(图片)/3(视频) */
     public int getType() {
         return type;
@@ -222,6 +265,7 @@ public final class MediaFilesListItemInfoData {
         MediaFilesListItemInfoData that = (MediaFilesListItemInfoData) o;
         return fileId == that.fileId
                 && Objects.equals(flightId, that.flightId)
+                && Objects.equals(waylineUuid, that.waylineUuid)
                 && Objects.equals(waylineActionUuid, that.waylineActionUuid)
                 && size == that.size
                 && Objects.equals(objectKey, that.objectKey)
@@ -232,6 +276,7 @@ public final class MediaFilesListItemInfoData {
                 && Objects.equals(filePath, that.filePath)
                 && Objects.equals(deviceSn, that.deviceSn)
                 && Objects.equals(payloadType, that.payloadType)
+                && Objects.equals(previewKey, that.previewKey)
                 && type == that.type;
     }
 
@@ -240,6 +285,7 @@ public final class MediaFilesListItemInfoData {
         return Objects.hash(
                 fileId,
                 flightId,
+                waylineUuid,
                 waylineActionUuid,
                 size,
                 objectKey,
@@ -250,6 +296,7 @@ public final class MediaFilesListItemInfoData {
                 filePath,
                 deviceSn,
                 payloadType,
+                previewKey,
                 type);
     }
 
@@ -258,6 +305,7 @@ public final class MediaFilesListItemInfoData {
         return "MediaFilesListItemInfoData{"
                 + "fileId=" + fileId
                 + ", flightId='" + flightId + '\''
+                + ", waylineUuid='" + waylineUuid + '\''
                 + ", waylineActionUuid='" + waylineActionUuid + '\''
                 + ", size=" + size
                 + ", objectKey='" + objectKey + '\''
@@ -268,6 +316,7 @@ public final class MediaFilesListItemInfoData {
                 + ", filePath='" + filePath + '\''
                 + ", deviceSn='" + deviceSn + '\''
                 + ", payloadType='" + payloadType + '\''
+                + ", previewKey='" + previewKey + '\''
                 + ", type='" + type + '\''
                 + '}';
     }

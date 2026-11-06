@@ -8,6 +8,7 @@
 #include "http_interface/http_interface.h"
 #include "notification_center/notification_center.h"
 #include <BusinessManager.h>
+#include "session/session_bm.h"
 
 namespace flight_hub_sdk {
 namespace {
@@ -39,10 +40,9 @@ ActiveInFlightWaylineTaskInfo ToApiActiveInfo(const GetActiveInFlightWaylineTask
 
 } // namespace
 
-InFlightWaylineModuleImpl::InFlightWaylineModuleImpl(
-                                                     const std::string& gateway_sn,
-                                                     const std::string& drone_sn)
-    : gateway_sn_(gateway_sn), drone_sn_(drone_sn) {
+InFlightWaylineModuleImpl::InFlightWaylineModuleImpl(const std::string& gateway_sn,
+                                                     const std::string& drone_sn, int session_id)
+    : gateway_sn_(gateway_sn), drone_sn_(drone_sn), session_id_(session_id) {
     LOG_INFO("[InFlightWaylineModuleImpl] constructor, drone_sn: %s, gateway_sn: %s",
              drone_sn_.c_str(), gateway_sn_.c_str());
 }
@@ -84,14 +84,15 @@ void InFlightWaylineModuleImpl::createInFlightWaylineTask(
 
     WeakDummy(weak_ptr);
     create_in_flight_wayline_task(request,
-        [weak_ptr, callback](const CreateInFlightWaylineTaskResponse& response, FlightHubError err) {
+        [weak_ptr, callback, this](const CreateInFlightWaylineTaskResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([callback, response, err]() -> void {
+            drc_sdk::common::Executors::Main()->Post([callback, response, err, this, weak_ptr]() -> void {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 创建空中航线任务（自动注入当前设备的 drone_sn / gateway_sn）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_IN_FLIGHT_WAYLINE_CREATE_TASK, err, "[InFlightWaylineModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_IN_FLIGHT_WAYLINE_CREATE_TASK, err, session_id_, "[InFlightWaylineModuleImpl]");
 
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     callback({}, err);
@@ -102,7 +103,7 @@ void InFlightWaylineModuleImpl::createInFlightWaylineTask(
                 result.in_flight_wayline_task_id = response.in_flight_way_line_task_id;
                 callback(result, FlightHubError::success());
             });
-        });
+        }, session_id_);
 }
 
 void InFlightWaylineModuleImpl::controlInFlightWaylineTask(
@@ -114,45 +115,51 @@ void InFlightWaylineModuleImpl::controlInFlightWaylineTask(
 
     WeakDummy(weak_ptr);
     control_in_flight_wayline_task(request,
-        [weak_ptr, callback](FlightHubError err) {
+        [weak_ptr, callback, this](FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([callback, err]() -> void {
+            drc_sdk::common::Executors::Main()->Post([callback, err, this, weak_ptr]() -> void {
+                WeakDummyReturn(weak_ptr);
                 // 埋点: 控制空中航线任务（暂停 / 恢复 / 取消）; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_IN_FLIGHT_WAYLINE_CONTROL_TASK, err, "[InFlightWaylineModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_IN_FLIGHT_WAYLINE_CONTROL_TASK, err, session_id_, "[InFlightWaylineModuleImpl]");
                 callback(err);
             });
-        });
+        }, session_id_);
 }
 
 void InFlightWaylineModuleImpl::getActiveInFlightWaylineTask(
     const std::function<void(const ActiveInFlightWaylineTaskInfo& info, FlightHubError err)>& callback) {
     WeakDummy(weak_ptr);
-    get_active_in_flight_wayline_task(drone_sn_,
-        [weak_ptr, callback](const GetActiveInFlightWaylineTaskResponse& response, FlightHubError err) {
+    // 协议(GetActiveInFlightWayLineTaskByDeviceRequest)按机场 SN 查询, 传 gateway_sn_ 而非 drone_sn_
+    get_active_in_flight_wayline_task(gateway_sn_,
+        [weak_ptr, callback, this](const GetActiveInFlightWaylineTaskResponse& response, FlightHubError err) {
             WeakDummyReturn(weak_ptr);
-            drc_sdk::common::Executors::Main()->Post([callback, response, err]() -> void {
-                // 埋点: 查询当前设备活跃中的空中航线任务; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
+            drc_sdk::common::Executors::Main()->Post([callback, response, err, this, weak_ptr]() -> void {
+                WeakDummyReturn(weak_ptr);
+                // 埋点: 查询当前机场活跃中的空中航线任务; 上报失败不影响主流程, 故不关心结果, 仅打印 log 记录。
                 // 数据埋点上报 event + err(FlightHubError) 数据，不改变(未改变)原来的业务代码逻辑。
                 // 比如 使用"make_http_error(http_code, response)"或者"FlightHubError::success()"
                 // 或者"FlightHubError::from_sdk(FlightHubSdkErrorCode::ERROR_OPERATION_FAILED)" 生成 FlightHubError 信息。
-                report_beacon_event_helper(kBeaconReportEvent_IN_FLIGHT_WAYLINE_GET_ACTIVE_TASK, err, "[InFlightWaylineModuleImpl]");
+                report_beacon_event_helper(kBeaconReportEvent_IN_FLIGHT_WAYLINE_GET_ACTIVE_TASK, err, session_id_, "[InFlightWaylineModuleImpl]");
                 if (err.error_code != FlightHubSdkErrorCode::SUCCESS) {
                     callback({}, err);
                     return;
                 }
                 callback(ToApiActiveInfo(response), FlightHubError::success());
             });
-        });
+        }, session_id_);
 }
 
 int InFlightWaylineModuleImpl::listenInFlightWaylineProgress(
     const std::function<void(const InFlightWaylineProgress& msg)>& callback) {
+    auto bm = ResolveBusinessManager(session_id_);
     WeakDummy(weak_ptr);
-    auto listen_id = NotificationCenter::getInstance()->getBusinessManager()->ListenInFlightWaylineTaskNotify(
-        [weak_ptr, callback](const notification_center::InFlightWaylineTaskNotify& msg) -> void {
+    auto listen_id = -1;
+    if (bm) {
+        listen_id = bm->ListenInFlightWaylineTaskNotify(
+        [weak_ptr, callback, session_id_ = session_id_](const notification_center::InFlightWaylineTaskNotify& msg) -> void {
             WeakDummyReturn(weak_ptr);
             if (!callback) {
                 return;
@@ -179,11 +186,17 @@ int InFlightWaylineModuleImpl::listenInFlightWaylineProgress(
         },
         gateway_sn_,
         notification_center::NotificationFrequency_OnChanged);
+    } else {
+        LOG_ERROR("[session_bm] null, skip Listen for session");
+    }
     return listen_id;
 }
 
 void InFlightWaylineModuleImpl::cancelListenInFlightWaylineProgress(int listen_id) {
-    NotificationCenter::getInstance()->getBusinessManager()->CancelObserve(listen_id);
+    auto bm = ResolveBusinessManager(session_id_);
+    if (bm) {
+        bm->CancelObserve(listen_id);
+    }
 }
 
 } // namespace flight_hub_sdk

@@ -153,6 +153,31 @@ public class AIInsideModelItem {
     return (cPtr == 0) ? null : new IntVector(cPtr, false);
   }
 
+  public void setModel_types(IntVector value) {
+    flighthubsdkmoduleJNI.AIInsideModelItem_model_types_set(swigCPtr, this, IntVector.getCPtr(value), value);
+  }
+
+  public IntVector getModel_types() {
+    long cPtr = flighthubsdkmoduleJNI.AIInsideModelItem_model_types_get(swigCPtr, this);
+    return (cPtr == 0) ? null : new IntVector(cPtr, false);
+  }
+
+  public void setModel_combination(String value) {
+    flighthubsdkmoduleJNI.AIInsideModelItem_model_combination_set(swigCPtr, this, value);
+  }
+
+  public String getModel_combination() {
+    return flighthubsdkmoduleJNI.AIInsideModelItem_model_combination_get(swigCPtr, this);
+  }
+
+  public void setStatus(String value) {
+    flighthubsdkmoduleJNI.AIInsideModelItem_status_set(swigCPtr, this, value);
+  }
+
+  public String getStatus() {
+    return flighthubsdkmoduleJNI.AIInsideModelItem_status_get(swigCPtr, this);
+  }
+
   public AIInsideModelItem() {
     this(flighthubsdkmoduleJNI.new_AIInsideModelItem(), true);
   }

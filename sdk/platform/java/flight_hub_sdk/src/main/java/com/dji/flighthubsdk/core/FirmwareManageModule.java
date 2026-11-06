@@ -414,7 +414,62 @@ public class FirmwareManageModule {
     }
 
     /**
-     * 查询固件兼容性配置
+     * 查询固件列表（含分页信息）
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @param callback 回调，返回固件列表、分页信息与错误信息
+     * @implNote 链路: HTTP | GET /device/api/v1/manager/firmwares
+     */
+    public void queryFirmwareListWithPagination(int page, int pageSize, FlightHubCallback.QueryFirmwareListWithPaginationCallback callback) {
+        try {
+            int id = generateActionCallbackId();
+            com.dji.flighthubsdk.generated.QueryFirmwareListCallback swigCallback = new com.dji.flighthubsdk.generated.QueryFirmwareListCallback() {
+                @Override
+                public void onQueryFirmwareList(com.dji.flighthubsdk.generated.FlightHubError err, FirmwareListResult result) {
+                    try {
+                        if (callback != null) {
+                            callback.onResult(FlightHubSdkConvert.toFlightHubError(err), FlightHubSdkConvert.toFirmwareListResult(result));
+                        }
+                    } catch (Exception e) {
+                        Logger.error(TAG, "[queryFirmwareListWithPagination] callback error: " + e.getMessage(), e);
+                    } finally {
+                        queryFirmwareListCallbackRef.remove(id);
+                    }
+                }
+            };
+
+            final CallbackRefContainer container = new CallbackRefContainer(swigCallback, callback);
+            synchronized (queryFirmwareListCallbackRef) {
+                queryFirmwareListCallbackRef.put(id, container);
+                firmwareManageModule.queryFirmwareListWrapper(page, pageSize, swigCallback);
+            }
+        } catch (Exception e) {
+            Logger.error(TAG, "[queryFirmwareListWithPagination] error: " + e.getMessage(), e);
+            if (callback != null) {
+                try {
+                    callback.onResult(new com.dji.flighthubsdk.bean.FlightHubError(FlightHubSdkErrorCode.ERROR_OPERATION_FAILED),
+                            new com.dji.flighthubsdk.bean.FirmwareListResult(java.util.Collections.emptyList(), null));
+                } catch (Exception ex) {
+                    Logger.error(TAG, "error callback threw: " + ex.getMessage(), ex);
+                }
+            }
+        }
+    }
+
+    /**
+     * 查询固件兼容性配置。
+     *
+     * <p>当前后端返回特性开关配置，返回项实际字段为：
+     * {@code key}、{@code userType}、{@code description}、{@code validates}。
+     * 请使用
+     * {@link com.dji.flighthubsdk.bean.FirmwareCompatibilityConfigItemResult#getKey()}、
+     * {@link com.dji.flighthubsdk.bean.FirmwareCompatibilityConfigItemResult#getUserType()}、
+     * {@link com.dji.flighthubsdk.bean.FirmwareCompatibilityConfigItemResult#getDescription()}、
+     * {@link com.dji.flighthubsdk.bean.FirmwareCompatibilityConfigItemResult#getValidates()} 读取。
+     *
+     * <p>历史字段 {@code deviceModelKey}、{@code compatibleVersions}、{@code rules}
+     * 对当前后端不返回，已废弃。
+     *
      * @param callback 回调，返回兼容性配置与错误信息
      * @implNote 链路: HTTP | GET /device/api/v1/firmware_compatible/config
      */

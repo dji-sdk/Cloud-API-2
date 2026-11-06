@@ -42,7 +42,7 @@ import org.springframework.context.annotation.Configuration;
  *
  * <p>所有 SPI 均使用 {@code @ConditionalOnMissingBean}，SDK 模式下由
  * {@code SdkDashboardAutoConfiguration} 提供真实 SDK 实现，覆盖这些默认 mock。
- * ISV 也可声明自有 bean 覆盖。
+ * 集成商 也可声明自有 bean 覆盖。
  *
  * @author DJI DevKit Team
  */

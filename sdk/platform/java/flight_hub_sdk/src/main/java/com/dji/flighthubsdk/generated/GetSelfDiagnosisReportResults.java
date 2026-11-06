@@ -189,6 +189,86 @@ public class GetSelfDiagnosisReportResults {
     return flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_qr_guide_text_get(swigCPtr, this);
   }
 
+  public void setCloud_submit_status(String value) {
+    flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_cloud_submit_status_set(swigCPtr, this, value);
+  }
+
+  public String getCloud_submit_status() {
+    return flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_cloud_submit_status_get(swigCPtr, this);
+  }
+
+  public void setQr_code_url(String value) {
+    flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_qr_code_url_set(swigCPtr, this, value);
+  }
+
+  public String getQr_code_url() {
+    return flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_qr_code_url_get(swigCPtr, this);
+  }
+
+  public void setQr_code_sign(String value) {
+    flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_qr_code_sign_set(swigCPtr, this, value);
+  }
+
+  public String getQr_code_sign() {
+    return flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_qr_code_sign_get(swigCPtr, this);
+  }
+
+  public void setQr_code_nonce(String value) {
+    flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_qr_code_nonce_set(swigCPtr, this, value);
+  }
+
+  public String getQr_code_nonce() {
+    return flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_qr_code_nonce_get(swigCPtr, this);
+  }
+
+  public void setDevice_callback_updated_at(String value) {
+    flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_device_callback_updated_at_set(swigCPtr, this, value);
+  }
+
+  public String getDevice_callback_updated_at() {
+    return flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_device_callback_updated_at_get(swigCPtr, this);
+  }
+
+  public void setCreated_at(String value) {
+    flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_created_at_set(swigCPtr, this, value);
+  }
+
+  public String getCreated_at() {
+    return flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_created_at_get(swigCPtr, this);
+  }
+
+  public void setUpdated_at(String value) {
+    flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_updated_at_set(swigCPtr, this, value);
+  }
+
+  public String getUpdated_at() {
+    return flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_updated_at_get(swigCPtr, this);
+  }
+
+  public void setOrganization_uuid(String value) {
+    flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_organization_uuid_set(swigCPtr, this, value);
+  }
+
+  public String getOrganization_uuid() {
+    return flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_organization_uuid_get(swigCPtr, this);
+  }
+
+  public void setProject_uuid(String value) {
+    flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_project_uuid_set(swigCPtr, this, value);
+  }
+
+  public String getProject_uuid() {
+    return flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_project_uuid_get(swigCPtr, this);
+  }
+
+  public void setDevice_type(String value) {
+    flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_device_type_set(swigCPtr, this, value);
+  }
+
+  public String getDevice_type() {
+    return flighthubsdkmoduleJNI.GetSelfDiagnosisReportResults_device_type_get(swigCPtr, this);
+  }
+
   public GetSelfDiagnosisReportResults() {
     this(flighthubsdkmoduleJNI.new_GetSelfDiagnosisReportResults(), true);
   }

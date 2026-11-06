@@ -36,11 +36,14 @@ public:
         InFlightWaylineControlAction action,
         const std::function<void(FlightHubError err)>& callback) = 0;
 
-    /// @brief 查询当前设备活跃中的空中航线任务
+    /// @brief 查询当前机场活跃中的空中航线任务
     /// @param callback 结果回调
     ///
+    /// 协议为设备维度查询(GetActiveInFlightWayLineTaskByDeviceRequest.sn = 机场 SN):
+    /// 本模块虽挂在 Drone 上暴露, 实际查询的是该飞机所在网关机场的活跃任务。
+    ///
     /// @internal
-    /// 链路: HTTP | GET /drc/api/v3/flight-tasks/in-flight
+    /// 链路: HTTP | GET /drc/api/v3/flight-tasks/in-flight?sn=<机场SN>
     /// @endinternal
     virtual void getActiveInFlightWaylineTask(
         const std::function<void(const ActiveInFlightWaylineTaskInfo& info, FlightHubError err)>& callback) = 0;

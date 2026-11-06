@@ -329,6 +329,41 @@ class DeviceStatusServiceTest {
         }
 
         @Test
+        void listAll_shouldExposeDeviceClass_distinguishingBaseStationFromDock() {
+            // 现场 340 拓扑：基站是顶层网关，机场 ea340d 挂其下，飞机再挂机场下。
+            // deviceType 枚举只有 DRONE/DOCK，基站与机场都被归为 DOCK，二者无法区分，
+            // 导致驾驶舱设备列表把顶层基站当成「机场」并显示基站 SN。
+            // 修复：DeviceState 透传原始 deviceClass，让前端据此区分基站 / 机场 / 飞机。
+            DeviceSnapshot drone = new DeviceSnapshot(
+                    "DRONE-340", "drone", "M4TD", "飞机-340", null, true);
+            DeviceSnapshot dock = new DeviceSnapshot(
+                    "DOCK-340", "dock", "D3", "ea340d", null, true, List.of(drone));
+            DeviceSnapshot baseStation = new DeviceSnapshot(
+                    "BS-340", "base_station", null, "地面站-001", null, true, List.of(dock));
+            stubDevices.add(baseStation);
+            stubDevices.add(dock);
+            stubDevices.add(drone);
+
+            List<DeviceState> result = service.listAll();
+
+            // 顶层只剩基站（机场、飞机已作为子设备去重）
+            assertThat(result).hasSize(1);
+            DeviceState bs = result.get(0);
+            assertThat(bs.sn()).isEqualTo("BS-340");
+            assertThat(bs.deviceClass()).isEqualTo("base_station");
+
+            // 机场子设备暴露自己的 deviceClass=dock 与自己的 SN（不被基站 SN 冒充）
+            DeviceState dockState = bs.childDevices().get(0);
+            assertThat(dockState.sn()).isEqualTo("DOCK-340");
+            assertThat(dockState.deviceClass()).isEqualTo("dock");
+
+            // 飞机为机场的子设备，deviceClass=drone
+            DeviceState droneState = dockState.childDevices().get(0);
+            assertThat(droneState.sn()).isEqualTo("DRONE-340");
+            assertThat(droneState.deviceClass()).isEqualTo("drone");
+        }
+
+        @Test
         void listAll_shouldReturnTopLevelOnce_whenSnapshotDuplicated() {
             DeviceSnapshot drone = new DeviceSnapshot(
                     "DRONE-1", "DRONE", "M30T", "Drone1", null, true);

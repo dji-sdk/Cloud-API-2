@@ -18,6 +18,7 @@ package com.dji.flighthub.mcp.tools.record;
 
 import com.dji.flighthub.mcp.sdk.SdkCallbackBridge;
 import com.dji.flighthub.mcp.sdk.SdkService;
+import com.dji.flighthub.mcp.security.SecurityLevel;
 import com.dji.flighthub.mcp.session.SessionContext;
 import com.dji.flighthub.mcp.session.SessionManager;
 import com.dji.flighthub.mcp.tools.AbstractMcpTool;
@@ -57,6 +58,7 @@ public class FhFlightRecordTool extends AbstractMcpTool {
     private static final String PARAM_FLIGHT_TASK_IDS = "flight_task_ids";
     private static final String PARAM_FILE_NAME = "file_name";
     private static final String PARAM_FILE_TYPE = "file_type";
+    private static final String PARAM_CONTENT_TYPE = "content_type";
     private static final String PARAM_METRICS = "metrics";
     private static final String PARAM_TIME_ZONE = "time_zone";
     private static final String PARAM_LOCALE = "locale";
@@ -78,11 +80,27 @@ public class FhFlightRecordTool extends AbstractMcpTool {
     private static final int DEFAULT_PAGE = 1;
     private static final int DEFAULT_PAGE_SIZE = 20;
 
+    /** 单页最大条数：超过该值回退默认值，避免单次响应过大 */
+    private static final int MAX_PAGE_SIZE = 100;
+
     /** 默认时区 */
     private static final String DEFAULT_TIME_ZONE = "Asia/Shanghai";
 
     /** 默认语言 */
     private static final String DEFAULT_LOCALE = "zh_CN";
+
+    /**
+     * 默认导出内容类型。
+     * SDK 侧 {@code contentType} 为必填项，缺省会导致服务端返回 "ContentType required"，
+     * 取值 {@code details} 为飞行记录明细（与 SDK 示例一致）。
+     */
+    private static final String DEFAULT_CONTENT_TYPE = "details";
+
+    /** 导出进度查询的状态过滤：0 表示不过滤 */
+    private static final int PROGRESS_STATUS_ALL = 0;
+
+    /** 导出进度查询的排序方向 */
+    private static final String PROGRESS_SORT_DESC = "desc";
 
     private final SdkService sdkService;
 
@@ -95,6 +113,16 @@ public class FhFlightRecordTool extends AbstractMcpTool {
     public FhFlightRecordTool(SessionManager sessionManager, SdkService sdkService) {
         super(sessionManager);
         this.sdkService = sdkService;
+    }
+
+    /**
+     * 声明工具级静态安全等级：READ_ONLY。
+     *
+     * @return 静态安全等级
+     */
+    @Override
+    public SecurityLevel getSecurityLevel() {
+        return SecurityLevel.READ_ONLY;
     }
 
     @Override
@@ -132,6 +160,11 @@ public class FhFlightRecordTool extends AbstractMcpTool {
                 "items", Map.of("type", "string"),
                 "description", "Export file types (e.g. ['csv', 'pdf'])"
         ));
+        props.put(PARAM_CONTENT_TYPE, Map.of(
+                "type", "string",
+                "description", "Export content type required by the SDK (e.g. 'details'). "
+                        + "Default: details; used for both 'export' and 'get_progress'."
+        ));
         props.put(PARAM_METRICS, Map.of(
                 "type", "array",
                 "items", Map.of("type", "string"),
@@ -155,7 +188,7 @@ public class FhFlightRecordTool extends AbstractMcpTool {
         ));
         props.put(PARAM_PAGE_SIZE, Map.of(
                 "type", "integer",
-                "description", "Page size for progress list (default: 20)"
+                "description", "Page size for progress list (default: 20, range: 1-100)"
         ));
 
         schema.put("properties", props);
@@ -207,6 +240,7 @@ public class FhFlightRecordTool extends AbstractMcpTool {
         String fileName = getStringArg(args, PARAM_FILE_NAME, "flight_record_export");
         String timeZone = getStringArg(args, PARAM_TIME_ZONE, DEFAULT_TIME_ZONE);
         String locale = getStringArg(args, PARAM_LOCALE, DEFAULT_LOCALE);
+        String contentType = getStringArg(args, PARAM_CONTENT_TYPE, DEFAULT_CONTENT_TYPE);
         List<String> fileType = getStringListArg(args, PARAM_FILE_TYPE);
         List<String> metrics = getStringListArg(args, PARAM_METRICS);
 
@@ -216,6 +250,7 @@ public class FhFlightRecordTool extends AbstractMcpTool {
             data.put("export_id", "exp_" + System.currentTimeMillis());
             data.put("user_id", userId);
             data.put("file_name", fileName);
+            data.put("content_type", contentType);
             data.put("task_count", taskIds.size());
             data.put("status", "processing");
             data.put("message", "Export started, use get_progress to check status.");
@@ -223,7 +258,7 @@ public class FhFlightRecordTool extends AbstractMcpTool {
         }
 
         // 真实 SDK 调用
-        return executeRealExport(userId, taskIds, fileName, timeZone, locale, fileType, metrics);
+        return executeRealExport(userId, taskIds, fileName, timeZone, locale, contentType, fileType, metrics);
     }
 
     /**
@@ -231,14 +266,24 @@ public class FhFlightRecordTool extends AbstractMcpTool {
      */
     private Map<String, Object> executeGetProgress(Map<String, Object> args) {
         String exportId = getStringArg(args, PARAM_EXPORT_ID, null);
+        String contentType = getStringArg(args, PARAM_CONTENT_TYPE, DEFAULT_CONTENT_TYPE);
         int page = getIntArg(args, PARAM_PAGE, DEFAULT_PAGE);
         int pageSize = getIntArg(args, PARAM_PAGE_SIZE, DEFAULT_PAGE_SIZE);
+
+        // 分页兜底：越界值回退默认值，避免单次返回数据量失控
+        if (page < 1) {
+            page = DEFAULT_PAGE;
+        }
+        if (pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
+            pageSize = DEFAULT_PAGE_SIZE;
+        }
 
         // Mock 模式（含 workspace 为 null 的降级场景）
         if (sdkService.isMockMode() || sdkService.getWorkspace() == null) {
             Map<String, Object> data = new LinkedHashMap<>();
             if (exportId != null) {
                 data.put("export_id", exportId);
+                data.put("content_type", contentType);
                 data.put("status", "completed");
                 data.put("progress", 100);
                 data.put("download_url", "https://flighthub.example.com/exports/" + exportId + ".csv");
@@ -260,7 +305,7 @@ public class FhFlightRecordTool extends AbstractMcpTool {
         }
 
         // 真实 SDK
-        return executeRealGetProgress(exportId, page, pageSize);
+        return executeRealGetProgress(exportId, contentType, page, pageSize);
     }
 
     /**
@@ -269,15 +314,17 @@ public class FhFlightRecordTool extends AbstractMcpTool {
     @Generated
     private Map<String, Object> executeRealExport(
             String userId, List<String> taskIds, String fileName,
-            String timeZone, String locale, List<String> fileType, List<String> metrics) {
+            String timeZone, String locale, String contentType,
+            List<String> fileType, List<String> metrics) {
         try {
-            log.info("[REAL] exportFlightRecords: user={}, tasks={}, file={}",
-                    userId, taskIds.size(), fileName);
+            log.info("[REAL] exportFlightRecords: user={}, tasks={}, file={}, contentType={}",
+                    userId, taskIds.size(), fileName, contentType);
 
             Workspace workspace = sdkService.getWorkspace();
             FlightTaskRecordModule ftrm = workspace.getFlightTaskRecordModule();
 
             ExportFlightRecordsRequestParams params = new ExportFlightRecordsRequestParams();
+            params.setContentType(contentType);
             params.setFileName(fileName);
             params.setFlightTaskIds(taskIds);
             params.setTimeZone(timeZone);
@@ -300,6 +347,7 @@ public class FhFlightRecordTool extends AbstractMcpTool {
                 data.put("export_id", results.getExportId());
                 data.put("user_id", userId);
                 data.put("file_name", fileName);
+                data.put("content_type", contentType);
                 data.put("task_count", taskIds.size());
                 data.put("status", "processing");
                 future.complete(data);
@@ -321,20 +369,19 @@ public class FhFlightRecordTool extends AbstractMcpTool {
      * 真实 SDK 进度查询。
      */
     @Generated
-    private Map<String, Object> executeRealGetProgress(String exportId, int page, int pageSize) {
+    private Map<String, Object> executeRealGetProgress(String exportId, String contentType, int page, int pageSize) {
         try {
-            log.info("[REAL] getExportFlightRecordsProgress: exportId={}, page={}/{}",
-                    exportId, page, pageSize);
+            log.info("[REAL] getExportFlightRecordsProgress: exportId={}, contentType={}, page={}/{}",
+                    exportId, contentType, page, pageSize);
 
             Workspace workspace = sdkService.getWorkspace();
             FlightTaskRecordModule ftrm = workspace.getFlightTaskRecordModule();
 
-            String timeZone = DEFAULT_TIME_ZONE;
-            String locale = DEFAULT_LOCALE;
-            int status = 0;
-
+            // SDK 方法签名顺序为 (contentType, status, sort, page, pageSize, exportId, callback)，
+            // 位置参数必须严格对应，否则会整体串位导致查询失败。
             CompletableFuture<Map<String, Object>> future = new CompletableFuture<>();
-            ftrm.getExportFlightRecordsProgress(exportId, page, timeZone, pageSize, status, locale,
+            ftrm.getExportFlightRecordsProgress(contentType, PROGRESS_STATUS_ALL, PROGRESS_SORT_DESC,
+                    page, pageSize, exportId,
                     (error, results) -> {
                         if (!error.isSuccess()) {
                             future.completeExceptionally(new SdkCallbackBridge.SdkException(

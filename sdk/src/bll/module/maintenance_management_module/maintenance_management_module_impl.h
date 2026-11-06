@@ -22,7 +22,7 @@ namespace flight_hub_sdk {
   */
 class MaintenanceManagementModuleImpl : public IMaintenanceManagementModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    explicit MaintenanceManagementModuleImpl();
+    explicit MaintenanceManagementModuleImpl(int session_id);
 
     // 析构函数;
     ~MaintenanceManagementModuleImpl();
@@ -51,6 +51,7 @@ public:
 
 
 private:
+    int session_id_;
 };
 
 } // namespace flight_hub_sdk

@@ -12,11 +12,10 @@ namespace flight_hub_sdk {
 
 class FlightControlModuleImpl : public IFlightControlModule, public drc_sdk::common::AsyncCaptureProtect {
 public:
-    FlightControlModuleImpl(
-        const std::string& drone_sn,
+    FlightControlModuleImpl(const std::string& drone_sn,
         const std::string& gateway_sn,
         std::shared_ptr<message_engine::IMessageEngine> message_engine,
-        std::shared_ptr<FlightCtrlMgr> flight_ctrl_mgr);
+        std::shared_ptr<FlightCtrlMgr> flight_ctrl_mgr, int session_id);
     ~FlightControlModuleImpl() override = default;
 
     void drcEmergencyStop(const std::function<void(FlightHubError err)>& callback) override;
@@ -25,6 +24,7 @@ public:
     void drcForceLanding(const std::function<void(FlightHubError err)>& callback) override;
 
     void returnHome(const std::function<void(FlightHubError err)>& callback) override;
+    void returnHome(const std::string& target_dock_sn, const std::function<void(FlightHubError err)>& callback) override;
 
     void returnHomeCancel(const std::function<void(FlightHubError err)>& callback) override;
 
@@ -33,6 +33,7 @@ public:
     // ── Flight Control Auxiliary (DRC) ──
     void drcSetDroneHover(int duration, const std::function<void(FlightHubError)>& callback) override;
     void drcSetFollowMouseParameter(int speed, const std::function<void(FlightHubError)>& callback) override;
+    void drcSetFlyingMaxSpeed(double speed, const std::function<void(FlightHubError)>& callback) override;
     void drcSetNightLightsState(int night_lights_state, const std::function<void(FlightHubError)>& callback) override;
     void drcSetStealthState(int stealth_state, const std::function<void(FlightHubError)>& callback) override;
     void drcOpenParachute(int force, const std::function<void(FlightHubError)>& callback) override;
@@ -48,10 +49,13 @@ public:
     void cancelListenDrcParachuteInfo(int listen_id) override;
     int listenDrcFlashLed(const std::function<void(const FlashLedStateInfo&)>& callback) override;
     void cancelListenDrcFlashLed(int listen_id) override;
+    int listenDrcLandingMissionState(const std::function<void(const DrcLandingMissionState&)>& callback) override;
+    void cancelListenDrcLandingMissionState(int listen_id) override;
 
-private:
     bool isDrtcRealTimeLinkActive() const;
 
+private:
+    int session_id_;
     std::string drone_sn_;
     std::string gateway_sn_;
     std::shared_ptr<message_engine::IMessageEngine> message_engine_;

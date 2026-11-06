@@ -1,5 +1,13 @@
 {
   "_description": "SDK Demo 参数配置文件。修改此配置文件即可适配不同 demo case, 无需改代码。注意: 请勿修改 json key!",
+  "cloud_extra": {
+    "_comment_1": "上云 API 2 能力补齐 Demo(CloudExtraDemo)参数。",
+    "_comment_2": "esdk_value/psdk_value: 自定义数据透传内容(长度受 SDK 约束 <256, 超长由 SDK 返回 ERROR_INVALID_PARAM, 不在本地截断)。",
+    "_comment_3": "flight_id: 飞行任务媒体优先上传目标飞行任务 ID。以上均可在 demo 交互输入时覆盖。",
+    "esdk_value": "hello-esdk",
+    "psdk_value": "hello-psdk",
+    "flight_id": ""
+  },
   "device_common_configs": {
     "_comment_1": "设备通用配置, device_common_configs 内容, 需要用户自行对照上云API说明做配置。",
     "_comment_2": "某些飞机可以有多个 target_payload_index, 用户需要指定目标 target_payload_index 配置",
@@ -158,25 +166,52 @@
     ]
   },
   "fly_to": {
-    "_comment": "【必须修改】latitude/longitude 必须填写当前测试场地真实坐标, 保留 0.0 会被安全校验拒绝(飞机不会飞向赤道)。",
-    "latitude": 0.0,
-    "longitude": 0.0,
-    "height": 50.0,
+    "_comment": "【必须修改】points 是目标点数组(至少 1 个), 保留 0.0 会被安全校验拒绝(飞机不会飞向赤道)。可选字段 speed_mode(0=低速 1=高速)/real_height_cap_enabled(0=关 1=开)/real_height_cap_limit(米,20-1500)，均 -1=不下发(设备保持当前设置)。start_point 见其内部 _comment。",
+    "start_point": {
+      "_comment": "航段起点=飞机当前位置(PB 中 start_point 为 required, 不传会被服务端以 200614 'failed on the required tag' 拒绝)。三项均为 0 时由 demo 自动订阅 listenAircraftLocation 取实时机位——这是推荐且通常唯一正确的用法, 因为静态配置的起点在飞机移动后立刻失效。填非 0 值仅用于需要指定起点的联调场景。",
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "height": 0.0
+    },
+    "points": [
+      {
+        "latitude": 0.0,
+        "longitude": 0.0,
+        "height": 50.0
+      }
+    ],
     "max_speed": 10,
-    "observe_ms": 5000
+    "observe_ms": 5000,
+    "speed_mode": 1,
+    "real_height_cap_enabled": -1,
+    "real_height_cap_limit": -1
   },
   "fly_to_update": {
-    "_comment": "【必须修改】更新目标点坐标, 保留 0.0 会被跳过并打警告。",
-    "latitude": 0.0,
-    "longitude": 0.0,
-    "height": 60.0,
-    "max_speed": 8
+    "_comment": "【必须修改】points 是新的目标点数组(至少 1 个), 保留 0.0 会被跳过并打警告。start_point 见其内部 _comment(服务端 required, 默认自动取实时机位)。可选字段 speed_mode/real_height_cap_enabled/real_height_cap_limit 同 fly_to, -1=不下发。",
+    "start_point": {
+      "_comment": "航段起点=飞机当前位置。服务端对 UpdateFlyToPointRequest.StartPoint 也做 required 校验(不传会报 200614 'failed on the required tag')。三项均为 0 时由 demo 自动订阅 listenAircraftLocation 取实时机位——推荐; 填非 0 值仅用于需要指定起点的联调场景。",
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "height": 0.0
+    },
+    "points": [
+      {
+        "latitude": 0.0,
+        "longitude": 0.0,
+        "height": 60.0
+      }
+    ],
+    "max_speed": 8,
+    "speed_mode": 1,
+    "real_height_cap_enabled": -1,
+    "real_height_cap_limit": -1
   },
   "takeoff": {
-    "_comment": "指令飞行/一键起飞(CommandRequest)。【必须修改】target_latitude/longitude。可选字段：commander_* / rth_mode / cloud_to_cloud_id / need_verify_flight_control(-1=不传)。media_folder_name 不属于本接口(仅 GroundTakeoff)。",
+    "_comment": "指令飞行/一键起飞(CommandRequest)。【必须修改】target_latitude/longitude。可选字段：commander_* / rth_mode / cloud_to_cloud_id / need_verify_flight_control(-1=不传)。",
     "target_latitude": 0.0,
     "target_longitude": 0.0,
     "target_height": 120.0,
+    "_comment": "指令飞行/一键起飞(CommandRequest)。【必须修改】target_latitude/longitude。可选字段：commander_* / rth_mode / cloud_to_cloud_id / need_verify_flight_control(-1=不传)。media_folder_name 不属于本接口(仅 GroundTakeoff)。 新增可选字段 speed_mode(0=低速 1=高速)/real_height_cap_enabled(0=关 1=开)/real_height_cap_limit(米,20-1500)，均 -1=不下发(设备保持当前设置)。",
     "security_takeoff_height": 100.0,
     "max_speed": 10,
     "rth_altitude": 100,
@@ -186,17 +221,26 @@
     "commander_flight_mode": 0,
     "rth_mode": 0,
     "cloud_to_cloud_id": "",
-    "need_verify_flight_control": -1
+    "need_verify_flight_control": -1,
+    "speed_mode": 1,
+    "real_height_cap_enabled": -1,
+    "real_height_cap_limit": -1
+  },
+  "ground_takeoff": {
+    "_comment": "舱外起飞(GroundTakeoffRequest, FlightControlDemo [11])。device_sn 由 SDK 注入机场 SN, 无需填写。auto_takeoff_height: 自动起飞高度(米, 2-1500); out_of_control_action: 失控动作(0=悬停 1=返航 2=继续)。",
+    "auto_takeoff_height": 20,
+    "out_of_control_action": 1
   },
   "flight_control": {
-    "_comment1": "WASD 摇杆参数(FlightControlDemo [7])。各轴中性 1024, SDK 建议操控范围 364~1684, 越界会被夹取(旧 demo 的 2048 属越界值, 已修正)。",
+    "_comment1": "WASD 摇杆参数(FlightControlDemo [7])。各轴中性 1024, SDK 建议操控范围 364~1684, 越界会被夹取(旧 demo 的 2048 属越界值, 已修正)。 flying_max_speed: DRC 实时设置飞行速度(m/s), 常用档位 低速5/默认15/高速21; 与 speed_mode(HTTP,是否高速模式)无关。",
     "_comment2": "默认全中性=飞机不动; 验证真实操控请按需修改(如 stick_pitch=1200 前进)。stick_duration_ms: 连发时长, 固定 50Hz(20ms) 频率, 上限 10000ms(越界夹取); 连发期间按 Enter 可随时中止, 结束后自动补发全中性松杆收尾帧。",
     "stick_roll": 1024,
     "stick_pitch": 1024,
     "stick_throttle": 1024,
     "stick_yaw": 1024,
     "stick_gimbal_pitch": 1024,
-    "stick_duration_ms": 3000
+    "stick_duration_ms": 3000,
+    "flying_max_speed": 15
   },
   "poi": {
     "_comment1": "【必须修改】latitude/longitude 为 POI 环绕中心点, 保留 0.0 会被安全校验拒绝。speed=进入环绕的初始速度; update_speed=演示中途更新的环绕速度(取不同值以看出变化)。",
@@ -220,6 +264,47 @@
   "live_record": {
     "_comment": "直播录制 Demo 参数(LiveRecordDemo)。time_zone: 录制时区, 默认 Asia/Shanghai。",
     "time_zone": "Asia/Shanghai"
+  },
+  "live_sync": {
+    "_comment_1": "旁路推流 Demo 参数(LiveSyncDemo)。将设备直播流转推至 RTMP/RTSP/GB28181 第三方平台。sn/camera_index 留空时回退到当前会话设备。",
+    "_comment_2": "schema 取值 rtmp / rtsp / gb28181。schema_option 按类型分字段填写: rtmp 用 rtmp_url(留空则基于 config.json 的 server.address 自动推导); rtsp 用 rtsp_username/rtsp_password; gb28181 用 gb28181_*。",
+    "_comment_3": "以下字段请填写为你的实际接收端配置，不要保留示例值。GB28181(DRTC 链路, 如 EA340/0-130-0 + camera 122-0-0): local_port 必须非 0(填 0 会让 MRTC agent 初始化报参数错误); server_ip:server_port 需为真正能应答 SIP REGISTER 并收 RTP 的国标平台, 否则任务注册超时推不出流。",
+    "converter_name": "",
+    "sn": "",
+    "camera_index": "",
+    "video_type": "",
+    "video_quality": 0,
+    "schema": "rtmp",
+    "rtmp_url": "",
+    "rtmp_port": "1935",
+    "rtsp_username": "",
+    "rtsp_password": "",
+    "rtsp_enable_ts": false,
+    "gb28181_server_id": "",
+    "gb28181_server_ip": "",
+    "gb28181_server_port": "5060",
+    "gb28181_device_id": "",
+    "gb28181_local_channel": "",
+    "gb28181_device_password": "",
+    "gb28181_local_port": "7060",
+    "list_page": 1,
+    "list_size": 20,
+    "list_sn": "",
+    "list_schema": "",
+    "update_schema": "rtmp",
+    "update_sn": "",
+    "update_camera_index": "",
+    "update_converter_name": ""
+  },
+  "auto_record": {
+    "_comment": "自动录制配置 Demo 参数(AutoRecordDemo)。auto_cleaning_time: 录像自动清理天数, 服务端校验区间 [7, 90]。",
+    "_comment_2": "disable_* 为项目级开关, 保存时整体覆盖; 开启飞机自动录制需 disable_drone_recording=false。camera_index 形如 \"99-0-0\"(与机型相关), 留空时 Demo 会在保存前交互式询问。",
+    "auto_cleaning_time": 90,
+    "disable_dock_recording": true,
+    "disable_drone_recording": false,
+    "disable_base_station_recording": true,
+    "disable_rtmp_recording": true,
+    "camera_index": ""
   },
   "safety_service": {
     "_comment_1": "安全服务 Demo 参数(SafetyServiceDemo)。信号地图 / 自定义飞行区域 / 离线地图 三组。",
@@ -353,6 +438,28 @@
     "stick_step": 450,
     "stick_hold_ms": 1000
   },
+  "drc_pano_scenario": {
+    "_comment1": "DrcPanoScenario 驾驶舱全景拍照→自动拼接场景参数。",
+    "_comment2": "pano_shoot_timeout_ms: 等待全景拍照完成(percent=100)的超时(ms), 默认 300000(5分钟)。",
+    "_comment3": "pano_stitch_timeout_ms: 等待后端自动触发全景拼接完成的超时(ms), 默认 600000(10分钟)。",
+    "_comment4": "lens_type: 切镜头类型，1=WIDE(1X球形全景) 2=ZOOM(3X超清全景，默认)。",
+    "_comment5": "payloads_settle_ms: 订阅完成后等待负载列表推送的时间(ms)，兜底后端异步推送延迟，默认 2000。",
+    "pano_shoot_timeout_ms": 300000,
+    "pano_stitch_timeout_ms": 600000,
+    "lens_type": 2,
+    "payloads_settle_ms": 2000
+  },
+  "pano_stitch_demo": {
+    "_comment1": "PanoStitchDemo 全景拼接菜单式 demo 参数(全景拍照/拼接每个动作独立菜单项)。",
+    "_comment2": "lens_type: 切镜头类型，1=WIDE(1X球形全景) 2=ZOOM(3X超清全景，默认)。",
+    "_comment3": "link_settle_ms: DRC 建链成功后等待链路稳定的延迟(ms)，默认 3000。",
+    "_comment4": "payloads_settle_ms: 获取负载控制权前等待负载列表推送的延迟(ms)，兜底后端异步推送延迟，默认 2000。",
+    "_comment5": "pano_shoot_timeout_ms: 下发拍照后等待拍摄完成(percent=100)的超时(ms)，默认 300000(5分钟)。",
+    "lens_type": 2,
+    "link_settle_ms": 3000,
+    "payloads_settle_ms": 2000,
+    "pano_shoot_timeout_ms": 300000
+  },
   "dock_control": {
     "_comment": "机场控制 demo 参数。range_timeout_ms: 切换舱内/舱外摄像头前等待机场直播源的超时(ms)。",
     "range_timeout_ms": 10000
@@ -390,6 +497,23 @@
     "end_at": 0,
     "list_page_size": 20
   },
+  "frog_leap": {
+    "_comment": "蛙跳任务参数：起飞机场使用当前会话设备，以下参数仅由 FrogLeapDemo 使用。",
+    "_comment_wayline_uuid": "蛙跳任务使用的航线 UUID；请确认该航线已上传且适用于起飞机场和目标降落机场。留空时菜单项[1]会提示未配置。",
+    "wayline_uuid": "",
+    "_comment_task_type": "任务类型：1=立即任务，2=条件任务。当前场景建议使用 1；使用 2 时还需配置 begin_at/end_at。",
+    "task_type": 1,
+    "_comment_time_zone": "任务时间所在时区，使用 IANA 时区名称；中国大陆通常填写 Asia/Shanghai。",
+    "time_zone": "Asia/Shanghai",
+    "_comment_out_of_control_action": "飞行中失控动作：1=返航，2=继续执行航线。",
+    "out_of_control_action": 1,
+    "_comment_rth_altitude": "失控返航高度，单位为米；应根据现场障碍物和飞行安全要求设置。",
+    "rth_altitude": 100,
+    "_comment_landing_dock_sn": "目标降落机场 SN；必须与当前会话中的起飞机场 SN 不同。留空时菜单项[1]会交互式提示输入。",
+    "landing_dock_sn": "",
+    "_comment_return_home_dock_sn": "指定机场返航目标 SN；仅用于菜单项[5]指定机场返航，可与创建任务的 landing_dock_sn 不同。留空时菜单项[5]会交互式提示输入。",
+    "return_home_dock_sn": ""
+  },
   "wayline_manage": {
     "_comment": "航线管理 Demo 参数(FlightTaskDemo [11])。",
     "list_page_size": 20
@@ -422,6 +546,7 @@
   },
   "timeouts": {
     "default_callback_timeout_ms": 15000,
+    "live_sync_create_timeout_ms": 40000,
     "takeoff_timeout_ms": 60000,
     "fly_to_timeout_ms": 120000,
     "poi_timeout_ms": 120000,
@@ -431,6 +556,41 @@
     "_comment": "demo 日志：写入 demo_logs_dir/yyyy-MM-dd/ 下; 单文件超过 max_file_size_mb 切下一个。",
     "demo_logs_dir": "demo_logs",
     "max_file_size_mb": 30
+  },
+  "ai_alert": {
+    "_comment1": "AI 告警 demo 参数(AiAlertDemo)。SDK 入口: workspace.getAIAlertModule()。",
+    "_comment2": "drone_sn: 无人机 SN(必填, 所有接口均需); algorithm_type: 算法类型编号(读/写算法配置用)。",
+    "_comment3": "flight_id: 架次 ID 列表(查询告警明细用, 先调 [5] 获取); begin_at/end_at: 毫秒时间戳(0=不传)。",
+    "_comment4": "delete_alert_uuid/delete_flight_id: [8] 删除告警记录的默认值(留空则交互式输入时跳过)。",
+    "drone_sn": "****010253",
+    "gateway_sn": "*****152",
+    "enable_target_alert": true,
+    "alarm_method": [
+      1
+    ],
+    "alarm_interval": 30,
+    "algorithm_type": 0,
+    "algorithm_name": "",
+    "target_type": 0,
+    "target_value": 80,
+    "use_min_threshold": false,
+    "use_max_threshold": false,
+    "target_min_threshold": 0,
+    "target_max_threshold": 100,
+    "begin_at": 0,
+    "end_at": 0,
+    "algorithm_sources": [],
+    "page": 1,
+    "page_size": 50,
+    "flight_id": [
+      "61f*****"
+    ],
+    "records_drone_sn": [],
+    "records_target_type": [],
+    "records_page": 1,
+    "records_page_size": 50,
+    "delete_alert_uuid": "",
+    "delete_flight_id": ""
   },
   "ai_box": {
     "_comment1": "AI Box demo 参数(AIBoxDemo)。SDK 入口: drone.getAIBoxModule()。",
@@ -523,6 +683,7 @@
     "_comment4": "子菜单 [5] 机场: air_conditioner_mode(0=空闲 1=制冷 2=制热 3=除湿), silent_mode(0=关 1=开)。",
     "_comment5": "子菜单 [6] 维护: battery_store_mode(0=关 1=开), dongle_power_state(0=关 1=开), low_power_mode(0=关 1=开), manual_swap_slot_id: 换电目标电池卡槽 ID。",
     "_comment6": "sdr_work_mode: SDR 工作模式枚举值, 参考设备文档。",
+    "_comment7": "子菜单 [7] 4G/SIM: dongle_imei / dongle_device_type 从 device_state.dongle_infos[*] 获取; esim_operator 为目标运营商(1=电信 2=联通 3=移动), 透传为请求体同名字段 esim_operator; sim_slot 为目标卡槽编号。",
     "target_device_sn": "",
     "distance_limit_state": 1,
     "distance_limit_value": 500,
@@ -619,5 +780,53 @@
     "_cert_url_comment": "[4] 提交时使用；执行 [3] 检查后会自动缓存返回的证书下载 url, 通常无需手动填写。",
     "cert_file_path": "/tmp/fly-safe-test/test_cert.zip",
     "_cert_file_path_comment": "[6] 上传解锁证书文件时使用；填写本地 .zip/.cert 证书文件的绝对路径。"
+  },
+  "cascade": {
+    "_comment": "级联管理 (CascadeDemo, workspace 级) — 对齐 v1.1（11 REST + 1 事件）。联调 mock: python3 scripts/tests/cascade_mock.py --port 18081。",
+    "provision": {
+      "_comment": "§1 addChildNode 请求体; nodeID 用于事后 [4] deleteChildNode 回滚(可选)。",
+      "sourceAddr": "tls://xx.xx.xx.xx:443",
+      "childAddr": "tls://xx.xx.xx.xx:443",
+      "name": "广东平台",
+      "code": "",
+      "token": "",
+      "nodeID": ""
+    },
+    "enableNodes": {
+      "_comment": "§2 enableChildNodes: 待启用节点 nodeID 列表。",
+      "nodeID": ["8b98e6e056495167"]
+    },
+    "disableNodes": {
+      "_comment": "§3 disableChildNodes: 待禁用节点 nodeID 列表。",
+      "nodeID": ["8b98e6e056495167"]
+    },
+    "deleteNode": {
+      "_comment": "§4 deleteChildNode 目标 nodeID; 留空时回退 provision.nodeID。",
+      "nodeID": "8b98e6e056495167"
+    },
+    "children": {
+      "_comment": "§5 getReachableChildren 查询条件; page/size <=0 表示不下发分页; name/status 空表示不过滤; status 合法值: online / offline / \"\"。",
+      "nodeID": "",
+      "page": 0,
+      "size": 0,
+      "name": "",
+      "status": ""
+    },
+    "parentRespond": {
+      "_comment": "§7 respondToParent: 响应上级组网请求; status 合法值: accept / reject。",
+      "nodeID": "GD0123456789ABCD",
+      "parentID": "HQ0123456789ABCE",
+      "status": "accept"
+    },
+    "nodeIndex": {
+      "_comment": "§8 getNodeIndex 分页(1-based)。",
+      "page": 1,
+      "size": 50
+    },
+    "notify": {
+      "_comment": "§11 postToNode: 目标节点 + JSON body(原样透传)。v1.1 起 topic 固定为 topic_cascade_notify，不由调用方传入。",
+      "dstNodeID": "8b98e6e056495167",
+      "body": "{\"hello\":\"world\"}"
+    }
   }
 }
