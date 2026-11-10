@@ -237,7 +237,7 @@ cp skeleton/deploy.env.example skeleton/deploy.env
 
 详细部署指南见 [部署指南.md](./docs/部署指南.md)（唯一部署文档）。
 
-> **注意**：`.gitlab-ci.yml` 中的 `skeleton-privatization-build-wibu-*` stage 为 DJI 内部私有化构建专用（依赖内部 Harbor 镜像和 Wibu AxProtector 工具链），外部集成商 fork 后**无法使用且可安全跳过**，不影响标准构建和部署流程。
+> **注意**：DJI 内部流水线额外包含私有化构建 stage（依赖内部镜像仓库和 Wibu AxProtector 工具链），该流水线配置不随本仓库对外分发，外部集成商**无需也无法使用**，可安全忽略，不影响标准构建和部署流程。
 
 ### 生产模式（接入真实 SDK）
 

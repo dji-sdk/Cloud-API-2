@@ -49,6 +49,14 @@ public final class FlightTaskConflicts {
     public static final long PREFLIGHT_PREPARE_DURATION_SECONDS = 100L;
 
     /**
+     * 航线时长上界（秒，24 小时）。
+     *
+     * <p>航线时长来自请求体或平台返回值，属于不可信输入；正常航线远短于该上界，
+     * 超过即视为异常数据并钳制到上界，避免窗口被撑到荒谬长度。
+     */
+    static final long MAX_WAYLINE_DURATION_SECONDS = 86_400L;
+
+    /**
      * 参与冲突比对的<b>候选任务</b>类型：BFF 可产出范围内的一切非立即任务。
      *
      * <p>对应 es-task-management {@code TaskType} 的 2=RepeatedTask（重复规则父任务）、
@@ -142,6 +150,16 @@ public final class FlightTaskConflicts {
      * {@code 0 + 100 = 100} 秒计算。差值为 1 秒且方向保守（BFF 窗口略长），
      * 只会让边界相邻的任务被多算入冲突、不会漏判，故不做对齐。
      *
+     * <p><b>不可信输入</b>：{@code waylineDuration} 可能来自请求体或平台返回值，取值不受本服务控制。
+     * 因此先经 {@link #sanitizeWaylineDurationSeconds(double)} 归一化再参与运算：非有限值与负数
+     * 一律按「未知」处理（0 秒），超过 {@value #MAX_WAYLINE_DURATION_SECONDS} 秒的值钳制到上界，
+     * 避免 {@code double → long} 窄化转换在 {@code NaN} / {@code ±Infinity} / 超大值上产生
+     * 无意义的窗口（如 {@code +Infinity} 直接转成 {@link Long#MAX_VALUE} 后与开始时间相加溢出）。
+     * 对合法的非负有限值，归一化不做任何取整，仍保持与平台一致的截断语义。
+     *
+     * <p>末端的时长累加采用饱和加法，{@code beginAt} 过大时把结束时间钳到
+     * {@link Long#MAX_VALUE} 而不是回绕成负数。
+     *
      * @param beginAt         开始时间（Unix 秒）
      * @param endAt           结束时间（Unix 秒），未知时为 0
      * @param waylineDuration 航线预估时长（秒），未知时为 0
@@ -151,7 +169,45 @@ public final class FlightTaskConflicts {
         if (endAt > beginAt) {
             return endAt;
         }
-        return beginAt + (long) waylineDuration + PREFLIGHT_PREPARE_DURATION_SECONDS;
+        long durationSeconds = sanitizeWaylineDurationSeconds(waylineDuration);
+        return addSaturated(beginAt, durationSeconds + PREFLIGHT_PREPARE_DURATION_SECONDS);
+    }
+
+    /**
+     * 把不可信的航线时长归一化为可用于计算的秒数。
+     *
+     * <p>归一化规则：{@code NaN}、负值、负无穷一律视为「未提供」，返回 0；
+     * 正无穷与超过 {@value #MAX_WAYLINE_DURATION_SECONDS} 秒的值钳制到上界；
+     * 其余值按截断（与平台 {@code int()} 语义一致）取整。
+     *
+     * <p>这正是 {@code double → long} 窄化转换的安全边界：只有落在
+     * {@code (0, MAX_WAYLINE_DURATION_SECONDS)} 区间内的值会走到转换语句。
+     *
+     * @param rawDuration 原始航线时长（秒）
+     * @return 归一化后的时长（秒），范围 {@code [0, MAX_WAYLINE_DURATION_SECONDS]}
+     */
+    private static long sanitizeWaylineDurationSeconds(double rawDuration) {
+        if (Double.isNaN(rawDuration) || rawDuration <= 0.0D) {
+            return 0L;
+        }
+        if (rawDuration >= MAX_WAYLINE_DURATION_SECONDS) {
+            return MAX_WAYLINE_DURATION_SECONDS;
+        }
+        return (long) rawDuration;
+    }
+
+    /**
+     * 非负时长相加，溢出时饱和到 {@link Long#MAX_VALUE}。
+     *
+     * @param baseSeconds     基准时间（Unix 秒）
+     * @param windowSeconds   窗口长度（秒），调用方保证非负
+     * @return 相加结果，溢出时返回 {@link Long#MAX_VALUE}
+     */
+    private static long addSaturated(long baseSeconds, long windowSeconds) {
+        if (baseSeconds > Long.MAX_VALUE - windowSeconds) {
+            return Long.MAX_VALUE;
+        }
+        return baseSeconds + windowSeconds;
     }
 
     /**

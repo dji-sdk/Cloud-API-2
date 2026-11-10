@@ -55,13 +55,13 @@ claude plugin install superpowers
 #### 前置条件
 
 - 已安装 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI（版本 ≥ 1.0）
-- 能访问本仓库（`https://github.com/dji-sdk/dji-cloudapi2-devkit.git`；私有部署环境换成内部 Git 仓库地址）
+- 能访问本仓库（`https://github.com/dji-sdk/Cloud-API-2.git`；私有部署环境换成内部 Git 仓库地址）
 - Git 已配置可访问该仓库的凭证（HTTPS 或 SSH）
 
 #### 第 1 步：添加 Marketplace
 
 ```bash
-claude plugin marketplace add https://github.com/dji-sdk/dji-cloudapi2-devkit.git
+claude plugin marketplace add https://github.com/dji-sdk/Cloud-API-2.git
 ```
 
 > 此命令将 `dji` marketplace 注册到你的 Claude Code 配置中。只需执行一次。
@@ -105,8 +105,8 @@ claude plugin install cloudapi2@dji
 #### 第 1 步：Clone 仓库
 
 ```bash
-git clone https://github.com/dji-sdk/dji-cloudapi2-devkit.git
-# 记住 clone 后的绝对路径，例如：/Users/yourname/projects/dji-cloudapi2-devkit
+git clone https://github.com/dji-sdk/Cloud-API-2.git
+# 记住 clone 后的绝对路径，例如：/Users/yourname/projects/Cloud-API-2
 ```
 
 #### 第 2 步：编辑 settings.json
@@ -124,7 +124,7 @@ git clone https://github.com/dji-sdk/dji-cloudapi2-devkit.git
     "dji": {
       "source": {
         "source": "directory",
-        "path": "/Users/yourname/projects/dji-flighthub-devkit"  // ← 替换为实际路径
+        "path": "/Users/yourname/projects/Cloud-API-2"  // ← 替换为实际路径
       }
     }
   }
@@ -149,7 +149,9 @@ claude   # 新开会话
 ### 方式 3：手动拷贝（不想配置 Plugin 时使用）
 
 ```bash
-cd dji-flighthub-devkit
+# 克隆仓库（如尚未克隆）
+git clone https://github.com/dji-sdk/Cloud-API-2.git
+cd Cloud-API-2/devkit
 
 # Claude Code — 全部安装
 for d in skills/cloudapi2-*/; do cp -r "$d" ~/.claude/skills/; done

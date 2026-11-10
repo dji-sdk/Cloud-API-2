@@ -11,25 +11,12 @@
 
 ## 获取方式
 
-从 Wibu Systems 官方下载或联系运维团队获取，版本需与 CI 镜像 `your-registry.example.com/private/build/wibu:v0.2` 中的 AxProtector 版本匹配。
+从 Wibu Systems 官方下载或联系运维团队获取，版本需与 CI 构建镜像中的 AxProtector 版本匹配。
 
-CI 不走本地文件：私有化构建 job 的 `before_script` 会从本项目的 GitLab 通用包仓库拉取
-（`${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/codemeter/<版本>/<文件名>`），
-用 CI 变量 `CODEMETER_READ_TOKEN` 鉴权 —— 这是一个 scope 仅 `read_package_registry`
-的只读 Deploy Token，通过 `DEPLOY-TOKEN` 请求头传递。
+私有化运行时镜像构建时会读取 `x86/` 下该文件，因此构建前必须已按下方「放置方式」准备到位，
+否则镜像构建阶段会因找不到文件而失败。`.deb` 不随仓库分发，请自行保管并在每次构建前放置。
 
-> 为什么不用 `CI_JOB_TOKEN`：本 GitLab 实例（17.6.5-ee）拒绝 job token 访问包仓库，
-> header 和 `?job_token=` 两种形式均返回 401，而同一 URL 用 Deploy Token 可正常下载。
-> 项目侧的 job token inbound allowlist 已包含本项目自身，非配置问题。
-
-升级版本时需两步：先把新 `.deb` 上传到包仓库，再同步修改两个 `.gitlab-ci.yml` 中的
-`CODEMETER_DEB` / `CODEMETER_VERSION` 变量以及 `Dockerfile.private.runtime` 里的文件名。
-
-```bash
-curl --request PUT --header "PRIVATE-TOKEN: <your-token>" \
-  --upload-file <新版本>.deb \
-  "https://<gitlab-host>/api/v4/projects/<project-id>/packages/generic/codemeter/<新版本>/<新版本>.deb"
-```
+升级版本时，需同步修改构建配置中引用的 `.deb` 文件名，保持与实际放置的文件名一致。
 
 ## 放置方式（仅本地构建需要）
 
