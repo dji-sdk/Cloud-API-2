@@ -50,8 +50,7 @@ COPY libs/${SDK_ARCH}/flight-hub-sdk-3.3.7.jar /tmp/flight-hub-sdk-3.3.7.jar
 避免在 arm64 构建里悄悄塞进 amd64 的包、直到运行时才因 JNI 加载失败暴露。
 
 > 例外：`mcp/Dockerfile.private.build` 保留了 `ARG SDK_ARCH=amd64` 默认值，因为它的既有
-> 调用方（`privatization-build-wibu-60000010/6002150`）都不传该参数。arm64 私有化构建走新增的
-> `privatization-build-wibu-60000010-arm64`，由 Makefile 显式传 `SDK_ARCH=arm64`。
+> 调用方都不传该参数。arm64 私有化构建走独立的构建 job，由 CI 显式传 `SDK_ARCH=arm64`。
 
 ## 安装到本地 Maven 仓库（开发机首次）
 

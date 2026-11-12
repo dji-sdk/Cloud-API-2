@@ -53,7 +53,7 @@ DJI Cloud API 2 SDK AI Skill 是面向集成商开发者的**智能开发辅助�
 
 ```bash
 # 第 1 步：添加 Marketplace（仅首次）
-claude plugin marketplace add https://github.com/dji-sdk/dji-cloudapi2-devkit.git
+claude plugin marketplace add https://github.com/dji-sdk/Cloud-API-2.git
 
 # 第 2 步：安装 Plugin（包含全部 13 个安装可用 Skill）
 claude plugin install cloudapi2@dji
@@ -74,7 +74,7 @@ claude plugin install cloudapi2@dji
     "dji": {
       "source": {
         "source": "directory",
-        "path": "/path/to/dji-flighthub-devkit"  // 替换为实际仓库路径
+        "path": "/path/to/Cloud-API-2"  // 替换为实际仓库路径
       }
     }
   }
@@ -84,6 +84,10 @@ claude plugin install cloudapi2@dji
 #### 方式 3：手动拷贝到 IDE Skill 目录
 
 ```bash
+# 克隆仓库（如尚未克隆）
+git clone https://github.com/dji-sdk/Cloud-API-2.git
+cd Cloud-API-2/devkit
+
 # Claude Code — 全部安装
 for d in skills/cloudapi2-*/; do cp -r "$d" ~/.claude/skills/; done
 

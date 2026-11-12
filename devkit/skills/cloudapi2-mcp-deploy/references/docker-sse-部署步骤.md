@@ -32,8 +32,8 @@
 ### 1. 克隆仓库（远端或本地）
 
 ```bash
-git clone <repo-url> dji-flighthub-devkit
-cd dji-flighthub-devkit
+git clone https://github.com/dji-sdk/Cloud-API-2.git
+cd Cloud-API-2/devkit
 ```
 
 ### 2. 配置环境变量

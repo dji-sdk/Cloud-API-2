@@ -17,7 +17,7 @@
 
 | 目录 | 状态 | 说明 | 文档 |
 |---|---|---|---|
-| `skills/` | ✅ **可用** | AI Skill 集合（14 个 `cloudapi2-*` Skill 目录，全部安装可用）— 教 AI 正确生成 SDK 集成代码 | [总览](skills/README.md) |
+| `skills/` | ✅ **可用** | AI Skill 集合（13 个 `cloudapi2-*` Skill 目录，全部安装可用）— 教 AI 正确生成 SDK 集成代码 | [总览](skills/README.md) |
 | `mcp/` | ✅ **可用** | MCP Server — 让 AI Agent 运行时操控无人机（71 个 Tool：67 个 `fh_*` + 4 个 `sim_*`） | [快速开始](mcp/README.md) · [工具手册](docs/mcp-tools-guide.md) |
 | `skeleton/` | ✅ **可用** | 集成商接入骨架 — Spring Boot 3.4.1 BFF（Kernel/Feature 可插拔架构）+ Vue 3 前端 | [快速开始](skeleton/README.md) |
 | `fov-demo/` | ✅ **可用** | 集成商培训 Demo — FHSDK Java 自研前后端的直播、OSD、SEI、地图与手动操控全栈参考实现（独立工程，不参与 skeleton 构建） | [快速开始](fov-demo/README.md) · [实战案例](fov-demo/docs/case-study/集成商自研Demo实战案例.md) |
@@ -38,11 +38,11 @@
 
 ### 安装
 
-方式 1（推荐）：通过 Claude Code Plugin 一次装齐 14 个可用 Skill。
+方式 1（推荐）：通过 Claude Code Plugin 一次装齐 13 个可用 Skill。
 
 ```bash
 # 1. 注册 marketplace（只需一次）
-claude plugin marketplace add https://github.com/dji-sdk/dji-cloudapi2-devkit.git
+claude plugin marketplace add https://github.com/dji-sdk/Cloud-API-2.git
 
 # 2. 安装 plugin（marketplace 名 dji，plugin 名 cloudapi2）
 claude plugin install cloudapi2@dji
@@ -55,6 +55,10 @@ claude plugin install cloudapi2@dji
 方式 2：手动拷贝单个 Skill
 
 ```bash
+# 克隆仓库（如尚未克隆）
+git clone https://github.com/dji-sdk/Cloud-API-2.git
+cd Cloud-API-2/devkit
+
 cp -r skills/cloudapi2-sdk-core ~/.claude/skills/    # Claude Code
 cp -r skills/cloudapi2-sdk-core .cursor/skills/      # Cursor
 cp -r skills/cloudapi2-sdk-core .github/skills/      # GitHub Copilot (VS Code)

@@ -169,6 +169,122 @@ class FlightTaskConflictsTest {
         assertThat(FlightTaskConflicts.resolveEndAt(window(2, BEGIN, 0L))).isEqualTo(expected);
     }
 
+    /**
+     * 航线时长来自请求体/平台返回值，属于不可信输入；下面的用例锁定归一化边界，
+     * 保证 {@code double → long} 窄化转换只在已知安全区间内发生。
+     */
+    @Test
+    void resolveEndAt_shouldTreatAsUnknown_whenWaylineDurationIsNaN() {
+        long expected = BEGIN + FlightTaskConflicts.PREFLIGHT_PREPARE_DURATION_SECONDS;
+
+        assertThat(FlightTaskConflicts.resolveEndAt(BEGIN, 0L, Double.NaN)).isEqualTo(expected);
+    }
+
+    @Test
+    void resolveEndAt_shouldTreatAsUnknown_whenWaylineDurationIsNegativeInfinity() {
+        long expected = BEGIN + FlightTaskConflicts.PREFLIGHT_PREPARE_DURATION_SECONDS;
+
+        assertThat(FlightTaskConflicts.resolveEndAt(BEGIN, 0L, Double.NEGATIVE_INFINITY))
+                .isEqualTo(expected);
+    }
+
+    @Test
+    void resolveEndAt_shouldTreatAsUnknown_whenWaylineDurationIsNegative() {
+        long expected = BEGIN + FlightTaskConflicts.PREFLIGHT_PREPARE_DURATION_SECONDS;
+
+        assertThat(FlightTaskConflicts.resolveEndAt(BEGIN, 0L, -300.0)).isEqualTo(expected);
+    }
+
+    @Test
+    void resolveEndAt_shouldClampToUpperBound_whenWaylineDurationIsPositiveInfinity() {
+        long expected = BEGIN + FlightTaskConflicts.MAX_WAYLINE_DURATION_SECONDS
+                + FlightTaskConflicts.PREFLIGHT_PREPARE_DURATION_SECONDS;
+
+        assertThat(FlightTaskConflicts.resolveEndAt(BEGIN, 0L, Double.POSITIVE_INFINITY))
+                .isEqualTo(expected);
+    }
+
+    @Test
+    void resolveEndAt_shouldClampToUpperBound_whenWaylineDurationExceedsUpperBound() {
+        long expected = BEGIN + FlightTaskConflicts.MAX_WAYLINE_DURATION_SECONDS
+                + FlightTaskConflicts.PREFLIGHT_PREPARE_DURATION_SECONDS;
+
+        assertThat(FlightTaskConflicts.resolveEndAt(BEGIN, 0L, 1.0E12)).isEqualTo(expected);
+    }
+
+    @Test
+    void resolveEndAt_shouldClampToUpperBound_whenWaylineDurationIsMaxDouble() {
+        long expected = BEGIN + FlightTaskConflicts.MAX_WAYLINE_DURATION_SECONDS
+                + FlightTaskConflicts.PREFLIGHT_PREPARE_DURATION_SECONDS;
+
+        assertThat(FlightTaskConflicts.resolveEndAt(BEGIN, 0L, Double.MAX_VALUE)).isEqualTo(expected);
+    }
+
+    @Test
+    void resolveEndAt_shouldKeepUpperBound_whenWaylineDurationEqualsUpperBound() {
+        long expected = BEGIN + FlightTaskConflicts.MAX_WAYLINE_DURATION_SECONDS
+                + FlightTaskConflicts.PREFLIGHT_PREPARE_DURATION_SECONDS;
+
+        assertThat(FlightTaskConflicts.resolveEndAt(BEGIN, 0L,
+                (double) FlightTaskConflicts.MAX_WAYLINE_DURATION_SECONDS)).isEqualTo(expected);
+    }
+
+    @Test
+    void resolveEndAt_shouldTruncate_whenWaylineDurationHasFraction() {
+        long expected = BEGIN + 300L + FlightTaskConflicts.PREFLIGHT_PREPARE_DURATION_SECONDS;
+
+        assertThat(FlightTaskConflicts.resolveEndAt(BEGIN, 0L, 300.9)).isEqualTo(expected);
+    }
+
+    @Test
+    void resolveEndAt_shouldTruncateToZero_whenWaylineDurationIsBelowOneSecond() {
+        long expected = BEGIN + FlightTaskConflicts.PREFLIGHT_PREPARE_DURATION_SECONDS;
+
+        assertThat(FlightTaskConflicts.resolveEndAt(BEGIN, 0L, 0.5)).isEqualTo(expected);
+    }
+
+    @Test
+    void resolveEndAt_shouldSaturateAtLongMax_whenWindowWouldOverflow() {
+        long beginAt = Long.MAX_VALUE - 50L;
+
+        assertThat(FlightTaskConflicts.resolveEndAt(beginAt, 0L, 300.0)).isEqualTo(Long.MAX_VALUE);
+    }
+
+    @Test
+    void resolveEndAt_shouldPreferExplicitEndAt_whenWaylineDurationIsNotFinite() {
+        assertThat(FlightTaskConflicts.resolveEndAt(BEGIN, END, Double.NaN)).isEqualTo(END);
+    }
+
+    @Test
+    void resolveEndAt_shouldTreatAsUnknown_whenWindowWaylineDurationIsNaN() {
+        long expected = BEGIN + FlightTaskConflicts.PREFLIGHT_PREPARE_DURATION_SECONDS;
+
+        assertThat(FlightTaskConflicts.resolveEndAt(window(2, BEGIN, 0L, Double.NaN)))
+                .isEqualTo(expected);
+    }
+
+    @Test
+    void resolveEndAt_shouldClampToUpperBound_whenWindowWaylineDurationIsInfinite() {
+        long expected = BEGIN + FlightTaskConflicts.MAX_WAYLINE_DURATION_SECONDS
+                + FlightTaskConflicts.PREFLIGHT_PREPARE_DURATION_SECONDS;
+
+        assertThat(FlightTaskConflicts.resolveEndAt(window(2, BEGIN, 0L, Double.POSITIVE_INFINITY)))
+                .isEqualTo(expected);
+    }
+
+    /**
+     * 平台返回的已有任务时长同样是不可信输入，归一化后不应影响正常的冲突识别。
+     */
+    @Test
+    void findConflictedTaskUuids_shouldStillDetectConflict_whenWaylineDurationIsNotFinite() {
+        List<FlightTaskWindow> windows = List.of(
+                listWindow("u1", "CREATED", 3, BEGIN, 0L, Double.NaN),
+                listWindow("u2", "CREATED", 3, BEGIN, END));
+
+        assertThat(FlightTaskConflicts.findConflictedTaskUuids(windows))
+                .containsExactlyInAnyOrder("u1", "u2");
+    }
+
     @Test
     void findConflictedTaskUuids_shouldReturnEmpty_whenWindowsIsNull() {
         assertThat(FlightTaskConflicts.findConflictedTaskUuids(null)).isEmpty();
@@ -267,14 +383,27 @@ class FlightTaskConflictsTest {
     }
 
     /**
-     * 构造定时任务（task_type=3，单次定时）时间窗。
+     * 构造定时任务（task_type=3，单次定时）时间窗，航线时长未知。
      */
     private static TaskWindow window(int taskType, long beginAt, long endAt) {
-        return new TaskWindow("task-uuid", "测试任务", "SN001", taskType, beginAt, endAt, 0.0);
+        return window(taskType, beginAt, endAt, 0.0);
     }
 
     /**
-     * 构造列表用的任务时间窗。
+     * 构造定时任务时间窗，显式指定航线时长。
+     *
+     * @param taskType        任务类型
+     * @param beginAt         开始时间
+     * @param endAt           结束时间
+     * @param waylineDuration 航线预估时长（秒）
+     * @return 任务时间窗
+     */
+    private static TaskWindow window(int taskType, long beginAt, long endAt, double waylineDuration) {
+        return new TaskWindow("task-uuid", "测试任务", "SN001", taskType, beginAt, endAt, waylineDuration);
+    }
+
+    /**
+     * 构造列表用的任务时间窗，航线时长未知。
      *
      * @param taskUuid 任务 UUID
      * @param status   任务状态
@@ -285,6 +414,23 @@ class FlightTaskConflictsTest {
      */
     private static FlightTaskWindow listWindow(String taskUuid, String status, int taskType,
                                                long beginAt, long endAt) {
-        return new FlightTaskWindow(taskUuid, "测试任务", "SN001", status, taskType, beginAt, endAt, 0.0);
+        return listWindow(taskUuid, status, taskType, beginAt, endAt, 0.0);
+    }
+
+    /**
+     * 构造列表用的任务时间窗，显式指定航线时长。
+     *
+     * @param taskUuid        任务 UUID
+     * @param status          任务状态
+     * @param taskType        任务类型
+     * @param beginAt         开始时间
+     * @param endAt           结束时间
+     * @param waylineDuration 航线预估时长（秒）
+     * @return 任务时间窗
+     */
+    private static FlightTaskWindow listWindow(String taskUuid, String status, int taskType,
+                                               long beginAt, long endAt, double waylineDuration) {
+        return new FlightTaskWindow(taskUuid, "测试任务", "SN001", status, taskType,
+                beginAt, endAt, waylineDuration);
     }
 }

@@ -62,6 +62,10 @@ cloudapi2-mcp-guide/
 单独安装本 Skill：
 
 ```bash
+# 克隆仓库（如尚未克隆）
+git clone https://github.com/dji-sdk/Cloud-API-2.git
+cd Cloud-API-2/devkit
+
 # Claude Code（放入项目级或用户级 skill 目录）
 cp -r skills/cloudapi2-mcp-guide ~/.claude/skills/
 

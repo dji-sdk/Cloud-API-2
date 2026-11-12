@@ -20,6 +20,10 @@
 单独安装：
 
 ```bash
+# 克隆仓库（如尚未克隆）
+git clone https://github.com/dji-sdk/Cloud-API-2.git
+cd Cloud-API-2/devkit
+
 # Claude Code
 cp -r skills/cloudapi2-mcp-deploy ~/.claude/skills/
 

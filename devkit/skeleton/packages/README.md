@@ -11,7 +11,7 @@
 
 ## 获取方式
 
-从 Wibu Systems 官方下载或联系运维团队获取，版本需与 CI 镜像 `your-registry.example.com/private/build/wibu:v0.2` 中的 AxProtector 版本匹配。
+从 Wibu Systems 官方下载或联系运维团队获取，版本需与 CI 构建镜像中的 AxProtector 版本匹配。
 
 ## 放置方式
 
