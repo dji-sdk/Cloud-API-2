@@ -22,7 +22,7 @@ LiveModule liveModule = drone.getLiveStream(liveInfo);
 | --- | --- |
 | 直播源入参（`LiveInfo`） | 获取本模块时必须传入的那一路直播源，来自 [直播设备管理](./live-device.md) 的 `listenLiveAvailableRange()`。一路 `LiveInfo` 对应一个 `LiveModule`。 |
 | 自动拉流 vs 仅取地址 | `start()` 建立 RTC 通道并自动拉流；`startWithURL()` 只调用后端接口拿到拉流地址（`LiveStreamStartResult`），不建立通道、不自动拉流，由使用方自行用返回的 `url` 做 WHEP/RTC 播放。 |
-| 拉流地址信息（`LiveStreamStartResult`） | `startWithURL()` 返回，含拉流地址 `url`、提供方类型 `urlType`（`agora`/`drtc`/`volc`）、推流端标识 `publishUid`、凭证过期时间戳 `expireTs`、DRTC 仲裁地址 `providerUrl`。 |
+| 拉流地址信息（`LiveStreamStartResult`） | `startWithURL()` 返回，含拉流地址 `url`、提供方类型 `urlType`（`drtc`）、推流端标识 `publishUid`（设备 SN）、凭证过期时间戳 `expireTs`（恒为 `0`，过期时间编码在 `url` 的 query 参数内）、DRTC 仲裁地址 `providerUrl`。`url` 为 URL-encoded query string（含 `app_id`/`room_id`/`token` 等）。 |
 | 视频帧（`FrameInfo`） | `subscribeLiveStream()` 每帧回调一次，返回原始字节 `data` 与帧信息 `FrameInfo`（当前仅 `isKeyFrame()` 是否关键帧）。 |
 | SEI 元信息 | 直播画面附带的补充增强信息，按类型分五种订阅：AI 检测框、AR 相机姿态、FOV 画幅焦距、智能辅助朝向、EIS 电子防抖裁剪区。各自独立订阅、独立返回对应结构体。 |
 | 画质等级（`videoQuality`） | `setLiveQuality()` 的画质等级：`0`=自适应、`1`=标清、`4`=超清。 |
@@ -186,13 +186,13 @@ FlightHubSDK.getDroneInstance(deviceSn).getLiveStream(liveInfo)
                     return;
                 }
                 if (result == null) return;
-                // urlType=agora 时 url 为 WHEP 地址，可交给 WHEP 播放器；drtc/volc 见 providerUrl
+                // urlType=drtc 时 url 为 URL-encoded query string（含 app_id/room_id/token 等），providerUrl 为 DRTC 仲裁地址
                 System.out.println("拉流地址: " + result.getUrl()
                         + " 类型=" + result.getUrlType()
                         + " 推流端=" + result.getPublishUid()
                         + " 过期时间戳=" + result.getExpireTs()
                         + " 仲裁地址=" + result.getProviderUrl());
-                // 注意：expireTs 为观众端拉流凭证过期时间戳（Unix 秒），过期需重新获取
+                // 注意：expireTs 恒为 0，不代表凭证已过期，真正的过期时间编码在 url 的 query 参数内
             }
         });
 ```
