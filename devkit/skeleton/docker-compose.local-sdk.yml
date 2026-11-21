@@ -4,17 +4,20 @@
 # 适用于本地 Apple Silicon 机器，SDK 模式连接真实 DJI Cloud API 2。
 #
 # 用法：
-#   cd skeleton
-#   DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose \
-#     -f docker-compose.local-sdk.yml \
-#     --env-file deploy.env.local-sdk \
-#     up --build -d
+#   # 启动命令需要在skeleton和lib的上级目录执行。在上云 API 2 demo中，此目录为devkit
+#   cd devkit
+#   # 制作镜像。制作镜像非常耗时，为方便使用，将制作镜像的命令从原启动命令中分离。
+#   # 仅在改变 Dockerfile 或上下文内容时需使用此命令重新构建镜像，其他情况下（如：修改 env 文件配置）可跳过
+#   # 构建后的镜像名分别为skeleton-fh-ui:latest和skeleton-skeleton:latest
+#   docker compose -f skeleton/docker-compose.local-sdk.yml --env-file skeleton/deploy.env.local-sdk build
+#   # 启动容器
+#   docker compose -f skeleton/docker-compose.local-sdk.yml --env-file skeleton/deploy.env.local-sdk up -d
 #
 # 停止：
-#   docker compose -f docker-compose.local-sdk.yml down
+#   docker compose -f skeleton/docker-compose.local-sdk.yml --env-file skeleton/deploy.env.local-sdk down
 #
 # 停止并清除数据：
-#   docker compose -f docker-compose.local-sdk.yml down -v
+#   docker compose -f skeleton/docker-compose.local-sdk.yml --env-file skeleton/deploy.env.local-sdk down -v
 
 services:
   mysql:
@@ -38,17 +41,23 @@ services:
     build:
       context: ..
       dockerfile: skeleton/docker/Dockerfile
+      args:
+        # 接收env文件中传递的SDK_ARCH参数，传入dockfile中，避免编译失败
+        SDK_ARCH: ${SDK_ARCH:-amd64}
       platforms:
-        - linux/amd64
+        # 指定平台架构，默认为 amd64
+        - linux/${SDK_ARCH:-amd64}
     container_name: fh-skeleton-server
     ports:
-      - "8080:8080"
+      - "8081:8080"
     environment:
       SPRING_PROFILES_ACTIVE: ${FH_PROFILE:-sdk}
       FH_DB_URL: jdbc:mysql://mysql:3306/fh_skeleton?useSSL=${FH_DB_USE_SSL:-false}&allowPublicKeyRetrieval=true&serverTimezone=UTC
       FH_DB_USERNAME: ${FH_DB_USERNAME:-root}
       FH_DB_PASSWORD: ${FH_DB_PASSWORD:?FH_DB_PASSWORD must be set}
       FH_JWT_SECRET: "${FH_JWT_SECRET:?FH_JWT_SECRET must be set}"
+      #  接收env文件中传递的FH_USER_REGISTRATION_ENABLED参数，用于开启/关闭用户注册功能
+      FH_USER_REGISTRATION_ENABLED: ${FH_USER_REGISTRATION_ENABLED:-false}
       FH_SKELETON_SDK_TOKEN: ${FH_SKELETON_SDK_TOKEN:-}
       FH_SKELETON_SDK_ADDRESS: ${FH_SKELETON_SDK_ADDRESS:-}
       FH_SKELETON_SDK_PORT: ${FH_SKELETON_SDK_PORT:-443}
@@ -91,7 +100,7 @@ services:
         VITE_TIANDITU_KEY:        ${VITE_TIANDITU_KEY:-}
     container_name: fh-skeleton-web
     ports:
-      - "80:8080"
+      - "8082:8080"
     environment:
       VITE_FH2_ADDRESS: ${VITE_FH2_ADDRESS:-}
       VITE_FH2_PORT: ${VITE_FH2_PORT:-30812}
