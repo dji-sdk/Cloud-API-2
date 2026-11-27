@@ -1,13 +1,19 @@
 /* flight_hub_sdk.i */
 
 %module(directors="1") flighthubsdkmodule
+#ifdef SWIGJAVA
 %javaconst(1);
+#endif
 
 // Handle enums
+#ifdef SWIGJAVA
 %include "enums.swg"
+#endif
 // %include "enumtypeunsafe.swg"
 
+#ifdef SWIGJAVA
 %javaconst(1);
+#endif
 
 // Enable C++11 features and directors for cross-language polymorphism
 %feature("c++11");
@@ -72,6 +78,7 @@ using namespace flight_hub_sdk;
 %include "std_map.i"
 
 
+#ifdef SWIGJAVA
 // 类型映射：将C++的long类型映射到Java的long类型
 %typemap(jstype) long "long"
 %typemap(jtype) long "long"
@@ -96,9 +103,12 @@ using namespace flight_hub_sdk;
 %typemap(directorout) long* %{ $result = (long*)$input; %}
 %typemap(directorin) long* %{ $input = (jlong*)$1; %}
 
+#endif
+
 // Forward declare the enums and structs before template instantiation
 // This ensures SWIG knows about these types when processing templates
 
+#ifdef SWIGJAVA
 // POITaskStatus：仅保留 C++（value.h）；Java 使用 com.dji.flighthubsdk.value.POITaskStatus，不生成 generated 枚举。
 %ignore flight_hub_sdk::POITaskStatus;
 // DroneLinkState：仅保留 C++（value.h）；Java 使用 com.dji.flighthubsdk.value.DroneLinkState，不生成 generated 枚举。
@@ -150,6 +160,8 @@ using namespace flight_hub_sdk;
 %ignore flight_hub_sdk::Stage;
 %ignore flight_hub_sdk::AIIdentifyMode;
 %ignore flight_hub_sdk::AIIdentifyScoreMode;
+
+#endif
 
 %include "value.h"
 %include "message.h"
@@ -525,416 +537,426 @@ using namespace flight_hub_sdk;
 
 
 // Define callback interfaces for Java;
-%feature("director") HmsDataCallback;
-%feature("director") AirsenseWarningCallback;
-%feature("director") AircraftPayloadsOsdInfoListCallback;
-%feature("director") AircraftGearCallback;
-%feature("director") AircraftHomeDistanceCallback;
-%feature("director") AircraftPositionStateCallback;
-%feature("director") AircraftControlSourceCallback;
-%feature("director") AircraftLimitsInfoCallback;
-%feature("director") AircraftBatteryWarningThresholdsCallback;
-%feature("director") AircraftFirmwareStatusCallback;
-%feature("director") AircraftTotalFlightInfoCallback;
-%feature("director") AircraftActivationTimeCallback;
-%feature("director") AircraftMaintainStatusInfoCallback;
-%feature("director") AircraftNightLightsStateCallback;
-%feature("director") AircraftObstacleAvoidanceStateCallback;
-%feature("director") AircraftStorageInfoCallback;
-%feature("director") AircraftTrackIdCallback;
-%feature("director") AircraftComplianceInfoCallback;
-%feature("director") AircraftPayloadsCamerasListCallback;
-%feature("director") AircraftRcLostActionCallback;
-%feature("director") AircraftRthInfoCallback;
-%feature("director") AircraftHomeGeographicalInfoCallback;
-%feature("director") AircraftCurrentRthModeCallback;
-%feature("director") DeviceListCallback;
-%feature("director") GetDeviceDetailInfoCallback;
-%feature("director") ModifyDeviceNameCallback;
-%feature("director") LiveAvailableRangeCallback;
-%feature("director") LiveStreamCallback;
-%feature("director") AiSeiInfoCallback;
-%feature("director") ArSeiInfoCallback;
-%feature("director") FovSeiInfoCallback;
-%feature("director") AssistantSeiInfoCallback;
-%feature("director") EisSeiInfoCallback;
-%feature("director") ResultCallback;
-%feature("director") ResultCallbackWithError;
-%feature("director") GetDeviceLiveRecordsCallback;
-%feature("director") LiveRecordStateCallback;
-%feature("director") GetAudienceCountCallback;
-%feature("director") GetFlightTaskListCallback;
-%feature("director") GetCommandTaskListCallback;
-%feature("director") GetFlightTaskTrackCallback;
-%feature("director") GetFlightRisksCallback;
-%feature("director") CreateFlightTaskCallback;
-%feature("director") GetFlightTaskDetailCallback;
-%feature("director") GetDeviceRecommendationCallback;
-%feature("director") GetDeviceTcasCallback;
-%feature("director") FlyToPointStartCallback;
-%feature("director") FlyToPointStartResultCallback;
-%feature("director") FlyToDroneSelfPlanPathCallback;
-%feature("director") FlyToPointProgressCallback;
-%feature("director") PoiEnterCallback;
-%feature("director") PoiExitCallback;
-%feature("director") PoiUpdateSpeedCallback;
-%feature("director") PoiGetTaskCallback;
-%feature("director") AiDataInfoCallback;
-%feature("director") AircraftBatteryInfoCallback;
-%feature("director") AircraftAttitudeCallback;
-%feature("director") AircraftLocationCallback;
-%feature("director") AircraftModeCodeCallback;
-%feature("director") AircraftWindSpeedCallback;
-%feature("director") AircraftTakeoffProgressCallback;
-%feature("director") TakeoffResultCallback;
-%feature("director") GroundTakeoffResultCallback;
-%feature("director") CreateInFlightWaylineTaskCallback;
-%feature("director") GetActiveInFlightWaylineTaskCallback;
-%feature("director") InFlightWaylineProgressCallback;
-%feature("director") FlightControlAuthorityCallback;
-%feature("director") PayloadControlAuthorityCallback;
-%feature("director") CameraStateCallback;
-%feature("director") LiveviewWorldRegionCallback;
-%feature("director") CameraWideLensStateCallback;
-%feature("director") CameraZoomLensStateCallback;
-%feature("director") CameraMeasureTargetCallback;
-%feature("director") NightModeSettingsCallback;
-%feature("director") DockSubDeviceInfoListCallback;
-%feature("director") DockNetworkStateCallback;
-%feature("director") GimbalStateCallback;
-%feature("director") DroneOnlineStatusCallback;
-%feature("director") LinkStatusCallback;
-%feature("director") PanoramaStatusCallback;
-%feature("director") IntervalTakePhotoStatusCallback;
-%feature("director") CameraModeAvailableRangeCallback;
-%feature("director") PsdkDeviceListCallback;
-%feature("director") PsdkStateSummaryInfoCallback;
-%feature("director") PsdkStateSpeakerInfoCallback;
-%feature("director") PsdkStateSearchlightInfoCallback;
-%feature("director") PsdkSpeakerPlayProgressInfoCallback;
-%feature("director") PsdkFloatingWindowTextInfoCallback;
-%feature("director") PsdkSpeakerResourceListCallback;
-%feature("director") PsdkSpeakerResourceCallback;
-%feature("director") STSInfoCallback;
-%feature("director") PsdkWidgetResourceListCallback;
+#ifndef SWIGCSHARP
+#define FHSDK_CALLBACK_DIRECTOR(Type) %feature("director") Type;
+#endif
+
+FHSDK_CALLBACK_DIRECTOR(HmsDataCallback)
+FHSDK_CALLBACK_DIRECTOR(AirsenseWarningCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftPayloadsOsdInfoListCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftGearCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftHomeDistanceCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftPositionStateCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftControlSourceCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftLimitsInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftBatteryWarningThresholdsCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftFirmwareStatusCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftTotalFlightInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftActivationTimeCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftMaintainStatusInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftNightLightsStateCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftObstacleAvoidanceStateCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftStorageInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftTrackIdCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftComplianceInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftPayloadsCamerasListCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftRcLostActionCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftRthInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftHomeGeographicalInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftCurrentRthModeCallback)
+FHSDK_CALLBACK_DIRECTOR(DeviceListCallback)
+FHSDK_CALLBACK_DIRECTOR(GetDeviceDetailInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(ModifyDeviceNameCallback)
+FHSDK_CALLBACK_DIRECTOR(LiveAvailableRangeCallback)
+FHSDK_CALLBACK_DIRECTOR(LiveStreamCallback)
+FHSDK_CALLBACK_DIRECTOR(AiSeiInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(ArSeiInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(FovSeiInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(AssistantSeiInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(EisSeiInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(ResultCallback)
+FHSDK_CALLBACK_DIRECTOR(ResultCallbackWithError)
+FHSDK_CALLBACK_DIRECTOR(GetDeviceLiveRecordsCallback)
+FHSDK_CALLBACK_DIRECTOR(LiveRecordStateCallback)
+FHSDK_CALLBACK_DIRECTOR(GetAudienceCountCallback)
+FHSDK_CALLBACK_DIRECTOR(GetFlightTaskListCallback)
+FHSDK_CALLBACK_DIRECTOR(GetCommandTaskListCallback)
+FHSDK_CALLBACK_DIRECTOR(GetFlightTaskTrackCallback)
+FHSDK_CALLBACK_DIRECTOR(GetFlightRisksCallback)
+FHSDK_CALLBACK_DIRECTOR(CreateFlightTaskCallback)
+FHSDK_CALLBACK_DIRECTOR(GetFlightTaskDetailCallback)
+FHSDK_CALLBACK_DIRECTOR(GetDeviceRecommendationCallback)
+FHSDK_CALLBACK_DIRECTOR(GetDeviceTcasCallback)
+FHSDK_CALLBACK_DIRECTOR(FlyToPointStartCallback)
+FHSDK_CALLBACK_DIRECTOR(FlyToPointStartResultCallback)
+FHSDK_CALLBACK_DIRECTOR(FlyToDroneSelfPlanPathCallback)
+FHSDK_CALLBACK_DIRECTOR(FlyToPointProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(PoiEnterCallback)
+FHSDK_CALLBACK_DIRECTOR(PoiExitCallback)
+FHSDK_CALLBACK_DIRECTOR(PoiUpdateSpeedCallback)
+FHSDK_CALLBACK_DIRECTOR(PoiGetTaskCallback)
+FHSDK_CALLBACK_DIRECTOR(AiDataInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftBatteryInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftAttitudeCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftLocationCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftModeCodeCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftWindSpeedCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftTakeoffProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(TakeoffResultCallback)
+FHSDK_CALLBACK_DIRECTOR(GroundTakeoffResultCallback)
+FHSDK_CALLBACK_DIRECTOR(CreateInFlightWaylineTaskCallback)
+FHSDK_CALLBACK_DIRECTOR(GetActiveInFlightWaylineTaskCallback)
+FHSDK_CALLBACK_DIRECTOR(InFlightWaylineProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(FlightControlAuthorityCallback)
+FHSDK_CALLBACK_DIRECTOR(PayloadControlAuthorityCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraStateCallback)
+FHSDK_CALLBACK_DIRECTOR(LiveviewWorldRegionCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraWideLensStateCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraZoomLensStateCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraMeasureTargetCallback)
+FHSDK_CALLBACK_DIRECTOR(NightModeSettingsCallback)
+FHSDK_CALLBACK_DIRECTOR(DockSubDeviceInfoListCallback)
+FHSDK_CALLBACK_DIRECTOR(DockNetworkStateCallback)
+FHSDK_CALLBACK_DIRECTOR(GimbalStateCallback)
+FHSDK_CALLBACK_DIRECTOR(DroneOnlineStatusCallback)
+FHSDK_CALLBACK_DIRECTOR(LinkStatusCallback)
+FHSDK_CALLBACK_DIRECTOR(PanoramaStatusCallback)
+FHSDK_CALLBACK_DIRECTOR(IntervalTakePhotoStatusCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraModeAvailableRangeCallback)
+FHSDK_CALLBACK_DIRECTOR(PsdkDeviceListCallback)
+FHSDK_CALLBACK_DIRECTOR(PsdkStateSummaryInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(PsdkStateSpeakerInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(PsdkStateSearchlightInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(PsdkSpeakerPlayProgressInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(PsdkFloatingWindowTextInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(PsdkSpeakerResourceListCallback)
+FHSDK_CALLBACK_DIRECTOR(PsdkSpeakerResourceCallback)
+FHSDK_CALLBACK_DIRECTOR(STSInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(PsdkWidgetResourceListCallback)
 
 // 红外增益模式相关回调接口
-%feature("director") LiveVideoInfoCallback;
-%feature("director") ThermalGainModeInfoCallback;
-%feature("director") CameraIrLensStateCallback;
-%feature("director") CameraIrThermometryInfoCallback;
-%feature("director") CameraWatermarkSettingsCallback;
-%feature("director") CameraStorageInfoCallback;
-%feature("director") CameraIrPipStateCallback;
-%feature("director") CameraIsothermPolygonCallback;
-%feature("director") CameraMediaStorageCallback;
-%feature("director") CameraAlgorithmDehazeInfoCallback;
-%feature("director") CameraPreRecordedInfoCallback;
-%feature("director") CameraCapabilityCallback;
-%feature("director") CameraSettableCapabilityCallback;
-%feature("director") CameraVisibleCapabilityCallback;
-%feature("director") CameraPhotoInfoCallback;
+FHSDK_CALLBACK_DIRECTOR(LiveVideoInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(ThermalGainModeInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraIrLensStateCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraIrThermometryInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraWatermarkSettingsCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraStorageInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraIrPipStateCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraIsothermPolygonCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraMediaStorageCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraAlgorithmDehazeInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraPreRecordedInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraCapabilityCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraSettableCapabilityCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraVisibleCapabilityCallback)
+FHSDK_CALLBACK_DIRECTOR(CameraPhotoInfoCallback)
 
 // 飞行任务异常和设备变更相关回调接口
-%feature("director") FlightTaskExceptionCallback;
-%feature("director") WorkspaceDeviceChangeCallback;
-%feature("director") ImportWaylineEventCallback;
-%feature("director") DeviceTopoChangeCallback;
+FHSDK_CALLBACK_DIRECTOR(FlightTaskExceptionCallback)
+FHSDK_CALLBACK_DIRECTOR(WorkspaceDeviceChangeCallback)
+FHSDK_CALLBACK_DIRECTOR(ImportWaylineEventCallback)
+FHSDK_CALLBACK_DIRECTOR(DeviceTopoChangeCallback)
 
-%feature("director") AircraftControlCodeCallback;
-%feature("director") AircraftSpeedCallback;
-%feature("director") AircraftPayloadsCameraLiveviewWorldRegionCallback;
-%feature("director") AircraftPayloadsGimbalAttitudeCallback;
-%feature("director") AircraftPayloadsListCallback;
-%feature("director") ControlRightsCloudControlStatusCallback;
-%feature("director") ControlRightsDeviceControlStatusCallback;
-%feature("director") FlightTasksMediaFileDisplayAvailableCallback;
-%feature("director") CommandTaskEventCallback;
-%feature("director") FlyToTaskEventCallback;
-%feature("director") PoiTaskEventCallback;
-%feature("director") WaylineTaskEventCallback;
-%feature("director") ReturnHomeInfoEventCallback;
-%feature("director") TaskExceptionEventCallback;
-%feature("director") DockLocationCallback;
-%feature("director") DroneInDockCallback;
-%feature("director") DockCoverStateCallback;
-%feature("director") DockMediaFileDetailCallback;
-%feature("director") DockWirelessLinkCallback;
-%feature("director") DockJobNumberCallback;
-%feature("director") FlightTaskStepCodeCallback;
-%feature("director") DockPowerStateCallback;
-%feature("director") DockStorageStateCallback;
-%feature("director") DockFirstPowerOnTimeCallback;
-%feature("director") DockAccTimeCallback;
-%feature("director") DockModeCodeCallback;
-%feature("director") DockDroneChargeStateCallback;
-%feature("director") DockUserExperienceImprovementCallback;
-%feature("director") DockDrcStateCallback;
-%feature("director") DockPutterStateCallback;
-%feature("director") DockAlternateLandPointCallback;
-%feature("director") DockPositionStateCallback;
-%feature("director") DockActivationTimeCallback;
-%feature("director") DockBatteryStoreModeCallback;
-%feature("director") DockAlarmStateCallback;
-%feature("director") DockDroneBatteryMaintenanceInfoCallback;
-%feature("director") DockEmergencyStopStateCallback;
-%feature("director") DockSilentModeCallback;
-%feature("director") DockRelativeAlternateLandPointCallback;
-%feature("director") DockSelfConvergeCoordinateCallback;
-%feature("director") DockFirmwareInfoCallback;
-%feature("director") DockMeteorologicalInfoCallback;
-%feature("director") DockBackupBatteryInfoCallback;
-%feature("director") DockMaintainStatusInfoCallback;
-%feature("director") DockOnlineStatusCallback;
-%feature("director") DockAirConditionerStatusInfoCallback;
-%feature("director") DockSupplementLightStateCallback;
-%feature("director") PullStreamStartCallback;
-%feature("director") PullStreamDataCallback;
-%feature("director") PullStreamErrorCallback;
-%feature("director") StartNetworkTestCallback;
-%feature("director") StopNetworkTestCallback;
-%feature("director") GetNetworkTestProgressCallback;
-%feature("director") SubscribeNetworkTestProgressCallback;
-%feature("director") SubscribeCalibrationProgressCallback;
-%feature("director") RtkCalibrationCallback;
-%feature("director") SetDistanceLimitCallback;
-%feature("director") SetHeightLimitCallback;
-%feature("director") SetObstacleAvoidanceCallback;
-%feature("director") SetRemainingPowerForRthCallback;
-%feature("director") SetNightLightsStateCallback;
-%feature("director") SwitchAlarmStateCallback;
-%feature("director") EsimOperatorSwitchCallback;
-%feature("director") SimSlotSwitchCallback;
-%feature("director") SetBatteryStoreModeCallback;
-%feature("director") ManualBatterySwapCallback;
-%feature("director") ManualBatterySwapProgressCallback;
-%feature("director") DonglePowerSwitchCallback;
-%feature("director") LowPowerSwitchCallback;
-%feature("director") EsimOperatorSwitchProgressCallback;
-%feature("director") DeviceCloudEnvironmentSwitchProgressCallback;
+FHSDK_CALLBACK_DIRECTOR(AircraftControlCodeCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftSpeedCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftPayloadsCameraLiveviewWorldRegionCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftPayloadsGimbalAttitudeCallback)
+FHSDK_CALLBACK_DIRECTOR(AircraftPayloadsListCallback)
+FHSDK_CALLBACK_DIRECTOR(ControlRightsCloudControlStatusCallback)
+FHSDK_CALLBACK_DIRECTOR(ControlRightsDeviceControlStatusCallback)
+FHSDK_CALLBACK_DIRECTOR(FlightTasksMediaFileDisplayAvailableCallback)
+FHSDK_CALLBACK_DIRECTOR(CommandTaskEventCallback)
+FHSDK_CALLBACK_DIRECTOR(FlyToTaskEventCallback)
+FHSDK_CALLBACK_DIRECTOR(PoiTaskEventCallback)
+FHSDK_CALLBACK_DIRECTOR(WaylineTaskEventCallback)
+FHSDK_CALLBACK_DIRECTOR(ReturnHomeInfoEventCallback)
+FHSDK_CALLBACK_DIRECTOR(TaskExceptionEventCallback)
+FHSDK_CALLBACK_DIRECTOR(DockLocationCallback)
+FHSDK_CALLBACK_DIRECTOR(DroneInDockCallback)
+FHSDK_CALLBACK_DIRECTOR(DockCoverStateCallback)
+FHSDK_CALLBACK_DIRECTOR(DockMediaFileDetailCallback)
+FHSDK_CALLBACK_DIRECTOR(DockWirelessLinkCallback)
+FHSDK_CALLBACK_DIRECTOR(DockJobNumberCallback)
+FHSDK_CALLBACK_DIRECTOR(FlightTaskStepCodeCallback)
+FHSDK_CALLBACK_DIRECTOR(DockPowerStateCallback)
+FHSDK_CALLBACK_DIRECTOR(DockStorageStateCallback)
+FHSDK_CALLBACK_DIRECTOR(DockFirstPowerOnTimeCallback)
+FHSDK_CALLBACK_DIRECTOR(DockAccTimeCallback)
+FHSDK_CALLBACK_DIRECTOR(DockModeCodeCallback)
+FHSDK_CALLBACK_DIRECTOR(DockDroneChargeStateCallback)
+FHSDK_CALLBACK_DIRECTOR(DockUserExperienceImprovementCallback)
+FHSDK_CALLBACK_DIRECTOR(DockDrcStateCallback)
+FHSDK_CALLBACK_DIRECTOR(DockPutterStateCallback)
+FHSDK_CALLBACK_DIRECTOR(DockAlternateLandPointCallback)
+FHSDK_CALLBACK_DIRECTOR(DockPositionStateCallback)
+FHSDK_CALLBACK_DIRECTOR(DockActivationTimeCallback)
+FHSDK_CALLBACK_DIRECTOR(DockBatteryStoreModeCallback)
+FHSDK_CALLBACK_DIRECTOR(DockAlarmStateCallback)
+FHSDK_CALLBACK_DIRECTOR(DockDroneBatteryMaintenanceInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(DockEmergencyStopStateCallback)
+FHSDK_CALLBACK_DIRECTOR(DockSilentModeCallback)
+FHSDK_CALLBACK_DIRECTOR(DockRelativeAlternateLandPointCallback)
+FHSDK_CALLBACK_DIRECTOR(DockSelfConvergeCoordinateCallback)
+FHSDK_CALLBACK_DIRECTOR(DockFirmwareInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(DockMeteorologicalInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(DockBackupBatteryInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(DockMaintainStatusInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(DockOnlineStatusCallback)
+FHSDK_CALLBACK_DIRECTOR(DockAirConditionerStatusInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(DockSupplementLightStateCallback)
+FHSDK_CALLBACK_DIRECTOR(PullStreamStartCallback)
+FHSDK_CALLBACK_DIRECTOR(PullStreamDataCallback)
+FHSDK_CALLBACK_DIRECTOR(PullStreamErrorCallback)
+FHSDK_CALLBACK_DIRECTOR(StartNetworkTestCallback)
+FHSDK_CALLBACK_DIRECTOR(StopNetworkTestCallback)
+FHSDK_CALLBACK_DIRECTOR(GetNetworkTestProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(SubscribeNetworkTestProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(SubscribeCalibrationProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(RtkCalibrationCallback)
+FHSDK_CALLBACK_DIRECTOR(SetDistanceLimitCallback)
+FHSDK_CALLBACK_DIRECTOR(SetHeightLimitCallback)
+FHSDK_CALLBACK_DIRECTOR(SetObstacleAvoidanceCallback)
+FHSDK_CALLBACK_DIRECTOR(SetRemainingPowerForRthCallback)
+FHSDK_CALLBACK_DIRECTOR(SetNightLightsStateCallback)
+FHSDK_CALLBACK_DIRECTOR(SwitchAlarmStateCallback)
+FHSDK_CALLBACK_DIRECTOR(EsimOperatorSwitchCallback)
+FHSDK_CALLBACK_DIRECTOR(SimSlotSwitchCallback)
+FHSDK_CALLBACK_DIRECTOR(SetBatteryStoreModeCallback)
+FHSDK_CALLBACK_DIRECTOR(ManualBatterySwapCallback)
+FHSDK_CALLBACK_DIRECTOR(ManualBatterySwapProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(DonglePowerSwitchCallback)
+FHSDK_CALLBACK_DIRECTOR(LowPowerSwitchCallback)
+FHSDK_CALLBACK_DIRECTOR(EsimOperatorSwitchProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(DeviceCloudEnvironmentSwitchProgressCallback)
 // 中继站调试接口回调
-%feature("director") SetRelayBroadcastHideCallback;
+FHSDK_CALLBACK_DIRECTOR(SetRelayBroadcastHideCallback)
 // Geo Caging 回调
-%feature("director") SetGeoCagingEnableCallback;
+FHSDK_CALLBACK_DIRECTOR(SetGeoCagingEnableCallback)
 // Cascade 模块回调（v1.1，11 个）
-%feature("director") CascadeAddChildNodeCallback;
-%feature("director") CascadeEnableChildNodesCallback;
-%feature("director") CascadeDisableChildNodesCallback;
-%feature("director") CascadeDeleteChildNodeCallback;
-%feature("director") CascadeGetReachableChildrenCallback;
-%feature("director") CascadeGetParentNodeCallback;
-%feature("director") CascadeRespondToParentCallback;
-%feature("director") CascadeGetNodeIndexCallback;
-%feature("director") CascadeGetConnectivityCallback;
-%feature("director") CascadeGetParentConnectivityCallback;
-%feature("director") CascadePostToNodeCallback;
-%feature("director") CascadeNodeStatusEventCallback;
-%feature("director") CascadeNotifyEventCallback;
-%feature("director") SetRelaySSIDCallback;
-%feature("director") SetRelayPasswordCallback;
-%feature("director") SetRelaySearchModeCallback;
-%feature("director") SetRelayOccupiedStatusCallback;
-%feature("director") RelayRebootCallback;
-%feature("director") RelayDisconnectCallback;
-%feature("director") QueryHistoryHMSDataCallback;
-%feature("director") QueryDeviceLogListCallback;
-%feature("director") CreateDeviceLogReportCallback;
-%feature("director") LogReportListCallback;
-%feature("director") LogReportOperationCallback;
-%feature("director") UploadLogAppendFileCallback;
+FHSDK_CALLBACK_DIRECTOR(CascadeAddChildNodeCallback)
+FHSDK_CALLBACK_DIRECTOR(CascadeEnableChildNodesCallback)
+FHSDK_CALLBACK_DIRECTOR(CascadeDisableChildNodesCallback)
+FHSDK_CALLBACK_DIRECTOR(CascadeDeleteChildNodeCallback)
+FHSDK_CALLBACK_DIRECTOR(CascadeGetReachableChildrenCallback)
+FHSDK_CALLBACK_DIRECTOR(CascadeGetParentNodeCallback)
+FHSDK_CALLBACK_DIRECTOR(CascadeRespondToParentCallback)
+FHSDK_CALLBACK_DIRECTOR(CascadeGetNodeIndexCallback)
+FHSDK_CALLBACK_DIRECTOR(CascadeGetConnectivityCallback)
+FHSDK_CALLBACK_DIRECTOR(CascadeGetParentConnectivityCallback)
+FHSDK_CALLBACK_DIRECTOR(CascadePostToNodeCallback)
+FHSDK_CALLBACK_DIRECTOR(CascadeNodeStatusEventCallback)
+FHSDK_CALLBACK_DIRECTOR(CascadeNotifyEventCallback)
+FHSDK_CALLBACK_DIRECTOR(SetRelaySSIDCallback)
+FHSDK_CALLBACK_DIRECTOR(SetRelayPasswordCallback)
+FHSDK_CALLBACK_DIRECTOR(SetRelaySearchModeCallback)
+FHSDK_CALLBACK_DIRECTOR(SetRelayOccupiedStatusCallback)
+FHSDK_CALLBACK_DIRECTOR(RelayRebootCallback)
+FHSDK_CALLBACK_DIRECTOR(RelayDisconnectCallback)
+FHSDK_CALLBACK_DIRECTOR(QueryHistoryHMSDataCallback)
+FHSDK_CALLBACK_DIRECTOR(QueryDeviceLogListCallback)
+FHSDK_CALLBACK_DIRECTOR(CreateDeviceLogReportCallback)
+FHSDK_CALLBACK_DIRECTOR(LogReportListCallback)
+FHSDK_CALLBACK_DIRECTOR(LogReportOperationCallback)
+FHSDK_CALLBACK_DIRECTOR(UploadLogAppendFileCallback)
 
 // 固件管理相关回调接口
-%feature("director") GetLatestFirmwareReleaseNoteCallback;
-%feature("director") InvokeFirmwareUpgradeCallback;
-%feature("director") QueryFirmwareUpgradeProgressCallback;
-%feature("director") UploadFirmwareFileCallback;
-%feature("director") ReleaseFirmwareCallback;
-%feature("director") UnReleaseFirmwareCallback;
-%feature("director") DeleteFirmwareCallback;
-%feature("director") QueryFirmwareListCallback;
-%feature("director") QueryFirmwareCompatibilityConfigCallback;
-%feature("director") CheckFirmwareStatusCallback;
-%feature("director") SubmitFirmwareInfoCallback;
+FHSDK_CALLBACK_DIRECTOR(GetLatestFirmwareReleaseNoteCallback)
+FHSDK_CALLBACK_DIRECTOR(InvokeFirmwareUpgradeCallback)
+FHSDK_CALLBACK_DIRECTOR(QueryFirmwareUpgradeProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(UploadFirmwareFileCallback)
+FHSDK_CALLBACK_DIRECTOR(ReleaseFirmwareCallback)
+FHSDK_CALLBACK_DIRECTOR(UnReleaseFirmwareCallback)
+FHSDK_CALLBACK_DIRECTOR(DeleteFirmwareCallback)
+FHSDK_CALLBACK_DIRECTOR(QueryFirmwareListCallback)
+FHSDK_CALLBACK_DIRECTOR(QueryFirmwareCompatibilityConfigCallback)
+FHSDK_CALLBACK_DIRECTOR(CheckFirmwareStatusCallback)
+FHSDK_CALLBACK_DIRECTOR(SubmitFirmwareInfoCallback)
 
 // 解锁证书管理相关回调接口
-%feature("director") GetUnlockLicenseListCallback;
-%feature("director") SwitchUnlockLicenseCallback;
-%feature("director") CheckUnlockLicenseCallback;
-%feature("director") SubmitUnlockLicenseCallback;
-%feature("director") ClearDeviceUnlockLicenseCallback;
-%feature("director") UploadUnlockLicenseFileCallback;
+FHSDK_CALLBACK_DIRECTOR(GetUnlockLicenseListCallback)
+FHSDK_CALLBACK_DIRECTOR(SwitchUnlockLicenseCallback)
+FHSDK_CALLBACK_DIRECTOR(CheckUnlockLicenseCallback)
+FHSDK_CALLBACK_DIRECTOR(SubmitUnlockLicenseCallback)
+FHSDK_CALLBACK_DIRECTOR(ClearDeviceUnlockLicenseCallback)
+FHSDK_CALLBACK_DIRECTOR(UploadUnlockLicenseFileCallback)
 
 // 航线管理相关回调接口
-%feature("director") GetWaylineListCallback;
-%feature("director") GetWaylineDetailCallback;
-%feature("director") BatchDeleteWaylinesCallback;
-%feature("director") UpdateWaylineCallback;
-%feature("director") SubmitWaylineInfoCallback;
-%feature("director") BatchDownloadWaylinesCallback;
-%feature("director") DuplicateWaylineCallback;
-%feature("director") CopyWaylineCallback;
-%feature("director") ConcatWaylineCallback;
-%feature("director") ImportKmzCallback;
+FHSDK_CALLBACK_DIRECTOR(GetWaylineListCallback)
+FHSDK_CALLBACK_DIRECTOR(GetWaylineDetailCallback)
+FHSDK_CALLBACK_DIRECTOR(BatchDeleteWaylinesCallback)
+FHSDK_CALLBACK_DIRECTOR(UpdateWaylineCallback)
+FHSDK_CALLBACK_DIRECTOR(SubmitWaylineInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(BatchDownloadWaylinesCallback)
+FHSDK_CALLBACK_DIRECTOR(DuplicateWaylineCallback)
+FHSDK_CALLBACK_DIRECTOR(CopyWaylineCallback)
+FHSDK_CALLBACK_DIRECTOR(ConcatWaylineCallback)
+FHSDK_CALLBACK_DIRECTOR(ImportKmzCallback)
 // AI Inside 机载算法管理相关回调接口
-%feature("director") GetAIInsideModelsCallback;
-%feature("director") GetAIInsideModelDevicesCallback;
-%feature("director") GetAIInsideModelDevicesSummaryCallback;
-%feature("director") OperateAIInsideModelCallback;
-%feature("director") CreateAIInsideAlgorithmCallback;
-%feature("director") FileUploadAIInsideAlgorithmCallback;
-%feature("director") DeleteAIInsideAlgorithmCallback;
-%feature("director") UploadAlgorithmFileCallback;
+FHSDK_CALLBACK_DIRECTOR(GetAIInsideModelsCallback)
+FHSDK_CALLBACK_DIRECTOR(GetAIInsideModelDevicesCallback)
+FHSDK_CALLBACK_DIRECTOR(GetAIInsideModelDevicesSummaryCallback)
+FHSDK_CALLBACK_DIRECTOR(OperateAIInsideModelCallback)
+FHSDK_CALLBACK_DIRECTOR(CreateAIInsideAlgorithmCallback)
+FHSDK_CALLBACK_DIRECTOR(FileUploadAIInsideAlgorithmCallback)
+FHSDK_CALLBACK_DIRECTOR(DeleteAIInsideAlgorithmCallback)
+FHSDK_CALLBACK_DIRECTOR(UploadAlgorithmFileCallback)
 // AI 告警管理相关回调接口
-%feature("director") PostAiAlertDeviceSettingCallback;
-%feature("director") GetAiAlertDeviceSettingCallback;
-%feature("director") PostAiAlertAlgorithmSettingCallback;
-%feature("director") GetAiAlertAlgorithmSettingCallback;
-%feature("director") GetAiAlertFlightsCallback;
-%feature("director") GetAiAlertRecordsCallback;
-%feature("director") AiAlertRecordsNotifyCallback;
+FHSDK_CALLBACK_DIRECTOR(PostAiAlertDeviceSettingCallback)
+FHSDK_CALLBACK_DIRECTOR(GetAiAlertDeviceSettingCallback)
+FHSDK_CALLBACK_DIRECTOR(PostAiAlertAlgorithmSettingCallback)
+FHSDK_CALLBACK_DIRECTOR(GetAiAlertAlgorithmSettingCallback)
+FHSDK_CALLBACK_DIRECTOR(GetAiAlertFlightsCallback)
+FHSDK_CALLBACK_DIRECTOR(GetAiAlertRecordsCallback)
+FHSDK_CALLBACK_DIRECTOR(AiAlertRecordsNotifyCallback)
 
 // 直播转发回调
-%feature("director") CreateLiveSyncCallback;
-%feature("director") DeleteLiveSyncCallback;
-%feature("director") UpdateLiveSyncCallback;
-%feature("director") GetLiveSyncListCallback;
-%feature("director") GetLiveSyncDevicesV2Callback;
-%feature("director") GetLiveSyncSummaryCallback;
+FHSDK_CALLBACK_DIRECTOR(CreateLiveSyncCallback)
+FHSDK_CALLBACK_DIRECTOR(DeleteLiveSyncCallback)
+FHSDK_CALLBACK_DIRECTOR(UpdateLiveSyncCallback)
+FHSDK_CALLBACK_DIRECTOR(GetLiveSyncListCallback)
+FHSDK_CALLBACK_DIRECTOR(GetLiveSyncDevicesV2Callback)
+FHSDK_CALLBACK_DIRECTOR(GetLiveSyncSummaryCallback)
 // 媒体服务模块相关回调接口
-%feature("director") GetMediaFilesListCallback;
-%feature("director") GetMediaFilesDownloadUrlCallback;
-%feature("director") GetMediaFilesDownloadUrlListCallback;
-%feature("director") MediaFilePostProcessCallback;
-%feature("director") MediaFileDeviceUploadCallback;
-%feature("director") GetMediaUploadStsCallback;
-%feature("director") MediaUploadCallbackCallback;
-%feature("director") UploadGeoMediaFileCallback;
-%feature("director") GetMediaFileDetailByIdCallback;
+FHSDK_CALLBACK_DIRECTOR(GetMediaFilesListCallback)
+FHSDK_CALLBACK_DIRECTOR(GetMediaFilesDownloadUrlCallback)
+FHSDK_CALLBACK_DIRECTOR(GetMediaFilesDownloadUrlListCallback)
+FHSDK_CALLBACK_DIRECTOR(MediaFilePostProcessCallback)
+FHSDK_CALLBACK_DIRECTOR(MediaFileDeviceUploadCallback)
+FHSDK_CALLBACK_DIRECTOR(GetMediaUploadStsCallback)
+FHSDK_CALLBACK_DIRECTOR(MediaUploadCallbackCallback)
+FHSDK_CALLBACK_DIRECTOR(UploadGeoMediaFileCallback)
+FHSDK_CALLBACK_DIRECTOR(GetMediaFileDetailByIdCallback)
 // 3X 超清全景拼接回调
-%feature("director") PanoStitchActionCallback;
-%feature("director") GetPanoTierTileUrlCallback;
-%feature("director") PanoStitchProgressCallback;
-%feature("director") GetWaylineEditorStsCallback;
+FHSDK_CALLBACK_DIRECTOR(PanoStitchActionCallback)
+FHSDK_CALLBACK_DIRECTOR(GetPanoTierTileUrlCallback)
+FHSDK_CALLBACK_DIRECTOR(PanoStitchProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(GetWaylineEditorStsCallback)
 // Terra Build 模块相关回调接口
-%feature("director") TerraBuildReconstructionSettingsCallback;
-%feature("director") TerraBuildQualityReportCallback;
-%feature("director") TerraBuildModelFileListCallback;
-%feature("director") TerraBuildModelFileUrlCallback;
-%feature("director") TerraBuildCreateReconstructionCallback;
-%feature("director") TerraBuildSfmResultCallback;
-%feature("director") TerraBuildCreatePanoramaCallback;
-%feature("director") TerraBuildReconstructionImagesCallback;
-%feature("director") TerraBuildReconstructionStatusChangedCallback;
+FHSDK_CALLBACK_DIRECTOR(TerraBuildReconstructionSettingsCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraBuildQualityReportCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraBuildModelFileListCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraBuildModelFileUrlCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraBuildCreateReconstructionCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraBuildSfmResultCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraBuildCreatePanoramaCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraBuildReconstructionImagesCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraBuildReconstructionStatusChangedCallback)
 // Element 模块回调
-%feature("director") ElementCreateCallback;
-%feature("director") ElementUpdateCallback;
-%feature("director") ElementDeleteCallback;
-%feature("director") ElementCreateElementCallback;
-%feature("director") ElementUpdateElementCallback;
-%feature("director") ElementListHierarchyCallback;
-%feature("director") ElementSetVisibilityCallback;
-%feature("director") ElementDeleteElementCallback;
-%feature("director") TerraUploadCallbackCallback;
-%feature("director") TerraShowOnMapCallback;
-%feature("director") TerraDeleteModelFilesCallback;
-%feature("director") TerraUnzipProgressCallback;
-%feature("director") TerraModelStatusChangedCallback;
-%feature("director") TerraFileShowOnMapCallback;
-%feature("director") TerraMediaFileHideOnMapCallback;
-%feature("director") TerraMediaFileShowOnMapCallback;
-%feature("director") TerraGetModelDetailCallback;
-%feature("director") TerraSetLasWktCallback;
+FHSDK_CALLBACK_DIRECTOR(ElementCreateCallback)
+FHSDK_CALLBACK_DIRECTOR(ElementUpdateCallback)
+FHSDK_CALLBACK_DIRECTOR(ElementDeleteCallback)
+FHSDK_CALLBACK_DIRECTOR(ElementCreateElementCallback)
+FHSDK_CALLBACK_DIRECTOR(ElementUpdateElementCallback)
+FHSDK_CALLBACK_DIRECTOR(ElementListHierarchyCallback)
+FHSDK_CALLBACK_DIRECTOR(ElementSetVisibilityCallback)
+FHSDK_CALLBACK_DIRECTOR(ElementDeleteElementCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraUploadCallbackCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraShowOnMapCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraDeleteModelFilesCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraUnzipProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraModelStatusChangedCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraFileShowOnMapCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraMediaFileHideOnMapCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraMediaFileShowOnMapCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraGetModelDetailCallback)
+FHSDK_CALLBACK_DIRECTOR(TerraSetLasWktCallback)
 
 // 安全服务模块相关回调接口
-%feature("director") SearchSignalMapsCallback;
-%feature("director") CreateCustomizedFlightAreasCallback;
-%feature("director") GetCustomizedFlightAreasCallback;
-%feature("director") UpdateCustomizedFlightAreasCallback;
-%feature("director") SyncCustomizedFlightAreasCallback;
-%feature("director") GetFlightAreasSyncStatusCallback;
-%feature("director") GetFlightAreasUrlCallback;
-%feature("director") GetOfflineMapsModelInfoCallback;
-%feature("director") SyncOfflineMapsCallback;
-%feature("director") GetOfflineMapsSyncStatusCallback;
+FHSDK_CALLBACK_DIRECTOR(SearchSignalMapsCallback)
+FHSDK_CALLBACK_DIRECTOR(CreateCustomizedFlightAreasCallback)
+FHSDK_CALLBACK_DIRECTOR(GetCustomizedFlightAreasCallback)
+FHSDK_CALLBACK_DIRECTOR(UpdateCustomizedFlightAreasCallback)
+FHSDK_CALLBACK_DIRECTOR(SyncCustomizedFlightAreasCallback)
+FHSDK_CALLBACK_DIRECTOR(GetFlightAreasSyncStatusCallback)
+FHSDK_CALLBACK_DIRECTOR(GetFlightAreasUrlCallback)
+FHSDK_CALLBACK_DIRECTOR(GetOfflineMapsModelInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(SyncOfflineMapsCallback)
+FHSDK_CALLBACK_DIRECTOR(GetOfflineMapsSyncStatusCallback)
 
 // 飞行任务记录模块相关回调接口
-%feature("director") ExportFlightRecordsCallback;
-%feature("director") GetExportFlightRecordsProgressCallback;
+FHSDK_CALLBACK_DIRECTOR(ExportFlightRecordsCallback)
+FHSDK_CALLBACK_DIRECTOR(GetExportFlightRecordsProgressCallback)
 
 // 飞行器 HSI 信息（障碍物感知/避障传感器数据）
-%feature("director") HsiInfoCallback;
+FHSDK_CALLBACK_DIRECTOR(HsiInfoCallback)
 
 // 新增订阅进度回调接口
-%feature("director") DeviceOtaProgressCallback;
-%feature("director") DeviceFileUploadProgressCallback;
-%feature("director") PsdkSpeakerAudioPlayStartProgressCallback;
-%feature("director") PsdkSpeakerTtsPlayStartProgressCallback;
-%feature("director") PsdkCustomDataTransmissionFromPsdkCallback;
-%feature("director") EsdkCustomDataTransmissionFromEsdkCallback;
-%feature("director") HighestPriorityUploadFlighttaskMediaCallback;
-%feature("director") FlightPoiProgressCallback;
+FHSDK_CALLBACK_DIRECTOR(DeviceOtaProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(DeviceFileUploadProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(PsdkSpeakerAudioPlayStartProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(PsdkSpeakerTtsPlayStartProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(PsdkCustomDataTransmissionFromPsdkCallback)
+FHSDK_CALLBACK_DIRECTOR(EsdkCustomDataTransmissionFromEsdkCallback)
+FHSDK_CALLBACK_DIRECTOR(HighestPriorityUploadFlighttaskMediaCallback)
+FHSDK_CALLBACK_DIRECTOR(FlightPoiProgressCallback)
 
 // 飞行安全设置回调
-%feature("director") SetFlightSmartPlanModeCallback;
-%feature("director") SetOutOfControlActionCallback;
-%feature("director") SetFlightTaskHeightCallback;
-%feature("director") SetRthAltitudeCallback;
-%feature("director") SetAirTransferEnableCallback;
-%feature("director") GenerateTryFlightWaylineCallback;
-%feature("director") CreateTestFlightTaskCallback;
+FHSDK_CALLBACK_DIRECTOR(SetFlightSmartPlanModeCallback)
+FHSDK_CALLBACK_DIRECTOR(SetOutOfControlActionCallback)
+FHSDK_CALLBACK_DIRECTOR(SetFlightTaskHeightCallback)
+FHSDK_CALLBACK_DIRECTOR(SetRthAltitudeCallback)
+FHSDK_CALLBACK_DIRECTOR(SetAirTransferEnableCallback)
+FHSDK_CALLBACK_DIRECTOR(GenerateTryFlightWaylineCallback)
+FHSDK_CALLBACK_DIRECTOR(CreateTestFlightTaskCallback)
 
 // 报修管理模块相关回调接口
-%feature("director") GetRepairConfigsCallback;
-%feature("director") CreateMaintenanceOrderCallback;
-%feature("director") GetMaintenanceOrderDetailCallback;
-%feature("director") GetMaintenanceOrdersListCallback;
+FHSDK_CALLBACK_DIRECTOR(GetRepairConfigsCallback)
+FHSDK_CALLBACK_DIRECTOR(CreateMaintenanceOrderCallback)
+FHSDK_CALLBACK_DIRECTOR(GetMaintenanceOrderDetailCallback)
+FHSDK_CALLBACK_DIRECTOR(GetMaintenanceOrdersListCallback)
 
 // 诊断管理模块相关回调接口
-%feature("director") CreateSelfDiagnosisCallback;
-%feature("director") OperateSelfDiagnosisCallback;
-%feature("director") GetSelfDiagnosisReportCallback;
-%feature("director") GetSelfDiagnosisReportListCallback;
+FHSDK_CALLBACK_DIRECTOR(CreateSelfDiagnosisCallback)
+FHSDK_CALLBACK_DIRECTOR(OperateSelfDiagnosisCallback)
+FHSDK_CALLBACK_DIRECTOR(GetSelfDiagnosisReportCallback)
+FHSDK_CALLBACK_DIRECTOR(GetSelfDiagnosisReportListCallback)
 
 // AI Box 管理相关回调接口
-%feature("director") FetchAIBoxInfoCallback;
-%feature("director") FetchFileDownloadUrlCallback;
-%feature("director") FetchAppListCallback;
-%feature("director") FetchAppListProgressCallback;
-%feature("director") ExportFileCallback;
-%feature("director") ExportFileProgressCallback;
-%feature("director") UploadAIBoxFileCallback;
-%feature("director") InstallAppCallback;
-%feature("director") InstallAppProgressCallback;
-%feature("director") OperateAppCallback;
+FHSDK_CALLBACK_DIRECTOR(FetchAIBoxInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(FetchFileDownloadUrlCallback)
+FHSDK_CALLBACK_DIRECTOR(FetchAppListCallback)
+FHSDK_CALLBACK_DIRECTOR(FetchAppListProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(ExportFileCallback)
+FHSDK_CALLBACK_DIRECTOR(ExportFileProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(UploadAIBoxFileCallback)
+FHSDK_CALLBACK_DIRECTOR(InstallAppCallback)
+FHSDK_CALLBACK_DIRECTOR(InstallAppProgressCallback)
+FHSDK_CALLBACK_DIRECTOR(OperateAppCallback)
 
 // DRC northbound push listener callbacks
-%feature("director") DrcOsdInfoCallback;
-%feature("director") DrcBatteriesInfoCallback;
-%feature("director") DrcParachuteInfoCallback;
-%feature("director") DrcLandingMissionStateCallback;
-%feature("director") FlashLedStateInfoCallback;
-%feature("director") FlashLedConfigListCallback;
-%feature("director") FlashLedConfigCallback;
-%feature("director") AutoRecordConfigCallback;
-%feature("director") AiAlarmStateCallback;
-%feature("director") DrcDelayInfoCallback;
-%feature("director") DrcCountDownInfoCallback;
+FHSDK_CALLBACK_DIRECTOR(DrcOsdInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(DrcBatteriesInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(DrcParachuteInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(DrcLandingMissionStateCallback)
+FHSDK_CALLBACK_DIRECTOR(FlashLedStateInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(FlashLedConfigListCallback)
+FHSDK_CALLBACK_DIRECTOR(FlashLedConfigCallback)
+FHSDK_CALLBACK_DIRECTOR(AutoRecordConfigCallback)
+FHSDK_CALLBACK_DIRECTOR(AiAlarmStateCallback)
+FHSDK_CALLBACK_DIRECTOR(DrcDelayInfoCallback)
+FHSDK_CALLBACK_DIRECTOR(DrcCountDownInfoCallback)
 
 // EA340 消息推送补全（Phase D）新增回调接口;
-%feature("director") DockLiveStatusCallback;
-%feature("director") DockLiveCapacityCallback;
-%feature("director") DockDongleInfosCallback;
-%feature("director") DockAirConditionerModeCallback;
-%feature("director") DroneModeCodeReasonCallback;
-%feature("director") DroneDongleInfosCallback;
-%feature("director") DroneFlysafeDatabaseVersionCallback;
-%feature("director") DroneWpmzVersionCallback;
-%feature("director") DroneCommanderFlightModeCallback;
-%feature("director") DroneCurrentCommanderFlightModeCallback;
-%feature("director") DroneCommanderModeLostActionCallback;
-%feature("director") DroneOfflineMapEnableCallback;
-%feature("director") DronePsdkUiResourceCallback;
-%feature("director") DroneCameraWatermarkSettingsPushCallback;
+FHSDK_CALLBACK_DIRECTOR(DockLiveStatusCallback)
+FHSDK_CALLBACK_DIRECTOR(DockLiveCapacityCallback)
+FHSDK_CALLBACK_DIRECTOR(DockDongleInfosCallback)
+FHSDK_CALLBACK_DIRECTOR(DockAirConditionerModeCallback)
+FHSDK_CALLBACK_DIRECTOR(DroneModeCodeReasonCallback)
+FHSDK_CALLBACK_DIRECTOR(DroneDongleInfosCallback)
+FHSDK_CALLBACK_DIRECTOR(DroneFlysafeDatabaseVersionCallback)
+FHSDK_CALLBACK_DIRECTOR(DroneWpmzVersionCallback)
+FHSDK_CALLBACK_DIRECTOR(DroneCommanderFlightModeCallback)
+FHSDK_CALLBACK_DIRECTOR(DroneCurrentCommanderFlightModeCallback)
+FHSDK_CALLBACK_DIRECTOR(DroneCommanderModeLostActionCallback)
+FHSDK_CALLBACK_DIRECTOR(DroneOfflineMapEnableCallback)
+FHSDK_CALLBACK_DIRECTOR(DronePsdkUiResourceCallback)
+FHSDK_CALLBACK_DIRECTOR(DroneCameraWatermarkSettingsPushCallback)
+
+#ifndef SWIGCSHARP
+#define FHSDK_CALLBACK_PARAMETER(Type) Type* callback
+#define FHSDK_SHARE_CALLBACK(Type) std::shared_ptr<Type> cb(callback)
+#define FHSDK_DELETE_CALLBACK() delete callback
+#endif
 
 %inline %{
     // 前向声明：TerraModelDetailJavaResult 定义在 terra_build_swig 命名空间的另一个 inline 块中
@@ -4161,108 +4183,108 @@ using namespace flight_hub_sdk;
 
 // Extend classes to add wrapper methods with callback interfaces
 %extend flight_hub_sdk::IAIBoxModule {
-    void fetchAIBoxInfoWrapper(std::string const &device_sn,FetchAIBoxInfoCallback *callback) {
+    void fetchAIBoxInfoWrapper(std::string const &device_sn,FHSDK_CALLBACK_PARAMETER(FetchAIBoxInfoCallback)) {
         $self->fetchAIBoxInfo(device_sn, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::AIBoxInfoListResults& results) {
-            if (callback) { callback->onFetchAIBoxInfo(err, results); delete callback; }
+            if (callback) { callback->onFetchAIBoxInfo(err, results); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void fetchFileDownloadUrlWrapper(flight_hub_sdk::FetchFileDownloadUrlParams const &params,FetchFileDownloadUrlCallback *callback) {
+    void fetchFileDownloadUrlWrapper(flight_hub_sdk::FetchFileDownloadUrlParams const &params,FHSDK_CALLBACK_PARAMETER(FetchFileDownloadUrlCallback)) {
         $self->fetchFileDownloadUrl(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::FileDownloadUrlListResults& results) {
-            if (callback) { callback->onFetchFileDownloadUrl(err, results); delete callback; }
+            if (callback) { callback->onFetchFileDownloadUrl(err, results); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void fetchAppListWrapper(flight_hub_sdk::FetchAppListParam const &param,FetchAppListCallback *callback) {
+    void fetchAppListWrapper(flight_hub_sdk::FetchAppListParam const &param,FHSDK_CALLBACK_PARAMETER(FetchAppListCallback)) {
         $self->fetchAppList(param, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::FetchAppListResults& results) {
-            if (callback) { callback->onFetchAppList(err, results); delete callback; }
+            if (callback) { callback->onFetchAppList(err, results); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void fetchAppListProgressWrapper(flight_hub_sdk::FetchAppListProgressParam const &param,FetchAppListProgressCallback *callback) {
+    void fetchAppListProgressWrapper(flight_hub_sdk::FetchAppListProgressParam const &param,FHSDK_CALLBACK_PARAMETER(FetchAppListProgressCallback)) {
         $self->fetchAppListProgress(param, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::FetchAppListProgressResults& results) {
-            if (callback) { callback->onFetchAppListProgress(err, results); delete callback; }
+            if (callback) { callback->onFetchAppListProgress(err, results); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void exportFileWrapper(flight_hub_sdk::ExportFileParam const &param,ExportFileCallback *callback) {
+    void exportFileWrapper(flight_hub_sdk::ExportFileParam const &param,FHSDK_CALLBACK_PARAMETER(ExportFileCallback)) {
         $self->exportFile(param, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::ExportFileResults& results) {
-            if (callback) { callback->onExportFile(err, results); delete callback; }
+            if (callback) { callback->onExportFile(err, results); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void exportFileProgressWrapper(flight_hub_sdk::ExportFileProgressParam const &param,ExportFileProgressCallback *callback) {
+    void exportFileProgressWrapper(flight_hub_sdk::ExportFileProgressParam const &param,FHSDK_CALLBACK_PARAMETER(ExportFileProgressCallback)) {
         $self->exportFileProgress(param, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::ExportFileProgressResults& results) {
-            if (callback) { callback->onExportFileProgress(err, results); delete callback; }
+            if (callback) { callback->onExportFileProgress(err, results); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void uploadAIBoxFileWrapper(flight_hub_sdk::UploadFileParam const &param,UploadAIBoxFileCallback *callback) {
+    void uploadAIBoxFileWrapper(flight_hub_sdk::UploadFileParam const &param,FHSDK_CALLBACK_PARAMETER(UploadAIBoxFileCallback)) {
         $self->uploadAIBoxFile(param, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::UploadFileResults& results) {
-            if (callback) { callback->onUploadAIBoxFile(err, results); delete callback; }
+            if (callback) { callback->onUploadAIBoxFile(err, results); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void installAppWrapper(flight_hub_sdk::InstallAppParam const &param,InstallAppCallback *callback) {
+    void installAppWrapper(flight_hub_sdk::InstallAppParam const &param,FHSDK_CALLBACK_PARAMETER(InstallAppCallback)) {
         $self->installApp(param, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::InstallAppResults& results) {
-            if (callback) { callback->onInstallApp(err, results); delete callback; }
+            if (callback) { callback->onInstallApp(err, results); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void installAppProgressWrapper(flight_hub_sdk::InstallAppProgressParam const &param,InstallAppProgressCallback *callback) {
+    void installAppProgressWrapper(flight_hub_sdk::InstallAppProgressParam const &param,FHSDK_CALLBACK_PARAMETER(InstallAppProgressCallback)) {
         $self->installAppProgress(param, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::InstallAppProgressResults& results) {
-            if (callback) { callback->onInstallAppProgress(err, results); delete callback; }
+            if (callback) { callback->onInstallAppProgress(err, results); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void operateAppWrapper(flight_hub_sdk::OperateAppParam const &param,OperateAppCallback *callback) {
+    void operateAppWrapper(flight_hub_sdk::OperateAppParam const &param,FHSDK_CALLBACK_PARAMETER(OperateAppCallback)) {
         $self->operateApp(param, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::OperateAppResults& results) {
-            if (callback) { callback->onOperateApp(err, results); delete callback; }
+            if (callback) { callback->onOperateApp(err, results); FHSDK_DELETE_CALLBACK(); }
         });
     }
 }
 
 %extend flight_hub_sdk::IDeviceManageModule {
-    void getDeviceListWrapper(DeviceListCallback *callback) {
+    void getDeviceListWrapper(FHSDK_CALLBACK_PARAMETER(DeviceListCallback)) {
         $self->getDeviceList([callback](const std::vector<flight_hub_sdk::DeviceTopo>& devices, const flight_hub_sdk::FlightHubError err) {
                 if (callback) {
                     callback->onDeviceList(devices, err);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 
-    void getDeviceDetailInfoWrapper(std::string const &device_sn,GetDeviceDetailInfoCallback *callback) {
+    void getDeviceDetailInfoWrapper(std::string const &device_sn,FHSDK_CALLBACK_PARAMETER(GetDeviceDetailInfoCallback)) {
         $self->getDeviceDetailInfo(device_sn, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::DeviceDetailInfo& device_detail) {
                 if (callback) {
                     callback->onGetDeviceDetailInfo(err, device_detail);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 
-    void modifyDeviceNameWrapper(flight_hub_sdk::ModifyDeviceNameParam const &device_list,ModifyDeviceNameCallback *callback) {
+    void modifyDeviceNameWrapper(flight_hub_sdk::ModifyDeviceNameParam const &device_list,FHSDK_CALLBACK_PARAMETER(ModifyDeviceNameCallback)) {
         $self->modifyDeviceName(device_list, [callback](flight_hub_sdk::FlightHubError err) {
                 if (callback) {
                     callback->onModifyDeviceName(err);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 
-    void unbindDeviceWrapper(std::vector<std::string> const &device_sns,ResultCallbackWithError *callback) {
+    void unbindDeviceWrapper(std::vector<std::string> const &device_sns,FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->unbindDevice(device_sns, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int listenWorkspaceDeviceChangedWrapper(WorkspaceDeviceChangeCallback *callback) {
-        std::shared_ptr<WorkspaceDeviceChangeCallback> cb(callback);
+    int listenWorkspaceDeviceChangedWrapper(FHSDK_CALLBACK_PARAMETER(WorkspaceDeviceChangeCallback)) {
+        FHSDK_SHARE_CALLBACK(WorkspaceDeviceChangeCallback);
         return $self->listenWorkspaceDeviceChanged([cb](const flight_hub_sdk::WorkspaceDeviceChange& change) {
-            cb->onWorkspaceDeviceChange(change);
+            if (cb) cb->onWorkspaceDeviceChange(change);
         });
     }
 
@@ -4270,10 +4292,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenWorkspaceDeviceChanged(listen_id);
     }
 
-    int listenDeviceTopoChangedWrapper(DeviceTopoChangeCallback *callback) {
-        std::shared_ptr<DeviceTopoChangeCallback> cb(callback);
+    int listenDeviceTopoChangedWrapper(FHSDK_CALLBACK_PARAMETER(DeviceTopoChangeCallback)) {
+        FHSDK_SHARE_CALLBACK(DeviceTopoChangeCallback);
         return $self->listenDeviceTopoChanged([cb](const flight_hub_sdk::DeviceTopoChange& change) {
-            cb->onDeviceTopoChange(change);
+            if (cb) cb->onDeviceTopoChange(change);
         });
     }
 
@@ -4281,129 +4303,129 @@ using namespace flight_hub_sdk;
         $self->cancelListenDeviceTopoChanged(listen_id);
     }
 
-    void getDockDeviceStatusWrapper(std::vector<std::string> const &device_sns,DockDeviceStatusListCallback *callback) {
+    void getDockDeviceStatusWrapper(std::vector<std::string> const &device_sns,FHSDK_CALLBACK_PARAMETER(DockDeviceStatusListCallback)) {
         $self->getDockDeviceStatus(device_sns, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::DockDeviceStatusResultList& result) {
                 if (callback) {
                     callback->onDockDeviceStatusList(err, result);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 
-    void getDroneDeviceStatusWrapper(std::vector<std::string> const &device_sns,DroneDeviceStatusListCallback *callback) {
+    void getDroneDeviceStatusWrapper(std::vector<std::string> const &device_sns,FHSDK_CALLBACK_PARAMETER(DroneDeviceStatusListCallback)) {
         $self->getDroneDeviceStatus(device_sns, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::DroneDeviceStatusResultList& result) {
                 if (callback) {
                     callback->onDroneDeviceStatusList(err, result);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 }
 
 %extend flight_hub_sdk::IFirmwareManageModule {
-    void getLatestFirmwareReleaseNoteWrapper(std::vector<std::string> const &device_model_keys,std::string const &language,GetLatestFirmwareReleaseNoteCallback *callback) {
+    void getLatestFirmwareReleaseNoteWrapper(std::vector<std::string> const &device_model_keys,std::string const &language,FHSDK_CALLBACK_PARAMETER(GetLatestFirmwareReleaseNoteCallback)) {
         $self->getLatestFirmwareReleaseNote(device_model_keys, language, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::FirmwareReleaseNoteListResult result) {
             if (callback) {
                 callback->onGetLatestFirmwareReleaseNote(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void invokeFirmwareUpgradeWrapper(flight_hub_sdk::FirmwareUpgradeParam const &params,InvokeFirmwareUpgradeCallback *callback) {
+    void invokeFirmwareUpgradeWrapper(flight_hub_sdk::FirmwareUpgradeParam const &params,FHSDK_CALLBACK_PARAMETER(InvokeFirmwareUpgradeCallback)) {
         $self->invokeFirmwareUpgrade(params, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::FirmwareUpgradeResult result) {
             if (callback) {
                 callback->onInvokeFirmwareUpgrade(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void queryFirmwareUpgradeProgressWrapper(std::string const &device_sn,QueryFirmwareUpgradeProgressCallback *callback) {
+    void queryFirmwareUpgradeProgressWrapper(std::string const &device_sn,FHSDK_CALLBACK_PARAMETER(QueryFirmwareUpgradeProgressCallback)) {
         $self->queryFirmwareUpgradeProgress(device_sn, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::FirmwareUpgradeProgressResult result) {
             if (callback) {
                 callback->onQueryFirmwareUpgradeProgress(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void uploadFirmwareFileWrapper(std::string const &file_path,UploadFirmwareFileCallback *callback) {
+    void uploadFirmwareFileWrapper(std::string const &file_path,FHSDK_CALLBACK_PARAMETER(UploadFirmwareFileCallback)) {
         $self->uploadFirmwareFile(file_path, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::UploadFileResults results) {
             if (callback) {
                 callback->onUploadFirmwareFile(err, results);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void releaseFirmwareWrapper(std::string const &file_id,ReleaseFirmwareCallback *callback) {
+    void releaseFirmwareWrapper(std::string const &file_id,FHSDK_CALLBACK_PARAMETER(ReleaseFirmwareCallback)) {
         $self->releaseFirmware(file_id, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onReleaseFirmware(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void unReleaseFirmwareWrapper(std::string const &file_id,UnReleaseFirmwareCallback *callback) {
+    void unReleaseFirmwareWrapper(std::string const &file_id,FHSDK_CALLBACK_PARAMETER(UnReleaseFirmwareCallback)) {
         $self->unReleaseFirmware(file_id, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onUnReleaseFirmware(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void deleteFirmwareWrapper(std::string const &file_id,DeleteFirmwareCallback *callback) {
+    void deleteFirmwareWrapper(std::string const &file_id,FHSDK_CALLBACK_PARAMETER(DeleteFirmwareCallback)) {
         $self->deleteFirmware(file_id, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onDeleteFirmware(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void queryFirmwareListWrapper(int page,int page_size,QueryFirmwareListCallback *callback) {
+    void queryFirmwareListWrapper(int page,int page_size,FHSDK_CALLBACK_PARAMETER(QueryFirmwareListCallback)) {
         $self->queryFirmwareList(page, page_size, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::FirmwareListResult result) {
             if (callback) {
                 callback->onQueryFirmwareList(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void queryFirmwareCompatibilityConfigWrapper(QueryFirmwareCompatibilityConfigCallback *callback) {
+    void queryFirmwareCompatibilityConfigWrapper(FHSDK_CALLBACK_PARAMETER(QueryFirmwareCompatibilityConfigCallback)) {
         $self->queryFirmwareCompatibilityConfig([callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::FirmwareCompatibilityConfigResult result) {
             if (callback) {
                 callback->onQueryFirmwareCompatibilityConfig(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void checkFirmwareStatusWrapper(std::vector<std::string> const &device_sns,std::vector<std::string> const &status,CheckFirmwareStatusCallback *callback) {
+    void checkFirmwareStatusWrapper(std::vector<std::string> const &device_sns,std::vector<std::string> const &status,FHSDK_CALLBACK_PARAMETER(CheckFirmwareStatusCallback)) {
         $self->checkFirmwareStatus(device_sns, status, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::FirmwareStatusListResult result) {
             if (callback) {
                 callback->onCheckFirmwareStatus(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void submitFirmwareInfoWrapper(flight_hub_sdk::FirmwareInfoParam const &firmware_info,SubmitFirmwareInfoCallback *callback) {
+    void submitFirmwareInfoWrapper(flight_hub_sdk::FirmwareInfoParam const &firmware_info,FHSDK_CALLBACK_PARAMETER(SubmitFirmwareInfoCallback)) {
         $self->submitFirmwareInfo(firmware_info, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onSubmitFirmwareInfo(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int listenDeviceOtaProgressWrapper(const std::string& device_sn, DeviceOtaProgressCallback* callback) {
-        std::shared_ptr<DeviceOtaProgressCallback> cb(callback);
+    int listenDeviceOtaProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(DeviceOtaProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(DeviceOtaProgressCallback);
         return $self->listenDeviceOtaProgress(device_sn, [cb](const flight_hub_sdk::DeviceOtaProgress& msg) {
-            cb->onDeviceOtaProgress(msg);
+            if (cb) cb->onDeviceOtaProgress(msg);
         });
     }
     void cancelListenDeviceOtaProgressWrapper(int listen_id) {
@@ -4412,232 +4434,232 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IPsdkResourceModule {
-    void getPsdkSpeakerResourceListWrapper(PsdkSpeakerResourceListCallback *callback) {
+    void getPsdkSpeakerResourceListWrapper(FHSDK_CALLBACK_PARAMETER(PsdkSpeakerResourceListCallback)) {
         $self->getPsdkSpeakerResourceList([callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::PsdkSpeakerResourceList& psdk_speaker_resource_list) {
                 if (callback) {
                     callback->onPsdkSpeakerResourceList(err, psdk_speaker_resource_list);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 
-    void getPsdkSpeakerResourceListWithFilterWrapper(const flight_hub_sdk::PsdkSpeakerResourceListParams& params, PsdkSpeakerResourceListCallback *callback) {
+    void getPsdkSpeakerResourceListWithFilterWrapper(const flight_hub_sdk::PsdkSpeakerResourceListParams& params, FHSDK_CALLBACK_PARAMETER(PsdkSpeakerResourceListCallback)) {
         $self->getPsdkSpeakerResourceListWithFilter(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::PsdkSpeakerResourceList& psdk_speaker_resource_list) {
                 if (callback) {
                     callback->onPsdkSpeakerResourceList(err, psdk_speaker_resource_list);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 
-    void createPsdkSpeakerResourceWrapper(flight_hub_sdk::CreatePsdkSpeakerResourceParams const &params,PsdkSpeakerResourceCallback *callback) {
+    void createPsdkSpeakerResourceWrapper(flight_hub_sdk::CreatePsdkSpeakerResourceParams const &params,FHSDK_CALLBACK_PARAMETER(PsdkSpeakerResourceCallback)) {
         $self->createPsdkSpeakerResource(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::PsdkSpeakerResource& psdk_speaker_resource) {
                 if (callback) {
                     callback->onPsdkSpeakerResource(err, psdk_speaker_resource);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 
-    void editPsdkSpeakerResourceWrapper(flight_hub_sdk::EditPsdkSpeakerResourceParams const &params,PsdkSpeakerResourceCallback *callback) {
+    void editPsdkSpeakerResourceWrapper(flight_hub_sdk::EditPsdkSpeakerResourceParams const &params,FHSDK_CALLBACK_PARAMETER(PsdkSpeakerResourceCallback)) {
         $self->editPsdkSpeakerResource(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::PsdkSpeakerResource& psdk_speaker_resource) {
                 if (callback) {
                     callback->onPsdkSpeakerResource(err, psdk_speaker_resource);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 
-    void deletePsdkSpeakerResourceWrapper(long long resource_id,ResultCallbackWithError *callback) {
+    void deletePsdkSpeakerResourceWrapper(long long resource_id,FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->deletePsdkSpeakerResource(resource_id, [callback](flight_hub_sdk::FlightHubError err) {
                 if (callback) {
                     callback->onResult(err);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 
-    void getSTSWrapper(STSInfoCallback *callback) {
+    void getSTSWrapper(FHSDK_CALLBACK_PARAMETER(STSInfoCallback)) {
         $self->getSTS([callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::STSInfo& sts_info) {
                 if (callback) {
                     callback->onSTSInfo(err, sts_info);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 
-    void uploadSpeakerAudioFileWrapper(std::string const &file_path,flight_hub_sdk::STSInfo const &sts_info,ResultCallbackWithError *callback) {
+    void uploadSpeakerAudioFileWrapper(std::string const &file_path,flight_hub_sdk::STSInfo const &sts_info,FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->uploadSpeakerAudioFile(file_path, sts_info, [callback](flight_hub_sdk::FlightHubError err) {
                 if (callback) {
                     callback->onResult(err);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 
-    void getPsdkWidgetResourcesWrapper(flight_hub_sdk::GetPsdkWidgetResourceParams const &params,PsdkWidgetResourceListCallback *callback) {
+    void getPsdkWidgetResourcesWrapper(flight_hub_sdk::GetPsdkWidgetResourceParams const &params,FHSDK_CALLBACK_PARAMETER(PsdkWidgetResourceListCallback)) {
         $self->getPsdkWidgetResources(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::PsdkWidgetResourceList& psdk_widget_resource_list) {
                 if (callback) {
                     callback->onPsdkWidgetResourceList(err, psdk_widget_resource_list);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 }
 
 %extend flight_hub_sdk::IFlashLedModule {
-    void getFlashLedConfigListWrapper(FlashLedConfigListCallback *callback) {
+    void getFlashLedConfigListWrapper(FHSDK_CALLBACK_PARAMETER(FlashLedConfigListCallback)) {
         $self->getFlashLedConfigList([callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::FlashLedConfigList& list) {
                 if (callback) {
                     callback->onFlashLedConfigList(err, list);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 
-    void createFlashLedConfigWrapper(flight_hub_sdk::FlashLedConfigParams const &params, FlashLedConfigCallback *callback) {
+    void createFlashLedConfigWrapper(flight_hub_sdk::FlashLedConfigParams const &params, FHSDK_CALLBACK_PARAMETER(FlashLedConfigCallback)) {
         $self->createFlashLedConfig(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::FlashLedConfig& config) {
                 if (callback) {
                     callback->onFlashLedConfig(err, config);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 
-    void updateFlashLedConfigWrapper(std::string const &config_id, flight_hub_sdk::FlashLedConfigParams const &params, FlashLedConfigCallback *callback) {
+    void updateFlashLedConfigWrapper(std::string const &config_id, flight_hub_sdk::FlashLedConfigParams const &params, FHSDK_CALLBACK_PARAMETER(FlashLedConfigCallback)) {
         $self->updateFlashLedConfig(config_id, params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::FlashLedConfig& config) {
                 if (callback) {
                     callback->onFlashLedConfig(err, config);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 
-    void deleteFlashLedConfigWrapper(std::string const &config_id, ResultCallbackWithError *callback) {
+    void deleteFlashLedConfigWrapper(std::string const &config_id, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->deleteFlashLedConfig(config_id, [callback](flight_hub_sdk::FlightHubError err) {
                 if (callback) {
                     callback->onResult(err);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 }
 
 %extend flight_hub_sdk::IAutoRecordModule {
-    void getAutoRecordConfigWrapper(AutoRecordConfigCallback *callback) {
+    void getAutoRecordConfigWrapper(FHSDK_CALLBACK_PARAMETER(AutoRecordConfigCallback)) {
         $self->getAutoRecordConfig([callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::AutoRecordConfig& config) {
                 if (callback) {
                     callback->onAutoRecordConfig(err, config);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 
-    void saveAutoRecordConfigWrapper(flight_hub_sdk::SaveAutoRecordConfigParams const &params, ResultCallbackWithError *callback) {
+    void saveAutoRecordConfigWrapper(flight_hub_sdk::SaveAutoRecordConfigParams const &params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->saveAutoRecordConfig(params, [callback](flight_hub_sdk::FlightHubError err) {
                 if (callback) {
                     callback->onResult(err);
-                    delete callback;
+                    FHSDK_DELETE_CALLBACK();
                 }
             });
     }
 }
 
 %extend flight_hub_sdk::IWaylineManageModule {
-    void getWaylineListWrapper(flight_hub_sdk::GetWaylineListParam param,GetWaylineListCallback *callback) {
+    void getWaylineListWrapper(flight_hub_sdk::GetWaylineListParam param,FHSDK_CALLBACK_PARAMETER(GetWaylineListCallback)) {
         $self->getWaylineList(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::GetWaylineListResult result) {
             if (callback) {
                 callback->onGetWaylineList(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void getWaylineDetailWrapper(std::string const &wayline_uuid,GetWaylineDetailCallback *callback) {
+    void getWaylineDetailWrapper(std::string const &wayline_uuid,FHSDK_CALLBACK_PARAMETER(GetWaylineDetailCallback)) {
         $self->getWaylineDetail(wayline_uuid, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::GetWaylineDetailResult result) {
             if (callback) {
                 callback->onGetWaylineDetail(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void batchDeleteWaylinesWrapper(std::vector<std::string> const &wayline_uuids,BatchDeleteWaylinesCallback *callback) {
+    void batchDeleteWaylinesWrapper(std::vector<std::string> const &wayline_uuids,FHSDK_CALLBACK_PARAMETER(BatchDeleteWaylinesCallback)) {
         $self->batchDeleteWaylines(wayline_uuids, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::BatchDeleteWaylinesResult result) {
             if (callback) {
                 callback->onBatchDeleteWaylines(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void updateWaylineWrapper(std::string const &wayline_uuid,std::string const &wayline_name,UpdateWaylineCallback *callback) {
+    void updateWaylineWrapper(std::string const &wayline_uuid,std::string const &wayline_name,FHSDK_CALLBACK_PARAMETER(UpdateWaylineCallback)) {
         $self->updateWayline(wayline_uuid, wayline_name, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::UpdateWaylineResult result) {
             if (callback) {
                 callback->onUpdateWayline(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void submitWaylineInfoWrapper(flight_hub_sdk::SubmitWaylineInfoParam param,SubmitWaylineInfoCallback *callback) {
+    void submitWaylineInfoWrapper(flight_hub_sdk::SubmitWaylineInfoParam param,FHSDK_CALLBACK_PARAMETER(SubmitWaylineInfoCallback)) {
         $self->submitWaylineInfo(param, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onSubmitWaylineInfo(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void batchDownloadWaylinesWrapper(flight_hub_sdk::BatchDownloadWaylinesParam param,BatchDownloadWaylinesCallback *callback) {
+    void batchDownloadWaylinesWrapper(flight_hub_sdk::BatchDownloadWaylinesParam param,FHSDK_CALLBACK_PARAMETER(BatchDownloadWaylinesCallback)) {
         $self->batchDownloadWaylines(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::BatchDownloadWaylinesResult result) {
             if (callback) {
                 callback->onBatchDownloadWaylines(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void duplicateWaylineWrapper(flight_hub_sdk::DuplicateWaylineParam param,DuplicateWaylineCallback *callback) {
+    void duplicateWaylineWrapper(flight_hub_sdk::DuplicateWaylineParam param,FHSDK_CALLBACK_PARAMETER(DuplicateWaylineCallback)) {
         $self->duplicateWayline(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::DuplicateWaylineResult result) {
             if (callback) {
                 callback->onDuplicateWayline(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void copyWaylineWrapper(flight_hub_sdk::CopyWaylineParam param, CopyWaylineCallback *callback) {
+    void copyWaylineWrapper(flight_hub_sdk::CopyWaylineParam param, FHSDK_CALLBACK_PARAMETER(CopyWaylineCallback)) {
         $self->copyWayline(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::CopyWaylineResult result) {
             if (callback) {
                 callback->onCopyWayline(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void concatWaylineWrapper(flight_hub_sdk::ConcatWaylineParam param, ConcatWaylineCallback *callback) {
+    void concatWaylineWrapper(flight_hub_sdk::ConcatWaylineParam param, FHSDK_CALLBACK_PARAMETER(ConcatWaylineCallback)) {
         $self->concatWayline(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::ConcatWaylineResult result) {
             if (callback) {
                 callback->onConcatWayline(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void importKmzWrapper(std::vector<std::string> file_paths, ImportKmzCallback *callback) {
+    void importKmzWrapper(std::vector<std::string> file_paths, FHSDK_CALLBACK_PARAMETER(ImportKmzCallback)) {
         $self->importKmz(file_paths, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::ImportKmzResult result) {
             if (callback) {
                 callback->onImportKmz(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int listenImportWaylineEventWrapper(ImportWaylineEventCallback *callback) {
-        std::shared_ptr<ImportWaylineEventCallback> cb(callback);
+    int listenImportWaylineEventWrapper(FHSDK_CALLBACK_PARAMETER(ImportWaylineEventCallback)) {
+        FHSDK_SHARE_CALLBACK(ImportWaylineEventCallback);
         return $self->listenImportWaylineEvent([cb](const flight_hub_sdk::ImportWaylineEventResult& result) {
-            cb->onImportWaylineEvent(result);
+            if (cb) cb->onImportWaylineEvent(result);
         });
     }
 
@@ -4646,104 +4668,104 @@ using namespace flight_hub_sdk;
     }
 
     void getWaylineEditorStsWrapper(const flight_hub_sdk::GetWaylineEditorStsParams& params,
-                                    GetWaylineEditorStsCallback* callback) {
+                                    FHSDK_CALLBACK_PARAMETER(GetWaylineEditorStsCallback)) {
         $self->getWaylineEditorSts(params,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::GetWaylineEditorStsResult& result) {
-                if (callback) { callback->onGetWaylineEditorSts(err, result); delete callback; }
+                if (callback) { callback->onGetWaylineEditorSts(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 }
 
 // AI Inside 机载算法管理 %extend Wrapper
 %extend flight_hub_sdk::IAIInsideManageModule {
-    void getAIInsideModelsWrapper(GetAIInsideModelsCallback* callback) {
+    void getAIInsideModelsWrapper(FHSDK_CALLBACK_PARAMETER(GetAIInsideModelsCallback)) {
         $self->getAIInsideModels([callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::GetAIInsideModelsResult result) {
-            if (callback) { callback->onGetAIInsideModels(err, result); delete callback; }
+            if (callback) { callback->onGetAIInsideModels(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void getAIInsideModelDevicesWrapper(flight_hub_sdk::GetAIInsideModelDevicesParam param, GetAIInsideModelDevicesCallback* callback) {
+    void getAIInsideModelDevicesWrapper(flight_hub_sdk::GetAIInsideModelDevicesParam param, FHSDK_CALLBACK_PARAMETER(GetAIInsideModelDevicesCallback)) {
         $self->getAIInsideModelDevices(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::GetAIInsideModelDevicesResult result) {
-            if (callback) { callback->onGetAIInsideModelDevices(err, result); delete callback; }
+            if (callback) { callback->onGetAIInsideModelDevices(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void getAIInsideModelDevicesSummaryWrapper(flight_hub_sdk::GetAIInsideModelDevicesSummaryParam param, GetAIInsideModelDevicesSummaryCallback* callback) {
+    void getAIInsideModelDevicesSummaryWrapper(flight_hub_sdk::GetAIInsideModelDevicesSummaryParam param, FHSDK_CALLBACK_PARAMETER(GetAIInsideModelDevicesSummaryCallback)) {
         $self->getAIInsideModelDevicesSummary(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::GetAIInsideModelDevicesSummaryResult result) {
-            if (callback) { callback->onGetAIInsideModelDevicesSummary(err, result); delete callback; }
+            if (callback) { callback->onGetAIInsideModelDevicesSummary(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void operateAIInsideModelWrapper(flight_hub_sdk::OperateAIInsideModelParam param, OperateAIInsideModelCallback* callback) {
+    void operateAIInsideModelWrapper(flight_hub_sdk::OperateAIInsideModelParam param, FHSDK_CALLBACK_PARAMETER(OperateAIInsideModelCallback)) {
         $self->operateAIInsideModel(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::OperateAIInsideModelResult result) {
-            if (callback) { callback->onOperateAIInsideModel(err, result); delete callback; }
+            if (callback) { callback->onOperateAIInsideModel(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void createAIInsideAlgorithmWrapper(flight_hub_sdk::CreateAIInsideAlgorithmParam param, CreateAIInsideAlgorithmCallback* callback) {
+    void createAIInsideAlgorithmWrapper(flight_hub_sdk::CreateAIInsideAlgorithmParam param, FHSDK_CALLBACK_PARAMETER(CreateAIInsideAlgorithmCallback)) {
         $self->createAIInsideAlgorithm(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::CreateAIInsideAlgorithmResult result) {
-            if (callback) { callback->onCreateAIInsideAlgorithm(err, result); delete callback; }
+            if (callback) { callback->onCreateAIInsideAlgorithm(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void fileUploadAIInsideAlgorithmWrapper(flight_hub_sdk::FileUploadAIInsideAlgorithmParam param, FileUploadAIInsideAlgorithmCallback* callback) {
+    void fileUploadAIInsideAlgorithmWrapper(flight_hub_sdk::FileUploadAIInsideAlgorithmParam param, FHSDK_CALLBACK_PARAMETER(FileUploadAIInsideAlgorithmCallback)) {
         $self->fileUploadAIInsideAlgorithm(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::FileUploadAIInsideAlgorithmResult result) {
-            if (callback) { callback->onFileUploadAIInsideAlgorithm(err, result); delete callback; }
+            if (callback) { callback->onFileUploadAIInsideAlgorithm(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void deleteAIInsideAlgorithmWrapper(flight_hub_sdk::DeleteAIInsideAlgorithmParam param, DeleteAIInsideAlgorithmCallback* callback) {
+    void deleteAIInsideAlgorithmWrapper(flight_hub_sdk::DeleteAIInsideAlgorithmParam param, FHSDK_CALLBACK_PARAMETER(DeleteAIInsideAlgorithmCallback)) {
         $self->deleteAIInsideAlgorithm(param, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onDeleteAIInsideAlgorithm(err); delete callback; }
+            if (callback) { callback->onDeleteAIInsideAlgorithm(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void uploadAlgorithmFileWrapper(flight_hub_sdk::UploadAIInsideAlgorithmFileParam param, UploadAlgorithmFileCallback* callback) {
+    void uploadAlgorithmFileWrapper(flight_hub_sdk::UploadAIInsideAlgorithmFileParam param, FHSDK_CALLBACK_PARAMETER(UploadAlgorithmFileCallback)) {
         $self->uploadAlgorithmFile(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::UploadAIInsideAlgorithmFileResult result) {
-            if (callback) { callback->onUploadAlgorithmFile(err, result); delete callback; }
+            if (callback) { callback->onUploadAlgorithmFile(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 }
 
 %extend flight_hub_sdk::IAIAlertModule {
-    void postDeviceSettingWrapper(flight_hub_sdk::PostAiAlertDeviceSettingParam param, PostAiAlertDeviceSettingCallback* callback) {
+    void postDeviceSettingWrapper(flight_hub_sdk::PostAiAlertDeviceSettingParam param, FHSDK_CALLBACK_PARAMETER(PostAiAlertDeviceSettingCallback)) {
         $self->postDeviceSetting(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::PostAiAlertDeviceSettingResult result) {
-            if (callback) { callback->onPostAiAlertDeviceSetting(err, result); delete callback; }
+            if (callback) { callback->onPostAiAlertDeviceSetting(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void getDeviceSettingWrapper(flight_hub_sdk::GetAiAlertDeviceSettingParam param, GetAiAlertDeviceSettingCallback* callback) {
+    void getDeviceSettingWrapper(flight_hub_sdk::GetAiAlertDeviceSettingParam param, FHSDK_CALLBACK_PARAMETER(GetAiAlertDeviceSettingCallback)) {
         $self->getDeviceSetting(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::GetAiAlertDeviceSettingResult result) {
-            if (callback) { callback->onGetAiAlertDeviceSetting(err, result); delete callback; }
+            if (callback) { callback->onGetAiAlertDeviceSetting(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void postAlgorithmSettingWrapper(flight_hub_sdk::PostAiAlertAlgorithmSettingParam param, PostAiAlertAlgorithmSettingCallback* callback) {
+    void postAlgorithmSettingWrapper(flight_hub_sdk::PostAiAlertAlgorithmSettingParam param, FHSDK_CALLBACK_PARAMETER(PostAiAlertAlgorithmSettingCallback)) {
         $self->postAlgorithmSetting(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::PostAiAlertAlgorithmSettingResult result) {
-            if (callback) { callback->onPostAiAlertAlgorithmSetting(err, result); delete callback; }
+            if (callback) { callback->onPostAiAlertAlgorithmSetting(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void getAlgorithmSettingWrapper(flight_hub_sdk::GetAiAlertAlgorithmSettingParam param, GetAiAlertAlgorithmSettingCallback* callback) {
+    void getAlgorithmSettingWrapper(flight_hub_sdk::GetAiAlertAlgorithmSettingParam param, FHSDK_CALLBACK_PARAMETER(GetAiAlertAlgorithmSettingCallback)) {
         $self->getAlgorithmSetting(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::GetAiAlertAlgorithmSettingResult result) {
-            if (callback) { callback->onGetAiAlertAlgorithmSetting(err, result); delete callback; }
+            if (callback) { callback->onGetAiAlertAlgorithmSetting(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void getAiAlertFlightsWrapper(flight_hub_sdk::GetAiAlertFlightsParam param, GetAiAlertFlightsCallback* callback) {
+    void getAiAlertFlightsWrapper(flight_hub_sdk::GetAiAlertFlightsParam param, FHSDK_CALLBACK_PARAMETER(GetAiAlertFlightsCallback)) {
         $self->getAiAlertFlights(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::GetAiAlertFlightsResult result) {
-            if (callback) { callback->onGetAiAlertFlights(err, result); delete callback; }
+            if (callback) { callback->onGetAiAlertFlights(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void getAiAlertRecordsWrapper(flight_hub_sdk::GetAiAlertRecordsParam param, GetAiAlertRecordsCallback* callback) {
+    void getAiAlertRecordsWrapper(flight_hub_sdk::GetAiAlertRecordsParam param, FHSDK_CALLBACK_PARAMETER(GetAiAlertRecordsCallback)) {
         $self->getAiAlertRecords(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::GetAiAlertRecordsResult result) {
-            if (callback) { callback->onGetAiAlertRecords(err, result); delete callback; }
+            if (callback) { callback->onGetAiAlertRecords(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    int listenAiAlertRecordsWrapper(std::string device_sn, AiAlertRecordsNotifyCallback* callback) {
+    int listenAiAlertRecordsWrapper(std::string device_sn, FHSDK_CALLBACK_PARAMETER(AiAlertRecordsNotifyCallback)) {
         return $self->listenAiAlertRecords(device_sn, [callback](flight_hub_sdk::AiAlertRecordsNotifyResult result) {
             if (callback) { callback->onAiAlertRecordsNotify(result); }
         });
@@ -4754,143 +4776,143 @@ using namespace flight_hub_sdk;
     }
 
     // 删除告警记录：复用通用回调 ResultCallbackWithError（后端响应为空 {}，无数据可回传）
-    void deleteAiAlertRecordWrapper(const flight_hub_sdk::DeleteAiAlertRecordParam& param, ResultCallbackWithError* callback) {
+    void deleteAiAlertRecordWrapper(const flight_hub_sdk::DeleteAiAlertRecordParam& param, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->deleteAiAlertRecord(param, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 }
 
 %extend flight_hub_sdk::ILiveSyncModule {
-    void createLiveSyncWrapper(flight_hub_sdk::LiveSyncCreateParams param, CreateLiveSyncCallback* callback) {
+    void createLiveSyncWrapper(flight_hub_sdk::LiveSyncCreateParams param, FHSDK_CALLBACK_PARAMETER(CreateLiveSyncCallback)) {
         $self->createLiveSync(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::LiveSyncCreateResult result) {
-            if (callback) { callback->onCreateLiveSync(err, result); delete callback; }
+            if (callback) { callback->onCreateLiveSync(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void deleteLiveSyncWrapper(std::string const& id, DeleteLiveSyncCallback* callback) {
+    void deleteLiveSyncWrapper(std::string const& id, FHSDK_CALLBACK_PARAMETER(DeleteLiveSyncCallback)) {
         $self->deleteLiveSync(id, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onDeleteLiveSync(err); delete callback; }
+            if (callback) { callback->onDeleteLiveSync(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void updateLiveSyncWrapper(flight_hub_sdk::LiveSyncUpdateParams param, UpdateLiveSyncCallback* callback) {
+    void updateLiveSyncWrapper(flight_hub_sdk::LiveSyncUpdateParams param, FHSDK_CALLBACK_PARAMETER(UpdateLiveSyncCallback)) {
         $self->updateLiveSync(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::LiveSyncItem result) {
-            if (callback) { callback->onUpdateLiveSync(err, result); delete callback; }
+            if (callback) { callback->onUpdateLiveSync(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void getLiveSyncListWrapper(flight_hub_sdk::LiveSyncListParams param, GetLiveSyncListCallback* callback) {
+    void getLiveSyncListWrapper(flight_hub_sdk::LiveSyncListParams param, FHSDK_CALLBACK_PARAMETER(GetLiveSyncListCallback)) {
         $self->getLiveSyncList(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::LiveSyncListResult result) {
-            if (callback) { callback->onGetLiveSyncList(err, result); delete callback; }
+            if (callback) { callback->onGetLiveSyncList(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void getLiveSyncDevicesV2Wrapper(GetLiveSyncDevicesV2Callback* callback) {
+    void getLiveSyncDevicesV2Wrapper(FHSDK_CALLBACK_PARAMETER(GetLiveSyncDevicesV2Callback)) {
         $self->getLiveSyncDevicesV2([callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::LiveSyncDevicesV2Result result) {
-            if (callback) { callback->onGetLiveSyncDevicesV2(err, result); delete callback; }
+            if (callback) { callback->onGetLiveSyncDevicesV2(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void getLiveSyncSummaryWrapper(GetLiveSyncSummaryCallback* callback) {
+    void getLiveSyncSummaryWrapper(FHSDK_CALLBACK_PARAMETER(GetLiveSyncSummaryCallback)) {
         $self->getLiveSyncSummary([callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::LiveSyncSummaryResult result) {
-            if (callback) { callback->onGetLiveSyncSummary(err, result); delete callback; }
+            if (callback) { callback->onGetLiveSyncSummary(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 }
 
 %extend flight_hub_sdk::IFlightTaskModule {
-    void getFlightTaskListWrapper(const flight_hub_sdk::FlightTaskListParams& params, GetFlightTaskListCallback* callback) {
+    void getFlightTaskListWrapper(const flight_hub_sdk::FlightTaskListParams& params, FHSDK_CALLBACK_PARAMETER(GetFlightTaskListCallback)) {
         $self->getFlightTaskList(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::FlightTaskListResult& result) {
-            if (callback) { callback->onGetFlightTaskList(err, result); delete callback; }
+            if (callback) { callback->onGetFlightTaskList(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void getCommandTaskListWrapper(const flight_hub_sdk::GetCommandTaskListParams& params, GetCommandTaskListCallback* callback) {
+    void getCommandTaskListWrapper(const flight_hub_sdk::GetCommandTaskListParams& params, FHSDK_CALLBACK_PARAMETER(GetCommandTaskListCallback)) {
         $self->getCommandTaskList(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::GetCommandTaskListResults& results) {
-            if (callback) { callback->onGetCommandTaskList(err, results); delete callback; }
+            if (callback) { callback->onGetCommandTaskList(err, results); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void getFlightTaskTrackWrapper(const flight_hub_sdk::GetFlightTaskTrackParams& params, GetFlightTaskTrackCallback* callback) {
+    void getFlightTaskTrackWrapper(const flight_hub_sdk::GetFlightTaskTrackParams& params, FHSDK_CALLBACK_PARAMETER(GetFlightTaskTrackCallback)) {
         $self->getFlightTaskTrack(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::GetFlightTaskTrackResults& results) {
-            if (callback) { callback->onGetFlightTaskTrack(err, results); delete callback; }
+            if (callback) { callback->onGetFlightTaskTrack(err, results); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void getFlightRisksWrapper(const flight_hub_sdk::GetFlightRisksParams& params, GetFlightRisksCallback* callback) {
+    void getFlightRisksWrapper(const flight_hub_sdk::GetFlightRisksParams& params, FHSDK_CALLBACK_PARAMETER(GetFlightRisksCallback)) {
         $self->getFlightRisks(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::GetFlightRisksResults& results) {
-            if (callback) { callback->onGetFlightRisks(err, results); delete callback; }
+            if (callback) { callback->onGetFlightRisks(err, results); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void createFlightTaskWrapper(const flight_hub_sdk::CreateTaskReq& req, CreateFlightTaskCallback* callback) {
+    void createFlightTaskWrapper(const flight_hub_sdk::CreateTaskReq& req, FHSDK_CALLBACK_PARAMETER(CreateFlightTaskCallback)) {
         $self->createFlightTask(req, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::CreateTaskResp& result) {
-            if (callback) { callback->onCreateFlightTask(err, result); delete callback; }
+            if (callback) { callback->onCreateFlightTask(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void getFlightTaskDetailWrapper(const std::string& task_uuid, GetFlightTaskDetailCallback* callback) {
+    void getFlightTaskDetailWrapper(const std::string& task_uuid, FHSDK_CALLBACK_PARAMETER(GetFlightTaskDetailCallback)) {
         $self->getFlightTaskDetail(task_uuid, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::TaskDetail& result) {
-            if (callback) { callback->onGetFlightTaskDetail(err, result); delete callback; }
+            if (callback) { callback->onGetFlightTaskDetail(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void editFlightTaskWrapper(const std::string& task_uuid, const flight_hub_sdk::EditTaskReq& req, CreateFlightTaskCallback* callback) {
+    void editFlightTaskWrapper(const std::string& task_uuid, const flight_hub_sdk::EditTaskReq& req, FHSDK_CALLBACK_PARAMETER(CreateFlightTaskCallback)) {
         $self->editFlightTask(task_uuid, req, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::CreateTaskResp& result) {
-            if (callback) { callback->onCreateFlightTask(err, result); delete callback; }
+            if (callback) { callback->onCreateFlightTask(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void deleteFlightTaskWrapper(const std::string& task_uuid, ResultCallbackWithError* callback) {
+    void deleteFlightTaskWrapper(const std::string& task_uuid, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->deleteFlightTask(task_uuid, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void updateFlightTaskStatusWrapper(const std::string& task_uuid, int status, ResultCallbackWithError* callback) {
+    void updateFlightTaskStatusWrapper(const std::string& task_uuid, int status, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->updateFlightTaskStatus(task_uuid, status, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void batchUpdateFlightTaskStatusWrapper(const flight_hub_sdk::BatchUpdateStatusReq& req, ResultCallbackWithError* callback) {
+    void batchUpdateFlightTaskStatusWrapper(const flight_hub_sdk::BatchUpdateStatusReq& req, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->batchUpdateFlightTaskStatus(req, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void getDeviceRecommendationWrapper(const flight_hub_sdk::DeviceRecommendationReq& req, GetDeviceRecommendationCallback* callback) {
+    void getDeviceRecommendationWrapper(const flight_hub_sdk::DeviceRecommendationReq& req, FHSDK_CALLBACK_PARAMETER(GetDeviceRecommendationCallback)) {
         $self->getDeviceRecommendation(req, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::DeviceRecommendationResp& result) {
-            if (callback) { callback->onGetDeviceRecommendation(err, result); delete callback; }
+            if (callback) { callback->onGetDeviceRecommendation(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void getDeviceTcasWrapper(const std::vector<std::string>& center_sn, GetDeviceTcasCallback* callback) {
+    void getDeviceTcasWrapper(const std::vector<std::string>& center_sn, FHSDK_CALLBACK_PARAMETER(GetDeviceTcasCallback)) {
         $self->getDeviceTcas(center_sn, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::GetTCAInfosResp& result) {
-            if (callback) { callback->onGetDeviceTcas(err, result); delete callback; }
+            if (callback) { callback->onGetDeviceTcas(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void updateDeviceTcasWrapper(const std::vector<std::string>& center_sn, ResultCallbackWithError* callback) {
+    void updateDeviceTcasWrapper(const std::vector<std::string>& center_sn, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->updateDeviceTcas(center_sn, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void startRoamingWrapper(const flight_hub_sdk::StartRoamingParams& params, StartRoamingCallback* callback) {
+    void startRoamingWrapper(const flight_hub_sdk::StartRoamingParams& params, FHSDK_CALLBACK_PARAMETER(StartRoamingCallback)) {
         $self->startRoaming(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onStartRoaming(err); delete callback; }
+            if (callback) { callback->onStartRoaming(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
     void setRoamingStationSnWrapper(const flight_hub_sdk::SetRoamingStationSnParams& params,
-                                    SetRoamingStationSnCallback* callback) {
+                                    FHSDK_CALLBACK_PARAMETER(SetRoamingStationSnCallback)) {
         $self->setRoamingStationSn(params,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::SetRoamingStationSnResult& result) {
-                if (callback) { callback->onSetRoamingStationSn(err, result); delete callback; }
+                if (callback) { callback->onSetRoamingStationSn(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
     void getInFlightTaskToposWrapper(const std::vector<std::string>& drone_sns,
-                                     GetInFlightTaskToposCallback* callback) {
+                                     FHSDK_CALLBACK_PARAMETER(GetInFlightTaskToposCallback)) {
         $self->getInFlightTaskTopos(drone_sns,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::GetInFlightTaskToposResult& result) {
-                if (callback) { callback->onGetInFlightTaskTopos(err, result); delete callback; }
+                if (callback) { callback->onGetInFlightTaskTopos(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
-    int listenTaskTopoChangedWrapper(TaskTopoChangedCallback* callback) {
-        std::shared_ptr<TaskTopoChangedCallback> cb(callback);
+    int listenTaskTopoChangedWrapper(FHSDK_CALLBACK_PARAMETER(TaskTopoChangedCallback)) {
+        FHSDK_SHARE_CALLBACK(TaskTopoChangedCallback);
         return $self->listenTaskTopoChanged(
             [cb](const flight_hub_sdk::TaskTopoChangedEvent& event) {
-                cb->onTaskTopoChanged(event);
+                if (cb) cb->onTaskTopoChanged(event);
             });
     }
     void cancelListenTaskTopoChangedWrapper(int listen_id) {
@@ -4899,199 +4921,199 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::ICameraControlModule {
-    void switchLiveLensWrapper(const flight_hub_sdk::SwitchLiveLensParams& params, ResultCallbackWithError* callback) {
+    void switchLiveLensWrapper(const flight_hub_sdk::SwitchLiveLensParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSwitchLiveLens(params, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setPhotoStorageSettingsWrapper(const flight_hub_sdk::SetPhotoStorageSettingsParams& params, ResultCallbackWithError* callback) {
+    void setPhotoStorageSettingsWrapper(const flight_hub_sdk::SetPhotoStorageSettingsParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetPhotoStorageSettings(params, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setVideoStorageSettingsWrapper(const flight_hub_sdk::SetVideoStorageSettingsParams& params, ResultCallbackWithError* callback) {
+    void setVideoStorageSettingsWrapper(const flight_hub_sdk::SetVideoStorageSettingsParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetVideoStorageSettings(params, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setNightSceneModeWrapper(const flight_hub_sdk::SetNightSceneModeParams& params, ResultCallbackWithError* callback) {
+    void setNightSceneModeWrapper(const flight_hub_sdk::SetNightSceneModeParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetNightSceneMode(params, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void resetGimbalWrapper(const flight_hub_sdk::GimbalResetParams& params, ResultCallbackWithError* callback) {
+    void resetGimbalWrapper(const flight_hub_sdk::GimbalResetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcResetGimbal(params, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void takePhotoWrapper(const std::string& payload_index, ResultCallbackWithError* callback) {
+    void takePhotoWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcTakePhoto(payload_index, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void startRecordWrapper(const std::string& payload_index, ResultCallbackWithError* callback) {
+    void startRecordWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcStartRecord(payload_index, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void stopRecordWrapper(const std::string& payload_index, ResultCallbackWithError* callback) {
+    void stopRecordWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcStopRecord(payload_index, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void zoomAtTargetWrapper(const flight_hub_sdk::ZoomAtTargetParams& params, ResultCallbackWithError* callback) {
+    void zoomAtTargetWrapper(const flight_hub_sdk::ZoomAtTargetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcZoomAtTarget(params, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setFocalLengthWrapper(const flight_hub_sdk::CameraFocalLengthParams& params, ResultCallbackWithError* callback) {
+    void setFocalLengthWrapper(const flight_hub_sdk::CameraFocalLengthParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetFocalLength(params, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void lookAtTargetWrapper(const flight_hub_sdk::LookAtTargetParams& params, ResultCallbackWithError* callback) {
+    void lookAtTargetWrapper(const flight_hub_sdk::LookAtTargetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->lookAtTarget(params, [callback](const flight_hub_sdk::FlightHubError& err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void startPanoramaWrapper(const flight_hub_sdk::PanoramaParam& params, ResultCallbackWithError* callback) {
+    void startPanoramaWrapper(const flight_hub_sdk::PanoramaParam& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcStartPanorama(params, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void stopPanoramaWrapper(const std::string& payload_index, ResultCallbackWithError* callback) {
+    void stopPanoramaWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcStopPanorama(payload_index, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int listenPanoramaStatusWrapper(const std::string& payload_index, PanoramaStatusCallback* callback) {
-        std::shared_ptr<PanoramaStatusCallback> cb(callback);
+    int listenPanoramaStatusWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(PanoramaStatusCallback)) {
+        FHSDK_SHARE_CALLBACK(PanoramaStatusCallback);
         return $self->listenDrcPanoramaStatus(payload_index, [cb](const flight_hub_sdk::PanoramaStatus& status) {
-            cb->onPanoramaStatus(status);
+            if (cb) cb->onPanoramaStatus(status);
         });
     }
 
-    void switchCameraModeWrapper(const flight_hub_sdk::SwitchCameraModeParams& params, ResultCallbackWithError* callback) {
+    void switchCameraModeWrapper(const flight_hub_sdk::SwitchCameraModeParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSwitchCameraMode(params, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int listenCameraModeAvailableRangeWrapper(const std::string& payload_index, CameraModeAvailableRangeCallback* callback) {
-        std::shared_ptr<CameraModeAvailableRangeCallback> cb(callback);
+    int listenCameraModeAvailableRangeWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraModeAvailableRangeCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraModeAvailableRangeCallback);
         return $self->listenDrcCameraModeAvailableRange(payload_index, [cb](const std::vector<int>& camera_modes) {
-            cb->onCameraModeAvailableRange(camera_modes);
+            if (cb) cb->onCameraModeAvailableRange(camera_modes);
         });
     }
 
-    int listenCameraStateWrapper(const std::string& payload_index, CameraStateCallback* callback) {
-        std::shared_ptr<CameraStateCallback> cb(callback);
+    int listenCameraStateWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraStateCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraStateCallback);
         return $self->listenDrcCameraState(payload_index, [cb](const flight_hub_sdk::CameraState& state) {
-            cb->onCameraState(state);
+            if (cb) cb->onCameraState(state);
         });
     }
 
-    int listenLiveviewWorldRegionWrapper(const std::string& payload_index, LiveviewWorldRegionCallback* callback) {
-        std::shared_ptr<LiveviewWorldRegionCallback> cb(callback);
+    int listenLiveviewWorldRegionWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(LiveviewWorldRegionCallback)) {
+        FHSDK_SHARE_CALLBACK(LiveviewWorldRegionCallback);
         return $self->listenDrcLiveviewWorldRegion(payload_index, [cb](const flight_hub_sdk::LiveviewWorldRegion& region) {
-            cb->onLiveviewWorldRegion(region);
+            if (cb) cb->onLiveviewWorldRegion(region);
         });
     }
 
-    int listenCameraWideLensStateWrapper(const std::string& payload_index, CameraWideLensStateCallback* callback) {
-        std::shared_ptr<CameraWideLensStateCallback> cb(callback);
+    int listenCameraWideLensStateWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraWideLensStateCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraWideLensStateCallback);
         return $self->listenDrcCameraWideLensState(payload_index, [cb](const flight_hub_sdk::CameraWideLensState& state) {
-            cb->onCameraWideLensState(state);
+            if (cb) cb->onCameraWideLensState(state);
         });
     }
 
-    int listenCameraZoomLensStateWrapper(const std::string& payload_index, CameraZoomLensStateCallback* callback) {
-        std::shared_ptr<CameraZoomLensStateCallback> cb(callback);
+    int listenCameraZoomLensStateWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraZoomLensStateCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraZoomLensStateCallback);
         return $self->listenDrcCameraZoomLensState(payload_index, [cb](const flight_hub_sdk::CameraZoomLensState& state) {
-            cb->onCameraZoomLensState(state);
+            if (cb) cb->onCameraZoomLensState(state);
         });
     }
 
-    int listenCameraMeasureTargetWrapper(const std::string& payload_index, CameraMeasureTargetCallback* callback) {
-        std::shared_ptr<CameraMeasureTargetCallback> cb(callback);
+    int listenCameraMeasureTargetWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraMeasureTargetCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraMeasureTargetCallback);
         return $self->listenDrcCameraMeasureTarget(payload_index, [cb](const flight_hub_sdk::CameraMeasureTarget& target) {
-            cb->onCameraMeasureTarget(target);
+            if (cb) cb->onCameraMeasureTarget(target);
         });
     }
 
-    int listenNightModeSettingsWrapper(const std::string& payload_index, NightModeSettingsCallback* callback) {
-        std::shared_ptr<NightModeSettingsCallback> cb(callback);
+    int listenNightModeSettingsWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(NightModeSettingsCallback)) {
+        FHSDK_SHARE_CALLBACK(NightModeSettingsCallback);
         return $self->listenDrcNightModeSettings(payload_index, [cb](const flight_hub_sdk::NightModeSettings& settings) {
-            cb->onNightModeSettings(settings);
+            if (cb) cb->onNightModeSettings(settings);
         });
     }
 
-    int listenGimbalStateWrapper(const std::string& payload_index, GimbalStateCallback* callback) {
-        std::shared_ptr<GimbalStateCallback> cb(callback);
+    int listenGimbalStateWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(GimbalStateCallback)) {
+        FHSDK_SHARE_CALLBACK(GimbalStateCallback);
         return $self->listenDrcGimbalState(payload_index, [cb](const flight_hub_sdk::GimbalState& state) {
-            cb->onGimbalState(state);
+            if (cb) cb->onGimbalState(state);
         });
     }
 
-    int listenLiveVideoInfoWrapper(const std::string& payload_index, LiveVideoInfoCallback* callback) {
-        std::shared_ptr<LiveVideoInfoCallback> cb(callback);
+    int listenLiveVideoInfoWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(LiveVideoInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(LiveVideoInfoCallback);
         return $self->listenDrcLiveVideoInfo(payload_index, [cb](const flight_hub_sdk::LiveVideoInfo& info) {
-            cb->onLiveVideoInfo(info);
+            if (cb) cb->onLiveVideoInfo(info);
         });
     }
 
@@ -5099,10 +5121,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDrcLiveVideoInfo(payload_index, listen_id);
     }
 
-    int listenThermalGainModeWrapper(const std::string& payload_index, ThermalGainModeInfoCallback* callback) {
-        std::shared_ptr<ThermalGainModeInfoCallback> cb(callback);
+    int listenThermalGainModeWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(ThermalGainModeInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(ThermalGainModeInfoCallback);
         return $self->listenDrcThermalGainMode(payload_index, [cb](const flight_hub_sdk::ThermalGainModeInfo& info) {
-            cb->onThermalGainModeInfo(info);
+            if (cb) cb->onThermalGainModeInfo(info);
         });
     }
 
@@ -5110,10 +5132,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDrcThermalGainMode(payload_index, listen_id);
     }
 
-    int listenCameraIrLensStateWrapper(const std::string& payload_index, CameraIrLensStateCallback* callback) {
-        std::shared_ptr<CameraIrLensStateCallback> cb(callback);
+    int listenCameraIrLensStateWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraIrLensStateCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraIrLensStateCallback);
         return $self->listenDrcCameraIrLensState(payload_index, [cb](const flight_hub_sdk::CameraIrLensState& state) {
-            cb->onCameraIrLensState(state);
+            if (cb) cb->onCameraIrLensState(state);
         });
     }
 
@@ -5121,10 +5143,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDrcCameraIrLensState(payload_index, listen_id);
     }
 
-    int listenCameraIrThermometryWrapper(const std::string& payload_index, CameraIrThermometryInfoCallback* callback) {
-        std::shared_ptr<CameraIrThermometryInfoCallback> cb(callback);
+    int listenCameraIrThermometryWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraIrThermometryInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraIrThermometryInfoCallback);
         return $self->listenDrcCameraIrThermometry(payload_index, [cb](const flight_hub_sdk::CameraIrThermometryInfo& info) {
-            cb->onCameraIrThermometryInfo(info);
+            if (cb) cb->onCameraIrThermometryInfo(info);
         });
     }
 
@@ -5133,140 +5155,140 @@ using namespace flight_hub_sdk;
     }
 
     // ── B4 State push 拆分 ──
-    int listenCameraWatermarkSettingsWrapper(const std::string& payload_index, CameraWatermarkSettingsCallback* callback) {
-        std::shared_ptr<CameraWatermarkSettingsCallback> cb(callback);
-        return $self->listenDrcCameraWatermarkSettings(payload_index, [cb](const flight_hub_sdk::CameraWatermarkSettings& v) { cb->onCameraWatermarkSettings(v); });
+    int listenCameraWatermarkSettingsWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraWatermarkSettingsCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraWatermarkSettingsCallback);
+        return $self->listenDrcCameraWatermarkSettings(payload_index, [cb](const flight_hub_sdk::CameraWatermarkSettings& v) { if (cb) cb->onCameraWatermarkSettings(v); });
     }
     void cancelListenCameraWatermarkSettingsWrapper(const std::string& payload_index, int listen_id) {
         $self->cancelListenDrcCameraWatermarkSettings(payload_index, listen_id);
     }
 
-    int listenCameraStorageInfoWrapper(const std::string& payload_index, CameraStorageInfoCallback* callback) {
-        std::shared_ptr<CameraStorageInfoCallback> cb(callback);
-        return $self->listenDrcCameraStorageInfo(payload_index, [cb](const flight_hub_sdk::CameraStorageInfo& v) { cb->onCameraStorageInfo(v); });
+    int listenCameraStorageInfoWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraStorageInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraStorageInfoCallback);
+        return $self->listenDrcCameraStorageInfo(payload_index, [cb](const flight_hub_sdk::CameraStorageInfo& v) { if (cb) cb->onCameraStorageInfo(v); });
     }
     void cancelListenCameraStorageInfoWrapper(const std::string& payload_index, int listen_id) {
         $self->cancelListenDrcCameraStorageInfo(payload_index, listen_id);
     }
 
-    int listenCameraIrPipStateWrapper(const std::string& payload_index, CameraIrPipStateCallback* callback) {
-        std::shared_ptr<CameraIrPipStateCallback> cb(callback);
-        return $self->listenDrcCameraIrPipState(payload_index, [cb](const flight_hub_sdk::CameraIrPipState& v) { cb->onCameraIrPipState(v); });
+    int listenCameraIrPipStateWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraIrPipStateCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraIrPipStateCallback);
+        return $self->listenDrcCameraIrPipState(payload_index, [cb](const flight_hub_sdk::CameraIrPipState& v) { if (cb) cb->onCameraIrPipState(v); });
     }
     void cancelListenCameraIrPipStateWrapper(const std::string& payload_index, int listen_id) {
         $self->cancelListenDrcCameraIrPipState(payload_index, listen_id);
     }
 
-    int listenCameraIsothermPolygonWrapper(const std::string& payload_index, CameraIsothermPolygonCallback* callback) {
-        std::shared_ptr<CameraIsothermPolygonCallback> cb(callback);
-        return $self->listenDrcCameraIsothermPolygon(payload_index, [cb](const flight_hub_sdk::CameraIsothermPolygon& v) { cb->onCameraIsothermPolygon(v); });
+    int listenCameraIsothermPolygonWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraIsothermPolygonCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraIsothermPolygonCallback);
+        return $self->listenDrcCameraIsothermPolygon(payload_index, [cb](const flight_hub_sdk::CameraIsothermPolygon& v) { if (cb) cb->onCameraIsothermPolygon(v); });
     }
     void cancelListenCameraIsothermPolygonWrapper(const std::string& payload_index, int listen_id) {
         $self->cancelListenDrcCameraIsothermPolygon(payload_index, listen_id);
     }
 
-    int listenCameraMediaStorageWrapper(const std::string& payload_index, CameraMediaStorageCallback* callback) {
-        std::shared_ptr<CameraMediaStorageCallback> cb(callback);
-        return $self->listenDrcCameraMediaStorage(payload_index, [cb](const flight_hub_sdk::CameraMediaStorage& v) { cb->onCameraMediaStorage(v); });
+    int listenCameraMediaStorageWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraMediaStorageCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraMediaStorageCallback);
+        return $self->listenDrcCameraMediaStorage(payload_index, [cb](const flight_hub_sdk::CameraMediaStorage& v) { if (cb) cb->onCameraMediaStorage(v); });
     }
     void cancelListenCameraMediaStorageWrapper(const std::string& payload_index, int listen_id) {
         $self->cancelListenDrcCameraMediaStorage(payload_index, listen_id);
     }
 
-    int listenCameraAlgorithmDehazeInfoWrapper(const std::string& payload_index, CameraAlgorithmDehazeInfoCallback* callback) {
-        std::shared_ptr<CameraAlgorithmDehazeInfoCallback> cb(callback);
-        return $self->listenDrcCameraAlgorithmDehazeInfo(payload_index, [cb](const flight_hub_sdk::CameraAlgorithmDehazeInfo& v) { cb->onCameraAlgorithmDehazeInfo(v); });
+    int listenCameraAlgorithmDehazeInfoWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraAlgorithmDehazeInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraAlgorithmDehazeInfoCallback);
+        return $self->listenDrcCameraAlgorithmDehazeInfo(payload_index, [cb](const flight_hub_sdk::CameraAlgorithmDehazeInfo& v) { if (cb) cb->onCameraAlgorithmDehazeInfo(v); });
     }
     void cancelListenCameraAlgorithmDehazeInfoWrapper(const std::string& payload_index, int listen_id) {
         $self->cancelListenDrcCameraAlgorithmDehazeInfo(payload_index, listen_id);
     }
 
-    int listenCameraPreRecordedInfoWrapper(const std::string& payload_index, CameraPreRecordedInfoCallback* callback) {
-        std::shared_ptr<CameraPreRecordedInfoCallback> cb(callback);
-        return $self->listenDrcCameraPreRecordedInfo(payload_index, [cb](const flight_hub_sdk::CameraPreRecordedInfo& v) { cb->onCameraPreRecordedInfo(v); });
+    int listenCameraPreRecordedInfoWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraPreRecordedInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraPreRecordedInfoCallback);
+        return $self->listenDrcCameraPreRecordedInfo(payload_index, [cb](const flight_hub_sdk::CameraPreRecordedInfo& v) { if (cb) cb->onCameraPreRecordedInfo(v); });
     }
     void cancelListenCameraPreRecordedInfoWrapper(const std::string& payload_index, int listen_id) {
         $self->cancelListenDrcCameraPreRecordedInfo(payload_index, listen_id);
     }
 
-    int listenCameraCapabilityWrapper(const std::string& payload_index, CameraCapabilityCallback* callback) {
-        std::shared_ptr<CameraCapabilityCallback> cb(callback);
-        return $self->listenDrcCameraCapability(payload_index, [cb](const flight_hub_sdk::CameraCapability& v) { cb->onCameraCapability(v); });
+    int listenCameraCapabilityWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraCapabilityCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraCapabilityCallback);
+        return $self->listenDrcCameraCapability(payload_index, [cb](const flight_hub_sdk::CameraCapability& v) { if (cb) cb->onCameraCapability(v); });
     }
     void cancelListenCameraCapabilityWrapper(const std::string& payload_index, int listen_id) {
         $self->cancelListenDrcCameraCapability(payload_index, listen_id);
     }
 
-    int listenCameraSettableCapabilityWrapper(const std::string& payload_index, CameraSettableCapabilityCallback* callback) {
-        std::shared_ptr<CameraSettableCapabilityCallback> cb(callback);
-        return $self->listenDrcCameraSettableCapability(payload_index, [cb](const flight_hub_sdk::CameraSettableCapability& v) { cb->onCameraSettableCapability(v); });
+    int listenCameraSettableCapabilityWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraSettableCapabilityCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraSettableCapabilityCallback);
+        return $self->listenDrcCameraSettableCapability(payload_index, [cb](const flight_hub_sdk::CameraSettableCapability& v) { if (cb) cb->onCameraSettableCapability(v); });
     }
     void cancelListenCameraSettableCapabilityWrapper(const std::string& payload_index, int listen_id) {
         $self->cancelListenDrcCameraSettableCapability(payload_index, listen_id);
     }
 
-    int listenCameraVisibleCapabilityWrapper(const std::string& payload_index, CameraVisibleCapabilityCallback* callback) {
-        std::shared_ptr<CameraVisibleCapabilityCallback> cb(callback);
-        return $self->listenDrcCameraVisibleCapability(payload_index, [cb](const flight_hub_sdk::CameraVisibleCapability& v) { cb->onCameraVisibleCapability(v); });
+    int listenCameraVisibleCapabilityWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraVisibleCapabilityCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraVisibleCapabilityCallback);
+        return $self->listenDrcCameraVisibleCapability(payload_index, [cb](const flight_hub_sdk::CameraVisibleCapability& v) { if (cb) cb->onCameraVisibleCapability(v); });
     }
     void cancelListenCameraVisibleCapabilityWrapper(const std::string& payload_index, int listen_id) {
         $self->cancelListenDrcCameraVisibleCapability(payload_index, listen_id);
     }
 
-    int listenCameraPhotoInfoWrapper(const std::string& payload_index, CameraPhotoInfoCallback* callback) {
-        std::shared_ptr<CameraPhotoInfoCallback> cb(callback);
-        return $self->listenDrcCameraPhotoInfo(payload_index, [cb](const flight_hub_sdk::CameraPhotoInfo& v) { cb->onCameraPhotoInfo(v); });
+    int listenCameraPhotoInfoWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(CameraPhotoInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(CameraPhotoInfoCallback);
+        return $self->listenDrcCameraPhotoInfo(payload_index, [cb](const flight_hub_sdk::CameraPhotoInfo& v) { if (cb) cb->onCameraPhotoInfo(v); });
     }
     void cancelListenCameraPhotoInfoWrapper(const std::string& payload_index, int listen_id) {
         $self->cancelListenDrcCameraPhotoInfo(payload_index, listen_id);
     }
 
-    void smartPhotoTakePhotoWrapper(const std::string& payload_index, ResultCallbackWithError* callback) {
+    void smartPhotoTakePhotoWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSmartPhotoTakePhoto(payload_index, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setLinkageZoomWrapper(const flight_hub_sdk::LinkageZoomParams& params, ResultCallbackWithError* callback) {
+    void setLinkageZoomWrapper(const flight_hub_sdk::LinkageZoomParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetLinkageZoom(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void sendCameraScreenDragWrapper(const flight_hub_sdk::CameraScreenDragParams& params, ResultCallbackWithError* callback) {
+    void sendCameraScreenDragWrapper(const flight_hub_sdk::CameraScreenDragParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSendCameraScreenDrag(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setPhotoSizeWrapper(const flight_hub_sdk::PhotoSizeParam& params, ResultCallbackWithError* callback) {
+    void setPhotoSizeWrapper(const flight_hub_sdk::PhotoSizeParam& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetPhotoSize(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setIntervalTakePhotoWrapper(const flight_hub_sdk::IntervalTakePhotoSetParam& params, ResultCallbackWithError* callback) {
+    void setIntervalTakePhotoWrapper(const flight_hub_sdk::IntervalTakePhotoSetParam& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetIntervalTakePhoto(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void intervalTakePhotoWrapper(const flight_hub_sdk::IntervalTakePhotoParam& params, ResultCallbackWithError* callback) {
+    void intervalTakePhotoWrapper(const flight_hub_sdk::IntervalTakePhotoParam& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcIntervalTakePhoto(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void stopTakePhotoWrapper(const std::string& payload_index, ResultCallbackWithError* callback) {
+    void stopTakePhotoWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcStopTakePhoto(payload_index, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    int listenIntervalTakePhotoStatusWrapper(const std::string& payload_index, IntervalTakePhotoStatusCallback* callback) {
-        std::shared_ptr<IntervalTakePhotoStatusCallback> cb(callback);
+    int listenIntervalTakePhotoStatusWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(IntervalTakePhotoStatusCallback)) {
+        FHSDK_SHARE_CALLBACK(IntervalTakePhotoStatusCallback);
         return $self->listenDrcIntervalTakePhotoStatus(payload_index, [cb](const flight_hub_sdk::IntervalTakePhotoStatus& status) {
-            cb->onIntervalTakePhotoStatus(status);
+            if (cb) cb->onIntervalTakePhotoStatus(status);
         });
     }
 
@@ -5274,17 +5296,17 @@ using namespace flight_hub_sdk;
         $self->cancelListenDrcIntervalTakePhotoStatus(payload_index, listen_id);
     }
 
-    void cameraAimAtTargetWrapper(const flight_hub_sdk::CameraAimParam& params, ResultCallbackWithError* callback) {
+    void cameraAimAtTargetWrapper(const flight_hub_sdk::CameraAimParam& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcCameraAimAtTarget(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setThermalGainModeWrapper(const flight_hub_sdk::ThermalGainModeSetParams& params, ResultCallbackWithError* callback) {
+    void setThermalGainModeWrapper(const flight_hub_sdk::ThermalGainModeSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetThermalGainMode(params, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
@@ -5293,245 +5315,245 @@ using namespace flight_hub_sdk;
     // Camera Advanced Parameters Wrappers
     // ══════════════════════════════════════════════
 
-    void setCameraApertureValueWrapper(const flight_hub_sdk::CameraApertureValueSetParams& params, ResultCallbackWithError* callback) {
+    void setCameraApertureValueWrapper(const flight_hub_sdk::CameraApertureValueSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetCameraApertureValue(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setCameraExposureModeWrapper(const flight_hub_sdk::CameraExposureModeSetParams& params, ResultCallbackWithError* callback) {
+    void setCameraExposureModeWrapper(const flight_hub_sdk::CameraExposureModeSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetCameraExposureMode(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setCameraExposureValueWrapper(const flight_hub_sdk::CameraExposureSetParams& params, ResultCallbackWithError* callback) {
+    void setCameraExposureValueWrapper(const flight_hub_sdk::CameraExposureSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetCameraExposureValue(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setCameraFocusModeWrapper(const flight_hub_sdk::CameraFocusModeSetParams& params, ResultCallbackWithError* callback) {
+    void setCameraFocusModeWrapper(const flight_hub_sdk::CameraFocusModeSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetCameraFocusMode(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setCameraFocusValueWrapper(const flight_hub_sdk::CameraFocusValueSetParams& params, ResultCallbackWithError* callback) {
+    void setCameraFocusValueWrapper(const flight_hub_sdk::CameraFocusValueSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetCameraFocusValue(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setCameraIsoWrapper(const flight_hub_sdk::CameraIsoSetParams& params, ResultCallbackWithError* callback) {
+    void setCameraIsoWrapper(const flight_hub_sdk::CameraIsoSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetCameraIso(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setCameraMechanicalShutterWrapper(const flight_hub_sdk::CameraMechanicalShutterSetParams& params, ResultCallbackWithError* callback) {
+    void setCameraMechanicalShutterWrapper(const flight_hub_sdk::CameraMechanicalShutterSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetCameraMechanicalShutter(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void cameraPointFocusActionWrapper(const flight_hub_sdk::CameraPointFocusActionParams& params, ResultCallbackWithError* callback) {
+    void cameraPointFocusActionWrapper(const flight_hub_sdk::CameraPointFocusActionParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcCameraPointFocusAction(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setCameraShutterWrapper(const flight_hub_sdk::CameraShutterSetParams& params, ResultCallbackWithError* callback) {
+    void setCameraShutterWrapper(const flight_hub_sdk::CameraShutterSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetCameraShutter(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setCameraWatermarkWrapper(const flight_hub_sdk::CameraWatermarkParams& params, ResultCallbackWithError* callback) {
+    void setCameraWatermarkWrapper(const flight_hub_sdk::CameraWatermarkParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetCameraWatermark(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setCameraDewarpingWrapper(const flight_hub_sdk::CameraDewarpingSetParams& params, ResultCallbackWithError* callback) {
+    void setCameraDewarpingWrapper(const flight_hub_sdk::CameraDewarpingSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetCameraDewarping(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setCameraScreenSplitWrapper(const flight_hub_sdk::CameraScreenSplitParams& params, ResultCallbackWithError* callback) {
+    void setCameraScreenSplitWrapper(const flight_hub_sdk::CameraScreenSplitParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetCameraScreenSplit(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void cleanFogWrapper(const flight_hub_sdk::CleanFogParams& params, ResultCallbackWithError* callback) {
+    void cleanFogWrapper(const flight_hub_sdk::CleanFogParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcCleanFog(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setThermalCurrentPaletteWrapper(const flight_hub_sdk::ThermalCurrentPaletteSetParams& params, ResultCallbackWithError* callback) {
+    void setThermalCurrentPaletteWrapper(const flight_hub_sdk::ThermalCurrentPaletteSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetThermalCurrentPalette(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setThermalSuperResolutionEnableWrapper(const flight_hub_sdk::ThermalSuperResolutionEnableParams& params, ResultCallbackWithError* callback) {
+    void setThermalSuperResolutionEnableWrapper(const flight_hub_sdk::ThermalSuperResolutionEnableParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetThermalSuperResolutionEnable(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setIrMeteringModeWrapper(const flight_hub_sdk::IrMeteringModeSetParams& params, ResultCallbackWithError* callback) {
+    void setIrMeteringModeWrapper(const flight_hub_sdk::IrMeteringModeSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetIrMeteringMode(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setIrMeteringPointWrapper(const flight_hub_sdk::IrMeteringPointSetParams& params, ResultCallbackWithError* callback) {
+    void setIrMeteringPointWrapper(const flight_hub_sdk::IrMeteringPointSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetIrMeteringPoint(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setIrMeteringAreaWrapper(const flight_hub_sdk::IrMeteringAreaSetParams& params, ResultCallbackWithError* callback) {
+    void setIrMeteringAreaWrapper(const flight_hub_sdk::IrMeteringAreaSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetIrMeteringArea(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setIrDisplayModeWrapper(const flight_hub_sdk::SetIrDisplayModeParams& params, ResultCallbackWithError* callback) {
+    void setIrDisplayModeWrapper(const flight_hub_sdk::SetIrDisplayModeParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetIrDisplayMode(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setIrEnhanceModeWrapper(const flight_hub_sdk::SetIrEnhanceModeParams& params, ResultCallbackWithError* callback) {
+    void setIrEnhanceModeWrapper(const flight_hub_sdk::SetIrEnhanceModeParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetIrEnhanceMode(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setIrMixRateWrapper(const flight_hub_sdk::SetIrMixRateParams& params, ResultCallbackWithError* callback) {
+    void setIrMixRateWrapper(const flight_hub_sdk::SetIrMixRateParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetIrMixRate(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setIsothermEnableWrapper(const flight_hub_sdk::SetIsothermEnableParams& params, ResultCallbackWithError* callback) {
+    void setIsothermEnableWrapper(const flight_hub_sdk::SetIsothermEnableParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetIsothermEnable(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setIsothermColorRenderingTypeWrapper(const flight_hub_sdk::SetIsothermColorRenderingTypeParams& params, ResultCallbackWithError* callback) {
+    void setIsothermColorRenderingTypeWrapper(const flight_hub_sdk::SetIsothermColorRenderingTypeParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetIsothermColorRenderingType(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setIsothermLowerUpperRangeWrapper(const flight_hub_sdk::SetIsothermLowerUpperRangeParams& params, ResultCallbackWithError* callback) {
+    void setIsothermLowerUpperRangeWrapper(const flight_hub_sdk::SetIsothermLowerUpperRangeParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetIsothermLowerUpperRange(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setIsothermRenderingPolygonWrapper(const flight_hub_sdk::SetIsothermRenderingPolygonParams& params, ResultCallbackWithError* callback) {
+    void setIsothermRenderingPolygonWrapper(const flight_hub_sdk::SetIsothermRenderingPolygonParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetIsothermRenderingPolygon(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setIsothermRoiBasedRenderingEnableWrapper(const flight_hub_sdk::SetIsothermRoiBasedRenderingEnableParams& params, ResultCallbackWithError* callback) {
+    void setIsothermRoiBasedRenderingEnableWrapper(const flight_hub_sdk::SetIsothermRoiBasedRenderingEnableParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetIsothermRoiBasedRenderingEnable(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setInfraredFillLightEnableWrapper(const flight_hub_sdk::InfraredFillLightEnableParams& params, ResultCallbackWithError* callback) {
+    void setInfraredFillLightEnableWrapper(const flight_hub_sdk::InfraredFillLightEnableParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetInfraredFillLightEnable(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setCameraNightVisionEnableWrapper(const flight_hub_sdk::CameraNightVisionEnableParams& params, ResultCallbackWithError* callback) {
+    void setCameraNightVisionEnableWrapper(const flight_hub_sdk::CameraNightVisionEnableParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetCameraNightVisionEnable(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void resetCameraSettingsWrapper(const flight_hub_sdk::CameraSettingsResetParams& params, ResultCallbackWithError* callback) {
+    void resetCameraSettingsWrapper(const flight_hub_sdk::CameraSettingsResetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcResetCameraSettings(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setCameraDenoiseLevelSetWrapper(const flight_hub_sdk::CameraDenoiseLevelSetParams& params, ResultCallbackWithError* callback) {
+    void setCameraDenoiseLevelSetWrapper(const flight_hub_sdk::CameraDenoiseLevelSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetCameraDenoiseLevelSet(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setVideoResolutionWrapper(const flight_hub_sdk::VideoResolutionSetParams& params, ResultCallbackWithError* callback) {
+    void setVideoResolutionWrapper(const flight_hub_sdk::VideoResolutionSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetVideoResolution(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setCameraPhotoFormatWrapper(const flight_hub_sdk::CameraPhotoFormatSetParams& params, ResultCallbackWithError* callback) {
+    void setCameraPhotoFormatWrapper(const flight_hub_sdk::CameraPhotoFormatSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetCameraPhotoFormat(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setPreRecordedStatusWrapper(const flight_hub_sdk::PreRecordedStatusSetParams& params, ResultCallbackWithError* callback) {
+    void setPreRecordedStatusWrapper(const flight_hub_sdk::PreRecordedStatusSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetPreRecordedStatus(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setPreRecordedTimeWrapper(const flight_hub_sdk::PreRecordedTimeSetParams& params, ResultCallbackWithError* callback) {
+    void setPreRecordedTimeWrapper(const flight_hub_sdk::PreRecordedTimeSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetPreRecordedTime(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setCountDownActionWrapper(int count_down_type, int action_type, ResultCallbackWithError* callback) {
+    void setCountDownActionWrapper(int count_down_type, int action_type, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetCountDownAction(count_down_type, action_type, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setAssistantVideoModeWrapper(int mode, ResultCallbackWithError* callback) {
+    void setAssistantVideoModeWrapper(int mode, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetAssistantVideoMode(mode, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setAssistantVideoSwitchWrapper(int sw, ResultCallbackWithError* callback) {
+    void setAssistantVideoSwitchWrapper(int sw, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetAssistantVideoSwitch(sw, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setAlgorithmDehazeModeWrapper(const flight_hub_sdk::AlgorithmDehazeModeSetParams& params, ResultCallbackWithError* callback) {
+    void setAlgorithmDehazeModeWrapper(const flight_hub_sdk::AlgorithmDehazeModeSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetAlgorithmDehazeMode(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void setAlgorithmDehazeLevelWrapper(const flight_hub_sdk::AlgorithmDehazeLevelSetParams& params, ResultCallbackWithError* callback) {
+    void setAlgorithmDehazeLevelWrapper(const flight_hub_sdk::AlgorithmDehazeLevelSetParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetAlgorithmDehazeLevel(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
     // EA340 消息推送补全（Phase D）: 飞机相机水印设置推送(WebSocket);
-    int listenDroneCameraWatermarkSettingsWrapper(DroneCameraWatermarkSettingsPushCallback* callback) {
-        std::shared_ptr<DroneCameraWatermarkSettingsPushCallback> cb(callback);
+    int listenDroneCameraWatermarkSettingsWrapper(FHSDK_CALLBACK_PARAMETER(DroneCameraWatermarkSettingsPushCallback)) {
+        FHSDK_SHARE_CALLBACK(DroneCameraWatermarkSettingsPushCallback);
         return $self->listenDroneCameraWatermarkSettings([cb](const flight_hub_sdk::DroneCameraWatermarkSettingsPush& msg) {
-            cb->onDroneCameraWatermarkSettingsPush(msg);
+            if (cb) cb->onDroneCameraWatermarkSettingsPush(msg);
         });
     }
 
@@ -5541,19 +5563,19 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IDockControlModule {
-    void changeDockCameraPositionWrapper(const flight_hub_sdk::LiveInfo& live_info, int camera_position, const std::string& gateway_sn, ResultCallbackWithError* callback) {
+    void changeDockCameraPositionWrapper(const flight_hub_sdk::LiveInfo& live_info, int camera_position, const std::string& gateway_sn, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->changeDockCameraPosition(live_info, camera_position, gateway_sn, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int listenDockAirConditionerStatusInfoWrapper(DockAirConditionerStatusInfoCallback* callback) {
-        std::shared_ptr<DockAirConditionerStatusInfoCallback> cb(callback);
+    int listenDockAirConditionerStatusInfoWrapper(FHSDK_CALLBACK_PARAMETER(DockAirConditionerStatusInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(DockAirConditionerStatusInfoCallback);
         return $self->listenDockAirConditionerStatusInfo([cb](const flight_hub_sdk::DockAirConditionerStatusInfo& status_info) {
-            cb->onDockAirConditionerStatusInfo(status_info);
+            if (cb) cb->onDockAirConditionerStatusInfo(status_info);
         });
     }
 
@@ -5561,10 +5583,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDockAirConditionerStatusInfo(listen_id);
     }
 
-    int listenDockSupplementLightStateWrapper(DockSupplementLightStateCallback* callback) {
-        std::shared_ptr<DockSupplementLightStateCallback> cb(callback);
+    int listenDockSupplementLightStateWrapper(FHSDK_CALLBACK_PARAMETER(DockSupplementLightStateCallback)) {
+        FHSDK_SHARE_CALLBACK(DockSupplementLightStateCallback);
         return $self->listenDockSupplementLightState([cb](const flight_hub_sdk::DockSupplementLightState& light_state) {
-            cb->onDockSupplementLightState(light_state);
+            if (cb) cb->onDockSupplementLightState(light_state);
         });
     }
 
@@ -5572,117 +5594,117 @@ using namespace flight_hub_sdk;
         $self->cancelListenDockSupplementLightState(listen_id);
     }
 
-    void setDockSupplementLightStateWrapper(bool state, ResultCallbackWithError* callback) {
+    void setDockSupplementLightStateWrapper(bool state, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->setDockSupplementLightState(state, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setDockChargeStateWrapper(bool state, ResultCallbackWithError* callback) {
+    void setDockChargeStateWrapper(bool state, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->setDockChargeState(state, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setDockCoverStateWrapper(int mode, ResultCallbackWithError* callback) {
+    void setDockCoverStateWrapper(int mode, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->setDockCoverState(mode, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setDockAirConditionerModeWrapper(int mode, ResultCallbackWithError* callback) {
+    void setDockAirConditionerModeWrapper(int mode, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->setDockAirConditionerMode(mode, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 }
 
 %extend flight_hub_sdk::ILiveModule {
-    void startWrapper(ResultCallbackWithError* callback) {
+    void startWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->start([callback](flight_hub_sdk::FlightHubError result) {
             if (callback) {
                 callback->onResult(result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void startWithURLWrapper(LiveStreamStartCallback* callback) {
+    void startWithURLWrapper(FHSDK_CALLBACK_PARAMETER(LiveStreamStartCallback)) {
         $self->startWithURL([callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::LiveStreamStartResult& result) {
             if (callback) {
                 callback->onResult(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void stopWithURLWrapper(ResultCallbackWithError* callback) {
+    void stopWithURLWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->stopWithURL([callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int subscribeLiveStreamWrapper(LiveStreamCallback* callback) {
-        std::shared_ptr<LiveStreamCallback> cb(callback);
+    int subscribeLiveStreamWrapper(FHSDK_CALLBACK_PARAMETER(LiveStreamCallback)) {
+        FHSDK_SHARE_CALLBACK(LiveStreamCallback);
         return $self->subscribeLiveStream([cb](const std::vector<uint8_t>& data, const flight_hub_sdk::FrameInfo& frame_info) {
             std::vector<unsigned char> data_vector(data.begin(), data.end());
-            cb->onLiveStream(data_vector, frame_info);
+            if (cb) cb->onLiveStream(data_vector, frame_info);
         });
     }
 
-    int subscribeAiSeiInfoWrapper(AiSeiInfoCallback* callback) {
-        std::shared_ptr<AiSeiInfoCallback> cb(callback);
+    int subscribeAiSeiInfoWrapper(FHSDK_CALLBACK_PARAMETER(AiSeiInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(AiSeiInfoCallback);
         return $self->subscribeAiSeiInfo([cb](const flight_hub_sdk::AiSeiInfo& ai_sei_info) {
-            cb->onAiSeiInfo(ai_sei_info);
+            if (cb) cb->onAiSeiInfo(ai_sei_info);
         });
     }
 
-    int subscribeArSeiInfoWrapper(ArSeiInfoCallback* callback) {
-        std::shared_ptr<ArSeiInfoCallback> cb(callback);
+    int subscribeArSeiInfoWrapper(FHSDK_CALLBACK_PARAMETER(ArSeiInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(ArSeiInfoCallback);
         return $self->subscribeArSeiInfo([cb](const flight_hub_sdk::ArSeiInfo& ar_sei_info) {
-            cb->onArSeiInfo(ar_sei_info);
+            if (cb) cb->onArSeiInfo(ar_sei_info);
         });
     }
 
-    int subscribeFovSeiInfoWrapper(FovSeiInfoCallback* callback) {
-        std::shared_ptr<FovSeiInfoCallback> cb(callback);
+    int subscribeFovSeiInfoWrapper(FHSDK_CALLBACK_PARAMETER(FovSeiInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(FovSeiInfoCallback);
         return $self->subscribeFovSeiInfo([cb](const flight_hub_sdk::FovSeiInfo& fov_sei_info) {
-            cb->onFovSeiInfo(fov_sei_info);
+            if (cb) cb->onFovSeiInfo(fov_sei_info);
         });
     }
 
-    int subscribeAssistantSeiInfoWrapper(AssistantSeiInfoCallback* callback) {
-        std::shared_ptr<AssistantSeiInfoCallback> cb(callback);
+    int subscribeAssistantSeiInfoWrapper(FHSDK_CALLBACK_PARAMETER(AssistantSeiInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(AssistantSeiInfoCallback);
         return $self->subscribeAssistantSeiInfo([cb](const flight_hub_sdk::AssistantSeiInfo& assistant_sei_info) {
-            cb->onAssistantSeiInfo(assistant_sei_info);
+            if (cb) cb->onAssistantSeiInfo(assistant_sei_info);
         });
     }
 
-    int subscribeEisSeiInfoWrapper(EisSeiInfoCallback* callback) {
-        std::shared_ptr<EisSeiInfoCallback> cb(callback);
+    int subscribeEisSeiInfoWrapper(FHSDK_CALLBACK_PARAMETER(EisSeiInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(EisSeiInfoCallback);
         return $self->subscribeEisSeiInfo([cb](const flight_hub_sdk::EisSeiInfo& eis_sei_info) {
-            cb->onEisSeiInfo(eis_sei_info);
+            if (cb) cb->onEisSeiInfo(eis_sei_info);
         });
     }
 
-    void setLiveQualityWrapper(const flight_hub_sdk::LiveQualitySettingParams& params, ResultCallbackWithError* callback) {
+    void setLiveQualityWrapper(const flight_hub_sdk::LiveQualitySettingParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->setLiveQuality(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 }
@@ -5693,76 +5715,76 @@ using namespace flight_hub_sdk;
 %ignore flight_hub_sdk::ILiveRecordModule::listenRecordState;
 %ignore flight_hub_sdk::ILiveRecordModule::notifyRecordState;
 %extend flight_hub_sdk::ILiveRecordModule {
-    void startLiveRecordWrapper(const std::string& time_zone, ResultCallbackWithError* callback) {
+    void startLiveRecordWrapper(const std::string& time_zone, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->startLiveRecord(time_zone, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void stopLiveRecordWrapper(ResultCallbackWithError* callback) {
+    void stopLiveRecordWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->stopLiveRecord([callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void getDeviceLiveRecordsWrapper(const std::string& device_sn, GetDeviceLiveRecordsCallback* callback) {
+    void getDeviceLiveRecordsWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(GetDeviceLiveRecordsCallback)) {
         $self->getDeviceLiveRecords(device_sn, [callback](flight_hub_sdk::FlightHubError err, const std::vector<flight_hub_sdk::LiveRecordItem>& records) {
-            if (callback) { callback->onResult(err, records); delete callback; }
+            if (callback) { callback->onResult(err, records); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    int listenRecordStateWrapper(LiveRecordStateCallback* callback) {
-        std::shared_ptr<LiveRecordStateCallback> cb(callback);
+    int listenRecordStateWrapper(FHSDK_CALLBACK_PARAMETER(LiveRecordStateCallback)) {
+        FHSDK_SHARE_CALLBACK(LiveRecordStateCallback);
         return $self->listenRecordState([cb](const flight_hub_sdk::LiveRecordStateInfo& info) {
-            cb->onRecordState(info);
+            if (cb) cb->onRecordState(info);
         });
     }
 }
 
 %extend flight_hub_sdk::IFlyToPointModule {
-    void startWrapper(const flight_hub_sdk::FlyToPointParams& params, FlyToPointStartCallback* callback) {
+    void startWrapper(const flight_hub_sdk::FlyToPointParams& params, FHSDK_CALLBACK_PARAMETER(FlyToPointStartCallback)) {
         $self->start(params, [callback](flight_hub_sdk::FlightHubError err, const std::string& fly_to_id) {
             if (callback) {
                 callback->onFlyToPointStart(err, fly_to_id);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void startWithResultWrapper(const flight_hub_sdk::FlyToPointParams& params, FlyToPointStartResultCallback* callback) {
+    void startWithResultWrapper(const flight_hub_sdk::FlyToPointParams& params, FHSDK_CALLBACK_PARAMETER(FlyToPointStartResultCallback)) {
         $self->startWithResult(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::FlyToPointStartResult& result) {
             if (callback) {
                 callback->onFlyToPointStartResult(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void drcStopWrapper(ResultCallbackWithError* callback) {
+    void drcStopWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcStop([callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int subscribeFlyToDroneSelfPlanPathWrapper(FlyToDroneSelfPlanPathCallback* callback) {
-        std::shared_ptr<FlyToDroneSelfPlanPathCallback> cb(callback);
+    int subscribeFlyToDroneSelfPlanPathWrapper(FHSDK_CALLBACK_PARAMETER(FlyToDroneSelfPlanPathCallback)) {
+        FHSDK_SHARE_CALLBACK(FlyToDroneSelfPlanPathCallback);
         return $self->subscribeFlyToDroneSelfPlanPath([cb](const flight_hub_sdk::FlyToDroneSelfPlanPath& fly_to_drone_self_plan_path) {
-            cb->onFlyToDroneSelfPlanPath(fly_to_drone_self_plan_path);
+            if (cb) cb->onFlyToDroneSelfPlanPath(fly_to_drone_self_plan_path);
         });
     }
 
-    int subscribeFlyToPointProgressWrapper(FlyToPointProgressCallback* callback) {
-        std::shared_ptr<FlyToPointProgressCallback> cb(callback);
+    int subscribeFlyToPointProgressWrapper(FHSDK_CALLBACK_PARAMETER(FlyToPointProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(FlyToPointProgressCallback);
         return $self->subscribeFlyToPointProgress([cb](const flight_hub_sdk::FlyToPointProgress& fly_to_point_progress) {
-            cb->onFlyToPointProgress(fly_to_point_progress);
+            if (cb) cb->onFlyToPointProgress(fly_to_point_progress);
         });
     }
 
-    void updateTargetPointsWrapper(const flight_hub_sdk::FlyToUpdateTargetPointsParams& params, ResultCallbackWithError* callback) {
+    void updateTargetPointsWrapper(const flight_hub_sdk::FlyToUpdateTargetPointsParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->updateTargetPoints(params, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
@@ -5775,10 +5797,10 @@ using namespace flight_hub_sdk;
         $self->unsubscribeFlyToPointProgress(listen_id);
     }
 
-    int listenFlyToTaskEventWrapper(FlyToTaskEventCallback* callback) {
-        std::shared_ptr<FlyToTaskEventCallback> cb(callback);
+    int listenFlyToTaskEventWrapper(FHSDK_CALLBACK_PARAMETER(FlyToTaskEventCallback)) {
+        FHSDK_SHARE_CALLBACK(FlyToTaskEventCallback);
         return $self->listenFlyToTaskEvent([cb](const flight_hub_sdk::FlyToTaskEvent& event) {
-            cb->onFlyToTaskEvent(event);
+            if (cb) cb->onFlyToTaskEvent(event);
         });
     }
 
@@ -5788,46 +5810,46 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IPoiModule {
-    void enterWrapper(const flight_hub_sdk::POIEnterParams& params, PoiEnterCallback* callback) {
+    void enterWrapper(const flight_hub_sdk::POIEnterParams& params, FHSDK_CALLBACK_PARAMETER(PoiEnterCallback)) {
         $self->enter(params, [callback](flight_hub_sdk::FlightHubError err, const std::string& task_uuid) {
             if (callback) {
                 callback->onPoiEnter(err, task_uuid);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void exitWrapper(PoiExitCallback* callback) {
+    void exitWrapper(FHSDK_CALLBACK_PARAMETER(PoiExitCallback)) {
         $self->exit([callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onPoiExit(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void updateSpeedWrapper(double speed, PoiUpdateSpeedCallback* callback) {
+    void updateSpeedWrapper(double speed, FHSDK_CALLBACK_PARAMETER(PoiUpdateSpeedCallback)) {
         $self->updateSpeed(speed, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onPoiUpdateSpeed(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void getTaskWrapper(PoiGetTaskCallback* callback) {
+    void getTaskWrapper(FHSDK_CALLBACK_PARAMETER(PoiGetTaskCallback)) {
         $self->getTask([callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::POITaskInfo& task) {
             if (callback) {
                 callback->onPoiGetTask(err, task);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int listenPoiTaskEventWrapper(PoiTaskEventCallback* callback) {
-        std::shared_ptr<PoiTaskEventCallback> cb(callback);
+    int listenPoiTaskEventWrapper(FHSDK_CALLBACK_PARAMETER(PoiTaskEventCallback)) {
+        FHSDK_SHARE_CALLBACK(PoiTaskEventCallback);
         return $self->listenPoiTaskEvent([cb](const flight_hub_sdk::PoiTaskEvent& event) {
-            cb->onPoiTaskEvent(event);
+            if (cb) cb->onPoiTaskEvent(event);
         });
     }
 
@@ -5835,10 +5857,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenPoiTaskEvent(listen_id);
     }
 
-    int listenFlightPoiProgressWrapper(FlightPoiProgressCallback* callback) {
-        std::shared_ptr<FlightPoiProgressCallback> cb(callback);
+    int listenFlightPoiProgressWrapper(FHSDK_CALLBACK_PARAMETER(FlightPoiProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(FlightPoiProgressCallback);
         return $self->listenFlightPoiProgress([cb](const flight_hub_sdk::FlightPoiProgress& msg) {
-            cb->onFlightPoiProgress(msg);
+            if (cb) cb->onFlightPoiProgress(msg);
         });
     }
     void cancelListenFlightPoiProgressWrapper(int listen_id) {
@@ -5848,10 +5870,10 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IFlightTaskControlModule {
-    int listenWaylineTaskEventWrapper(WaylineTaskEventCallback* callback) {
-        std::shared_ptr<WaylineTaskEventCallback> cb(callback);
+    int listenWaylineTaskEventWrapper(FHSDK_CALLBACK_PARAMETER(WaylineTaskEventCallback)) {
+        FHSDK_SHARE_CALLBACK(WaylineTaskEventCallback);
         return $self->listenWaylineTaskEvent([cb](const flight_hub_sdk::WaylineTaskEvent& event) {
-            cb->onWaylineTaskEvent(event);
+            if (cb) cb->onWaylineTaskEvent(event);
         });
     }
 
@@ -5859,17 +5881,17 @@ using namespace flight_hub_sdk;
         $self->cancelListenWaylineTaskEvent(listen_id);
     }
 
-    int listenReturnHomeInfoEventWrapper(ReturnHomeInfoEventCallback* callback) {
-        std::shared_ptr<ReturnHomeInfoEventCallback> cb(callback);
+    int listenReturnHomeInfoEventWrapper(FHSDK_CALLBACK_PARAMETER(ReturnHomeInfoEventCallback)) {
+        FHSDK_SHARE_CALLBACK(ReturnHomeInfoEventCallback);
         return $self->listenReturnHomeInfoEvent([cb](const flight_hub_sdk::ReturnHomeInfoEvent& event) {
-            cb->onReturnHomeInfoEvent(event);
+            if (cb) cb->onReturnHomeInfoEvent(event);
         });
     }
 
-    int listenReturnHomeInfoEventByDeviceWrapper(const std::string& device_sn, ReturnHomeInfoEventCallback* callback) {
-        std::shared_ptr<ReturnHomeInfoEventCallback> cb(callback);
+    int listenReturnHomeInfoEventByDeviceWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(ReturnHomeInfoEventCallback)) {
+        FHSDK_SHARE_CALLBACK(ReturnHomeInfoEventCallback);
         return $self->listenReturnHomeInfoEventByDevice(device_sn, [cb](const flight_hub_sdk::ReturnHomeInfoEvent& event) {
-            cb->onReturnHomeInfoEvent(event);
+            if (cb) cb->onReturnHomeInfoEvent(event);
         });
     }
 
@@ -5881,10 +5903,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenReturnHomeInfoEventByDevice(listen_id);
     }
 
-    int listenTaskExceptionEventWrapper(TaskExceptionEventCallback* callback) {
-        std::shared_ptr<TaskExceptionEventCallback> cb(callback);
+    int listenTaskExceptionEventWrapper(FHSDK_CALLBACK_PARAMETER(TaskExceptionEventCallback)) {
+        FHSDK_SHARE_CALLBACK(TaskExceptionEventCallback);
         return $self->listenTaskExceptionEvent([cb](const flight_hub_sdk::TaskExceptionEvent& event) {
-            cb->onTaskExceptionEvent(event);
+            if (cb) cb->onTaskExceptionEvent(event);
         });
     }
 
@@ -5892,20 +5914,20 @@ using namespace flight_hub_sdk;
         $self->cancelListenTaskExceptionEvent(listen_id);
     }
 
-    void pauseWrapper(ResultCallbackWithError* callback) {
+    void pauseWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->pause([callback](const flight_hub_sdk::FlightHubError& err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void resumeWrapper(ResultCallbackWithError* callback) {
+    void resumeWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->resume([callback](const flight_hub_sdk::FlightHubError& err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
@@ -5926,24 +5948,24 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IPullStreamModule {
-    void startWrapper(const std::string& stream_url, PullStreamStartCallback* callback) {
+    void startWrapper(const std::string& stream_url, FHSDK_CALLBACK_PARAMETER(PullStreamStartCallback)) {
         $self->start(stream_url, [callback](flight_hub_sdk::FlightHubSdkErrorCode err_code) {
             if (callback) {
                 callback->onPullStreamStart(err_code);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int subscribeStreamWrapper(PullStreamDataCallback* callback) {
-        std::shared_ptr<PullStreamDataCallback> cb(callback);
+    int subscribeStreamWrapper(FHSDK_CALLBACK_PARAMETER(PullStreamDataCallback)) {
+        FHSDK_SHARE_CALLBACK(PullStreamDataCallback);
         return $self->subscribeStream([cb](const std::vector<uint8_t>& data, const flight_hub_sdk::FrameInfo& frame_info) {
             std::vector<unsigned char> data_vector(data.begin(), data.end());
-            cb->onPullStreamData(data_vector, frame_info);
+            if (cb) cb->onPullStreamData(data_vector, frame_info);
         });
     }
 
-    void setErrorCallbackWrapper(PullStreamErrorCallback* callback) {
+    void setErrorCallbackWrapper(FHSDK_CALLBACK_PARAMETER(PullStreamErrorCallback)) {
         $self->setErrorCallback([callback](int error_code, const std::string& error_message) {
             if (callback) {
                 callback->onPullStreamError(error_code, error_message);
@@ -5953,290 +5975,290 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IDeviceDebugModule {
-    void openDebugModeWrapper(const std::string& device_sn, OpenDebugModeCallback* callback) {
+    void openDebugModeWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(OpenDebugModeCallback)) {
         $self->openDebugMode(device_sn, [callback](flight_hub_sdk::FlightHubError err, const OpenDebugModeResult& result) {
             if (callback) {
                 callback->onOpenDebugMode(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void closeDebugModeWrapper(const std::string& device_sn, CloseDebugModeCallback* callback) {
+    void closeDebugModeWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(CloseDebugModeCallback)) {
         $self->closeDebugMode(device_sn, [callback](flight_hub_sdk::FlightHubError err, const CloseDebugModeResult& result) {
             if (callback) {
                 callback->onCloseDebugMode(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void openDockCoverWrapper(const std::string& device_sn, OpenDockCoverCallback* callback) {
+    void openDockCoverWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(OpenDockCoverCallback)) {
         $self->openDockCover(device_sn, [callback](flight_hub_sdk::FlightHubError err, const OpenDockCoverResult& result) {
             if (callback) {
                 callback->onOpenDockCover(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void openDockCoverProgressWrapper(const std::string& device_sn, OpenDockCoverProgressCallback* callback) {
+    void openDockCoverProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(OpenDockCoverProgressCallback)) {
         $self->getOpenDockCoverProgress(device_sn, [callback](flight_hub_sdk::FlightHubError err, const OpenDockCoverProgressResult& result) {
             if (callback) {
                 callback->onOpenDockCoverProgress(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void closeDockCoverWrapper(const std::string& device_sn, CloseDockCoverCallback* callback) {
+    void closeDockCoverWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(CloseDockCoverCallback)) {
         $self->closeDockCover(device_sn, [callback](flight_hub_sdk::FlightHubError err, const CloseDockCoverResult& result) {
             if (callback) {
                 callback->onCloseDockCover(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void closeDockCoverProgressWrapper(const std::string& device_sn, CloseDockCoverProgressCallback* callback) {
+    void closeDockCoverProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(CloseDockCoverProgressCallback)) {
         $self->getCloseDockCoverProgress(device_sn, [callback](flight_hub_sdk::FlightHubError err, const CloseDockCoverProgressResult& result) {
             if (callback) {
                 callback->onCloseDockCoverProgress(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void deviceRebootWrapper(const std::string& device_sn, DeviceRebootCallback* callback) {
+    void deviceRebootWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(DeviceRebootCallback)) {
         $self->deviceReboot(device_sn, [callback](flight_hub_sdk::FlightHubError err, const DeviceRebootResult& result) {
             if (callback) {
                 callback->onDeviceReboot(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void deviceRebootProgressWrapper(const std::string& device_sn, DeviceRebootProgressCallback* callback) {
+    void deviceRebootProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(DeviceRebootProgressCallback)) {
         $self->getDeviceRebootProgress(device_sn, [callback](flight_hub_sdk::FlightHubError err, const DeviceRebootProgressResult& result) {
             if (callback) {
                 callback->onDeviceRebootProgress(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void deviceFormatWrapper(const std::string& device_sn, DeviceFormatCallback* callback) {
+    void deviceFormatWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(DeviceFormatCallback)) {
         $self->deviceFormat(device_sn, [callback](flight_hub_sdk::FlightHubError err, const DeviceFormatResult& result) {
             if (callback) {
                 callback->onDeviceFormat(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void deviceFormatProgressWrapper(const std::string& device_sn, DeviceFormatProgressCallback* callback) {
+    void deviceFormatProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(DeviceFormatProgressCallback)) {
         $self->getDeviceFormatProgress(device_sn, [callback](flight_hub_sdk::FlightHubError err, const DeviceFormatProgressResult& result) {
             if (callback) {
                 callback->onDeviceFormatProgress(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void openDroneWrapper(const std::string& device_sn, OpenDroneCallback* callback) {
+    void openDroneWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(OpenDroneCallback)) {
         $self->openDrone(device_sn, [callback](flight_hub_sdk::FlightHubError err, const OpenDroneResult& result) {
             if (callback) {
                 callback->onOpenDrone(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void closeDroneWrapper(const std::string& device_sn, CloseDroneCallback* callback) {
+    void closeDroneWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(CloseDroneCallback)) {
         $self->closeDrone(device_sn, [callback](flight_hub_sdk::FlightHubError err, const CloseDroneResult& result) {
             if (callback) {
                 callback->onCloseDrone(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void openChargeWrapper(const std::string& device_sn, OpenChargeCallback* callback) {
+    void openChargeWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(OpenChargeCallback)) {
         $self->openCharge(device_sn, [callback](flight_hub_sdk::FlightHubError err, const OpenChargeResult& result) {
             if (callback) {
                 callback->onOpenCharge(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void closeChargeWrapper(const std::string& device_sn, CloseChargeCallback* callback) {
+    void closeChargeWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(CloseChargeCallback)) {
         $self->closeCharge(device_sn, [callback](flight_hub_sdk::FlightHubError err, const CloseChargeResult& result) {
             if (callback) {
                 callback->onCloseCharge(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setDockAirConditionerModeWrapper(const std::string& device_sn, int mode, ResultCallbackWithError* callback) {
+    void setDockAirConditionerModeWrapper(const std::string& device_sn, int mode, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->setDockAirConditionerMode(device_sn, mode, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setDockSilentModeWrapper(const std::string& device_sn, int mode, ResultCallbackWithError* callback) {
+    void setDockSilentModeWrapper(const std::string& device_sn, int mode, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->setDockSilentMode(device_sn, mode, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setObstacleAvoidanceWrapper(const std::string& device_sn, int obstacle_avoidance_state, SetObstacleAvoidanceCallback* callback) {
+    void setObstacleAvoidanceWrapper(const std::string& device_sn, int obstacle_avoidance_state, FHSDK_CALLBACK_PARAMETER(SetObstacleAvoidanceCallback)) {
         $self->setObstacleAvoidance(device_sn, obstacle_avoidance_state, [callback](flight_hub_sdk::FlightHubError err, SetObstacleAvoidanceResult result) {
             if (callback) {
                 callback->onSetObstacleAvoidance(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setDistanceLimitWrapper(const std::string& device_sn, int distance_limit_state, int distance_limit_value, SetDistanceLimitCallback* callback) {
+    void setDistanceLimitWrapper(const std::string& device_sn, int distance_limit_state, int distance_limit_value, FHSDK_CALLBACK_PARAMETER(SetDistanceLimitCallback)) {
         $self->setDistanceLimit(device_sn, distance_limit_state, distance_limit_value, [callback](flight_hub_sdk::FlightHubError err, SetDistanceLimitResult result) {
             if (callback) {
                 callback->onSetDistanceLimit(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setHeightLimitWrapper(const std::string& device_sn, int height_limit, SetHeightLimitCallback* callback) {
+    void setHeightLimitWrapper(const std::string& device_sn, int height_limit, FHSDK_CALLBACK_PARAMETER(SetHeightLimitCallback)) {
         $self->setHeightLimit(device_sn, height_limit, [callback](flight_hub_sdk::FlightHubError err, SetHeightLimitResult result) {
             if (callback) {
                 callback->onSetHeightLimit(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setRemainingPowerForRthWrapper(const std::string& device_sn, int remaining_power_for_rth, SetRemainingPowerForRthCallback* callback) {
+    void setRemainingPowerForRthWrapper(const std::string& device_sn, int remaining_power_for_rth, FHSDK_CALLBACK_PARAMETER(SetRemainingPowerForRthCallback)) {
         $self->setRemainingPowerForRth(device_sn, remaining_power_for_rth, [callback](flight_hub_sdk::FlightHubError err, SetRemainingPowerForRthResult result) {
             if (callback) {
                 callback->onSetRemainingPowerForRth(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setNightLightsStateWrapper(const std::string& device_sn, int night_lights_state, SetNightLightsStateCallback* callback) {
+    void setNightLightsStateWrapper(const std::string& device_sn, int night_lights_state, FHSDK_CALLBACK_PARAMETER(SetNightLightsStateCallback)) {
         $self->setNightLightsState(device_sn, night_lights_state, [callback](flight_hub_sdk::FlightHubError err, SetNightLightsStateResult result) {
             if (callback) {
                 callback->onSetNightLightsState(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void switchAlarmLightStateWrapper(const std::string& device_sn, int alarm_state, SwitchAlarmStateCallback* callback) {
+    void switchAlarmLightStateWrapper(const std::string& device_sn, int alarm_state, FHSDK_CALLBACK_PARAMETER(SwitchAlarmStateCallback)) {
         $self->switchAlarmLightState(device_sn, alarm_state, [callback](flight_hub_sdk::FlightHubError err, SwitchAlarmStateResult result) {
             if (callback) {
                 callback->onSwitchAlarmState(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void esimOperatorSwitchWrapper(const std::string& device_sn, const std::string& imei, int operator_type, const std::string& device_type, EsimOperatorSwitchCallback* callback) {
+    void esimOperatorSwitchWrapper(const std::string& device_sn, const std::string& imei, int operator_type, const std::string& device_type, FHSDK_CALLBACK_PARAMETER(EsimOperatorSwitchCallback)) {
         $self->esimOperatorSwitch(device_sn, imei, operator_type, device_type, [callback](flight_hub_sdk::FlightHubError err, EsimOperatorSwitchResult result) {
             if (callback) {
                 callback->onEsimOperatorSwitch(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void simSlotSwitchWrapper(const std::string& device_sn, const std::string& imei, int sim_slot, const std::string& device_type, SimSlotSwitchCallback* callback) {
+    void simSlotSwitchWrapper(const std::string& device_sn, const std::string& imei, int sim_slot, const std::string& device_type, FHSDK_CALLBACK_PARAMETER(SimSlotSwitchCallback)) {
         $self->simSlotSwitch(device_sn, imei, sim_slot, device_type, [callback](flight_hub_sdk::FlightHubError err, SimSlotSwitchResult result) {
             if (callback) {
                 callback->onSimSlotSwitch(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setBatteryStoreModeWrapper(const std::string& device_sn, int battery_store_mode, SetBatteryStoreModeCallback* callback) {
+    void setBatteryStoreModeWrapper(const std::string& device_sn, int battery_store_mode, FHSDK_CALLBACK_PARAMETER(SetBatteryStoreModeCallback)) {
         $self->setBatteryStoreMode(device_sn, battery_store_mode, [callback](flight_hub_sdk::FlightHubError err, SetBatteryStoreModeResult result) {
             if (callback) {
                 callback->onSetBatteryStoreMode(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void startManualBatterySwapWrapper(const std::string& device_sn, int slot_id, ManualBatterySwapCallback* callback) {
+    void startManualBatterySwapWrapper(const std::string& device_sn, int slot_id, FHSDK_CALLBACK_PARAMETER(ManualBatterySwapCallback)) {
         $self->startManualBatterySwap(device_sn, slot_id, [callback](flight_hub_sdk::FlightHubError err, ManualBatterySwapResult result) {
             if (callback) {
                 callback->onManualBatterySwap(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void getManualBatterySwapProgressWrapper(const std::string& device_sn, ManualBatterySwapProgressCallback* callback) {
+    void getManualBatterySwapProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(ManualBatterySwapProgressCallback)) {
         $self->getManualBatterySwapProgress(device_sn, [callback](flight_hub_sdk::FlightHubError err, ManualBatterySwapProgressResult result) {
             if (callback) {
                 callback->onManualBatterySwapProgress(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setDonglePowerSwitchWrapper(const std::string& device_sn, int power_state, DonglePowerSwitchCallback* callback) {
+    void setDonglePowerSwitchWrapper(const std::string& device_sn, int power_state, FHSDK_CALLBACK_PARAMETER(DonglePowerSwitchCallback)) {
         $self->setDonglePowerSwitch(device_sn, power_state, [callback](flight_hub_sdk::FlightHubError err, DonglePowerSwitchResult result) {
             if (callback) {
                 callback->onDonglePowerSwitch(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setLowPowerSwitchWrapper(const std::string& device_sn, int low_power_mode, LowPowerSwitchCallback* callback) {
+    void setLowPowerSwitchWrapper(const std::string& device_sn, int low_power_mode, FHSDK_CALLBACK_PARAMETER(LowPowerSwitchCallback)) {
         $self->setLowPowerSwitch(device_sn, low_power_mode, [callback](flight_hub_sdk::FlightHubError err, LowPowerSwitchResult result) {
             if (callback) {
                 callback->onLowPowerSwitch(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void getEsimOperatorSwitchProgressWrapper(const std::string& device_sn, EsimOperatorSwitchProgressCallback* callback) {
+    void getEsimOperatorSwitchProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(EsimOperatorSwitchProgressCallback)) {
         $self->getEsimOperatorSwitchProgress(device_sn, [callback](flight_hub_sdk::FlightHubError err, EsimOperatorSwitchProgressResult result) {
             if (callback) {
                 callback->onEsimOperatorSwitchProgress(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // Geo Caging wrapper
-    void setGeoCagingEnableWrapper(const std::string& device_sn, int geo_caging_switch, const std::vector<flight_hub_sdk::GeoCagingInfoParam>& geo_caging_infos, SetGeoCagingEnableCallback* callback) {
+    void setGeoCagingEnableWrapper(const std::string& device_sn, int geo_caging_switch, const std::vector<flight_hub_sdk::GeoCagingInfoParam>& geo_caging_infos, FHSDK_CALLBACK_PARAMETER(SetGeoCagingEnableCallback)) {
         $self->setGeoCagingEnable(device_sn, geo_caging_switch, geo_caging_infos, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onSetGeoCagingEnable(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int subscribeDockCoverOpenProgressWrapper(const std::string& device_sn, SubscribeDockCoverOpenProgressCallback* callback) {
-        std::shared_ptr<SubscribeDockCoverOpenProgressCallback> cb(callback);
+    int subscribeDockCoverOpenProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(SubscribeDockCoverOpenProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(SubscribeDockCoverOpenProgressCallback);
         return $self->subscribeDockCoverOpenProgress(device_sn, [cb](flight_hub_sdk::OpenDockCoverResult result) {
-            cb->onSubscribeDockCoverOpenProgress(result);
+            if (cb) cb->onSubscribeDockCoverOpenProgress(result);
         });
     }
 
@@ -6244,10 +6266,10 @@ using namespace flight_hub_sdk;
         $self->unsubscribeDockCoverOpenProgress(listen_id);
     }
 
-    int subscribeDockCoverCloseProgressWrapper(const std::string& device_sn, SubscribeDockCoverCloseProgressCallback* callback) {
-        std::shared_ptr<SubscribeDockCoverCloseProgressCallback> cb(callback);
+    int subscribeDockCoverCloseProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(SubscribeDockCoverCloseProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(SubscribeDockCoverCloseProgressCallback);
         return $self->subscribeDockCoverCloseProgress(device_sn, [cb](flight_hub_sdk::CloseDockCoverResult result) {
-            cb->onSubscribeDockCoverCloseProgress(result);
+            if (cb) cb->onSubscribeDockCoverCloseProgress(result);
         });
     }
 
@@ -6255,10 +6277,10 @@ using namespace flight_hub_sdk;
         $self->unsubscribeDockCoverCloseProgress(listen_id);
     }
 
-    int subscribeDeviceRebootProgressWrapper(const std::string& device_sn, SubscribeDeviceRebootProgressCallback* callback) {
-        std::shared_ptr<SubscribeDeviceRebootProgressCallback> cb(callback);
+    int subscribeDeviceRebootProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(SubscribeDeviceRebootProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(SubscribeDeviceRebootProgressCallback);
         return $self->subscribeDeviceRebootProgress(device_sn, [cb](flight_hub_sdk::DeviceRebootResult result) {
-            cb->onSubscribeDeviceRebootProgress(result);
+            if (cb) cb->onSubscribeDeviceRebootProgress(result);
         });
     }
 
@@ -6266,10 +6288,10 @@ using namespace flight_hub_sdk;
         $self->unsubscribeDeviceRebootProgress(listen_id);
     }
 
-    int subscribeDeviceFormatProgressWrapper(const std::string& device_sn, SubscribeDeviceFormatProgressCallback* callback) {
-        std::shared_ptr<SubscribeDeviceFormatProgressCallback> cb(callback);
+    int subscribeDeviceFormatProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(SubscribeDeviceFormatProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(SubscribeDeviceFormatProgressCallback);
         return $self->subscribeDeviceFormatProgress(device_sn, [cb](flight_hub_sdk::DeviceFormatResult result) {
-            cb->onSubscribeDeviceFormatProgress(result);
+            if (cb) cb->onSubscribeDeviceFormatProgress(result);
         });
     }
 
@@ -6277,10 +6299,10 @@ using namespace flight_hub_sdk;
         $self->unsubscribeDeviceFormatProgress(listen_id);
     }
 
-    int subscribeDroneOpenProgressWrapper(const std::string& device_sn, SubscribeDroneOpenProgressCallback* callback) {
-        std::shared_ptr<SubscribeDroneOpenProgressCallback> cb(callback);
+    int subscribeDroneOpenProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(SubscribeDroneOpenProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(SubscribeDroneOpenProgressCallback);
         return $self->subscribeDroneOpenProgress(device_sn, [cb](flight_hub_sdk::OpenDroneResult result) {
-            cb->onSubscribeDroneOpenProgress(result);
+            if (cb) cb->onSubscribeDroneOpenProgress(result);
         });
     }
 
@@ -6288,10 +6310,10 @@ using namespace flight_hub_sdk;
         $self->unsubscribeDroneOpenProgress(listen_id);
     }
 
-    int subscribeDroneCloseProgressWrapper(const std::string& device_sn, SubscribeDroneCloseProgressCallback* callback) {
-        std::shared_ptr<SubscribeDroneCloseProgressCallback> cb(callback);
+    int subscribeDroneCloseProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(SubscribeDroneCloseProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(SubscribeDroneCloseProgressCallback);
         return $self->subscribeDroneCloseProgress(device_sn, [cb](flight_hub_sdk::CloseDroneResult result) {
-            cb->onSubscribeDroneCloseProgress(result);
+            if (cb) cb->onSubscribeDroneCloseProgress(result);
         });
     }
 
@@ -6299,10 +6321,10 @@ using namespace flight_hub_sdk;
         $self->unsubscribeDroneCloseProgress(listen_id);
     }
 
-    int subscribeDroneFormatProgressWrapper(const std::string& device_sn, SubscribeDroneFormatProgressCallback* callback) {
-        std::shared_ptr<SubscribeDroneFormatProgressCallback> cb(callback);
+    int subscribeDroneFormatProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(SubscribeDroneFormatProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(SubscribeDroneFormatProgressCallback);
         return $self->subscribeDroneFormatProgress(device_sn, [cb](flight_hub_sdk::DroneFormatResult result) {
-            cb->onSubscribeDroneFormatProgress(result);
+            if (cb) cb->onSubscribeDroneFormatProgress(result);
         });
     }
 
@@ -6310,10 +6332,10 @@ using namespace flight_hub_sdk;
         $self->unsubscribeDroneFormatProgress(listen_id);
     }
 
-    int subscribeDroneChargeOpenProgressWrapper(const std::string& device_sn, SubscribeDroneChargeOpenProgressCallback* callback) {
-        std::shared_ptr<SubscribeDroneChargeOpenProgressCallback> cb(callback);
+    int subscribeDroneChargeOpenProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(SubscribeDroneChargeOpenProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(SubscribeDroneChargeOpenProgressCallback);
         return $self->subscribeDroneChargeOpenProgress(device_sn, [cb](flight_hub_sdk::OpenChargeResult result) {
-            cb->onSubscribeDroneChargeOpenProgress(result);
+            if (cb) cb->onSubscribeDroneChargeOpenProgress(result);
         });
     }
 
@@ -6321,10 +6343,10 @@ using namespace flight_hub_sdk;
         $self->unsubscribeDroneChargeOpenProgress(listen_id);
     }
 
-    int subscribeDroneChargeCloseProgressWrapper(const std::string& device_sn, SubscribeDroneChargeCloseProgressCallback* callback) {
-        std::shared_ptr<SubscribeDroneChargeCloseProgressCallback> cb(callback);
+    int subscribeDroneChargeCloseProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(SubscribeDroneChargeCloseProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(SubscribeDroneChargeCloseProgressCallback);
         return $self->subscribeDroneChargeCloseProgress(device_sn, [cb](flight_hub_sdk::CloseChargeResult result) {
-            cb->onSubscribeDroneChargeCloseProgress(result);
+            if (cb) cb->onSubscribeDroneChargeCloseProgress(result);
         });
     }
 
@@ -6332,10 +6354,10 @@ using namespace flight_hub_sdk;
         $self->unsubscribeDroneChargeCloseProgress(listen_id);
     }
 
-    int subscribeDeviceEsimOperatorSwitchProgressWrapper(const std::string& device_sn, SubscribeDeviceEsimOperatorSwitchProgressCallback* callback) {
-        std::shared_ptr<SubscribeDeviceEsimOperatorSwitchProgressCallback> cb(callback);
+    int subscribeDeviceEsimOperatorSwitchProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(SubscribeDeviceEsimOperatorSwitchProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(SubscribeDeviceEsimOperatorSwitchProgressCallback);
         return $self->subscribeDeviceEsimOperatorSwitchProgress(device_sn, [cb](flight_hub_sdk::EsimOperatorSwitchResult result) {
-            cb->onSubscribeDeviceEsimOperatorSwitchProgress(result);
+            if (cb) cb->onSubscribeDeviceEsimOperatorSwitchProgress(result);
         });
     }
 
@@ -6343,10 +6365,10 @@ using namespace flight_hub_sdk;
         $self->unsubscribeDeviceEsimOperatorSwitchProgress(listen_id);
     }
 
-    int subscribeDeviceSimSlotSwitchProgressWrapper(const std::string& device_sn, SubscribeDeviceSimSlotSwitchProgressCallback* callback) {
-        std::shared_ptr<SubscribeDeviceSimSlotSwitchProgressCallback> cb(callback);
+    int subscribeDeviceSimSlotSwitchProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(SubscribeDeviceSimSlotSwitchProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(SubscribeDeviceSimSlotSwitchProgressCallback);
         return $self->subscribeDeviceSimSlotSwitchProgress(device_sn, [cb](flight_hub_sdk::SimSlotSwitchResult result) {
-            cb->onSubscribeDeviceSimSlotSwitchProgress(result);
+            if (cb) cb->onSubscribeDeviceSimSlotSwitchProgress(result);
         });
     }
 
@@ -6354,47 +6376,47 @@ using namespace flight_hub_sdk;
         $self->unsubscribeDeviceSimSlotSwitchProgress(listen_id);
     }
 
-    void droneFormatWrapper(const std::string& device_sn, DroneFormatCallback* callback) {
+    void droneFormatWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(DroneFormatCallback)) {
         $self->droneFormat(device_sn, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::DroneFormatResult& result) {
             if (callback) {
                 callback->onDroneFormat(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void droneSdrWorkModeWrapper(const std::string& device_sn, int mode, ResultCallbackWithError* callback) {
+    void droneSdrWorkModeWrapper(const std::string& device_sn, int mode, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->droneSdrWorkMode(device_sn, mode, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // 云环境切换 wrapper
-    void cloudEnvironmentSwitchWrapper(const flight_hub_sdk::CloudEnvironmentSwitchParam& param, ResultCallbackWithError* callback) {
+    void cloudEnvironmentSwitchWrapper(const flight_hub_sdk::CloudEnvironmentSwitchParam& param, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->cloudEnvironmentSwitch(param, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void cloudEnvironmentSwitchCallbackWrapper(const flight_hub_sdk::CloudEnvironmentSwitchCallbackParam& param, ResultCallbackWithError* callback) {
+    void cloudEnvironmentSwitchCallbackWrapper(const flight_hub_sdk::CloudEnvironmentSwitchCallbackParam& param, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->cloudEnvironmentSwitchCallback(param, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int listenDeviceCloudEnvironmentSwitchProgressWrapper(const std::string& device_sn, DeviceCloudEnvironmentSwitchProgressCallback* callback) {
-        std::shared_ptr<DeviceCloudEnvironmentSwitchProgressCallback> cb(callback);
+    int listenDeviceCloudEnvironmentSwitchProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(DeviceCloudEnvironmentSwitchProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(DeviceCloudEnvironmentSwitchProgressCallback);
         return $self->listenDeviceCloudEnvironmentSwitchProgress(device_sn, [cb](flight_hub_sdk::CloudEnvironmentSwitchResult result) {
-            cb->onDeviceCloudEnvironmentSwitchProgress(result);
+            if (cb) cb->onDeviceCloudEnvironmentSwitchProgress(result);
         });
     }
 
@@ -6404,93 +6426,93 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IRelayControlModule {
-    void setRelayBroadcastHideWrapper(bool is_broadcast_hide, SetRelayBroadcastHideCallback* callback) {
+    void setRelayBroadcastHideWrapper(bool is_broadcast_hide, FHSDK_CALLBACK_PARAMETER(SetRelayBroadcastHideCallback)) {
         $self->setRelayBroadcastHide(is_broadcast_hide, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onSetRelayBroadcastHide(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setRelaySSIDWrapper(const std::string& device_name, SetRelaySSIDCallback* callback) {
+    void setRelaySSIDWrapper(const std::string& device_name, FHSDK_CALLBACK_PARAMETER(SetRelaySSIDCallback)) {
         $self->setRelaySSID(device_name, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onSetRelaySSID(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setRelayPasswordWrapper(const std::string& passwd, SetRelayPasswordCallback* callback) {
+    void setRelayPasswordWrapper(const std::string& passwd, FHSDK_CALLBACK_PARAMETER(SetRelayPasswordCallback)) {
         $self->setRelayPassword(passwd, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onSetRelayPassword(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setRelaySearchModeWrapper(int relay_search_mode, SetRelaySearchModeCallback* callback) {
+    void setRelaySearchModeWrapper(int relay_search_mode, FHSDK_CALLBACK_PARAMETER(SetRelaySearchModeCallback)) {
         $self->setRelaySearchMode(relay_search_mode, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onSetRelaySearchMode(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void setRelayOccupiedStatusWrapper(int occupied_status, SetRelayOccupiedStatusCallback* callback) {
+    void setRelayOccupiedStatusWrapper(int occupied_status, FHSDK_CALLBACK_PARAMETER(SetRelayOccupiedStatusCallback)) {
         $self->setRelayOccupiedStatus(occupied_status, [callback](flight_hub_sdk::FlightHubError err, SetRelayOccupiedStatusResult result) {
             if (callback) {
                 callback->onSetRelayOccupiedStatus(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void relayRebootWrapper(RelayRebootCallback* callback) {
+    void relayRebootWrapper(FHSDK_CALLBACK_PARAMETER(RelayRebootCallback)) {
         $self->relayReboot([callback](flight_hub_sdk::FlightHubError err, RelayRebootResult result) {
             if (callback) {
                 callback->onRelayReboot(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void relayDisconnectWrapper(RelayDisconnectCallback* callback) {
+    void relayDisconnectWrapper(FHSDK_CALLBACK_PARAMETER(RelayDisconnectCallback)) {
         $self->relayDisconnect([callback](flight_hub_sdk::FlightHubError err, RelayDisconnectResult result) {
             if (callback) {
                 callback->onRelayDisconnect(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 }
 
 %extend flight_hub_sdk::IRtkCalibrationModule {
-    void calibrationByNetworkWrapper(const NetworkRtkCalibrationParams& params, RtkCalibrationCallback* callback) {
+    void calibrationByNetworkWrapper(const NetworkRtkCalibrationParams& params, FHSDK_CALLBACK_PARAMETER(RtkCalibrationCallback)) {
         $self->calibrationByNetwork(params, [callback](flight_hub_sdk::FlightHubError err, RtkCalibrationResult result) {
             if (callback) {
                 callback->onRtkCalibration(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void calibrationByManualWrapper(const ManulRtkCalibrationParams& params, RtkCalibrationCallback* callback) {
+    void calibrationByManualWrapper(const ManulRtkCalibrationParams& params, FHSDK_CALLBACK_PARAMETER(RtkCalibrationCallback)) {
         $self->calibrationByManual(params, [callback](flight_hub_sdk::FlightHubError err, RtkCalibrationResult result) {
             if (callback) {
                 callback->onRtkCalibration(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int subscribeCalibrationProgressWrapper(SubscribeCalibrationProgressCallback* callback) {
-        std::shared_ptr<SubscribeCalibrationProgressCallback> cb(callback);
+    int subscribeCalibrationProgressWrapper(FHSDK_CALLBACK_PARAMETER(SubscribeCalibrationProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(SubscribeCalibrationProgressCallback);
         return $self->subscribeCalibrationProgress([cb](flight_hub_sdk::RtkCalibrationResult result) {
-            cb->onSubscribeCalibrationProgress(result);
+            if (cb) cb->onSubscribeCalibrationProgress(result);
         });
     }
 
@@ -6500,10 +6522,10 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IDeviceStateModule {
-    int listenDockOnlineStatusWrapper(DockOnlineStatusCallback* callback) {
-        std::shared_ptr<DockOnlineStatusCallback> cb(callback);
+    int listenDockOnlineStatusWrapper(FHSDK_CALLBACK_PARAMETER(DockOnlineStatusCallback)) {
+        FHSDK_SHARE_CALLBACK(DockOnlineStatusCallback);
         return $self->listenDockOnlineStatus([cb](const flight_hub_sdk::DockOnlineStatus& status) {
-            cb->onDockOnlineStatus(status);
+            if (cb) cb->onDockOnlineStatus(status);
         });
     }
 
@@ -6511,10 +6533,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDockOnlineStatus(listen_id);
     }
 
-    int listenDroneOnlineStatusWrapper(DroneOnlineStatusCallback* callback) {
-        std::shared_ptr<DroneOnlineStatusCallback> cb(callback);
+    int listenDroneOnlineStatusWrapper(FHSDK_CALLBACK_PARAMETER(DroneOnlineStatusCallback)) {
+        FHSDK_SHARE_CALLBACK(DroneOnlineStatusCallback);
         return $self->listenDroneOnlineStatus([cb](const flight_hub_sdk::DroneOnlineStatus& status) {
-            cb->onDroneOnlineStatus(status);
+            if (cb) cb->onDroneOnlineStatus(status);
         });
     }
 
@@ -6524,10 +6546,10 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IDeviceHMSModule {
-    int listenDeviceHMSWrapper(HmsDataCallback* callback) {
-        std::shared_ptr<HmsDataCallback> cb(callback);
+    int listenDeviceHMSWrapper(FHSDK_CALLBACK_PARAMETER(HmsDataCallback)) {
+        FHSDK_SHARE_CALLBACK(HmsDataCallback);
         return $self->listenDeviceHMS([cb](const flight_hub_sdk::HmsData& hms_data) {
-            cb->onHmsData(hms_data);
+            if (cb) cb->onHmsData(hms_data);
         });
     }
 
@@ -6537,10 +6559,10 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IAirsenseWarningModule {
-    int listenAirsenseWarningWrapper(AirsenseWarningCallback* callback) {
-        std::shared_ptr<AirsenseWarningCallback> cb(callback);
+    int listenAirsenseWarningWrapper(FHSDK_CALLBACK_PARAMETER(AirsenseWarningCallback)) {
+        FHSDK_SHARE_CALLBACK(AirsenseWarningCallback);
         return $self->listenAirsenseWarning([cb](const flight_hub_sdk::AirsenseWarning& msg) {
-            cb->onAirsenseWarning(msg);
+            if (cb) cb->onAirsenseWarning(msg);
         });
     }
 
@@ -6550,11 +6572,11 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::ILiveDeviceModule {
-    int listenLiveAvailableRangeWrapper(LiveAvailableRangeCallback* callback) {
-        std::shared_ptr<LiveAvailableRangeCallback> cb(callback);
+    int listenLiveAvailableRangeWrapper(FHSDK_CALLBACK_PARAMETER(LiveAvailableRangeCallback)) {
+        FHSDK_SHARE_CALLBACK(LiveAvailableRangeCallback);
         return $self->listenLiveAvailableRange(
             [cb](const std::vector<flight_hub_sdk::LiveInfo>& live_infos) {
-                cb->onLiveAvailableRange(live_infos);
+                if (cb) cb->onLiveAvailableRange(live_infos);
             });
     }
 
@@ -6562,20 +6584,20 @@ using namespace flight_hub_sdk;
         $self->cancelListenLiveAvailableRange(listen_id);
     }
 
-    void getAudienceCountWrapper(const flight_hub_sdk::AudienceCountGroup* group, GetAudienceCountCallback* callback) {
+    void getAudienceCountWrapper(const flight_hub_sdk::AudienceCountGroup* group, FHSDK_CALLBACK_PARAMETER(GetAudienceCountCallback)) {
         $self->getAudienceCount(group, [callback](flight_hub_sdk::FlightHubError err, const std::vector<flight_hub_sdk::DeviceAudienceCountItem>& result) {
             if (callback) {
                 callback->onGetAudienceCount(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // EA340 消息推送补全（Phase D）;
-    int listenDockLiveStatusWrapper(DockLiveStatusCallback* callback) {
-        std::shared_ptr<DockLiveStatusCallback> cb(callback);
+    int listenDockLiveStatusWrapper(FHSDK_CALLBACK_PARAMETER(DockLiveStatusCallback)) {
+        FHSDK_SHARE_CALLBACK(DockLiveStatusCallback);
         return $self->listenDockLiveStatus([cb](const flight_hub_sdk::DockLiveStatus& msg) {
-            cb->onDockLiveStatus(msg);
+            if (cb) cb->onDockLiveStatus(msg);
         });
     }
 
@@ -6583,10 +6605,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDockLiveStatus(listen_id);
     }
 
-    int listenDockLiveCapacityWrapper(DockLiveCapacityCallback* callback) {
-        std::shared_ptr<DockLiveCapacityCallback> cb(callback);
+    int listenDockLiveCapacityWrapper(FHSDK_CALLBACK_PARAMETER(DockLiveCapacityCallback)) {
+        FHSDK_SHARE_CALLBACK(DockLiveCapacityCallback);
         return $self->listenDockLiveCapacity([cb](const flight_hub_sdk::DockLiveCapacity& msg) {
-            cb->onDockLiveCapacity(msg);
+            if (cb) cb->onDockLiveCapacity(msg);
         });
     }
 
@@ -6596,40 +6618,40 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IGroundFlightModule {
-    void groundTakeoffWrapper(const flight_hub_sdk::GroundTakeoffParams& params, GroundTakeoffResultCallback* callback) {
+    void groundTakeoffWrapper(const flight_hub_sdk::GroundTakeoffParams& params, FHSDK_CALLBACK_PARAMETER(GroundTakeoffResultCallback)) {
         $self->groundTakeoff(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::GroundTakeoffResult& result) {
             if (callback) {
                 callback->onResult(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void groundLandingWrapper(int cmd, ResultCallbackWithError* callback) {
+    void groundLandingWrapper(int cmd, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->groundLanding(cmd, [callback](const flight_hub_sdk::FlightHubError& err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 }
 
 %extend flight_hub_sdk::ITakeoffModule {
-    void takeoffWrapper(const flight_hub_sdk::TakeoffParams& params, TakeoffResultCallback* callback) {
+    void takeoffWrapper(const flight_hub_sdk::TakeoffParams& params, FHSDK_CALLBACK_PARAMETER(TakeoffResultCallback)) {
         $self->takeoff(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::TakeoffResult& result) {
             if (callback) {
                 callback->onResult(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int listenCommandTaskEventWrapper(CommandTaskEventCallback* callback) {
-        std::shared_ptr<CommandTaskEventCallback> cb(callback);
+    int listenCommandTaskEventWrapper(FHSDK_CALLBACK_PARAMETER(CommandTaskEventCallback)) {
+        FHSDK_SHARE_CALLBACK(CommandTaskEventCallback);
         return $self->listenCommandTaskEvent(
             [cb](const flight_hub_sdk::CommandTaskEvent& event) {
-                cb->onCommandTaskEvent(event);
+                if (cb) cb->onCommandTaskEvent(event);
             });
     }
 
@@ -6638,10 +6660,10 @@ using namespace flight_hub_sdk;
     }
 
     // EA340 消息推送补全（Phase D）;
-    int listenDroneCommanderFlightModeWrapper(DroneCommanderFlightModeCallback* callback) {
-        std::shared_ptr<DroneCommanderFlightModeCallback> cb(callback);
+    int listenDroneCommanderFlightModeWrapper(FHSDK_CALLBACK_PARAMETER(DroneCommanderFlightModeCallback)) {
+        FHSDK_SHARE_CALLBACK(DroneCommanderFlightModeCallback);
         return $self->listenDroneCommanderFlightMode([cb](const flight_hub_sdk::DroneCommanderFlightMode& msg) {
-            cb->onDroneCommanderFlightMode(msg);
+            if (cb) cb->onDroneCommanderFlightMode(msg);
         });
     }
 
@@ -6649,10 +6671,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDroneCommanderFlightMode(listen_id);
     }
 
-    int listenDroneCurrentCommanderFlightModeWrapper(DroneCurrentCommanderFlightModeCallback* callback) {
-        std::shared_ptr<DroneCurrentCommanderFlightModeCallback> cb(callback);
+    int listenDroneCurrentCommanderFlightModeWrapper(FHSDK_CALLBACK_PARAMETER(DroneCurrentCommanderFlightModeCallback)) {
+        FHSDK_SHARE_CALLBACK(DroneCurrentCommanderFlightModeCallback);
         return $self->listenDroneCurrentCommanderFlightMode([cb](const flight_hub_sdk::DroneCurrentCommanderFlightMode& msg) {
-            cb->onDroneCurrentCommanderFlightMode(msg);
+            if (cb) cb->onDroneCurrentCommanderFlightMode(msg);
         });
     }
 
@@ -6660,10 +6682,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDroneCurrentCommanderFlightMode(listen_id);
     }
 
-    int listenDroneCommanderModeLostActionWrapper(DroneCommanderModeLostActionCallback* callback) {
-        std::shared_ptr<DroneCommanderModeLostActionCallback> cb(callback);
+    int listenDroneCommanderModeLostActionWrapper(FHSDK_CALLBACK_PARAMETER(DroneCommanderModeLostActionCallback)) {
+        FHSDK_SHARE_CALLBACK(DroneCommanderModeLostActionCallback);
         return $self->listenDroneCommanderModeLostAction([cb](const flight_hub_sdk::DroneCommanderModeLostAction& msg) {
-            cb->onDroneCommanderModeLostAction(msg);
+            if (cb) cb->onDroneCommanderModeLostAction(msg);
         });
     }
 
@@ -6673,37 +6695,37 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IInFlightWaylineModule {
-    void createInFlightWaylineTaskWrapper(const flight_hub_sdk::CreateInFlightWaylineTaskParams& params, CreateInFlightWaylineTaskCallback* callback) {
+    void createInFlightWaylineTaskWrapper(const flight_hub_sdk::CreateInFlightWaylineTaskParams& params, FHSDK_CALLBACK_PARAMETER(CreateInFlightWaylineTaskCallback)) {
         $self->createInFlightWaylineTask(params, [callback](const flight_hub_sdk::CreateInFlightWaylineTaskResult& result, flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(result, err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void controlInFlightWaylineTaskWrapper(flight_hub_sdk::InFlightWaylineControlAction action, ResultCallbackWithError* callback) {
+    void controlInFlightWaylineTaskWrapper(flight_hub_sdk::InFlightWaylineControlAction action, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->controlInFlightWaylineTask(action, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void getActiveInFlightWaylineTaskWrapper(GetActiveInFlightWaylineTaskCallback* callback) {
+    void getActiveInFlightWaylineTaskWrapper(FHSDK_CALLBACK_PARAMETER(GetActiveInFlightWaylineTaskCallback)) {
         $self->getActiveInFlightWaylineTask([callback](const flight_hub_sdk::ActiveInFlightWaylineTaskInfo& info, flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(info, err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int listenInFlightWaylineProgressWrapper(InFlightWaylineProgressCallback* callback) {
-        std::shared_ptr<InFlightWaylineProgressCallback> cb(callback);
+    int listenInFlightWaylineProgressWrapper(FHSDK_CALLBACK_PARAMETER(InFlightWaylineProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(InFlightWaylineProgressCallback);
         return $self->listenInFlightWaylineProgress([cb](const flight_hub_sdk::InFlightWaylineProgress& progress) {
-            cb->onInFlightWaylineProgress(progress);
+            if (cb) cb->onInFlightWaylineProgress(progress);
         });
     }
 
@@ -6713,56 +6735,56 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IFlightControlModule {
-    void drcEmergencyStopWrapper(ResultCallbackWithError* callback) {
+    void drcEmergencyStopWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcEmergencyStop([callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void drcEmergencyLandingWrapper(ResultCallbackWithError* callback) {
+    void drcEmergencyLandingWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcEmergencyLanding([callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void drcForceLandingWrapper(ResultCallbackWithError* callback) {
+    void drcForceLandingWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcForceLanding([callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void returnHomeWrapper(ResultCallbackWithError* callback) {
+    void returnHomeWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->returnHome([callback](const flight_hub_sdk::FlightHubError& err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void returnHomeToDockWrapper(const std::string& target_dock_sn, ResultCallbackWithError* callback) {
+    void returnHomeToDockWrapper(const std::string& target_dock_sn, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->returnHome(target_dock_sn, [callback](const flight_hub_sdk::FlightHubError& err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void returnHomeCancelWrapper(ResultCallbackWithError* callback) {
+    void returnHomeCancelWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->returnHomeCancel([callback](const flight_hub_sdk::FlightHubError& err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
@@ -6775,51 +6797,51 @@ using namespace flight_hub_sdk;
     // Flight Control Auxiliary Wrappers
     // ══════════════════════════════════════════════
 
-    void drcSetDroneHoverWrapper(int duration, ResultCallbackWithError* callback) {
+    void drcSetDroneHoverWrapper(int duration, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetDroneHover(duration, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void drcSetFollowMouseParameterWrapper(int speed, ResultCallbackWithError* callback) {
+    void drcSetFollowMouseParameterWrapper(int speed, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetFollowMouseParameter(speed, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void drcSetFlyingMaxSpeedWrapper(double speed, ResultCallbackWithError* callback) {
+    void drcSetFlyingMaxSpeedWrapper(double speed, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetFlyingMaxSpeed(speed, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void drcSetNightLightsStateWrapper(int night_lights_state, ResultCallbackWithError* callback) {
+    void drcSetNightLightsStateWrapper(int night_lights_state, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetNightLightsState(night_lights_state, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void drcSetStealthStateWrapper(int stealth_state, ResultCallbackWithError* callback) {
+    void drcSetStealthStateWrapper(int stealth_state, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetStealthState(stealth_state, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void drcOpenParachuteWrapper(int force, ResultCallbackWithError* callback) {
+    void drcOpenParachuteWrapper(int force, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcOpenParachute(force, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void drcSetFlashLedWrapper(const flight_hub_sdk::FlashLedParams& params, ResultCallbackWithError* callback) {
+    void drcSetFlashLedWrapper(const flight_hub_sdk::FlashLedParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcSetFlashLed(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void drcCameraLookAtWrapper(const flight_hub_sdk::CameraLookAtParams& params, ResultCallbackWithError* callback) {
+    void drcCameraLookAtWrapper(const flight_hub_sdk::CameraLookAtParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcCameraLookAt(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
@@ -6827,10 +6849,10 @@ using namespace flight_hub_sdk;
     // Northbound Push Listener Wrappers
     // ══════════════════════════════════════════════
 
-    int listenDrcOsdInfoWrapper(DrcOsdInfoCallback* callback) {
-        std::shared_ptr<DrcOsdInfoCallback> cb(callback);
+    int listenDrcOsdInfoWrapper(FHSDK_CALLBACK_PARAMETER(DrcOsdInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(DrcOsdInfoCallback);
         return $self->listenDrcOsdInfo([cb](const flight_hub_sdk::DrcOsdInfo& info) {
-            cb->onDrcOsdInfo(info);
+            if (cb) cb->onDrcOsdInfo(info);
         });
     }
 
@@ -6838,10 +6860,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDrcOsdInfo(listen_id);
     }
 
-    int listenDrcBatteriesInfoWrapper(DrcBatteriesInfoCallback* callback) {
-        std::shared_ptr<DrcBatteriesInfoCallback> cb(callback);
+    int listenDrcBatteriesInfoWrapper(FHSDK_CALLBACK_PARAMETER(DrcBatteriesInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(DrcBatteriesInfoCallback);
         return $self->listenDrcBatteriesInfo([cb](const flight_hub_sdk::DrcBatteriesInfo& info) {
-            cb->onDrcBatteriesInfo(info);
+            if (cb) cb->onDrcBatteriesInfo(info);
         });
     }
 
@@ -6849,10 +6871,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDrcBatteriesInfo(listen_id);
     }
 
-    int listenDrcParachuteInfoWrapper(DrcParachuteInfoCallback* callback) {
-        std::shared_ptr<DrcParachuteInfoCallback> cb(callback);
+    int listenDrcParachuteInfoWrapper(FHSDK_CALLBACK_PARAMETER(DrcParachuteInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(DrcParachuteInfoCallback);
         return $self->listenDrcParachuteInfo([cb](const flight_hub_sdk::DrcParachuteInfo& info) {
-            cb->onDrcParachuteInfo(info);
+            if (cb) cb->onDrcParachuteInfo(info);
         });
     }
 
@@ -6860,10 +6882,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDrcParachuteInfo(listen_id);
     }
 
-    int listenDrcFlashLedWrapper(FlashLedStateInfoCallback* callback) {
-        std::shared_ptr<FlashLedStateInfoCallback> cb(callback);
+    int listenDrcFlashLedWrapper(FHSDK_CALLBACK_PARAMETER(FlashLedStateInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(FlashLedStateInfoCallback);
         return $self->listenDrcFlashLed([cb](const flight_hub_sdk::FlashLedStateInfo& info) {
-            cb->onFlashLedStateInfo(info);
+            if (cb) cb->onFlashLedStateInfo(info);
         });
     }
 
@@ -6871,10 +6893,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDrcFlashLed(listen_id);
     }
 
-    int listenDrcLandingMissionStateWrapper(DrcLandingMissionStateCallback* callback) {
-        std::shared_ptr<DrcLandingMissionStateCallback> cb(callback);
+    int listenDrcLandingMissionStateWrapper(FHSDK_CALLBACK_PARAMETER(DrcLandingMissionStateCallback)) {
+        FHSDK_SHARE_CALLBACK(DrcLandingMissionStateCallback);
         return $self->listenDrcLandingMissionState([cb](const flight_hub_sdk::DrcLandingMissionState& info) {
-            cb->onDrcLandingMissionState(info);
+            if (cb) cb->onDrcLandingMissionState(info);
         });
     }
 
@@ -6884,118 +6906,118 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IControlAuthModule {
-    void acquireFlightControlAuthorityWrapper(ResultCallbackWithError* callback) {
+    void acquireFlightControlAuthorityWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->acquireFlightControlAuthority([callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void releaseFlightControlAuthorityWrapper(ResultCallbackWithError* callback) {
+    void releaseFlightControlAuthorityWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->releaseFlightControlAuthority([callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int listenFlightControlAuthorityWrapper(FlightControlAuthorityCallback* callback) {
-        std::shared_ptr<FlightControlAuthorityCallback> cb(callback);
+    int listenFlightControlAuthorityWrapper(FHSDK_CALLBACK_PARAMETER(FlightControlAuthorityCallback)) {
+        FHSDK_SHARE_CALLBACK(FlightControlAuthorityCallback);
         return $self->listenFlightControlAuthority([cb](bool available) {
-            cb->onFlightControlAuthority(available);
+            if (cb) cb->onFlightControlAuthority(available);
         });
     }
 
-    void acquirePayloadControlAuthorityWrapper(const std::string& payload_index, ResultCallbackWithError* callback) {
+    void acquirePayloadControlAuthorityWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->acquirePayloadControlAuthority(payload_index, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void releasePayloadControlAuthorityWrapper(const std::string& payload_index, ResultCallbackWithError* callback) {
+    void releasePayloadControlAuthorityWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->releasePayloadControlAuthority(payload_index, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void acquireFlightControlAuthorityWithResultWrapper(ControlAuthResultCallback* callback) {
+    void acquireFlightControlAuthorityWithResultWrapper(FHSDK_CALLBACK_PARAMETER(ControlAuthResultCallback)) {
         $self->acquireFlightControlAuthorityWithResult([callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::ControlAuthResult& result) {
             if (callback) {
                 callback->onResult(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void releaseFlightControlAuthorityWithResultWrapper(ControlAuthResultCallback* callback) {
+    void releaseFlightControlAuthorityWithResultWrapper(FHSDK_CALLBACK_PARAMETER(ControlAuthResultCallback)) {
         $self->releaseFlightControlAuthorityWithResult([callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::ControlAuthResult& result) {
             if (callback) {
                 callback->onResult(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void acquirePayloadControlAuthorityWithResultWrapper(const std::string& payload_index, ControlAuthResultCallback* callback) {
+    void acquirePayloadControlAuthorityWithResultWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(ControlAuthResultCallback)) {
         $self->acquirePayloadControlAuthorityWithResult(payload_index, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::ControlAuthResult& result) {
             if (callback) {
                 callback->onResult(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void releasePayloadControlAuthorityWithResultWrapper(const std::string& payload_index, ControlAuthResultCallback* callback) {
+    void releasePayloadControlAuthorityWithResultWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(ControlAuthResultCallback)) {
         $self->releasePayloadControlAuthorityWithResult(payload_index, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::ControlAuthResult& result) {
             if (callback) {
                 callback->onResult(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int listenPayloadControlAuthorityWrapper(const std::string& payload_index, PayloadControlAuthorityCallback* callback) {
-        std::shared_ptr<PayloadControlAuthorityCallback> cb(callback);
+    int listenPayloadControlAuthorityWrapper(const std::string& payload_index, FHSDK_CALLBACK_PARAMETER(PayloadControlAuthorityCallback)) {
+        FHSDK_SHARE_CALLBACK(PayloadControlAuthorityCallback);
         return $self->listenPayloadControlAuthority(payload_index, [cb](bool available) {
-            cb->onPayloadControlAuthority(available);
+            if (cb) cb->onPayloadControlAuthority(available);
         });
     }
 }
 
 %extend flight_hub_sdk::IDrcModule {
-    int listenLinkStatusWrapper(LinkStatusCallback* callback) {
-        std::shared_ptr<LinkStatusCallback> cb(callback);
+    int listenLinkStatusWrapper(FHSDK_CALLBACK_PARAMETER(LinkStatusCallback)) {
+        FHSDK_SHARE_CALLBACK(LinkStatusCallback);
         return $self->listenLinkStatus([cb](const flight_hub_sdk::LinkStatus& status) {
-            cb->onLinkStatus(status);
+            if (cb) cb->onLinkStatus(status);
         });
     }
     void cancelListenLinkStatusWrapper(int listen_id) {
         $self->cancelListenLinkStatus(listen_id);
     }
-    void connectDrcLinkWrapper(ResultCallback* callback) {
+    void connectDrcLinkWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallback)) {
         $self->connectDrcLink([callback](flight_hub_sdk::FlightHubSdkErrorCode err_code) {
             if (callback) {
                 flight_hub_sdk::FlightHubError err = flight_hub_sdk::FlightHubError::from_sdk(err_code);
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
-    void disconnectDrcLinkWrapper(ResultCallback* callback) {
+    void disconnectDrcLinkWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallback)) {
         $self->disconnectDrcLink([callback](flight_hub_sdk::FlightHubSdkErrorCode err_code) {
             if (callback) {
                 flight_hub_sdk::FlightHubError err = flight_hub_sdk::FlightHubError::from_sdk(err_code);
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
@@ -7004,16 +7026,16 @@ using namespace flight_hub_sdk;
     // DRC Link Auxiliary Wrappers
     // ══════════════════════════════════════════════
 
-    void drcRtcQualityTestWrapper(const flight_hub_sdk::RtcQualityTestParams& params, ResultCallbackWithError* callback) {
+    void drcRtcQualityTestWrapper(const flight_hub_sdk::RtcQualityTestParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->drcRtcQualityTest(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    int listenDrcDelayInfoWrapper(DrcDelayInfoCallback* callback) {
-        std::shared_ptr<DrcDelayInfoCallback> cb(callback);
+    int listenDrcDelayInfoWrapper(FHSDK_CALLBACK_PARAMETER(DrcDelayInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(DrcDelayInfoCallback);
         return $self->listenDrcDelayInfo([cb](const flight_hub_sdk::DrcDelayInfo& info) {
-            cb->onDrcDelayInfo(info);
+            if (cb) cb->onDrcDelayInfo(info);
         });
     }
 
@@ -7021,10 +7043,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDrcDelayInfo(listen_id);
     }
 
-    int listenDrcCountDownInfoWrapper(DrcCountDownInfoCallback* callback) {
-        std::shared_ptr<DrcCountDownInfoCallback> cb(callback);
+    int listenDrcCountDownInfoWrapper(FHSDK_CALLBACK_PARAMETER(DrcCountDownInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(DrcCountDownInfoCallback);
         return $self->listenDrcCountDownInfo([cb](const flight_hub_sdk::DrcCountDownInfo& info) {
-            cb->onDrcCountDownInfo(info);
+            if (cb) cb->onDrcCountDownInfo(info);
         });
     }
 
@@ -7034,77 +7056,77 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::ICascadeModule {
-    void addChildNodeWrapper(const flight_hub_sdk::AddChildNodeRequest& req, CascadeAddChildNodeCallback* callback) {
+    void addChildNodeWrapper(const flight_hub_sdk::AddChildNodeRequest& req, FHSDK_CALLBACK_PARAMETER(CascadeAddChildNodeCallback)) {
         $self->addChildNode(req, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::AddChildNodeResult& result) {
-            if (callback) { callback->onCascadeAddChildNode(err, result); delete callback; }
+            if (callback) { callback->onCascadeAddChildNode(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void enableChildNodesWrapper(const std::vector<std::string>& node_ids, CascadeEnableChildNodesCallback* callback) {
+    void enableChildNodesWrapper(const std::vector<std::string>& node_ids, FHSDK_CALLBACK_PARAMETER(CascadeEnableChildNodesCallback)) {
         $self->enableChildNodes(node_ids, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::CascadeBatchOpResult& result) {
-            if (callback) { callback->onCascadeEnableChildNodes(err, result); delete callback; }
+            if (callback) { callback->onCascadeEnableChildNodes(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void disableChildNodesWrapper(const std::vector<std::string>& node_ids, CascadeDisableChildNodesCallback* callback) {
+    void disableChildNodesWrapper(const std::vector<std::string>& node_ids, FHSDK_CALLBACK_PARAMETER(CascadeDisableChildNodesCallback)) {
         $self->disableChildNodes(node_ids, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::CascadeBatchOpResult& result) {
-            if (callback) { callback->onCascadeDisableChildNodes(err, result); delete callback; }
+            if (callback) { callback->onCascadeDisableChildNodes(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void deleteChildNodeWrapper(const std::string& node_id, CascadeDeleteChildNodeCallback* callback) {
+    void deleteChildNodeWrapper(const std::string& node_id, FHSDK_CALLBACK_PARAMETER(CascadeDeleteChildNodeCallback)) {
         $self->deleteChildNode(node_id, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onCascadeDeleteChildNode(err); delete callback; }
+            if (callback) { callback->onCascadeDeleteChildNode(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void getReachableChildrenWrapper(const flight_hub_sdk::CascadeChildrenQuery& query, CascadeGetReachableChildrenCallback* callback) {
+    void getReachableChildrenWrapper(const flight_hub_sdk::CascadeChildrenQuery& query, FHSDK_CALLBACK_PARAMETER(CascadeGetReachableChildrenCallback)) {
         $self->getReachableChildren(query, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::CascadeChildNodeListResult& result) {
-            if (callback) { callback->onCascadeGetReachableChildren(err, result); delete callback; }
+            if (callback) { callback->onCascadeGetReachableChildren(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void getParentNodeWrapper(CascadeGetParentNodeCallback* callback) {
+    void getParentNodeWrapper(FHSDK_CALLBACK_PARAMETER(CascadeGetParentNodeCallback)) {
         $self->getParentNode([callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::CascadeParentNodeInfo& info) {
-            if (callback) { callback->onCascadeGetParentNode(err, info); delete callback; }
+            if (callback) { callback->onCascadeGetParentNode(err, info); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void respondToParentWrapper(const flight_hub_sdk::CascadeParentRespondRequest& req, CascadeRespondToParentCallback* callback) {
+    void respondToParentWrapper(const flight_hub_sdk::CascadeParentRespondRequest& req, FHSDK_CALLBACK_PARAMETER(CascadeRespondToParentCallback)) {
         $self->respondToParent(req, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onCascadeRespondToParent(err); delete callback; }
+            if (callback) { callback->onCascadeRespondToParent(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void getNodeIndexWrapper(int32_t page, int32_t size, CascadeGetNodeIndexCallback* callback) {
+    void getNodeIndexWrapper(int32_t page, int32_t size, FHSDK_CALLBACK_PARAMETER(CascadeGetNodeIndexCallback)) {
         $self->getNodeIndex(page, size, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::CascadeChildNodeListResult& result) {
-            if (callback) { callback->onCascadeGetNodeIndex(err, result); delete callback; }
+            if (callback) { callback->onCascadeGetNodeIndex(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void getConnectivityWrapper(CascadeGetConnectivityCallback* callback) {
+    void getConnectivityWrapper(FHSDK_CALLBACK_PARAMETER(CascadeGetConnectivityCallback)) {
         $self->getConnectivity([callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::CascadeConnectivityResult& result) {
-            if (callback) { callback->onCascadeGetConnectivity(err, result); delete callback; }
+            if (callback) { callback->onCascadeGetConnectivity(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void getParentConnectivityWrapper(CascadeGetParentConnectivityCallback* callback) {
+    void getParentConnectivityWrapper(FHSDK_CALLBACK_PARAMETER(CascadeGetParentConnectivityCallback)) {
         $self->getParentConnectivity([callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::CascadeParentConnectivity& result) {
-            if (callback) { callback->onCascadeGetParentConnectivity(err, result); delete callback; }
+            if (callback) { callback->onCascadeGetParentConnectivity(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void postToNodeWrapper(const std::string& dst_node_id, const std::string& body, CascadePostToNodeCallback* callback) {
+    void postToNodeWrapper(const std::string& dst_node_id, const std::string& body, FHSDK_CALLBACK_PARAMETER(CascadePostToNodeCallback)) {
         $self->postToNode(dst_node_id, body, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onCascadePostToNode(err); delete callback; }
+            if (callback) { callback->onCascadePostToNode(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
     // 事件推送 topic_cascade_node_status（多订阅者，生命周期随 listen_id；不 delete callback）
-    int listenNodeStatusChangedWrapper(CascadeNodeStatusEventCallback* callback) {
-        std::shared_ptr<CascadeNodeStatusEventCallback> cb(callback);
+    int listenNodeStatusChangedWrapper(FHSDK_CALLBACK_PARAMETER(CascadeNodeStatusEventCallback)) {
+        FHSDK_SHARE_CALLBACK(CascadeNodeStatusEventCallback);
         return $self->listenNodeStatusChanged([cb](const flight_hub_sdk::CascadeNodeStatusEvent& event) {
-            cb->onCascadeNodeStatusEvent(event);
+            if (cb) cb->onCascadeNodeStatusEvent(event);
         });
     }
 
@@ -7113,10 +7135,10 @@ using namespace flight_hub_sdk;
     }
 
     // 事件推送 topic_cascade_notify（多订阅者，生命周期随 listen_id；不 delete callback）
-    int listenNotifyPayloadWrapper(CascadeNotifyEventCallback* callback) {
-        std::shared_ptr<CascadeNotifyEventCallback> cb(callback);
+    int listenNotifyPayloadWrapper(FHSDK_CALLBACK_PARAMETER(CascadeNotifyEventCallback)) {
+        FHSDK_SHARE_CALLBACK(CascadeNotifyEventCallback);
         return $self->listenNotifyPayload([cb](const flight_hub_sdk::CascadeNotifyEvent& event) {
-            cb->onCascadeNotifyEvent(event);
+            if (cb) cb->onCascadeNotifyEvent(event);
         });
     }
 
@@ -7126,51 +7148,51 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IFlightSettingsModule {
-    void setFlightSmartPlanModeWrapper(const std::string& device_sn, int mode, SetFlightSmartPlanModeCallback* callback) {
+    void setFlightSmartPlanModeWrapper(const std::string& device_sn, int mode, FHSDK_CALLBACK_PARAMETER(SetFlightSmartPlanModeCallback)) {
         $self->setFlightSmartPlanMode(device_sn, mode, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::FlightSmartPlanModeResult& result) {
-            if (callback) { callback->onSetFlightSmartPlanMode(err, result); delete callback; }
+            if (callback) { callback->onSetFlightSmartPlanMode(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void setOutOfControlActionWrapper(const std::string& device_sn, const std::string& action, SetOutOfControlActionCallback* callback) {
+    void setOutOfControlActionWrapper(const std::string& device_sn, const std::string& action, FHSDK_CALLBACK_PARAMETER(SetOutOfControlActionCallback)) {
         $self->setOutOfControlAction(device_sn, action, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::FlightOutOfControlActionResult& result) {
-            if (callback) { callback->onSetOutOfControlAction(err, result); delete callback; }
+            if (callback) { callback->onSetOutOfControlAction(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void setFlightTaskHeightWrapper(const std::string& device_sn, double height, SetFlightTaskHeightCallback* callback) {
+    void setFlightTaskHeightWrapper(const std::string& device_sn, double height, FHSDK_CALLBACK_PARAMETER(SetFlightTaskHeightCallback)) {
         $self->setFlightTaskHeight(device_sn, height, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::FlightCommanderHeightResult& result) {
-            if (callback) { callback->onSetFlightTaskHeight(err, result); delete callback; }
+            if (callback) { callback->onSetFlightTaskHeight(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void setRthAltitudeWrapper(const std::string& device_sn, int altitude, SetRthAltitudeCallback* callback) {
+    void setRthAltitudeWrapper(const std::string& device_sn, int altitude, FHSDK_CALLBACK_PARAMETER(SetRthAltitudeCallback)) {
         $self->setRthAltitude(device_sn, altitude, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::FlightRthAltitudeResult& result) {
-            if (callback) { callback->onSetRthAltitude(err, result); delete callback; }
+            if (callback) { callback->onSetRthAltitude(err, result); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void setAirTransferEnableWrapper(const std::string& device_sn, bool enabled, SetAirTransferEnableCallback* callback) {
+    void setAirTransferEnableWrapper(const std::string& device_sn, bool enabled, FHSDK_CALLBACK_PARAMETER(SetAirTransferEnableCallback)) {
         $self->setAirTransferEnable(device_sn, enabled, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onSetAirTransferEnable(err); delete callback; }
+            if (callback) { callback->onSetAirTransferEnable(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 }
 
 %extend flight_hub_sdk::ITestFlightModule {
-    void generateTryFlightWaylineWrapper(const std::string& project_id, const flight_hub_sdk::GenerateTryFlightWaylineParams& params, GenerateTryFlightWaylineCallback* callback) {
+    void generateTryFlightWaylineWrapper(const std::string& project_id, const flight_hub_sdk::GenerateTryFlightWaylineParams& params, FHSDK_CALLBACK_PARAMETER(GenerateTryFlightWaylineCallback)) {
         $self->generateTryFlightWayline(project_id, params, [callback](const flight_hub_sdk::GenerateTryFlightWaylineResponse& response, flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onGenerateTryFlightWayline(response, err); delete callback; }
+            if (callback) { callback->onGenerateTryFlightWayline(response, err); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void createTestFlightTaskWrapper(const std::string& project_id, const flight_hub_sdk::CreateTestFlightTaskParams& params, CreateTestFlightTaskCallback* callback) {
+    void createTestFlightTaskWrapper(const std::string& project_id, const flight_hub_sdk::CreateTestFlightTaskParams& params, FHSDK_CALLBACK_PARAMETER(CreateTestFlightTaskCallback)) {
         $self->createTestFlightTask(project_id, params, [callback](const flight_hub_sdk::CreateTestFlightTaskResponse& response, flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onCreateTestFlightTask(response, err); delete callback; }
+            if (callback) { callback->onCreateTestFlightTask(response, err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 }
 
 %extend flight_hub_sdk::IDockOsdModule {
-    int listenDockLocationWrapper(DockLocationCallback* callback) {
-        std::shared_ptr<DockLocationCallback> cb(callback);
+    int listenDockLocationWrapper(FHSDK_CALLBACK_PARAMETER(DockLocationCallback)) {
+        FHSDK_SHARE_CALLBACK(DockLocationCallback);
         return $self->listenDockLocation([cb](const flight_hub_sdk::DockLocation& location) {
-            cb->onDockLocation(location);
+            if (cb) cb->onDockLocation(location);
         });
     }
 
@@ -7178,10 +7200,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDockLocation(listen_id);
     }
 
-    int listenDroneInDockWrapper(DroneInDockCallback* callback) {
-        std::shared_ptr<DroneInDockCallback> cb(callback);
+    int listenDroneInDockWrapper(FHSDK_CALLBACK_PARAMETER(DroneInDockCallback)) {
+        FHSDK_SHARE_CALLBACK(DroneInDockCallback);
         return $self->listenDroneInDock([cb](const flight_hub_sdk::DroneInDock& drone_in_dock) {
-            cb->onDroneInDock(drone_in_dock);
+            if (cb) cb->onDroneInDock(drone_in_dock);
         });
     }
 
@@ -7190,10 +7212,10 @@ using namespace flight_hub_sdk;
     }
 
     // 监听机场 mode code;
-    int listenDockModeCodeWrapper(DockModeCodeCallback* callback) {
-        std::shared_ptr<DockModeCodeCallback> cb(callback);
+    int listenDockModeCodeWrapper(FHSDK_CALLBACK_PARAMETER(DockModeCodeCallback)) {
+        FHSDK_SHARE_CALLBACK(DockModeCodeCallback);
         return $self->listenDockModeCode([cb](const flight_hub_sdk::DockModeCode& dock_mode_code) {
-            cb->onDockModeCode(dock_mode_code);
+            if (cb) cb->onDockModeCode(dock_mode_code);
         });
     }
 
@@ -7203,10 +7225,10 @@ using namespace flight_hub_sdk;
     }
 
     // 监听飞行任务 step code;
-    int listenFlightTaskStepCodeWrapper(FlightTaskStepCodeCallback* callback) {
-        std::shared_ptr<FlightTaskStepCodeCallback> cb(callback);
+    int listenFlightTaskStepCodeWrapper(FHSDK_CALLBACK_PARAMETER(FlightTaskStepCodeCallback)) {
+        FHSDK_SHARE_CALLBACK(FlightTaskStepCodeCallback);
         return $self->listenFlightTaskStepCode([cb](const flight_hub_sdk::FlightTaskStepCode& flight_task_step_code) {
-            cb->onFlightTaskStepCode(flight_task_step_code);
+            if (cb) cb->onFlightTaskStepCode(flight_task_step_code);
         });
     }
 
@@ -7216,10 +7238,10 @@ using namespace flight_hub_sdk;
     }
 
     // 机场: 子设备信息列表(sub_device);
-    int listenDockSubDeviceWrapper(DockSubDeviceInfoListCallback* callback) {
-        std::shared_ptr<DockSubDeviceInfoListCallback> cb(callback);
+    int listenDockSubDeviceWrapper(FHSDK_CALLBACK_PARAMETER(DockSubDeviceInfoListCallback)) {
+        FHSDK_SHARE_CALLBACK(DockSubDeviceInfoListCallback);
         return $self->listenDockSubDevice([cb](const flight_hub_sdk::DockSubDeviceInfoList& dock_sub_device_info_list) {
-            cb->onDockSubDeviceInfoList(dock_sub_device_info_list);
+            if (cb) cb->onDockSubDeviceInfoList(dock_sub_device_info_list);
         });
     }
 
@@ -7229,10 +7251,10 @@ using namespace flight_hub_sdk;
     }
 
     // 监听机场网络状态(network_state);
-    int listenDockNetworkStateWrapper(DockNetworkStateCallback* callback) {
-        std::shared_ptr<DockNetworkStateCallback> cb(callback);
+    int listenDockNetworkStateWrapper(FHSDK_CALLBACK_PARAMETER(DockNetworkStateCallback)) {
+        FHSDK_SHARE_CALLBACK(DockNetworkStateCallback);
         return $self->listenDockNetworkState([cb](const flight_hub_sdk::DockNetworkState& dock_network_state) {
-            cb->onDockNetworkState(dock_network_state);
+            if (cb) cb->onDockNetworkState(dock_network_state);
         });
     }
 
@@ -7242,10 +7264,10 @@ using namespace flight_hub_sdk;
     }
 
     // 监听机场舱盖状态;
-    int listenDockCoverStateWrapper(DockCoverStateCallback* callback) {
-        std::shared_ptr<DockCoverStateCallback> cb(callback);
+    int listenDockCoverStateWrapper(FHSDK_CALLBACK_PARAMETER(DockCoverStateCallback)) {
+        FHSDK_SHARE_CALLBACK(DockCoverStateCallback);
         return $self->listenDockCoverState([cb](const flight_hub_sdk::DockCoverState& dock_cover_state) {
-            cb->onDockCoverState(dock_cover_state);
+            if (cb) cb->onDockCoverState(dock_cover_state);
         });
     }
 
@@ -7255,10 +7277,10 @@ using namespace flight_hub_sdk;
     }
 
     // 监听: 机场媒体文件数量(media_file_detail);
-    int listenDockMediaFileDetailWrapper(DockMediaFileDetailCallback* callback) {
-        std::shared_ptr<DockMediaFileDetailCallback> cb(callback);
+    int listenDockMediaFileDetailWrapper(FHSDK_CALLBACK_PARAMETER(DockMediaFileDetailCallback)) {
+        FHSDK_SHARE_CALLBACK(DockMediaFileDetailCallback);
         return $self->listenDockMediaFileDetail([cb](const flight_hub_sdk::DockMediaFileDetail& dock_media_file_detail) {
-            cb->onDockMediaFileDetail(dock_media_file_detail);
+            if (cb) cb->onDockMediaFileDetail(dock_media_file_detail);
         });
     }
 
@@ -7269,10 +7291,10 @@ using namespace flight_hub_sdk;
 
 
     // 机场: 图传质量(wireless_link);
-    int listenDockWirelessLinkWrapper(DockWirelessLinkCallback* callback) {
-        std::shared_ptr<DockWirelessLinkCallback> cb(callback);
+    int listenDockWirelessLinkWrapper(FHSDK_CALLBACK_PARAMETER(DockWirelessLinkCallback)) {
+        FHSDK_SHARE_CALLBACK(DockWirelessLinkCallback);
         return $self->listenDockWirelessLink([cb](const flight_hub_sdk::DockWirelessLink& dock_wireless_link) {
-            cb->onDockWirelessLink(dock_wireless_link);
+            if (cb) cb->onDockWirelessLink(dock_wireless_link);
         });
     }
 
@@ -7283,10 +7305,10 @@ using namespace flight_hub_sdk;
 
 
     // 机场: 机场作业次数(job_number);
-    int listenDockJobNumberWrapper(DockJobNumberCallback* callback) {
-        std::shared_ptr<DockJobNumberCallback> cb(callback);
+    int listenDockJobNumberWrapper(FHSDK_CALLBACK_PARAMETER(DockJobNumberCallback)) {
+        FHSDK_SHARE_CALLBACK(DockJobNumberCallback);
         return $self->listenDockJobNumber([cb](const flight_hub_sdk::DockJobNumber& dock_job_number) {
-            cb->onDockJobNumber(dock_job_number);
+            if (cb) cb->onDockJobNumber(dock_job_number);
         });
     }
 
@@ -7297,10 +7319,10 @@ using namespace flight_hub_sdk;
 
 
     // 机场：DockPowerState；
-    int listenDockPowerStateWrapper(DockPowerStateCallback* callback) {
-        std::shared_ptr<DockPowerStateCallback> cb(callback);
+    int listenDockPowerStateWrapper(FHSDK_CALLBACK_PARAMETER(DockPowerStateCallback)) {
+        FHSDK_SHARE_CALLBACK(DockPowerStateCallback);
         return $self->listenDockPowerState([cb](const flight_hub_sdk::DockPowerState& dock_power_state) {
-            cb->onDockPowerState(dock_power_state);
+            if (cb) cb->onDockPowerState(dock_power_state);
         });
     }
 
@@ -7311,10 +7333,10 @@ using namespace flight_hub_sdk;
 
 
      // 机场: 存储容量(storage);
-    int listenDockStorageStateWrapper(DockStorageStateCallback* callback) {
-        std::shared_ptr<DockStorageStateCallback> cb(callback);
+    int listenDockStorageStateWrapper(FHSDK_CALLBACK_PARAMETER(DockStorageStateCallback)) {
+        FHSDK_SHARE_CALLBACK(DockStorageStateCallback);
         return $self->listenDockStorageState([cb](const flight_hub_sdk::DockStorageState& dock_storage_state) {
-            cb->onDockStorageState(dock_storage_state);
+            if (cb) cb->onDockStorageState(dock_storage_state);
         });
     }
 
@@ -7325,10 +7347,10 @@ using namespace flight_hub_sdk;
 
 
     // 机场: 首次上电时间(first_power_on);
-    int listenDockFirstPowerOnTimeWrapper(DockFirstPowerOnTimeCallback* callback) {
-        std::shared_ptr<DockFirstPowerOnTimeCallback> cb(callback);
+    int listenDockFirstPowerOnTimeWrapper(FHSDK_CALLBACK_PARAMETER(DockFirstPowerOnTimeCallback)) {
+        FHSDK_SHARE_CALLBACK(DockFirstPowerOnTimeCallback);
         return $self->listenDockFirstPowerOnTime([cb](const flight_hub_sdk::DockFirstPowerOnTime& first_power_on_time) {
-            cb->onDockFirstPowerOnTime(first_power_on_time);
+            if (cb) cb->onDockFirstPowerOnTime(first_power_on_time);
         });
     }
 
@@ -7339,10 +7361,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场累计运行时长(acc_time);
-    int listenDockAccumulatedRunningTimeWrapper(DockAccTimeCallback* callback) {
-        std::shared_ptr<DockAccTimeCallback> cb(callback);
+    int listenDockAccumulatedRunningTimeWrapper(FHSDK_CALLBACK_PARAMETER(DockAccTimeCallback)) {
+        FHSDK_SHARE_CALLBACK(DockAccTimeCallback);
         return $self->listenDockAccumulatedRunningTime([cb](const flight_hub_sdk::DockAccTime& dock_acc_time) {
-            cb->onDockAccTime(dock_acc_time);
+            if (cb) cb->onDockAccTime(dock_acc_time);
         });
     }
 
@@ -7353,10 +7375,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场备降点(alternate_land_point);
-    int listenDockAlternateLandPointWrapper(DockAlternateLandPointCallback* callback) {
-        std::shared_ptr<DockAlternateLandPointCallback> cb(callback);
+    int listenDockAlternateLandPointWrapper(FHSDK_CALLBACK_PARAMETER(DockAlternateLandPointCallback)) {
+        FHSDK_SHARE_CALLBACK(DockAlternateLandPointCallback);
         return $self->listenDockAlternateLandPoint([cb](const flight_hub_sdk::DockAlternateLandPoint& dock_alternate_land_point) {
-            cb->onDockAlternateLandPoint(dock_alternate_land_point);
+            if (cb) cb->onDockAlternateLandPoint(dock_alternate_land_point);
         });
     }
 
@@ -7367,10 +7389,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听搜星状态(position_state);
-    int listenDockPositionStateWrapper(DockPositionStateCallback* callback) {
-        std::shared_ptr<DockPositionStateCallback> cb(callback);
+    int listenDockPositionStateWrapper(FHSDK_CALLBACK_PARAMETER(DockPositionStateCallback)) {
+        FHSDK_SHARE_CALLBACK(DockPositionStateCallback);
         return $self->listenDockPositionState([cb](const flight_hub_sdk::DockPositionState& dock_position_state) {
-            cb->onDockPositionState(dock_position_state);
+            if (cb) cb->onDockPositionState(dock_position_state);
         });
     }
 
@@ -7381,10 +7403,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场激活时间(activation_time, unix时间戳 s);
-    int listenDockActivationTimeWrapper(DockActivationTimeCallback* callback) {
-        std::shared_ptr<DockActivationTimeCallback> cb(callback);
+    int listenDockActivationTimeWrapper(FHSDK_CALLBACK_PARAMETER(DockActivationTimeCallback)) {
+        FHSDK_SHARE_CALLBACK(DockActivationTimeCallback);
         return $self->listenDockActivationTime([cb](const flight_hub_sdk::DockActivationTime& dock_activateion_time) {
-            cb->onDockActivationTime(dock_activateion_time);
+            if (cb) cb->onDockActivationTime(dock_activateion_time);
         });
     }
 
@@ -7395,10 +7417,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场电池(存储)模式(battery_store_mode);
-    int listenDockBatteryStoreModeWrapper(DockBatteryStoreModeCallback* callback) {
-        std::shared_ptr<DockBatteryStoreModeCallback> cb(callback);
+    int listenDockBatteryStoreModeWrapper(FHSDK_CALLBACK_PARAMETER(DockBatteryStoreModeCallback)) {
+        FHSDK_SHARE_CALLBACK(DockBatteryStoreModeCallback);
         return $self->listenDockBatteryStoreMode([cb](const flight_hub_sdk::DockBatteryStoreMode& dock_battery_store_mode) {
-            cb->onDockBatteryStoreMode(dock_battery_store_mode);
+            if (cb) cb->onDockBatteryStoreMode(dock_battery_store_mode);
         });
     }
 
@@ -7409,10 +7431,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场声光报警状态(alarm_state);
-    int listenDockAlarmStateWrapper(DockAlarmStateCallback* callback) {
-        std::shared_ptr<DockAlarmStateCallback> cb(callback);
+    int listenDockAlarmStateWrapper(FHSDK_CALLBACK_PARAMETER(DockAlarmStateCallback)) {
+        FHSDK_SHARE_CALLBACK(DockAlarmStateCallback);
         return $self->listenDockAlarmState([cb](const flight_hub_sdk::DockAlarmState& dock_alarm_state) {
-            cb->onDockAlarmState(dock_alarm_state);
+            if (cb) cb->onDockAlarmState(dock_alarm_state);
         });
     }
 
@@ -7423,10 +7445,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场: 飞行器电池保养信息(drone_battery_maintenance_info);
-    int listenDockDroneBatteryMaintenanceInfoWrapper(DockDroneBatteryMaintenanceInfoCallback* callback) {
-        std::shared_ptr<DockDroneBatteryMaintenanceInfoCallback> cb(callback);
+    int listenDockDroneBatteryMaintenanceInfoWrapper(FHSDK_CALLBACK_PARAMETER(DockDroneBatteryMaintenanceInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(DockDroneBatteryMaintenanceInfoCallback);
         return $self->listenDockDroneBatteryMaintenanceInfo([cb](const flight_hub_sdk::DockDroneBatteryMaintenanceInfo& dock_drone_battery_maintenance_info) {
-            cb->onDockDroneBatteryMaintenanceInfo(dock_drone_battery_maintenance_info);
+            if (cb) cb->onDockDroneBatteryMaintenanceInfo(dock_drone_battery_maintenance_info);
         });
     }
 
@@ -7437,10 +7459,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场: 紧急停止按钮状态(emergency_stop_state);
-    int listenDockEmergencyStopStateWrapper(DockEmergencyStopStateCallback* callback) {
-        std::shared_ptr<DockEmergencyStopStateCallback> cb(callback);
+    int listenDockEmergencyStopStateWrapper(FHSDK_CALLBACK_PARAMETER(DockEmergencyStopStateCallback)) {
+        FHSDK_SHARE_CALLBACK(DockEmergencyStopStateCallback);
         return $self->listenDockEmergencyStopState([cb](const flight_hub_sdk::DockEmergencyStopState& state) {
-            cb->onDockEmergencyStopState(state);
+            if (cb) cb->onDockEmergencyStopState(state);
         });
     }
 
@@ -7451,10 +7473,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场: 静音模式(silent_mode);
-    int listenDockSilentModeWrapper(DockSilentModeCallback* callback) {
-        std::shared_ptr<DockSilentModeCallback> cb(callback);
+    int listenDockSilentModeWrapper(FHSDK_CALLBACK_PARAMETER(DockSilentModeCallback)) {
+        FHSDK_SHARE_CALLBACK(DockSilentModeCallback);
         return $self->listenDockSilentMode([cb](const flight_hub_sdk::DockSilentMode& mode) {
-            cb->onDockSilentMode(mode);
+            if (cb) cb->onDockSilentMode(mode);
         });
     }
 
@@ -7466,10 +7488,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场: 用户体验改善计划(user_experience_improvement);
-    int listenDockUserExperienceImprovementWrapper(DockUserExperienceImprovementCallback* callback) {
-        std::shared_ptr<DockUserExperienceImprovementCallback> cb(callback);
+    int listenDockUserExperienceImprovementWrapper(FHSDK_CALLBACK_PARAMETER(DockUserExperienceImprovementCallback)) {
+        FHSDK_SHARE_CALLBACK(DockUserExperienceImprovementCallback);
         return $self->listenDockUserExperienceImprovement([cb](const flight_hub_sdk::DockUserExperienceImprovement& user_experience_improvement) {
-            cb->onDockUserExperienceImprovement(user_experience_improvement);
+            if (cb) cb->onDockUserExperienceImprovement(user_experience_improvement);
         });
     }
 
@@ -7481,10 +7503,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场: DRC 链路的状态(drc_state);
-    int listenDockDrcStateWrapper(DockDrcStateCallback* callback) {
-        std::shared_ptr<DockDrcStateCallback> cb(callback);
+    int listenDockDrcStateWrapper(FHSDK_CALLBACK_PARAMETER(DockDrcStateCallback)) {
+        FHSDK_SHARE_CALLBACK(DockDrcStateCallback);
         return $self->listenDockDrcState([cb](const flight_hub_sdk::DockDrcState& state) {
-            cb->onDockDrcState(state);
+            if (cb) cb->onDockDrcState(state);
         });
     }
 
@@ -7496,10 +7518,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场: 推杆状态(putter_state);
-    int listenDockPutterStateWrapper(DockPutterStateCallback* callback) {
-        std::shared_ptr<DockPutterStateCallback> cb(callback);
+    int listenDockPutterStateWrapper(FHSDK_CALLBACK_PARAMETER(DockPutterStateCallback)) {
+        FHSDK_SHARE_CALLBACK(DockPutterStateCallback);
         return $self->listenDockPutterState([cb](const flight_hub_sdk::DockPutterState& state) {
-            cb->onDockPutterState(state);
+            if (cb) cb->onDockPutterState(state);
         });
     }
 
@@ -7511,10 +7533,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场: 相对备降点(relative_alternate_land_point);
-    int listenDockRelativeAlternateLandPointWrapper(DockRelativeAlternateLandPointCallback* callback) {
-        std::shared_ptr<DockRelativeAlternateLandPointCallback> cb(callback);
+    int listenDockRelativeAlternateLandPointWrapper(FHSDK_CALLBACK_PARAMETER(DockRelativeAlternateLandPointCallback)) {
+        FHSDK_SHARE_CALLBACK(DockRelativeAlternateLandPointCallback);
         return $self->listenDockRelativeAlternateLandPoint([cb](const flight_hub_sdk::DockRelativeAlternateLandPoint& land_point) {
-            cb->onDockRelativeAlternateLandPoint(land_point);
+            if (cb) cb->onDockRelativeAlternateLandPoint(land_point);
         });
     }
 
@@ -7526,10 +7548,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场: 自收敛坐标(self_converge_coordinate);
-    int listenDockSelfConvergeCoordinateWrapper(DockSelfConvergeCoordinateCallback* callback) {
-        std::shared_ptr<DockSelfConvergeCoordinateCallback> cb(callback);
+    int listenDockSelfConvergeCoordinateWrapper(FHSDK_CALLBACK_PARAMETER(DockSelfConvergeCoordinateCallback)) {
+        FHSDK_SHARE_CALLBACK(DockSelfConvergeCoordinateCallback);
         return $self->listenDockSelfConvergeCoordinate([cb](const flight_hub_sdk::DockSelfConvergeCoordinate& coordinate) {
-            cb->onDockSelfConvergeCoordinate(coordinate);
+            if (cb) cb->onDockSelfConvergeCoordinate(coordinate);
         });
     }
 
@@ -7540,10 +7562,10 @@ using namespace flight_hub_sdk;
 
     // 机场固件信息;
     // DockFirmwareInfo
-    int listenDockFirmwareInfoWrapper(DockFirmwareInfoCallback* callback) {
-        std::shared_ptr<DockFirmwareInfoCallback> cb(callback);
+    int listenDockFirmwareInfoWrapper(FHSDK_CALLBACK_PARAMETER(DockFirmwareInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(DockFirmwareInfoCallback);
         return $self->listenDockFirmwareInfo([cb](const flight_hub_sdk::DockFirmwareInfo& firmware_info) {
-            cb->onDockFirmwareInfo(firmware_info);
+            if (cb) cb->onDockFirmwareInfo(firmware_info);
         });
     }
 
@@ -7554,10 +7576,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场飞机充电状态;
-    int listenDockDroneChargeStateWrapper(DockDroneChargeStateCallback *callback) {
-        std::shared_ptr<DockDroneChargeStateCallback> cb(callback);
+    int listenDockDroneChargeStateWrapper(FHSDK_CALLBACK_PARAMETER(DockDroneChargeStateCallback)) {
+        FHSDK_SHARE_CALLBACK(DockDroneChargeStateCallback);
         return $self->listenDockDroneChargeState([cb](const flight_hub_sdk::DockDroneChargeState& dock_drone_charge_state) {
-            cb->onDockDroneChargeState(dock_drone_charge_state);
+            if (cb) cb->onDockDroneChargeState(dock_drone_charge_state);
         });
     }
 
@@ -7567,10 +7589,10 @@ using namespace flight_hub_sdk;
     }
 
     // 监听机场气象信息;
-    int listenDockMeteorologicalInfoWrapper(DockMeteorologicalInfoCallback *callback) {
-        std::shared_ptr<DockMeteorologicalInfoCallback> cb(callback);
+    int listenDockMeteorologicalInfoWrapper(FHSDK_CALLBACK_PARAMETER(DockMeteorologicalInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(DockMeteorologicalInfoCallback);
         return $self->listenDockMeteorologicalInfo([cb](const flight_hub_sdk::DockMeteorologicalInfo& info) {
-            cb->onDockMeteorologicalInfo(info);
+            if (cb) cb->onDockMeteorologicalInfo(info);
         });
     }
 
@@ -7581,10 +7603,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场备用电池信息;
-    int listenDockBackupBatteryInfoWrapper(DockBackupBatteryInfoCallback *callback) {
-        std::shared_ptr<DockBackupBatteryInfoCallback> cb(callback);
+    int listenDockBackupBatteryInfoWrapper(FHSDK_CALLBACK_PARAMETER(DockBackupBatteryInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(DockBackupBatteryInfoCallback);
         return $self->listenDockBackupBatteryInfo([cb](const flight_hub_sdk::DockBackupBatteryInfo& info) {
-            cb->onDockBackupBatteryInfo(info);
+            if (cb) cb->onDockBackupBatteryInfo(info);
         });
     }
 
@@ -7595,10 +7617,10 @@ using namespace flight_hub_sdk;
 
 
     // 监听机场维护保养信息;
-    int listenDockMaintainStatusInfoWrapper(DockMaintainStatusInfoCallback *callback) {
-        std::shared_ptr<DockMaintainStatusInfoCallback> cb(callback);
+    int listenDockMaintainStatusInfoWrapper(FHSDK_CALLBACK_PARAMETER(DockMaintainStatusInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(DockMaintainStatusInfoCallback);
         return $self->listenDockMaintainStatusInfo([cb](const flight_hub_sdk::DockMaintainStatusInfo& info) {
-            cb->onDockMaintainStatusInfo(info);
+            if (cb) cb->onDockMaintainStatusInfo(info);
         });
     }
 
@@ -7608,10 +7630,10 @@ using namespace flight_hub_sdk;
     }
 
     // EA340 消息推送补全（Phase D）;
-    int listenDockDongleInfosWrapper(DockDongleInfosCallback* callback) {
-        std::shared_ptr<DockDongleInfosCallback> cb(callback);
+    int listenDockDongleInfosWrapper(FHSDK_CALLBACK_PARAMETER(DockDongleInfosCallback)) {
+        FHSDK_SHARE_CALLBACK(DockDongleInfosCallback);
         return $self->listenDockDongleInfos([cb](const flight_hub_sdk::DockDongleInfos& msg) {
-            cb->onDockDongleInfos(msg);
+            if (cb) cb->onDockDongleInfos(msg);
         });
     }
 
@@ -7619,10 +7641,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDockDongleInfos(listen_id);
     }
 
-    int listenDockAirConditionerModeWrapper(DockAirConditionerModeCallback* callback) {
-        std::shared_ptr<DockAirConditionerModeCallback> cb(callback);
+    int listenDockAirConditionerModeWrapper(FHSDK_CALLBACK_PARAMETER(DockAirConditionerModeCallback)) {
+        FHSDK_SHARE_CALLBACK(DockAirConditionerModeCallback);
         return $self->listenDockAirConditionerMode([cb](const flight_hub_sdk::DockAirConditionerMode& msg) {
-            cb->onDockAirConditionerMode(msg);
+            if (cb) cb->onDockAirConditionerMode(msg);
         });
     }
 
@@ -7632,45 +7654,45 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IDroneOsdModule {
-    int listenAircraftBatteryInfoWrapper(AircraftBatteryInfoCallback* callback) {
-        std::shared_ptr<AircraftBatteryInfoCallback> cb(callback);
+    int listenAircraftBatteryInfoWrapper(FHSDK_CALLBACK_PARAMETER(AircraftBatteryInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftBatteryInfoCallback);
         return $self->listenAircraftBatteryInfo([cb](const flight_hub_sdk::AircraftBatteryInfo& battery_info) {
-            cb->onAircraftBatteryInfo(battery_info);
+            if (cb) cb->onAircraftBatteryInfo(battery_info);
         });
     }
 
-    int listenAircraftAttitudeWrapper(AircraftAttitudeCallback* callback) {
-        std::shared_ptr<AircraftAttitudeCallback> cb(callback);
+    int listenAircraftAttitudeWrapper(FHSDK_CALLBACK_PARAMETER(AircraftAttitudeCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftAttitudeCallback);
         return $self->listenAircraftAttitude([cb](const flight_hub_sdk::AircraftAttitude& attitude) {
-            cb->onAircraftAttitude(attitude);
+            if (cb) cb->onAircraftAttitude(attitude);
         });
     }
 
-    int listenAircraftLocationWrapper(AircraftLocationCallback* callback) {
-        std::shared_ptr<AircraftLocationCallback> cb(callback);
+    int listenAircraftLocationWrapper(FHSDK_CALLBACK_PARAMETER(AircraftLocationCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftLocationCallback);
         return $self->listenAircraftLocation([cb](const flight_hub_sdk::AircraftLocation& location) {
-            cb->onAircraftLocation(location);
+            if (cb) cb->onAircraftLocation(location);
         });
     }
 
-    int listenAircraftModeCodeWrapper(AircraftModeCodeCallback* callback) {
-        std::shared_ptr<AircraftModeCodeCallback> cb(callback);
+    int listenAircraftModeCodeWrapper(FHSDK_CALLBACK_PARAMETER(AircraftModeCodeCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftModeCodeCallback);
         return $self->listenAircraftModeCode([cb](const flight_hub_sdk::AircraftModeCode& mode_code) {
-            cb->onAircraftModeCode(mode_code);
+            if (cb) cb->onAircraftModeCode(mode_code);
         });
     }
 
-    int listenAircraftWindSpeedWrapper(AircraftWindSpeedCallback* callback) {
-        std::shared_ptr<AircraftWindSpeedCallback> cb(callback);
+    int listenAircraftWindSpeedWrapper(FHSDK_CALLBACK_PARAMETER(AircraftWindSpeedCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftWindSpeedCallback);
         return $self->listenAircraftWindSpeed([cb](const flight_hub_sdk::AircraftWindSpeed& wind_speed) {
-            cb->onAircraftWindSpeed(wind_speed);
+            if (cb) cb->onAircraftWindSpeed(wind_speed);
         });
     }
 
-    int listenAircraftPayloadsOsdInfoWrapper(AircraftPayloadsOsdInfoListCallback* callback) {
-        std::shared_ptr<AircraftPayloadsOsdInfoListCallback> cb(callback);
+    int listenAircraftPayloadsOsdInfoWrapper(FHSDK_CALLBACK_PARAMETER(AircraftPayloadsOsdInfoListCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftPayloadsOsdInfoListCallback);
         return $self->listenAircraftPayloadsOsdInfo([cb](const flight_hub_sdk::AircraftPayloadsOsdInfoList& data) {
-            cb->onAircraftPayloadsOsdInfoList(data);
+            if (cb) cb->onAircraftPayloadsOsdInfoList(data);
         });
     }
 
@@ -7681,10 +7703,10 @@ using namespace flight_hub_sdk;
 
     // 飞机: 档位信息(gear);
     // AircraftGear;
-    int listenAircraftGearWrapper(AircraftGearCallback* callback) {
-        std::shared_ptr<AircraftGearCallback> cb(callback);
+    int listenAircraftGearWrapper(FHSDK_CALLBACK_PARAMETER(AircraftGearCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftGearCallback);
         return $self->listenAircraftGear([cb](const flight_hub_sdk::AircraftGear& data) {
-            cb->onAircraftGear(data);
+            if (cb) cb->onAircraftGear(data);
         });
     }
 
@@ -7695,10 +7717,10 @@ using namespace flight_hub_sdk;
 
     // 飞机: 档位信息(gear);
     // AircraftGear;
-    int listenAircraftHomeDistanceWrapper(AircraftHomeDistanceCallback* callback) {
-        std::shared_ptr<AircraftHomeDistanceCallback> cb(callback);
+    int listenAircraftHomeDistanceWrapper(FHSDK_CALLBACK_PARAMETER(AircraftHomeDistanceCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftHomeDistanceCallback);
         return $self->listenAircraftHomeDistance([cb](const flight_hub_sdk::AircraftHomeDistance& home_distance) {
-            cb->onAircraftHomeDistance(home_distance);
+            if (cb) cb->onAircraftHomeDistance(home_distance);
         });
     }
 
@@ -7709,10 +7731,10 @@ using namespace flight_hub_sdk;
 
     // 飞机: 搜星状态(position_state);
     // AircraftPositionState;
-    int listenAircraftPositionStateWrapper(AircraftPositionStateCallback* callback) {
-        std::shared_ptr<AircraftPositionStateCallback> cb(callback);
+    int listenAircraftPositionStateWrapper(FHSDK_CALLBACK_PARAMETER(AircraftPositionStateCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftPositionStateCallback);
         return $self->listenAircraftPositionState([cb](const flight_hub_sdk::AircraftPositionState& state) {
-            cb->onAircraftPositionState(state);
+            if (cb) cb->onAircraftPositionState(state);
         });
     }
 
@@ -7723,10 +7745,10 @@ using namespace flight_hub_sdk;
 
     // 飞机: 当前控制源(control_source);
     // AircraftControlSource;
-    int listenAircraftControlSourceWrapper(AircraftControlSourceCallback* callback) {
-        std::shared_ptr<AircraftControlSourceCallback> cb(callback);
+    int listenAircraftControlSourceWrapper(FHSDK_CALLBACK_PARAMETER(AircraftControlSourceCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftControlSourceCallback);
         return $self->listenAircraftControlSource([cb](const flight_hub_sdk::AircraftControlSource& control_source) {
-            cb->onAircraftControlSource(control_source);
+            if (cb) cb->onAircraftControlSource(control_source);
         });
     }
 
@@ -7737,10 +7759,10 @@ using namespace flight_hub_sdk;
 
     // 飞机: 限制类信息状态;
     // AircraftLimitsInfo;
-    int listenAircraftLimitsInfoWrapper(AircraftLimitsInfoCallback* callback) {
-        std::shared_ptr<AircraftLimitsInfoCallback> cb(callback);
+    int listenAircraftLimitsInfoWrapper(FHSDK_CALLBACK_PARAMETER(AircraftLimitsInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftLimitsInfoCallback);
         return $self->listenAircraftLimitsInfo([cb](const flight_hub_sdk::AircraftLimitsInfo& info) {
-            cb->onAircraftLimitsInfo(info);
+            if (cb) cb->onAircraftLimitsInfo(info);
         });
     }
 
@@ -7751,10 +7773,10 @@ using namespace flight_hub_sdk;
 
     // 电量告警信息(用户设置的阈值);
     // AircraftBatteryWarningThresholds;
-    int listenAircraftBatteryWarningThresholdsWrapper(AircraftBatteryWarningThresholdsCallback* callback) {
-        std::shared_ptr<AircraftBatteryWarningThresholdsCallback> cb(callback);
+    int listenAircraftBatteryWarningThresholdsWrapper(FHSDK_CALLBACK_PARAMETER(AircraftBatteryWarningThresholdsCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftBatteryWarningThresholdsCallback);
         return $self->listenAircraftBatteryWarningThresholds([cb](const flight_hub_sdk::AircraftBatteryWarningThresholds& threshold) {
-            cb->onAircraftBatteryWarningThresholds(threshold);
+            if (cb) cb->onAircraftBatteryWarningThresholds(threshold);
         });
     }
 
@@ -7765,10 +7787,10 @@ using namespace flight_hub_sdk;
 
     // 固件状态信息;
     // AircraftFirmwareStatus;
-    int listenAircraftFirmwareStatusWrapper(AircraftFirmwareStatusCallback* callback) {
-        std::shared_ptr<AircraftFirmwareStatusCallback> cb(callback);
+    int listenAircraftFirmwareStatusWrapper(FHSDK_CALLBACK_PARAMETER(AircraftFirmwareStatusCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftFirmwareStatusCallback);
         return $self->listenAircraftFirmwareStatus([cb](const flight_hub_sdk::AircraftFirmwareStatus& firmware_status) {
-            cb->onAircraftFirmwareStatus(firmware_status);
+            if (cb) cb->onAircraftFirmwareStatus(firmware_status);
         });
     }
 
@@ -7779,10 +7801,10 @@ using namespace flight_hub_sdk;
 
     // 累计飞行信息(total_flight_info);
     // AircraftTotalFlightInfo;
-    int listenAircraftTotalFlightInfoWrapper(AircraftTotalFlightInfoCallback* callback) {
-        std::shared_ptr<AircraftTotalFlightInfoCallback> cb(callback);
+    int listenAircraftTotalFlightInfoWrapper(FHSDK_CALLBACK_PARAMETER(AircraftTotalFlightInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftTotalFlightInfoCallback);
         return $self->listenAircraftTotalFlightInfo([cb](const flight_hub_sdk::AircraftTotalFlightInfo& total_flight_info) {
-            cb->onAircraftTotalFlightInfo(total_flight_info);
+            if (cb) cb->onAircraftTotalFlightInfo(total_flight_info);
         });
     }
 
@@ -7793,10 +7815,10 @@ using namespace flight_hub_sdk;
 
     // 飞行器激活时间(unix时间戳)(activation_time);
     // AircraftActivationTime;
-    int listenAircraftActivationTimeWrapper(AircraftActivationTimeCallback* callback) {
-        std::shared_ptr<AircraftActivationTimeCallback> cb(callback);
+    int listenAircraftActivationTimeWrapper(FHSDK_CALLBACK_PARAMETER(AircraftActivationTimeCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftActivationTimeCallback);
         return $self->listenAircraftActivationTime([cb](const flight_hub_sdk::AircraftActivationTime& activation_time) {
-            cb->onAircraftActivationTime(activation_time);
+            if (cb) cb->onAircraftActivationTime(activation_time);
         });
     }
 
@@ -7807,10 +7829,10 @@ using namespace flight_hub_sdk;
 
     // 飞机：保养信息(maintain_status);
     // AircraftMaintainStatusInfo;
-    int listenAircraftMaintainStatusInfoWrapper(AircraftMaintainStatusInfoCallback* callback) {
-        std::shared_ptr<AircraftMaintainStatusInfoCallback> cb(callback);
+    int listenAircraftMaintainStatusInfoWrapper(FHSDK_CALLBACK_PARAMETER(AircraftMaintainStatusInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftMaintainStatusInfoCallback);
         return $self->listenAircraftMaintainStatusInfo([cb](const flight_hub_sdk::AircraftMaintainStatusInfo& info) {
-            cb->onAircraftMaintainStatusInfo(info);
+            if (cb) cb->onAircraftMaintainStatusInfo(info);
         });
     }
 
@@ -7820,10 +7842,10 @@ using namespace flight_hub_sdk;
 
     // 飞行器夜航灯状态(night_lights_state);
     // AircraftNightLightsState;
-    int listenAircraftNightLightsStateWrapper(AircraftNightLightsStateCallback* callback) {
-        std::shared_ptr<AircraftNightLightsStateCallback> cb(callback);
+    int listenAircraftNightLightsStateWrapper(FHSDK_CALLBACK_PARAMETER(AircraftNightLightsStateCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftNightLightsStateCallback);
         return $self->listenAircraftNightLightsState([cb](const flight_hub_sdk::AircraftNightLightsState& state) {
-            cb->onAircraftNightLightsState(state);
+            if (cb) cb->onAircraftNightLightsState(state);
         });
     }
 
@@ -7833,10 +7855,10 @@ using namespace flight_hub_sdk;
 
     // 飞行器避障状态(obstacle_avoidance);
     // AircraftObstacleAvoidanceState;
-    int listenAircraftObstacleAvoidanceStateWrapper(AircraftObstacleAvoidanceStateCallback* callback) {
-        std::shared_ptr<AircraftObstacleAvoidanceStateCallback> cb(callback);
+    int listenAircraftObstacleAvoidanceStateWrapper(FHSDK_CALLBACK_PARAMETER(AircraftObstacleAvoidanceStateCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftObstacleAvoidanceStateCallback);
         return $self->listenAircraftObstacleAvoidanceState([cb](const flight_hub_sdk::AircraftObstacleAvoidanceState& state) {
-            cb->onAircraftObstacleAvoidanceState(state);
+            if (cb) cb->onAircraftObstacleAvoidanceState(state);
         });
     }
 
@@ -7847,10 +7869,10 @@ using namespace flight_hub_sdk;
 
     // 存储容量(storage);
     // AircraftStorageInfo;
-    int listenAircraftStorageInfoWrapper(AircraftStorageInfoCallback* callback) {
-        std::shared_ptr<AircraftStorageInfoCallback> cb(callback);
+    int listenAircraftStorageInfoWrapper(FHSDK_CALLBACK_PARAMETER(AircraftStorageInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftStorageInfoCallback);
         return $self->listenAircraftStorageInfo([cb](const flight_hub_sdk::AircraftStorageInfo& info) {
-            cb->onAircraftStorageInfo(info);
+            if (cb) cb->onAircraftStorageInfo(info);
         });
     }
 
@@ -7861,10 +7883,10 @@ using namespace flight_hub_sdk;
 
     // 航迹id(track_id);
     // AircraftTrackId;
-    int listenAircraftTrackIdWrapper(AircraftTrackIdCallback* callback) {
-        std::shared_ptr<AircraftTrackIdCallback> cb(callback);
+    int listenAircraftTrackIdWrapper(FHSDK_CALLBACK_PARAMETER(AircraftTrackIdCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftTrackIdCallback);
         return $self->listenAircraftTrackId([cb](const flight_hub_sdk::AircraftTrackId& track_id) {
-            cb->onAircraftTrackId(track_id);
+            if (cb) cb->onAircraftTrackId(track_id);
         });
     }
 
@@ -7875,10 +7897,10 @@ using namespace flight_hub_sdk;
 
     // 合规相关信息(compliance information);
     // AircraftComplianceInfo;
-    int listenAircraftComplianceInfoWrapper(AircraftComplianceInfoCallback* callback) {
-        std::shared_ptr<AircraftComplianceInfoCallback> cb(callback);
+    int listenAircraftComplianceInfoWrapper(FHSDK_CALLBACK_PARAMETER(AircraftComplianceInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftComplianceInfoCallback);
         return $self->listenAircraftComplianceInfo([cb](const flight_hub_sdk::AircraftComplianceInfo& info) {
-            cb->onAircraftComplianceInfo(info);
+            if (cb) cb->onAircraftComplianceInfo(info);
         });
     }
 
@@ -7888,10 +7910,10 @@ using namespace flight_hub_sdk;
 
     // 飞行器相机信息(cameras);
     // AircraftPayloadsCamerasList;
-    int listenAircraftPayloadsCamerasListWrapper(AircraftPayloadsCamerasListCallback* callback) {
-        std::shared_ptr<AircraftPayloadsCamerasListCallback> cb(callback);
+    int listenAircraftPayloadsCamerasListWrapper(FHSDK_CALLBACK_PARAMETER(AircraftPayloadsCamerasListCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftPayloadsCamerasListCallback);
         return $self->listenAircraftPayloadsCamerasList([cb](const flight_hub_sdk::AircraftPayloadsCamerasList& cameras) {
-            cb->onAircraftPayloadsCamerasList(cameras);
+            if (cb) cb->onAircraftPayloadsCamerasList(cameras);
         });
     }
 
@@ -7901,10 +7923,10 @@ using namespace flight_hub_sdk;
 
     // 遥控器失控动作(rc_lost_action);
     // AircraftRcLostAction;
-    int listenAircraftRcLostActionWrapper(AircraftRcLostActionCallback* callback) {
-        std::shared_ptr<AircraftRcLostActionCallback> cb(callback);
+    int listenAircraftRcLostActionWrapper(FHSDK_CALLBACK_PARAMETER(AircraftRcLostActionCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftRcLostActionCallback);
         return $self->listenAircraftRcLostAction([cb](const flight_hub_sdk::AircraftRcLostAction& action) {
-            cb->onAircraftRcLostAction(action);
+            if (cb) cb->onAircraftRcLostAction(action);
         });
     }
 
@@ -7914,10 +7936,10 @@ using namespace flight_hub_sdk;
 
     // 返航信息(返航模式, 返航高度);
     // AircraftRthInfo;
-    int listenAircraftRthInfoWrapper(AircraftRthInfoCallback* callback) {
-        std::shared_ptr<AircraftRthInfoCallback> cb(callback);
+    int listenAircraftRthInfoWrapper(FHSDK_CALLBACK_PARAMETER(AircraftRthInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftRthInfoCallback);
         return $self->listenAircraftRthInfo([cb](const flight_hub_sdk::AircraftRthInfo& info) {
-            cb->onAircraftRthInfo(info);
+            if (cb) cb->onAircraftRthInfo(info);
         });
     }
 
@@ -7928,10 +7950,10 @@ using namespace flight_hub_sdk;
 
     // 飞机: Home点地理坐标信息(Home点经度, Home点纬度);
     // AircraftHomeGeographicalInfo;
-    int listenAircraftHomeGeographicalInfoWrapper(AircraftHomeGeographicalInfoCallback* callback) {
-        std::shared_ptr<AircraftHomeGeographicalInfoCallback> cb(callback);
+    int listenAircraftHomeGeographicalInfoWrapper(FHSDK_CALLBACK_PARAMETER(AircraftHomeGeographicalInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftHomeGeographicalInfoCallback);
         return $self->listenAircraftHomeGeographicalInfo([cb](const flight_hub_sdk::AircraftHomeGeographicalInfo& info) {
-            cb->onAircraftHomeGeographicalInfo(info);
+            if (cb) cb->onAircraftHomeGeographicalInfo(info);
         });
     }
 
@@ -7941,10 +7963,10 @@ using namespace flight_hub_sdk;
 
     // 返航高度模式当前值(current_rth_mode);
     // AircraftCurrentRthMode;
-    int listenAircraftCurrentRthModeWrapper(AircraftCurrentRthModeCallback* callback) {
-        std::shared_ptr<AircraftCurrentRthModeCallback> cb(callback);
+    int listenAircraftCurrentRthModeWrapper(FHSDK_CALLBACK_PARAMETER(AircraftCurrentRthModeCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftCurrentRthModeCallback);
         return $self->listenAircraftCurrentRthMode([cb](const flight_hub_sdk::AircraftCurrentRthMode& mode) {
-            cb->onAircraftCurrentRthMode(mode);
+            if (cb) cb->onAircraftCurrentRthMode(mode);
         });
     }
 
@@ -7953,10 +7975,10 @@ using namespace flight_hub_sdk;
     }
 
     // 飞行任务异常相关wrapper方法
-    int listenFlightTasksExceptionWrapper(FlightTaskExceptionCallback* callback) {
-        std::shared_ptr<FlightTaskExceptionCallback> cb(callback);
+    int listenFlightTasksExceptionWrapper(FHSDK_CALLBACK_PARAMETER(FlightTaskExceptionCallback)) {
+        FHSDK_SHARE_CALLBACK(FlightTaskExceptionCallback);
         return $self->listenFlightTasksException([cb](const flight_hub_sdk::FlightTaskException& exception) {
-            cb->onFlightTaskException(exception);
+            if (cb) cb->onFlightTaskException(exception);
         });
     }
 
@@ -7986,10 +8008,10 @@ using namespace flight_hub_sdk;
     }
 
     // 新增的BusinessManager接口包装方法
-    int listenAircraftControlCodeWrapper(AircraftControlCodeCallback* callback) {
-        std::shared_ptr<AircraftControlCodeCallback> cb(callback);
+    int listenAircraftControlCodeWrapper(FHSDK_CALLBACK_PARAMETER(AircraftControlCodeCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftControlCodeCallback);
         return $self->listenAircraftControlCode([cb](const flight_hub_sdk::AircraftControlCode& control_code) {
-            cb->onAircraftControlCode(control_code);
+            if (cb) cb->onAircraftControlCode(control_code);
         });
     }
 
@@ -7997,10 +8019,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenAircraftControlCode(listen_id);
     }
 
-    int listenAircraftSpeedWrapper(AircraftSpeedCallback* callback) {
-        std::shared_ptr<AircraftSpeedCallback> cb(callback);
+    int listenAircraftSpeedWrapper(FHSDK_CALLBACK_PARAMETER(AircraftSpeedCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftSpeedCallback);
         return $self->listenAircraftSpeed([cb](const flight_hub_sdk::AircraftSpeed& speed) {
-            cb->onAircraftSpeed(speed);
+            if (cb) cb->onAircraftSpeed(speed);
         });
     }
 
@@ -8008,10 +8030,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenAircraftSpeed(listen_id);
     }
 
-    int listenAircraftPayloadsCameraLiveviewWorldRegionWrapper(AircraftPayloadsCameraLiveviewWorldRegionCallback* callback) {
-        std::shared_ptr<AircraftPayloadsCameraLiveviewWorldRegionCallback> cb(callback);
+    int listenAircraftPayloadsCameraLiveviewWorldRegionWrapper(FHSDK_CALLBACK_PARAMETER(AircraftPayloadsCameraLiveviewWorldRegionCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftPayloadsCameraLiveviewWorldRegionCallback);
         return $self->listenAircraftPayloadsCameraLiveviewWorldRegion([cb](const flight_hub_sdk::AircraftPayloadsCameraLiveviewWorldRegion& region) {
-            cb->onAircraftPayloadsCameraLiveviewWorldRegion(region);
+            if (cb) cb->onAircraftPayloadsCameraLiveviewWorldRegion(region);
         });
     }
 
@@ -8019,10 +8041,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenAircraftPayloadsCameraLiveviewWorldRegion(listen_id);
     }
 
-    int listenAircraftPayloadsGimbalAttitudeWrapper(AircraftPayloadsGimbalAttitudeCallback* callback) {
-        std::shared_ptr<AircraftPayloadsGimbalAttitudeCallback> cb(callback);
+    int listenAircraftPayloadsGimbalAttitudeWrapper(FHSDK_CALLBACK_PARAMETER(AircraftPayloadsGimbalAttitudeCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftPayloadsGimbalAttitudeCallback);
         return $self->listenAircraftPayloadsGimbalAttitude([cb](const flight_hub_sdk::AircraftPayloadsGimbalAttitude& attitude) {
-            cb->onAircraftPayloadsGimbalAttitude(attitude);
+            if (cb) cb->onAircraftPayloadsGimbalAttitude(attitude);
         });
     }
 
@@ -8030,10 +8052,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenAircraftPayloadsGimbalAttitude(listen_id);
     }
 
-    int listenAircraftPayloadsListWrapper(AircraftPayloadsListCallback* callback) {
-        std::shared_ptr<AircraftPayloadsListCallback> cb(callback);
+    int listenAircraftPayloadsListWrapper(FHSDK_CALLBACK_PARAMETER(AircraftPayloadsListCallback)) {
+        FHSDK_SHARE_CALLBACK(AircraftPayloadsListCallback);
         return $self->listenAircraftPayloadsList([cb](const flight_hub_sdk::AircraftPayloadsList& payloads_list) {
-            cb->onAircraftPayloadsList(payloads_list);
+            if (cb) cb->onAircraftPayloadsList(payloads_list);
         });
     }
 
@@ -8041,10 +8063,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenAircraftPayloadsList(listen_id);
     }
 
-    int listenControlRightsCloudControlStatusWrapper(ControlRightsCloudControlStatusCallback* callback) {
-        std::shared_ptr<ControlRightsCloudControlStatusCallback> cb(callback);
+    int listenControlRightsCloudControlStatusWrapper(FHSDK_CALLBACK_PARAMETER(ControlRightsCloudControlStatusCallback)) {
+        FHSDK_SHARE_CALLBACK(ControlRightsCloudControlStatusCallback);
         return $self->listenControlRightsCloudControlStatus([cb](const flight_hub_sdk::ControlRightsCloudControlStatus& status) {
-            cb->onControlRightsCloudControlStatus(status);
+            if (cb) cb->onControlRightsCloudControlStatus(status);
         });
     }
 
@@ -8052,10 +8074,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenControlRightsCloudControlStatus(listen_id);
     }
 
-    int listenControlRightsDeviceControlStatusWrapper(ControlRightsDeviceControlStatusCallback* callback) {
-        std::shared_ptr<ControlRightsDeviceControlStatusCallback> cb(callback);
+    int listenControlRightsDeviceControlStatusWrapper(FHSDK_CALLBACK_PARAMETER(ControlRightsDeviceControlStatusCallback)) {
+        FHSDK_SHARE_CALLBACK(ControlRightsDeviceControlStatusCallback);
         return $self->listenControlRightsDeviceControlStatus([cb](const flight_hub_sdk::ControlRightsDeviceControlStatus& status) {
-            cb->onControlRightsDeviceControlStatus(status);
+            if (cb) cb->onControlRightsDeviceControlStatus(status);
         });
     }
 
@@ -8063,10 +8085,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenControlRightsDeviceControlStatus(listen_id);
     }
 
-    int listenFlightTasksMediaFileDisplayAvailableWrapper(FlightTasksMediaFileDisplayAvailableCallback* callback) {
-        std::shared_ptr<FlightTasksMediaFileDisplayAvailableCallback> cb(callback);
+    int listenFlightTasksMediaFileDisplayAvailableWrapper(FHSDK_CALLBACK_PARAMETER(FlightTasksMediaFileDisplayAvailableCallback)) {
+        FHSDK_SHARE_CALLBACK(FlightTasksMediaFileDisplayAvailableCallback);
         return $self->listenFlightTasksMediaFileDisplayAvailable([cb](const flight_hub_sdk::FlightTasksMediaFileDisplayAvailable& available) {
-            cb->onFlightTasksMediaFileDisplayAvailable(available);
+            if (cb) cb->onFlightTasksMediaFileDisplayAvailable(available);
         });
     }
 
@@ -8075,10 +8097,10 @@ using namespace flight_hub_sdk;
     }
 
     // 飞行器 HSI 信息（障碍物感知/避障传感器数据）
-    int listenHsiInfoWrapper(HsiInfoCallback* callback) {
-        std::shared_ptr<HsiInfoCallback> cb(callback);
+    int listenHsiInfoWrapper(FHSDK_CALLBACK_PARAMETER(HsiInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(HsiInfoCallback);
         return $self->listenHsiInfo([cb](const flight_hub_sdk::HsiInfo& info) {
-            cb->onHsiInfo(info);
+            if (cb) cb->onHsiInfo(info);
         });
     }
 
@@ -8087,10 +8109,10 @@ using namespace flight_hub_sdk;
     }
 
     // EA340 消息推送补全（Phase D）;
-    int listenDroneModeCodeReasonWrapper(DroneModeCodeReasonCallback* callback) {
-        std::shared_ptr<DroneModeCodeReasonCallback> cb(callback);
+    int listenDroneModeCodeReasonWrapper(FHSDK_CALLBACK_PARAMETER(DroneModeCodeReasonCallback)) {
+        FHSDK_SHARE_CALLBACK(DroneModeCodeReasonCallback);
         return $self->listenDroneModeCodeReason([cb](const flight_hub_sdk::DroneModeCodeReason& msg) {
-            cb->onDroneModeCodeReason(msg);
+            if (cb) cb->onDroneModeCodeReason(msg);
         });
     }
 
@@ -8098,10 +8120,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDroneModeCodeReason(listen_id);
     }
 
-    int listenDroneDongleInfosWrapper(DroneDongleInfosCallback* callback) {
-        std::shared_ptr<DroneDongleInfosCallback> cb(callback);
+    int listenDroneDongleInfosWrapper(FHSDK_CALLBACK_PARAMETER(DroneDongleInfosCallback)) {
+        FHSDK_SHARE_CALLBACK(DroneDongleInfosCallback);
         return $self->listenDroneDongleInfos([cb](const flight_hub_sdk::DroneDongleInfos& msg) {
-            cb->onDroneDongleInfos(msg);
+            if (cb) cb->onDroneDongleInfos(msg);
         });
     }
 
@@ -8109,10 +8131,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDroneDongleInfos(listen_id);
     }
 
-    int listenDroneFlysafeDatabaseVersionWrapper(DroneFlysafeDatabaseVersionCallback* callback) {
-        std::shared_ptr<DroneFlysafeDatabaseVersionCallback> cb(callback);
+    int listenDroneFlysafeDatabaseVersionWrapper(FHSDK_CALLBACK_PARAMETER(DroneFlysafeDatabaseVersionCallback)) {
+        FHSDK_SHARE_CALLBACK(DroneFlysafeDatabaseVersionCallback);
         return $self->listenDroneFlysafeDatabaseVersion([cb](const flight_hub_sdk::DroneFlysafeDatabaseVersion& msg) {
-            cb->onDroneFlysafeDatabaseVersion(msg);
+            if (cb) cb->onDroneFlysafeDatabaseVersion(msg);
         });
     }
 
@@ -8120,10 +8142,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDroneFlysafeDatabaseVersion(listen_id);
     }
 
-    int listenDroneWpmzVersionWrapper(DroneWpmzVersionCallback* callback) {
-        std::shared_ptr<DroneWpmzVersionCallback> cb(callback);
+    int listenDroneWpmzVersionWrapper(FHSDK_CALLBACK_PARAMETER(DroneWpmzVersionCallback)) {
+        FHSDK_SHARE_CALLBACK(DroneWpmzVersionCallback);
         return $self->listenDroneWpmzVersion([cb](const flight_hub_sdk::DroneWpmzVersion& msg) {
-            cb->onDroneWpmzVersion(msg);
+            if (cb) cb->onDroneWpmzVersion(msg);
         });
     }
 
@@ -8134,10 +8156,10 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IPsdkControlModule {
-    int listenPsdkDeviceListWrapper(PsdkDeviceListCallback* callback) {
-        std::shared_ptr<PsdkDeviceListCallback> cb(callback);
+    int listenPsdkDeviceListWrapper(FHSDK_CALLBACK_PARAMETER(PsdkDeviceListCallback)) {
+        FHSDK_SHARE_CALLBACK(PsdkDeviceListCallback);
         return $self->listenDrcPsdkDeviceList([cb](const flight_hub_sdk::PsdkDeviceList& psdk_device_list) {
-            cb->onPsdkDeviceList(psdk_device_list);
+            if (cb) cb->onPsdkDeviceList(psdk_device_list);
         });
     }
 
@@ -8145,10 +8167,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDrcPsdkDeviceList(listen_id);
     }
 
-    int listenPsdkStateSummaryInfoWrapper(int psdk_index, PsdkStateSummaryInfoCallback* callback) {
-        std::shared_ptr<PsdkStateSummaryInfoCallback> cb(callback);
+    int listenPsdkStateSummaryInfoWrapper(int psdk_index, FHSDK_CALLBACK_PARAMETER(PsdkStateSummaryInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(PsdkStateSummaryInfoCallback);
         return $self->listenDrcPsdkStateSummaryInfo(psdk_index, [cb](flight_hub_sdk::PsdkStateSummaryInfo psdk_state_summary_info) {
-            cb->onPsdkStateSummaryInfo(psdk_state_summary_info);
+            if (cb) cb->onPsdkStateSummaryInfo(psdk_state_summary_info);
         });
     }
 
@@ -8156,10 +8178,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDrcPsdkStateSummaryInfo(psdk_index, listen_id);
     }
 
-    int listenPsdkStateSpeakerInfoWrapper(int psdk_index, PsdkStateSpeakerInfoCallback* callback) {
-        std::shared_ptr<PsdkStateSpeakerInfoCallback> cb(callback);
+    int listenPsdkStateSpeakerInfoWrapper(int psdk_index, FHSDK_CALLBACK_PARAMETER(PsdkStateSpeakerInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(PsdkStateSpeakerInfoCallback);
         return $self->listenDrcPsdkStateSpeakerInfo(psdk_index, [cb](flight_hub_sdk::PsdkStateSpeakerInfo psdk_state_speaker_info) {
-            cb->onPsdkStateSpeakerInfo(psdk_state_speaker_info);
+            if (cb) cb->onPsdkStateSpeakerInfo(psdk_state_speaker_info);
         });
     }
 
@@ -8167,10 +8189,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDrcPsdkStateSpeakerInfo(psdk_index, listen_id);
     }
 
-    int listenPsdkStateSearchlightInfoWrapper(int psdk_index, PsdkStateSearchlightInfoCallback* callback) {
-        std::shared_ptr<PsdkStateSearchlightInfoCallback> cb(callback);
+    int listenPsdkStateSearchlightInfoWrapper(int psdk_index, FHSDK_CALLBACK_PARAMETER(PsdkStateSearchlightInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(PsdkStateSearchlightInfoCallback);
         return $self->listenDrcPsdkStateSearchlightInfo(psdk_index, [cb](flight_hub_sdk::PsdkStateSearchlightInfo psdk_state_searchlight_info) {
-            cb->onPsdkStateSearchlightInfo(psdk_state_searchlight_info);
+            if (cb) cb->onPsdkStateSearchlightInfo(psdk_state_searchlight_info);
         });
     }
 
@@ -8178,10 +8200,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDrcPsdkStateSearchlightInfo(psdk_index, listen_id);
     }
 
-    int listenPsdkSpeakerPlayProgressInfoWrapper(int psdk_index, PsdkSpeakerPlayProgressInfoCallback* callback) {
-        std::shared_ptr<PsdkSpeakerPlayProgressInfoCallback> cb(callback);
+    int listenPsdkSpeakerPlayProgressInfoWrapper(int psdk_index, FHSDK_CALLBACK_PARAMETER(PsdkSpeakerPlayProgressInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(PsdkSpeakerPlayProgressInfoCallback);
         return $self->listenDrcPsdkSpeakerPlayProgressInfo(psdk_index, [cb](flight_hub_sdk::PsdkSpeakerPlayProgressInfo psdk_speaker_play_progress_info) {
-            cb->onPsdkSpeakerPlayProgressInfo(psdk_speaker_play_progress_info);
+            if (cb) cb->onPsdkSpeakerPlayProgressInfo(psdk_speaker_play_progress_info);
         });
     }
 
@@ -8189,10 +8211,10 @@ using namespace flight_hub_sdk;
         $self->cancelListenDrcPsdkSpeakerPlayProgressInfo(psdk_index, listen_id);
     }
 
-    int listenPsdkFloatingWindowTextInfoWrapper(int psdk_index, PsdkFloatingWindowTextInfoCallback* callback) {
-        std::shared_ptr<PsdkFloatingWindowTextInfoCallback> cb(callback);
+    int listenPsdkFloatingWindowTextInfoWrapper(int psdk_index, FHSDK_CALLBACK_PARAMETER(PsdkFloatingWindowTextInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(PsdkFloatingWindowTextInfoCallback);
         return $self->listenDrcPsdkFloatingWindowTextInfo(psdk_index, [cb](flight_hub_sdk::PsdkFloatingWindowTextInfo psdk_floating_window_text_info) {
-            cb->onPsdkFloatingWindowTextInfo(psdk_floating_window_text_info);
+            if (cb) cb->onPsdkFloatingWindowTextInfo(psdk_floating_window_text_info);
         });
     }
 
@@ -8200,181 +8222,181 @@ using namespace flight_hub_sdk;
         $self->cancelListenDrcPsdkFloatingWindowTextInfo(psdk_index, listen_id);
     }
 
-    void speakerAudioPlayStartWrapper(int psdk_index, const flight_hub_sdk::PsdkSpeakerAudioPlayInfo& audio_play_info, ResultCallbackWithError* callback) {
+    void speakerAudioPlayStartWrapper(int psdk_index, const flight_hub_sdk::PsdkSpeakerAudioPlayInfo& audio_play_info, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSpeakerAudioPlayStart(psdk_index, audio_play_info, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void speakerTTSPlayStartWrapper(int psdk_index, const flight_hub_sdk::PsdkSpeakerTTSPlayInfo& tts_play_info, ResultCallbackWithError* callback) {
+    void speakerTTSPlayStartWrapper(int psdk_index, const flight_hub_sdk::PsdkSpeakerTTSPlayInfo& tts_play_info, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSpeakerTTSPlayStart(psdk_index, tts_play_info, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void speakerReplayWrapper(int psdk_index, ResultCallbackWithError* callback) {
+    void speakerReplayWrapper(int psdk_index, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSpeakerReplay(psdk_index, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void speakerPlayStopWrapper(int psdk_index, ResultCallbackWithError* callback) {
+    void speakerPlayStopWrapper(int psdk_index, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSpeakerPlayStop(psdk_index, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void speakerRealTimeStartWrapper(int psdk_index, ResultCallbackWithError* callback) {
+    void speakerRealTimeStartWrapper(int psdk_index, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSpeakerRealTimeStart(psdk_index, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void speakerRealTimeStopWrapper(int psdk_index, ResultCallbackWithError* callback) {
+    void speakerRealTimeStopWrapper(int psdk_index, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSpeakerRealTimeStop(psdk_index, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void speakerPlayVolumeSetWrapper(int psdk_index, int volume, ResultCallbackWithError* callback) {
+    void speakerPlayVolumeSetWrapper(int psdk_index, int volume, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSpeakerPlayVolumeSet(psdk_index, volume, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void speakerPlayModeSetWrapper(int psdk_index, int play_mode, ResultCallbackWithError* callback) {
+    void speakerPlayModeSetWrapper(int psdk_index, int play_mode, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSpeakerPlayModeSet(psdk_index, play_mode, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void speakerTTSSetWrapper(int psdk_index, flight_hub_sdk::PsdkSpeakerTTSconfig tts_config, ResultCallbackWithError* callback) {
+    void speakerTTSSetWrapper(int psdk_index, flight_hub_sdk::PsdkSpeakerTTSconfig tts_config, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSpeakerTTSSet(psdk_index, tts_config, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void widgetValueSetWrapper(int psdk_index, int index, int value, ResultCallbackWithError* callback) {
+    void widgetValueSetWrapper(int psdk_index, int index, int value, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcWidgetValueSet(psdk_index, index, value, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void widgetInputBoxTextSetWrapper(int psdk_index, const std::string& value, ResultCallbackWithError* callback) {
+    void widgetInputBoxTextSetWrapper(int psdk_index, const std::string& value, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcWidgetInputBoxTextSet(psdk_index, value, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void searchlightModeSetWrapper(int psdk_index, int mode, ResultCallbackWithError* callback) {
+    void searchlightModeSetWrapper(int psdk_index, int mode, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSearchlightModeSet(psdk_index, mode, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void searchlightBrightnessSetWrapper(int psdk_index, int brightness, ResultCallbackWithError* callback) {
+    void searchlightBrightnessSetWrapper(int psdk_index, int brightness, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSearchlightBrightnessSet(psdk_index, brightness, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void searchlightCalibrationWrapper(int psdk_index, ResultCallbackWithError* callback) {
+    void searchlightCalibrationWrapper(int psdk_index, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSearchlightCalibration(psdk_index, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void searchlightFineTuningSetWrapper(int psdk_index, int position, double value, bool saved, ResultCallbackWithError* callback) {
+    void searchlightFineTuningSetWrapper(int psdk_index, int position, double value, bool saved, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSearchlightFineTuningSet(psdk_index, position, value, saved, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void searchlightWideFieldModeSetWrapper(int psdk_index, int wide_field_mode, ResultCallbackWithError* callback) {
+    void searchlightWideFieldModeSetWrapper(int psdk_index, int wide_field_mode, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSearchlightWideFieldModeSet(psdk_index, wide_field_mode, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void searchlightLightGimbalControlSetWrapper(int psdk_index, int light_gimbal_control, ResultCallbackWithError* callback) {
+    void searchlightLightGimbalControlSetWrapper(int psdk_index, int light_gimbal_control, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSearchlightLightGimbalControlSet(psdk_index, light_gimbal_control, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void searchlightTypeSetWrapper(int psdk_index, int type, ResultCallbackWithError* callback) {
+    void searchlightTypeSetWrapper(int psdk_index, int type, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcSearchlightTypeSet(psdk_index, type, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int listenPsdkSpeakerAudioPlayStartProgressWrapper(PsdkSpeakerAudioPlayStartProgressCallback* callback) {
-        std::shared_ptr<PsdkSpeakerAudioPlayStartProgressCallback> cb(callback);
+    int listenPsdkSpeakerAudioPlayStartProgressWrapper(FHSDK_CALLBACK_PARAMETER(PsdkSpeakerAudioPlayStartProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(PsdkSpeakerAudioPlayStartProgressCallback);
         return $self->listenPsdkSpeakerAudioPlayStartProgress([cb](const flight_hub_sdk::PsdkSpeakerPlayStartProgress& msg) {
-            cb->onPsdkSpeakerAudioPlayStartProgress(msg);
+            if (cb) cb->onPsdkSpeakerAudioPlayStartProgress(msg);
         });
     }
     void cancelListenPsdkSpeakerAudioPlayStartProgressWrapper(int listen_id) {
         $self->cancelListenPsdkSpeakerAudioPlayStartProgress(listen_id);
     }
-    int listenPsdkSpeakerTtsPlayStartProgressWrapper(PsdkSpeakerTtsPlayStartProgressCallback* callback) {
-        std::shared_ptr<PsdkSpeakerTtsPlayStartProgressCallback> cb(callback);
+    int listenPsdkSpeakerTtsPlayStartProgressWrapper(FHSDK_CALLBACK_PARAMETER(PsdkSpeakerTtsPlayStartProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(PsdkSpeakerTtsPlayStartProgressCallback);
         return $self->listenPsdkSpeakerTtsPlayStartProgress([cb](const flight_hub_sdk::PsdkSpeakerPlayStartProgress& msg) {
-            cb->onPsdkSpeakerTtsPlayStartProgress(msg);
+            if (cb) cb->onPsdkSpeakerTtsPlayStartProgress(msg);
         });
     }
     void cancelListenPsdkSpeakerTtsPlayStartProgressWrapper(int listen_id) {
@@ -8382,10 +8404,10 @@ using namespace flight_hub_sdk;
     }
 
     // EA340 消息推送补全（Phase D）;
-    int listenDronePsdkUiResourceWrapper(DronePsdkUiResourceCallback* callback) {
-        std::shared_ptr<DronePsdkUiResourceCallback> cb(callback);
+    int listenDronePsdkUiResourceWrapper(FHSDK_CALLBACK_PARAMETER(DronePsdkUiResourceCallback)) {
+        FHSDK_SHARE_CALLBACK(DronePsdkUiResourceCallback);
         return $self->listenDronePsdkUiResource([cb](const flight_hub_sdk::DronePsdkUiResource& msg) {
-            cb->onDronePsdkUiResource(msg);
+            if (cb) cb->onDronePsdkUiResource(msg);
         });
     }
 
@@ -8393,20 +8415,20 @@ using namespace flight_hub_sdk;
         $self->cancelListenDronePsdkUiResource(listen_id);
     }
 
-    int listenPsdkCustomDataTransmissionFromPsdkWrapper(PsdkCustomDataTransmissionFromPsdkCallback* callback) {
-        std::shared_ptr<PsdkCustomDataTransmissionFromPsdkCallback> cb(callback);
+    int listenPsdkCustomDataTransmissionFromPsdkWrapper(FHSDK_CALLBACK_PARAMETER(PsdkCustomDataTransmissionFromPsdkCallback)) {
+        FHSDK_SHARE_CALLBACK(PsdkCustomDataTransmissionFromPsdkCallback);
         return $self->listenPsdkCustomDataTransmissionFromPsdk([cb](const flight_hub_sdk::PsdkCustomDataTransmission& msg) {
-            cb->onPsdkCustomDataTransmissionFromPsdk(msg);
+            if (cb) cb->onPsdkCustomDataTransmissionFromPsdk(msg);
         });
     }
     void cancelListenPsdkCustomDataTransmissionFromPsdkWrapper(int listen_id) {
         $self->cancelListenPsdkCustomDataTransmissionFromPsdk(listen_id);
     }
-    void sendPsdkCustomDataTransmissionToPsdkWrapper(const std::string& value, ResultCallbackWithError* callback) {
+    void sendPsdkCustomDataTransmissionToPsdkWrapper(const std::string& value, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->sendPsdkCustomDataTransmissionToPsdk(value, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
@@ -8414,38 +8436,38 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IEsdkControlModule {
-    int listenEsdkCustomDataTransmissionFromEsdkWrapper(EsdkCustomDataTransmissionFromEsdkCallback* callback) {
-        std::shared_ptr<EsdkCustomDataTransmissionFromEsdkCallback> cb(callback);
+    int listenEsdkCustomDataTransmissionFromEsdkWrapper(FHSDK_CALLBACK_PARAMETER(EsdkCustomDataTransmissionFromEsdkCallback)) {
+        FHSDK_SHARE_CALLBACK(EsdkCustomDataTransmissionFromEsdkCallback);
         return $self->listenEsdkCustomDataTransmissionFromEsdk([cb](const flight_hub_sdk::EsdkCustomDataTransmission& msg) {
-            cb->onEsdkCustomDataTransmissionFromEsdk(msg);
+            if (cb) cb->onEsdkCustomDataTransmissionFromEsdk(msg);
         });
     }
     void cancelListenEsdkCustomDataTransmissionFromEsdkWrapper(int listen_id) {
         $self->cancelListenEsdkCustomDataTransmissionFromEsdk(listen_id);
     }
-    void sendEsdkCustomDataTransmissionToEsdkWrapper(const std::string& value, ResultCallbackWithError* callback) {
+    void sendEsdkCustomDataTransmissionToEsdkWrapper(const std::string& value, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->sendEsdkCustomDataTransmissionToEsdk(value, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 }
 
 %extend flight_hub_sdk::IFlightTaskMediaUploadModule {
-    void uploadFlighttaskMediaPrioritizeWrapper(const std::string& flight_id, ResultCallbackWithError* callback) {
+    void uploadFlighttaskMediaPrioritizeWrapper(const std::string& flight_id, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->uploadFlighttaskMediaPrioritize(flight_id, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
-    int listenHighestPriorityUploadFlighttaskMediaWrapper(HighestPriorityUploadFlighttaskMediaCallback* callback) {
-        std::shared_ptr<HighestPriorityUploadFlighttaskMediaCallback> cb(callback);
+    int listenHighestPriorityUploadFlighttaskMediaWrapper(FHSDK_CALLBACK_PARAMETER(HighestPriorityUploadFlighttaskMediaCallback)) {
+        FHSDK_SHARE_CALLBACK(HighestPriorityUploadFlighttaskMediaCallback);
         return $self->listenHighestPriorityUploadFlighttaskMedia([cb](const flight_hub_sdk::HighestPriorityUploadFlighttaskMedia& msg) {
-            cb->onHighestPriorityUploadFlighttaskMedia(msg);
+            if (cb) cb->onHighestPriorityUploadFlighttaskMedia(msg);
         });
     }
     void cancelListenHighestPriorityUploadFlighttaskMediaWrapper(int listen_id) {
@@ -8454,43 +8476,43 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IOnboardAiModule {
-    int listenAIDataInfoWrapper(AiDataInfoCallback* callback) {
-        std::shared_ptr<AiDataInfoCallback> cb(callback);
+    int listenAIDataInfoWrapper(FHSDK_CALLBACK_PARAMETER(AiDataInfoCallback)) {
+        FHSDK_SHARE_CALLBACK(AiDataInfoCallback);
         return $self->listenAIDataInfo([cb](const flight_hub_sdk::AiDataInfo& info) {
-            cb->onAiDataInfo(info);
+            if (cb) cb->onAiDataInfo(info);
         });
     }
     void cancelListenAIDataInfoWrapper(int listen_id) {
         $self->cancelListenAIDataInfo(listen_id);
     }
-    void AIIdentifySetWrapper(const flight_hub_sdk::AiIdentifySetParam& param, ResultCallback* callback) {
+    void AIIdentifySetWrapper(const flight_hub_sdk::AiIdentifySetParam& param, FHSDK_CALLBACK_PARAMETER(ResultCallback)) {
         $self->AIIdentifySet(param, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void AIIdentifyFilterSetWrapper(const flight_hub_sdk::AiIdentifyFilterSetParam& param, ResultCallback* callback) {
+    void AIIdentifyFilterSetWrapper(const flight_hub_sdk::AiIdentifyFilterSetParam& param, FHSDK_CALLBACK_PARAMETER(ResultCallback)) {
         $self->AIIdentifyFilterSet(param, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void AIIdentifyScoreSetWrapper(const flight_hub_sdk::AiIdentifyScoreSetParam& param, ResultCallback* callback) {
+    void AIIdentifyScoreSetWrapper(const flight_hub_sdk::AiIdentifyScoreSetParam& param, FHSDK_CALLBACK_PARAMETER(ResultCallback)) {
         $self->AIIdentifyScoreSet(param, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void AIIdentifyScoreModeSetWrapper(const flight_hub_sdk::AiIdentifyScoreModeSetParam& param, ResultCallback* callback) {
+    void AIIdentifyScoreModeSetWrapper(const flight_hub_sdk::AiIdentifyScoreModeSetParam& param, FHSDK_CALLBACK_PARAMETER(ResultCallback)) {
         $self->AIIdentifyScoreModeSet(param, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void AIIdentifyScoreResetWrapper(const flight_hub_sdk::AiIdentifyScoreResetParam& param, ResultCallback* callback) {
+    void AIIdentifyScoreResetWrapper(const flight_hub_sdk::AiIdentifyScoreResetParam& param, FHSDK_CALLBACK_PARAMETER(ResultCallback)) {
         $self->AIIdentifyScoreReset(param, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
-    void AIModelSelectWrapper(const flight_hub_sdk::AiModelSelectParam& param, ResultCallback* callback) {
+    void AIModelSelectWrapper(const flight_hub_sdk::AiModelSelectParam& param, FHSDK_CALLBACK_PARAMETER(ResultCallback)) {
         $self->AIModelSelect(param, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
@@ -8498,33 +8520,33 @@ using namespace flight_hub_sdk;
     // AI Spotlight Zoom (Tracking) Wrappers
     // ══════════════════════════════════════════════
 
-    void DrcAISpotlightZoomSetWrapper(int on, ResultCallbackWithError* callback) {
+    void DrcAISpotlightZoomSetWrapper(int on, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcAISpotlightZoomSet(on, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void DrcAISpotlightZoomSelectWrapper(const flight_hub_sdk::AiSpotlightZoomSelectParams& params, ResultCallbackWithError* callback) {
+    void DrcAISpotlightZoomSelectWrapper(const flight_hub_sdk::AiSpotlightZoomSelectParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcAISpotlightZoomSelect(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void DrcAISpotlightZoomConfirmWrapper(ResultCallbackWithError* callback) {
+    void DrcAISpotlightZoomConfirmWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcAISpotlightZoomConfirm([callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void DrcAISpotlightZoomStopWrapper(ResultCallbackWithError* callback) {
+    void DrcAISpotlightZoomStopWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcAISpotlightZoomStop([callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void DrcAISpotlightZoomTrackWrapper(int target_index, ResultCallbackWithError* callback) {
+    void DrcAISpotlightZoomTrackWrapper(int target_index, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcAISpotlightZoomTrack(target_index, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
@@ -8532,28 +8554,28 @@ using namespace flight_hub_sdk;
     // AI Alarm Wrappers
     // ══════════════════════════════════════════════
 
-    void DrcAIAlarmStartWrapper(const flight_hub_sdk::AiAlarmStartParams& params, ResultCallbackWithError* callback) {
+    void DrcAIAlarmStartWrapper(const flight_hub_sdk::AiAlarmStartParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcAIAlarmStart(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void DrcAIAlarmStopWrapper(ResultCallbackWithError* callback) {
+    void DrcAIAlarmStopWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcAIAlarmStop([callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    void DrcAIModelsConfigWrapper(const flight_hub_sdk::AiModelsConfigParams& params, ResultCallbackWithError* callback) {
+    void DrcAIModelsConfigWrapper(const flight_hub_sdk::AiModelsConfigParams& params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->DrcAIModelsConfig(params, [callback](flight_hub_sdk::FlightHubError err) {
-            if (callback) { callback->onResult(err); delete callback; }
+            if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
         });
     }
 
-    int listenDrcAIAlarmStateWrapper(AiAlarmStateCallback* callback) {
-        std::shared_ptr<AiAlarmStateCallback> cb(callback);
+    int listenDrcAIAlarmStateWrapper(FHSDK_CALLBACK_PARAMETER(AiAlarmStateCallback)) {
+        FHSDK_SHARE_CALLBACK(AiAlarmStateCallback);
         return $self->listenDrcAIAlarmState([cb](const flight_hub_sdk::AiAlarmStateInfo& info) {
-            cb->onAiAlarmState(info);
+            if (cb) cb->onAiAlarmState(info);
         });
     }
 
@@ -8563,37 +8585,37 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::INetworkTestModule {
-    void startNetworkTestWrapper(StartNetworkTestCallback* callback) {
+    void startNetworkTestWrapper(FHSDK_CALLBACK_PARAMETER(StartNetworkTestCallback)) {
         $self->startNetworkTest([callback](flight_hub_sdk::FlightHubError err, NetworkTestProgressResult result) {
             if (callback) {
                 callback->onStartNetworkTest(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void stopNetworkTestWrapper(StopNetworkTestCallback* callback) {
+    void stopNetworkTestWrapper(FHSDK_CALLBACK_PARAMETER(StopNetworkTestCallback)) {
         $self->stopNetworkTest([callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onStopNetworkTest(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void getNetworkTestProgressWrapper(GetNetworkTestProgressCallback* callback) {
+    void getNetworkTestProgressWrapper(FHSDK_CALLBACK_PARAMETER(GetNetworkTestProgressCallback)) {
         $self->getNetworkTestProgress([callback](flight_hub_sdk::FlightHubError err, NetworkTestProgressResult result) {
             if (callback) {
                 callback->onGetNetworkTestProgress(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int subscribeNetworkTestProgressWrapper(SubscribeNetworkTestProgressCallback* callback) {
-        std::shared_ptr<SubscribeNetworkTestProgressCallback> cb(callback);
+    int subscribeNetworkTestProgressWrapper(FHSDK_CALLBACK_PARAMETER(SubscribeNetworkTestProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(SubscribeNetworkTestProgressCallback);
         return $self->subscribeNetworkTestProgress([cb](flight_hub_sdk::NetworkTestProgressResult result) {
-            cb->onSubscribeNetworkTestProgress(result);
+            if (cb) cb->onSubscribeNetworkTestProgress(result);
         });
     }
 
@@ -8603,66 +8625,66 @@ using namespace flight_hub_sdk;
 }
 
 %extend flight_hub_sdk::IHMSModule {
-    void QueryHistoryHMSDataWrapper(const flight_hub_sdk::HistoryHmsDataParam& params, QueryHistoryHMSDataCallback* callback) {
+    void QueryHistoryHMSDataWrapper(const flight_hub_sdk::HistoryHmsDataParam& params, FHSDK_CALLBACK_PARAMETER(QueryHistoryHMSDataCallback)) {
         $self->QueryHistoryHMSData(params, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::HistoryHmsDataResult result) {
             if (callback) {
                 callback->onQueryHistoryHMSData(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 }
 
 %extend flight_hub_sdk::ILogManagementModule {
-    void QueryDeviceLogListWrapper(const std::string& device_sn, const std::vector<int>& module_list, QueryDeviceLogListCallback* callback) {
+    void QueryDeviceLogListWrapper(const std::string& device_sn, const std::vector<int>& module_list, FHSDK_CALLBACK_PARAMETER(QueryDeviceLogListCallback)) {
         $self->QueryDeviceLogList(device_sn, module_list, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::DeviceLogListResult result) {
             if (callback) {
                 callback->onQueryDeviceLogList(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void CreateDeviceLogReportWrapper(const flight_hub_sdk::CreateDeviceLogReportRequestParam& param, CreateDeviceLogReportCallback* callback) {
+    void CreateDeviceLogReportWrapper(const flight_hub_sdk::CreateDeviceLogReportRequestParam& param, FHSDK_CALLBACK_PARAMETER(CreateDeviceLogReportCallback)) {
         $self->CreateDeviceLogReport(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::CreateDeviceLogReportResult result) {
             if (callback) {
                 callback->onCreateDeviceLogReport(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void LogReportListWrapper(const std::string& device_sn, int page, int page_size, LogReportListCallback* callback) {
+    void LogReportListWrapper(const std::string& device_sn, int page, int page_size, FHSDK_CALLBACK_PARAMETER(LogReportListCallback)) {
         $self->LogReportList(device_sn, page, page_size, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::LogReportListResult result) {
             if (callback) {
                 callback->onLogReportList(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void LogReportOperationWrapper(const std::string& operation, const std::string& report_id, LogReportOperationCallback* callback) {
+    void LogReportOperationWrapper(const std::string& operation, const std::string& report_id, FHSDK_CALLBACK_PARAMETER(LogReportOperationCallback)) {
         $self->LogReportOperation(operation, report_id, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onLogReportOperation(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void UploadLogAppendFileWrapper(const std::string& file_path, UploadLogAppendFileCallback* callback) {
+    void UploadLogAppendFileWrapper(const std::string& file_path, FHSDK_CALLBACK_PARAMETER(UploadLogAppendFileCallback)) {
         $self->UploadLogAppendFile(file_path, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onUploadLogAppendFile(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    int listenDeviceFileUploadProgressWrapper(const std::string& device_sn, DeviceFileUploadProgressCallback* callback) {
-        std::shared_ptr<DeviceFileUploadProgressCallback> cb(callback);
+    int listenDeviceFileUploadProgressWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(DeviceFileUploadProgressCallback)) {
+        FHSDK_SHARE_CALLBACK(DeviceFileUploadProgressCallback);
         return $self->listenDeviceFileUploadProgress(device_sn, [cb](const flight_hub_sdk::DeviceFileUploadProgress& msg) {
-            cb->onDeviceFileUploadProgress(msg);
+            if (cb) cb->onDeviceFileUploadProgress(msg);
         });
     }
     void cancelListenDeviceFileUploadProgressWrapper(int listen_id) {
@@ -8672,50 +8694,50 @@ using namespace flight_hub_sdk;
 
 %extend flight_hub_sdk::IMediaServiceModule {
     // [媒体服务] 获取媒体文件列表;
-    void getMediaFilesListWrapper(const flight_hub_sdk::GetMediaFilesListParams& request_params, GetMediaFilesListCallback* callback) {
+    void getMediaFilesListWrapper(const flight_hub_sdk::GetMediaFilesListParams& request_params, FHSDK_CALLBACK_PARAMETER(GetMediaFilesListCallback)) {
         $self->getMediaFilesList(request_params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::GetMediaFilesListResults& results) {
             if (callback) {
                 callback->onGetMediaFilesList(err, results);
-                // delete callback;
+                // FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [媒体服务] 批量删除媒体文件;
-    void deleteMediaFilesWrapper(const std::vector<long long>& file_ids, ResultCallbackWithError* callback) {
+    void deleteMediaFilesWrapper(const std::vector<long long>& file_ids, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->deleteMediaFiles(file_ids, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                // delete callback;
+                // FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [媒体服务] 获取媒体文件下载地址;
-    void getMediaFilesDownloadURLWrapper(long long file_id, GetMediaFilesDownloadUrlCallback* callback) {
+    void getMediaFilesDownloadURLWrapper(long long file_id, FHSDK_CALLBACK_PARAMETER(GetMediaFilesDownloadUrlCallback)) {
         $self->getMediaFilesDownloadURL(file_id, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::GetMediaFilesDownloadUrlResults& results) {
             if (callback) {
                 callback->onGetMediaFilesDownloadUrl(err, results);
-                // delete callback;
+                // FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [媒体服务] 获取媒体文件批量下载地址 (通过 object_keys);
-    void getMediaFilesDownloadURLListWrapper(const std::vector<std::string>& object_keys, GetMediaFilesDownloadUrlListCallback* callback) {
+    void getMediaFilesDownloadURLListWrapper(const std::vector<std::string>& object_keys, FHSDK_CALLBACK_PARAMETER(GetMediaFilesDownloadUrlListCallback)) {
         $self->getMediaFilesDownloadURL(object_keys, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::GetMediaFilesDownloadUrlListResults& results) {
             if (callback) {
                 callback->onGetMediaFilesDownloadUrlList(err, results);
-                // delete callback;
+                // FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // 监听: 设备媒体后处理完成通知;
-    int listenMediaFilePostProcessMessageWrapper(const std::string& device_sn, MediaFilePostProcessCallback* callback) {
-        std::shared_ptr<MediaFilePostProcessCallback> cb(callback);
+    int listenMediaFilePostProcessMessageWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(MediaFilePostProcessCallback)) {
+        FHSDK_SHARE_CALLBACK(MediaFilePostProcessCallback);
         return $self->listenMediaFilePostProcessMessage(device_sn, [cb](const flight_hub_sdk::MediaFilePostProcess& msg) {
-            cb->onMediaFilePostProcess(msg);
+            if (cb) cb->onMediaFilePostProcess(msg);
         });
     }
 
@@ -8725,10 +8747,10 @@ using namespace flight_hub_sdk;
     }
 
     // 监听: 设备媒体回传通知;
-    int listenMediaFileDeviceUploadMessageWrapper(const std::string& device_sn, MediaFileDeviceUploadCallback* callback) {
-        std::shared_ptr<MediaFileDeviceUploadCallback> cb(callback);
+    int listenMediaFileDeviceUploadMessageWrapper(const std::string& device_sn, FHSDK_CALLBACK_PARAMETER(MediaFileDeviceUploadCallback)) {
+        FHSDK_SHARE_CALLBACK(MediaFileDeviceUploadCallback);
         return $self->listenMediaFileDeviceUploadMessage(device_sn, [cb](const flight_hub_sdk::MediaFileDeviceUpload& msg) {
-            cb->onMediaFileDeviceUpload(msg);
+            if (cb) cb->onMediaFileDeviceUpload(msg);
         });
     }
 
@@ -8739,81 +8761,81 @@ using namespace flight_hub_sdk;
 
     // [媒体上传] 获取 OSS STS 临时上传凭证
     void getMediaUploadStsWrapper(const flight_hub_sdk::GetMediaUploadStsParams& params,
-                                  GetMediaUploadStsCallback* callback) {
+                                  FHSDK_CALLBACK_PARAMETER(GetMediaUploadStsCallback)) {
         $self->getMediaUploadSts(params,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::GetMediaUploadStsResult& result) {
-                if (callback) { callback->onGetMediaUploadSts(err, result); delete callback; }
+                if (callback) { callback->onGetMediaUploadSts(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // [媒体上传] 文件上传完成后通知服务端
     void mediaUploadCallbackWrapper(const flight_hub_sdk::MediaUploadCallbackParams& params,
-                                    MediaUploadCallbackCallback* callback) {
+                                    FHSDK_CALLBACK_PARAMETER(MediaUploadCallbackCallback)) {
         $self->mediaUploadCallback(params,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::MediaUploadCallbackResult& result) {
-                if (callback) { callback->onMediaUploadCallback(err, result); delete callback; }
+                if (callback) { callback->onMediaUploadCallback(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     void uploadGeoMediaFileWrapper(const flight_hub_sdk::UploadGeoMediaFileParams& params,
-                                   UploadGeoMediaFileCallback* callback) {
+                                   FHSDK_CALLBACK_PARAMETER(UploadGeoMediaFileCallback)) {
         $self->uploadGeoMediaFile(params,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::UploadGeoMediaFileResult& result) {
-                if (callback) { callback->onUploadGeoMediaFile(err, result); delete callback; }
+                if (callback) { callback->onUploadGeoMediaFile(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     void getMediaFileDetailByIdWrapper(int file_id,
-                                       GetMediaFileDetailByIdCallback* callback) {
+                                       FHSDK_CALLBACK_PARAMETER(GetMediaFileDetailByIdCallback)) {
         $self->getMediaFileDetailById(file_id,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::GetMediaFileDetailByIdResult& result) {
-                if (callback) { callback->onGetMediaFileDetailById(err, result); delete callback; }
+                if (callback) { callback->onGetMediaFileDetailById(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // ── 3X 超清全景拼接 Wrapper 方法 ──────────────────────────────────────
-    void startPanoStitchWrapper(long long file_id, PanoStitchActionCallback* callback) {
+    void startPanoStitchWrapper(long long file_id, FHSDK_CALLBACK_PARAMETER(PanoStitchActionCallback)) {
         $self->startPanoStitch(file_id,
             [callback](flight_hub_sdk::FlightHubError err) {
-                if (callback) { callback->onPanoStitchAction(err); delete callback; }
+                if (callback) { callback->onPanoStitchAction(err); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
-    void stopPanoStitchWrapper(long long file_id, PanoStitchActionCallback* callback) {
+    void stopPanoStitchWrapper(long long file_id, FHSDK_CALLBACK_PARAMETER(PanoStitchActionCallback)) {
         $self->stopPanoStitch(file_id,
             [callback](flight_hub_sdk::FlightHubError err) {
-                if (callback) { callback->onPanoStitchAction(err); delete callback; }
+                if (callback) { callback->onPanoStitchAction(err); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
-    void retryPanoStitchWrapper(long long file_id, PanoStitchActionCallback* callback) {
+    void retryPanoStitchWrapper(long long file_id, FHSDK_CALLBACK_PARAMETER(PanoStitchActionCallback)) {
         $self->retryPanoStitch(file_id,
             [callback](flight_hub_sdk::FlightHubError err) {
-                if (callback) { callback->onPanoStitchAction(err); delete callback; }
+                if (callback) { callback->onPanoStitchAction(err); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
-    void startPanoTierWrapper(long long file_id, PanoStitchActionCallback* callback) {
+    void startPanoTierWrapper(long long file_id, FHSDK_CALLBACK_PARAMETER(PanoStitchActionCallback)) {
         $self->startPanoTier(file_id,
             [callback](flight_hub_sdk::FlightHubError err) {
-                if (callback) { callback->onPanoStitchAction(err); delete callback; }
+                if (callback) { callback->onPanoStitchAction(err); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
-    void getPanoTierTileUrlWrapper(long long file_id, GetPanoTierTileUrlCallback* callback) {
+    void getPanoTierTileUrlWrapper(long long file_id, FHSDK_CALLBACK_PARAMETER(GetPanoTierTileUrlCallback)) {
         $self->getPanoTierTileUrl(file_id,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::GetPanoTierTileUrlResult& result) {
-                if (callback) { callback->onGetPanoTierTileUrl(err, result); delete callback; }
+                if (callback) { callback->onGetPanoTierTileUrl(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
-     int subscribePanoStitchProgressWrapper(PanoStitchProgressCallback* callback) {
-         std::shared_ptr<PanoStitchProgressCallback> cb(callback);
+     int subscribePanoStitchProgressWrapper(FHSDK_CALLBACK_PARAMETER(PanoStitchProgressCallback)) {
+         FHSDK_SHARE_CALLBACK(PanoStitchProgressCallback);
          return $self->subscribePanoStitchProgress(
              [cb](const flight_hub_sdk::PanoStitchProgressMsg& msg) {
                  if (cb) cb->onPanoStitchProgress(msg);
@@ -8893,11 +8915,11 @@ using namespace flight_hub_sdk;
 
     // [Terra Build] 获取重建设置
     void getReconstructionSettingsWrapper(const std::string& file_uuid,
-                                          TerraBuildReconstructionSettingsCallback* callback) {
+                                          FHSDK_CALLBACK_PARAMETER(TerraBuildReconstructionSettingsCallback)) {
         $self->getReconstructionSettings(file_uuid,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::TerraBuildSettingsResult& result) {
-                if (callback) { callback->onGetReconstructionSettings(err, result); delete callback; }
+                if (callback) { callback->onGetReconstructionSettings(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
@@ -8905,62 +8927,62 @@ using namespace flight_hub_sdk;
     void getQualityReportWrapper(const std::string& file_uuid,
                                  const std::string& language,
                                  const std::string& measure_unit_system,
-                                 TerraBuildQualityReportCallback* callback) {
+                                 FHSDK_CALLBACK_PARAMETER(TerraBuildQualityReportCallback)) {
         $self->getQualityReport(file_uuid, language, measure_unit_system,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::TerraBuildQualityReportResult& result) {
-                if (callback) { callback->onGetQualityReport(err, result); delete callback; }
+                if (callback) { callback->onGetQualityReport(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // [Terra Build] 获取模型文件列表
     void getModelFileListWrapper(int page, int page_size,
-                                 TerraBuildModelFileListCallback* callback) {
+                                 FHSDK_CALLBACK_PARAMETER(TerraBuildModelFileListCallback)) {
         $self->getModelFileList(page, page_size,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::TerraBuildModelFileListResult& result) {
-                if (callback) { callback->onGetModelFileList(err, result); delete callback; }
+                if (callback) { callback->onGetModelFileList(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // [Terra Build] 获取模型文件签名 URL
     void getModelFileUrlWrapper(int file_id, int type,
-                                TerraBuildModelFileUrlCallback* callback) {
+                                FHSDK_CALLBACK_PARAMETER(TerraBuildModelFileUrlCallback)) {
         $self->getModelFileUrl(file_id, type,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::TerraBuildModelFileUrlResult& result) {
-                if (callback) { callback->onGetModelFileUrl(err, result); delete callback; }
+                if (callback) { callback->onGetModelFileUrl(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
     // [Terra Build] 重试重建任务
-    void retryReconstructionWrapper(const std::string& file_uuid, ResultCallback* callback) {
+    void retryReconstructionWrapper(const std::string& file_uuid, FHSDK_CALLBACK_PARAMETER(ResultCallback)) {
         $self->retryReconstruction(file_uuid,
             [callback](flight_hub_sdk::FlightHubError err) {
-                if (callback) { callback->onResult(err); delete callback; }
+                if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // [Terra Build] 停止重建任务
-    void stopReconstructionWrapper(const std::string& file_uuid, ResultCallback* callback) {
+    void stopReconstructionWrapper(const std::string& file_uuid, FHSDK_CALLBACK_PARAMETER(ResultCallback)) {
         $self->stopReconstruction(file_uuid,
             [callback](flight_hub_sdk::FlightHubError err) {
-                if (callback) { callback->onResult(err); delete callback; }
+                if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // [Terra Build] 获取空三结果
     void getSfmResultWrapper(const std::string& file_uuid,
-                             TerraBuildSfmResultCallback* callback) {
+                             FHSDK_CALLBACK_PARAMETER(TerraBuildSfmResultCallback)) {
         $self->getSfmResult(file_uuid,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::TerraBuildSfmResult& result) {
-                if (callback) { callback->onGetSfmResult(err, result); delete callback; }
+                if (callback) { callback->onGetSfmResult(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // [Terra Build] 创建重建任务（Java 参数对象方式，无需构建 JSON）
     void createReconstructionWithParamsWrapper(const terra_build_swig::CreateReconstructionJavaParams& jp,
-                                               TerraBuildCreateReconstructionCallback* callback) {
+                                               FHSDK_CALLBACK_PARAMETER(TerraBuildCreateReconstructionCallback)) {
         flight_hub_sdk::CreateReconstructionParams params;
         // 必填
         params.reconstruction_type = jp.reconstruction_type;
@@ -9159,39 +9181,39 @@ using namespace flight_hub_sdk;
         $self->createReconstruction(params,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::TerraBuildCreateReconstructionResult& result) {
-                if (callback) { callback->onCreateReconstruction(err, result); delete callback; }
+                if (callback) { callback->onCreateReconstruction(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // [Terra Build] 删除单个模型文件
-    void deleteModelFileWrapper(int file_id, ResultCallback* callback) {
+    void deleteModelFileWrapper(int file_id, FHSDK_CALLBACK_PARAMETER(ResultCallback)) {
         $self->deleteModelFile(file_id,
             [callback](flight_hub_sdk::FlightHubError err) {
-                if (callback) { callback->onResult(err); delete callback; }
+                if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // [Terra Build] 批量删除模型文件
-    void batchDeleteModelFilesWrapper(const std::vector<int>& file_ids, ResultCallback* callback) {
+    void batchDeleteModelFilesWrapper(const std::vector<int>& file_ids, FHSDK_CALLBACK_PARAMETER(ResultCallback)) {
         $self->batchDeleteModelFiles(file_ids,
             [callback](flight_hub_sdk::FlightHubError err) {
-                if (callback) { callback->onResult(err); delete callback; }
+                if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // [Terra Build] 删除单个模型文件（返回 lock_files）
-    void deleteModelFileWithResultWrapper(int file_id, TerraDeleteModelFilesCallback* callback) {
+    void deleteModelFileWithResultWrapper(int file_id, FHSDK_CALLBACK_PARAMETER(TerraDeleteModelFilesCallback)) {
         $self->deleteModelFileWithResult(file_id,
             [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::TerraDeleteModelFilesResult& result) {
-                if (callback) { callback->onTerraDeleteModelFiles(err, result); delete callback; }
+                if (callback) { callback->onTerraDeleteModelFiles(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // [Terra Build] 批量删除模型文件（返回 lock_files）
-    void batchDeleteModelFilesWithResultWrapper(const std::vector<int>& file_ids, TerraDeleteModelFilesCallback* callback) {
+    void batchDeleteModelFilesWithResultWrapper(const std::vector<int>& file_ids, FHSDK_CALLBACK_PARAMETER(TerraDeleteModelFilesCallback)) {
         $self->batchDeleteModelFilesWithResult(file_ids,
             [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::TerraDeleteModelFilesResult& result) {
-                if (callback) { callback->onTerraDeleteModelFiles(err, result); delete callback; }
+                if (callback) { callback->onTerraDeleteModelFiles(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
@@ -9200,7 +9222,7 @@ using namespace flight_hub_sdk;
                                const std::vector<std::string>& folder_uuids,
                                const std::string& wkt,
                                bool is_shown_on_map,
-                               TerraBuildCreatePanoramaCallback* callback) {
+                               FHSDK_CALLBACK_PARAMETER(TerraBuildCreatePanoramaCallback)) {
         flight_hub_sdk::CreatePanoramaParams params;
         params.name = name;
         params.folder_uuids = folder_uuids;
@@ -9209,26 +9231,26 @@ using namespace flight_hub_sdk;
         $self->createPanorama(params,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::TerraBuildCreatePanoramaResult& result) {
-                if (callback) { callback->onCreatePanorama(err, result); delete callback; }
+                if (callback) { callback->onCreatePanorama(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // [Terra Build] 获取重建图像列表
     void getReconstructionImagesWrapper(const std::string& file_uuid,
-                                        TerraBuildReconstructionImagesCallback* callback) {
+                                        FHSDK_CALLBACK_PARAMETER(TerraBuildReconstructionImagesCallback)) {
         $self->getReconstructionImages(file_uuid,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::TerraBuildReconstructionImagesResult& result) {
-                if (callback) { callback->onGetReconstructionImages(err, result); delete callback; }
+                if (callback) { callback->onGetReconstructionImages(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // [Terra Build] 监听重建任务状态变更推送
-    int listenReconstructionStatusChangedWrapper(TerraBuildReconstructionStatusChangedCallback* callback) {
-        std::shared_ptr<TerraBuildReconstructionStatusChangedCallback> cb(callback);
+    int listenReconstructionStatusChangedWrapper(FHSDK_CALLBACK_PARAMETER(TerraBuildReconstructionStatusChangedCallback)) {
+        FHSDK_SHARE_CALLBACK(TerraBuildReconstructionStatusChangedCallback);
         return $self->listenReconstructionStatusChanged(
             [cb](const flight_hub_sdk::TerraBuildReconstructionStatusChanged& msg) {
-                cb->onReconstructionStatusChanged(msg);
+                if (cb) cb->onReconstructionStatusChanged(msg);
             });
     }
 
@@ -9239,7 +9261,7 @@ using namespace flight_hub_sdk;
 
     // [Terra 模型管理] 模型文件上传回调
     void uploadModelCallbackWrapper(const terra_build_swig::TerraUploadCallbackJavaParams& jp,
-                                    TerraUploadCallbackCallback* callback) {
+                                    FHSDK_CALLBACK_PARAMETER(TerraUploadCallbackCallback)) {
         flight_hub_sdk::TerraUploadCallbackParams params;
         params.object_key = jp.object_key;
         params.name = jp.name;
@@ -9249,14 +9271,14 @@ using namespace flight_hub_sdk;
         $self->uploadModelCallback(params,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::TerraUploadCallbackResult& result) {
-                if (callback) { callback->onTerraUploadCallback(err, result); delete callback; }
+                if (callback) { callback->onTerraUploadCallback(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // [Terra 模型管理] 模型重命名
     void renameModelWrapper(int file_id,
                             const terra_build_swig::TerraRenameModelJavaParams& jp,
-                            ResultCallback* callback) {
+                            FHSDK_CALLBACK_PARAMETER(ResultCallback)) {
         flight_hub_sdk::TerraRenameModelParams params;
         params.name = jp.name;
         if (jp.in_uniform_height_set) params.in_uniform_height = jp.in_uniform_height;
@@ -9264,13 +9286,13 @@ using namespace flight_hub_sdk;
         if (jp.collected_at_set) params.collected_at = jp.collected_at;
         $self->renameModel(file_id, params,
             [callback](flight_hub_sdk::FlightHubError err) {
-                if (callback) { callback->onResult(err); delete callback; }
+                if (callback) { callback->onResult(err); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // [Terra 模型管理] 批量加载/取消加载模型到地图
     void showModelOnMapWrapper(const terra_build_swig::TerraShowOnMapJavaParams& jp,
-                               TerraShowOnMapCallback* callback) {
+                               FHSDK_CALLBACK_PARAMETER(TerraShowOnMapCallback)) {
         flight_hub_sdk::TerraShowOnMapParams params;
         params.ids = jp.ids;
         if (jp.show_on_map_set) params.show_on_map = jp.show_on_map;
@@ -9298,12 +9320,12 @@ using namespace flight_hub_sdk;
         $self->showModelOnMap(params,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::TerraShowOnMapResult& result) {
-                if (callback) { callback->onTerraShowOnMap(err, result); delete callback; }
+                if (callback) { callback->onTerraShowOnMap(err, result); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // [Terra 模型管理] 监听模型解压进度推送
-    int listenTerraUnzipProgressWrapper(TerraUnzipProgressCallback* callback) {
+    int listenTerraUnzipProgressWrapper(FHSDK_CALLBACK_PARAMETER(TerraUnzipProgressCallback)) {
         return $self->listenTerraUnzipProgress(
             [callback](const flight_hub_sdk::TerraUnzipProgressMsg& msg) {
                 if (callback) callback->onTerraUnzipProgress(msg);
@@ -9316,7 +9338,7 @@ using namespace flight_hub_sdk;
     }
 
     // [Terra 模型管理] 监听模型状态变更推送
-    int listenTerraModelStatusChangedWrapper(TerraModelStatusChangedCallback* callback) {
+    int listenTerraModelStatusChangedWrapper(FHSDK_CALLBACK_PARAMETER(TerraModelStatusChangedCallback)) {
         return $self->listenTerraModelStatusChanged(
             [callback](const flight_hub_sdk::TerraModelStatusChangedMsg& msg) {
                 if (callback) callback->onTerraModelStatusChanged(msg);
@@ -9329,7 +9351,7 @@ using namespace flight_hub_sdk;
     }
 
     // [Terra 模型管理] 监听文件展示地图状态推送
-    int listenTerraFileShowOnMapWrapper(TerraFileShowOnMapCallback* callback) {
+    int listenTerraFileShowOnMapWrapper(FHSDK_CALLBACK_PARAMETER(TerraFileShowOnMapCallback)) {
         return $self->listenTerraFileShowOnMap(
             [callback](const flight_hub_sdk::TerraFileShowOnMapMsg& msg) {
                 if (callback) callback->onTerraFileShowOnMap(msg);
@@ -9342,7 +9364,7 @@ using namespace flight_hub_sdk;
     }
 
     // [Terra 模型管理] 监听模型隐藏地图推送 (topic_media_file_hide_on_map)
-    int listenTerraMediaFileHideOnMapWrapper(TerraMediaFileHideOnMapCallback* callback) {
+    int listenTerraMediaFileHideOnMapWrapper(FHSDK_CALLBACK_PARAMETER(TerraMediaFileHideOnMapCallback)) {
         return $self->listenTerraMediaFileHideOnMap(
             [callback](const flight_hub_sdk::TerraMediaFileHideOnMapMsg& msg) {
                 if (callback) callback->onTerraMediaFileHideOnMap(msg);
@@ -9354,7 +9376,7 @@ using namespace flight_hub_sdk;
     }
 
     // [Terra 模型管理] 监听模型显示地图推送 (topic_media_file_show_on_map)
-    int listenTerraMediaFileShowOnMapWrapper(TerraMediaFileShowOnMapCallback* callback) {
+    int listenTerraMediaFileShowOnMapWrapper(FHSDK_CALLBACK_PARAMETER(TerraMediaFileShowOnMapCallback)) {
         return $self->listenTerraMediaFileShowOnMap(
             [callback](const flight_hub_sdk::TerraMediaFileShowOnMapMsg& msg) {
                 if (callback) callback->onTerraMediaFileShowOnMap(msg);
@@ -9366,7 +9388,7 @@ using namespace flight_hub_sdk;
     }
 
     // [Terra 模型管理] 获取模型文件详情
-    void getModelDetailWrapper(int file_id, TerraGetModelDetailCallback* callback) {
+    void getModelDetailWrapper(int file_id, FHSDK_CALLBACK_PARAMETER(TerraGetModelDetailCallback)) {
         $self->getModelDetail(file_id,
             [callback](flight_hub_sdk::FlightHubError err,
                        const flight_hub_sdk::TerraModelDetailResult& r) {
@@ -9417,19 +9439,19 @@ using namespace flight_hub_sdk;
                 jr.digital_zoom_ratio = r.ext.digital_zoom_ratio; jr.length_in35mm_film = r.ext.length_in35mm_film;
                 jr.file_tags = r.file_tags; jr.user_name = r.user_name;
                 callback->onGetModelDetail(err, jr);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             });
     }
 
     // [Terra 模型管理] 设置 LAS 坐标系并触发格式转换
     void setLasWktWrapper(const terra_build_swig::TerraSetLasWktJavaParams& jp,
-                          TerraSetLasWktCallback* callback) {
+                          FHSDK_CALLBACK_PARAMETER(TerraSetLasWktCallback)) {
         flight_hub_sdk::TerraSetLasWktParams params;
         params.file_uuid = jp.file_uuid;
         params.wkt       = jp.wkt;
         $self->setLasWkt(params,
             [callback](flight_hub_sdk::FlightHubError err) {
-                if (callback) { callback->onSetLasWkt(err); delete callback; }
+                if (callback) { callback->onSetLasWkt(err); FHSDK_DELETE_CALLBACK(); }
             });
     }
 }
@@ -9439,17 +9461,17 @@ using namespace flight_hub_sdk;
     // 创建要素（CreateElementParams 无 std::optional，直接传入）
     void createElementWrapper(
             const flight_hub_sdk::CreateElementParams& params,
-            ElementCreateElementCallback* callback) {
+            FHSDK_CALLBACK_PARAMETER(ElementCreateElementCallback)) {
         $self->createElement(params,
             [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::CreateElementResult& r) {
-                if (callback) { callback->onCreateElement(err, r); delete callback; }
+                if (callback) { callback->onCreateElement(err, r); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // 更新要素（UpdateElementParams 含 std::optional，需通过 JavaParams 中转）
     void updateElementWrapper(
             const terra_build_swig::ElementUpdateJavaParams& jp,
-            ElementUpdateElementCallback* callback) {
+            FHSDK_CALLBACK_PARAMETER(ElementUpdateElementCallback)) {
         flight_hub_sdk::UpdateElementParams params;
         params.id = jp.id;
         if (jp.name_set) params.name = jp.name;
@@ -9488,14 +9510,14 @@ using namespace flight_hub_sdk;
         }
         $self->updateElement(params,
             [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::UpdateElementResult& r) {
-                if (callback) { callback->onUpdateElement(err, r); delete callback; }
+                if (callback) { callback->onUpdateElement(err, r); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // 查询元素层级列表（ListElementHierarchyParams 含 std::optional，需通过 JavaParams 中转）
     void listElementHierarchyWrapper(
             const terra_build_swig::ListElementHierarchyJavaParams& jp,
-            ElementListHierarchyCallback* callback) {
+            FHSDK_CALLBACK_PARAMETER(ElementListHierarchyCallback)) {
         flight_hub_sdk::ListElementHierarchyParams params;
         params.group_id     = jp.group_id;
         params.pid          = jp.pid;
@@ -9505,32 +9527,32 @@ using namespace flight_hub_sdk;
         params.exclude_copy = jp.exclude_copy;
         $self->listElementHierarchy(params,
             [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::ListElementHierarchyResult& r) {
-                if (callback) { callback->onListElementHierarchy(err, r); delete callback; }
+                if (callback) { callback->onListElementHierarchy(err, r); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // 设置要素显示状态（SetElementVisibilityParams 无 std::optional，直接传入）
     void setElementVisibilityWrapper(
             const flight_hub_sdk::SetElementVisibilityParams& params,
-            ElementSetVisibilityCallback* callback) {
+            FHSDK_CALLBACK_PARAMETER(ElementSetVisibilityCallback)) {
         $self->setElementVisibility(params,
             [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::SetElementVisibilityResult& r) {
-                if (callback) { callback->onSetElementVisibility(err, r); delete callback; }
+                if (callback) { callback->onSetElementVisibility(err, r); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // 删除要素（DeleteElementParams 无 std::optional，直接传入）
     void deleteElementWrapper(
             const flight_hub_sdk::DeleteElementParams& params,
-            ElementDeleteElementCallback* callback) {
+            FHSDK_CALLBACK_PARAMETER(ElementDeleteElementCallback)) {
         $self->deleteElement(params,
             [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::DeleteElementResult& r) {
-                if (callback) { callback->onDeleteElement(err, r); delete callback; }
+                if (callback) { callback->onDeleteElement(err, r); FHSDK_DELETE_CALLBACK(); }
             });
     }
 
     // 监听要素创建事件
-    int listenElementCreateWrapper(ElementCreateCallback* callback) {
+    int listenElementCreateWrapper(FHSDK_CALLBACK_PARAMETER(ElementCreateCallback)) {
         return $self->listenElementCreate(
             [callback](const flight_hub_sdk::ElementCreateMsg& msg) {
                 if (callback) callback->onElementCreate(msg);
@@ -9541,7 +9563,7 @@ using namespace flight_hub_sdk;
     }
 
     // 监听要素更新事件
-    int listenElementUpdateWrapper(ElementUpdateCallback* callback) {
+    int listenElementUpdateWrapper(FHSDK_CALLBACK_PARAMETER(ElementUpdateCallback)) {
         return $self->listenElementUpdate(
             [callback](const flight_hub_sdk::ElementUpdateMsg& msg) {
                 if (callback) callback->onElementUpdate(msg);
@@ -9552,7 +9574,7 @@ using namespace flight_hub_sdk;
     }
 
     // 监听要素删除事件
-    int listenElementDeleteWrapper(ElementDeleteCallback* callback) {
+    int listenElementDeleteWrapper(FHSDK_CALLBACK_PARAMETER(ElementDeleteCallback)) {
         return $self->listenElementDelete(
             [callback](const flight_hub_sdk::ElementDeleteMsg& msg) {
                 if (callback) callback->onElementDelete(msg);
@@ -9565,204 +9587,204 @@ using namespace flight_hub_sdk;
 
 %extend flight_hub_sdk::ISafetyServiceModule {
     // [信号地图] 获取信号地图;
-    void searchSignalMapsWrapper(const std::vector<std::string>& device_sns, const std::vector<std::string>& data_types, SearchSignalMapsCallback* callback) {
+    void searchSignalMapsWrapper(const std::vector<std::string>& device_sns, const std::vector<std::string>& data_types, FHSDK_CALLBACK_PARAMETER(SearchSignalMapsCallback)) {
         $self->searchSignalMaps(device_sns, data_types, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::SignalMapsResults& result) {
             if (callback) {
                 callback->onSearchSignalMaps(err, result);
-                //delete callback;
+                //FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [自定义飞行区域] 创建自定义飞行区域;
-    void createCustomizedFlightAreasWrapper(const flight_hub_sdk::CreateCustomizedFlightAreasParams& request_params, CreateCustomizedFlightAreasCallback* callback) {
+    void createCustomizedFlightAreasWrapper(const flight_hub_sdk::CreateCustomizedFlightAreasParams& request_params, FHSDK_CALLBACK_PARAMETER(CreateCustomizedFlightAreasCallback)) {
         $self->createCustomizedFlightAreas(request_params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::CreateFlightAreasResults& result) {
             if (callback) {
                 callback->onCreateCustomizedFlightAreas(err, result);
-                //delete callback;
+                //FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [自定义飞行区域] 获取自定义飞行区域;
-    void getCustomizedFlightAreasWrapper(const flight_hub_sdk::GetCustomizedFlightAreasParams& request_params, GetCustomizedFlightAreasCallback* callback) {
+    void getCustomizedFlightAreasWrapper(const flight_hub_sdk::GetCustomizedFlightAreasParams& request_params, FHSDK_CALLBACK_PARAMETER(GetCustomizedFlightAreasCallback)) {
         $self->getCustomizedFlightAreas(request_params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::GetFlightAreasResults& result) {
             if (callback) {
                 callback->onGetCustomizedFlightAreas(err, result);
-                //delete callback;
+                //FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [自定义飞行区域] 更新自定义飞行区域;
-    void updateCustomizedFlightAreasWrapper(const flight_hub_sdk::UpdateCustomizedFlightAreasParams& request_params, UpdateCustomizedFlightAreasCallback* callback) {
+    void updateCustomizedFlightAreasWrapper(const flight_hub_sdk::UpdateCustomizedFlightAreasParams& request_params, FHSDK_CALLBACK_PARAMETER(UpdateCustomizedFlightAreasCallback)) {
         $self->updateCustomizedFlightAreas(request_params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::UpdateFlightAreasResults& result) {
             if (callback) {
                 callback->onUpdateCustomizedFlightAreas(err, result);
-                //delete callback;
+                //FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [自定义飞行区域] 删除自定义飞行区域;
-    void deleteCustomizedFlightAreasWrapper(const std::string& flight_area_id, ResultCallbackWithError* callback) {
+    void deleteCustomizedFlightAreasWrapper(const std::string& flight_area_id, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->deleteCustomizedFlightAreas(flight_area_id, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                //delete callback;
+                //FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [自定义飞行区域] 同步自定义飞行区域;
-    void syncCustomizedFlightAreasWrapper(const std::vector<std::string>& device_sns, SyncCustomizedFlightAreasCallback* callback) {
+    void syncCustomizedFlightAreasWrapper(const std::vector<std::string>& device_sns, FHSDK_CALLBACK_PARAMETER(SyncCustomizedFlightAreasCallback)) {
         $self->syncCustomizedFlightAreas(device_sns, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::SyncFlightAreasResults& result) {
             if (callback) {
                 callback->onSyncCustomizedFlightAreas(err, result);
-                //delete callback;
+                //FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [自定义飞行区域] 获取自定义飞行区域同步状态;
-    void getFlightAreasSyncStatusWrapper(const std::vector<std::string>& device_sns, GetFlightAreasSyncStatusCallback* callback) {
+    void getFlightAreasSyncStatusWrapper(const std::vector<std::string>& device_sns, FHSDK_CALLBACK_PARAMETER(GetFlightAreasSyncStatusCallback)) {
         $self->getFlightAreasSyncStatus(device_sns, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::GetAreasSyncStatusResults& result) {
             if (callback) {
                 callback->onGetFlightAreasSyncStatus(err, result);
-                //delete callback;
+                //FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [自定义飞行区] 获取飞行区文件下载地址;
-    void getFlightAreasUrlWrapper(GetFlightAreasUrlCallback* callback) {
+    void getFlightAreasUrlWrapper(FHSDK_CALLBACK_PARAMETER(GetFlightAreasUrlCallback)) {
         $self->getFlightAreasUrl([callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::GetFlightAreasUrlResults& result) {
             if (callback) {
                 callback->onGetFlightAreasUrl(err, result);
-                //delete callback;
+                //FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [地形障碍物] 查询离线地图模型信息;
-    void getOfflineMapsModelInfoWrapper(GetOfflineMapsModelInfoCallback* callback) {
+    void getOfflineMapsModelInfoWrapper(FHSDK_CALLBACK_PARAMETER(GetOfflineMapsModelInfoCallback)) {
         $self->getOfflineMapsModelInfo([callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::GetOfflineMapsModelInfoResults& result) {
             if (callback) {
                 callback->onGetOfflineMapsModelInfo(err, result);
-                //delete callback;
+                //FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [地形障碍物] 创建/更新离线地图模型;
-    void updateOfflineMapsModelInfoWrapper(const flight_hub_sdk::UpdateOfflineMapsParams& request_params, ResultCallbackWithError* callback) {
+    void updateOfflineMapsModelInfoWrapper(const flight_hub_sdk::UpdateOfflineMapsParams& request_params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->updateOfflineMapsModelInfo(request_params, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                //delete callback;
+                //FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [地形障碍物] 取消离线地图生成;
-    void cancelOfflineMapsModelInfoWrapper(ResultCallbackWithError* callback) {
+    void cancelOfflineMapsModelInfoWrapper(FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->cancelOfflineMapsModelInfo([callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                //delete callback;
+                //FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [地形障碍物] 修改离线地图(开启/关闭);
-    void setOfflineMapsWrapper(const flight_hub_sdk::SetOfflineMapsParams& request_params, ResultCallbackWithError* callback) {
+    void setOfflineMapsWrapper(const flight_hub_sdk::SetOfflineMapsParams& request_params, FHSDK_CALLBACK_PARAMETER(ResultCallbackWithError)) {
         $self->setOfflineMaps(request_params, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onResult(err);
-                //delete callback;
+                //FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [地形障碍物] 离线地图同步;
-    void syncOfflineMapsWrapper(const std::vector<std::string>& device_sns, SyncOfflineMapsCallback* callback) {
+    void syncOfflineMapsWrapper(const std::vector<std::string>& device_sns, FHSDK_CALLBACK_PARAMETER(SyncOfflineMapsCallback)) {
         $self->syncOfflineMaps(device_sns, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::OfflineMapsSyncResults& result) {
             if (callback) {
                 callback->onSyncOfflineMaps(err, result);
-                //delete callback;
+                //FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [地形障碍物] 获取设备同步状态;
-    void getOfflineMapsSyncStatusWrapper(const std::vector<std::string>& device_sns, GetOfflineMapsSyncStatusCallback* callback) {
+    void getOfflineMapsSyncStatusWrapper(const std::vector<std::string>& device_sns, FHSDK_CALLBACK_PARAMETER(GetOfflineMapsSyncStatusCallback)) {
         $self->getOfflineMapsSyncStatus(device_sns, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::GetOfflineMapsSyncStatusResults& result) {
             if (callback) {
                 callback->onGetOfflineMapsSyncStatus(err, result);
-                //delete callback;
+                //FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void getUnlockLicenseListWrapper(flight_hub_sdk::QueryDeviceUnlockLicenseListParam const &param,GetUnlockLicenseListCallback *callback) {
+    void getUnlockLicenseListWrapper(flight_hub_sdk::QueryDeviceUnlockLicenseListParam const &param,FHSDK_CALLBACK_PARAMETER(GetUnlockLicenseListCallback)) {
         $self->getUnlockLicenseList(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::QueryDeviceUnlockLicenseListResult result) {
             if (callback) {
                 callback->onGetUnlockLicenseList(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void switchUnlockLicenseWrapper(flight_hub_sdk::SwitchUnlockLicenseParam const &param,SwitchUnlockLicenseCallback *callback) {
+    void switchUnlockLicenseWrapper(flight_hub_sdk::SwitchUnlockLicenseParam const &param,FHSDK_CALLBACK_PARAMETER(SwitchUnlockLicenseCallback)) {
         $self->switchUnlockLicense(param, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onSwitchUnlockLicense(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void checkUnlockLicenseWrapper(flight_hub_sdk::CheckUnlockLicenseParam const &param,CheckUnlockLicenseCallback *callback) {
+    void checkUnlockLicenseWrapper(flight_hub_sdk::CheckUnlockLicenseParam const &param,FHSDK_CALLBACK_PARAMETER(CheckUnlockLicenseCallback)) {
         $self->checkUnlockLicense(param, [callback](flight_hub_sdk::FlightHubError err, flight_hub_sdk::CheckUnlockLicenseResult result) {
             if (callback) {
                 callback->onCheckUnlockLicense(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void submitUnlockLicenseWrapper(flight_hub_sdk::ImportUnlockLicenseParam const &param,SubmitUnlockLicenseCallback *callback) {
+    void submitUnlockLicenseWrapper(flight_hub_sdk::ImportUnlockLicenseParam const &param,FHSDK_CALLBACK_PARAMETER(SubmitUnlockLicenseCallback)) {
         $self->submitUnlockLicense(param, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onSubmitUnlockLicense(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void clearDeviceUnlockLicenseWrapper(std::string const &device_sn,ClearDeviceUnlockLicenseCallback *callback) {
+    void clearDeviceUnlockLicenseWrapper(std::string const &device_sn,FHSDK_CALLBACK_PARAMETER(ClearDeviceUnlockLicenseCallback)) {
         $self->clearDeviceUnlockLicense(device_sn, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onClearDeviceUnlockLicense(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
-    void uploadUnlockLicenseFileWrapper(std::string const &file_path,UploadUnlockLicenseFileCallback *callback) {
+    void uploadUnlockLicenseFileWrapper(std::string const &file_path,FHSDK_CALLBACK_PARAMETER(UploadUnlockLicenseFileCallback)) {
         $self->uploadUnlockLicenseFile(file_path, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::UploadUnlockLicenseFileResult& result) {
             if (callback) {
                 callback->onUploadUnlockLicenseFile(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // EA340 消息推送补全（Phase D）: 飞行器离线地图开关, 需要 drone_sn 筛选订阅目标;
-    int listenDroneOfflineMapEnableWrapper(std::string const &drone_sn, DroneOfflineMapEnableCallback* callback) {
-        std::shared_ptr<DroneOfflineMapEnableCallback> cb(callback);
+    int listenDroneOfflineMapEnableWrapper(std::string const &drone_sn, FHSDK_CALLBACK_PARAMETER(DroneOfflineMapEnableCallback)) {
+        FHSDK_SHARE_CALLBACK(DroneOfflineMapEnableCallback);
         return $self->listenDroneOfflineMapEnable(drone_sn, [cb](const flight_hub_sdk::DroneOfflineMapEnable& msg) {
-            cb->onDroneOfflineMapEnable(msg);
+            if (cb) cb->onDroneOfflineMapEnable(msg);
         });
     }
 
@@ -9773,21 +9795,21 @@ using namespace flight_hub_sdk;
 
 %extend flight_hub_sdk::IFlightTaskRecordModule {
     // [ATC 空管服务] 导出飞行记录;
-    void exportFlightRecordsWrapper(const std::string& user_id, const flight_hub_sdk::ExportFlightRecordsRequestParams& params, ExportFlightRecordsCallback* callback) {
+    void exportFlightRecordsWrapper(const std::string& user_id, const flight_hub_sdk::ExportFlightRecordsRequestParams& params, FHSDK_CALLBACK_PARAMETER(ExportFlightRecordsCallback)) {
         $self->exportFlightRecords(user_id, params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::ExportFlightRecordsResults& results) {
             if (callback) {
                 callback->onExportFlightRecords(err, results);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [ATC 空管服务] 查询导出进度;
-    void getExportFlightRecordsProgressWrapper(const flight_hub_sdk::GetExportFlightRecordsProgressParams& params, GetExportFlightRecordsProgressCallback* callback) {
+    void getExportFlightRecordsProgressWrapper(const flight_hub_sdk::GetExportFlightRecordsProgressParams& params, FHSDK_CALLBACK_PARAMETER(GetExportFlightRecordsProgressCallback)) {
         $self->getExportFlightRecordsProgress(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::GetExportFlightRecordsProgressResults& results) {
             if (callback) {
                 callback->onGetExportFlightRecordsProgress(err, results);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
@@ -9795,41 +9817,41 @@ using namespace flight_hub_sdk;
 
 %extend flight_hub_sdk::IMaintenanceManagementModule {
     // [报修管理] 获取设备报修配置;
-    void getRepairConfigsWrapper(const flight_hub_sdk::GetDeviceRepairConfigParams& params, GetRepairConfigsCallback* callback) {
+    void getRepairConfigsWrapper(const flight_hub_sdk::GetDeviceRepairConfigParams& params, FHSDK_CALLBACK_PARAMETER(GetRepairConfigsCallback)) {
         $self->getRepairConfigs(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::DeviceRepairConfigResults& result) {
             if (callback) {
                 callback->onGetRepairConfigs(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [报修管理] 创建报修订单;
-    void createMaintenanceOrderWrapper(const flight_hub_sdk::CreateMaintenanceOrderParams& params, CreateMaintenanceOrderCallback* callback) {
+    void createMaintenanceOrderWrapper(const flight_hub_sdk::CreateMaintenanceOrderParams& params, FHSDK_CALLBACK_PARAMETER(CreateMaintenanceOrderCallback)) {
         $self->createMaintenanceOrder(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::CreateMaintenanceOrderResults& result) {
             if (callback) {
                 callback->onCreateMaintenanceOrder(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [报修管理] 查询单个报修订单详情;
-    void getMaintenanceOrderDetailWrapper(const std::string& order_number, GetMaintenanceOrderDetailCallback* callback) {
+    void getMaintenanceOrderDetailWrapper(const std::string& order_number, FHSDK_CALLBACK_PARAMETER(GetMaintenanceOrderDetailCallback)) {
         $self->getMaintenanceOrderDetail(order_number, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::MaintenanceOrderDetailResults& result) {
             if (callback) {
                 callback->onGetMaintenanceOrderDetail(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [报修管理] 分页查询报修订单列表;
-    void getMaintenanceOrdersListWrapper(const flight_hub_sdk::GetMaintenanceOrdersListParams& params, GetMaintenanceOrdersListCallback* callback) {
+    void getMaintenanceOrdersListWrapper(const flight_hub_sdk::GetMaintenanceOrdersListParams& params, FHSDK_CALLBACK_PARAMETER(GetMaintenanceOrdersListCallback)) {
         $self->getMaintenanceOrdersList(params, [callback](flight_hub_sdk::FlightHubError err, const flight_hub_sdk::MaintenanceOrdersListResults& result) {
             if (callback) {
                 callback->onGetMaintenanceOrdersList(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
@@ -9839,41 +9861,41 @@ using namespace flight_hub_sdk;
 
 %extend flight_hub_sdk::IDiagnosisManagementModule {
     // [定损管理] 下发定损指令;
-    void createSelfDiagnosisWrapper(const flight_hub_sdk::CreateSelfDiagnosisParams& params, CreateSelfDiagnosisCallback* callback) {
+    void createSelfDiagnosisWrapper(const flight_hub_sdk::CreateSelfDiagnosisParams& params, FHSDK_CALLBACK_PARAMETER(CreateSelfDiagnosisCallback)) {
         $self->createSelfDiagnosis(params, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onCreateSelfDiagnosis(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [定损管理] 定损操作(取消/删除);
-    void operateSelfDiagnosisWrapper(const flight_hub_sdk::OperateSelfDiagnosisParams& params, OperateSelfDiagnosisCallback* callback) {
+    void operateSelfDiagnosisWrapper(const flight_hub_sdk::OperateSelfDiagnosisParams& params, FHSDK_CALLBACK_PARAMETER(OperateSelfDiagnosisCallback)) {
         $self->operateSelfDiagnosis(params, [callback](flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onOperateSelfDiagnosis(err);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [定损管理] 查询单条定损报告详情;
-    void getSelfDiagnosisReportWrapper(const std::string& report_uuid, GetSelfDiagnosisReportCallback* callback) {
+    void getSelfDiagnosisReportWrapper(const std::string& report_uuid, FHSDK_CALLBACK_PARAMETER(GetSelfDiagnosisReportCallback)) {
         $self->getSelfDiagnosisReport(report_uuid, [callback](const flight_hub_sdk::GetSelfDiagnosisReportResults& result, flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onGetSelfDiagnosisReport(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
 
     // [定损管理] 查询定损报告列表;
-    void getSelfDiagnosisReportListWrapper(const flight_hub_sdk::GetSelfDiagnosisReportListParams& params, GetSelfDiagnosisReportListCallback* callback) {
+    void getSelfDiagnosisReportListWrapper(const flight_hub_sdk::GetSelfDiagnosisReportListParams& params, FHSDK_CALLBACK_PARAMETER(GetSelfDiagnosisReportListCallback)) {
         $self->getSelfDiagnosisReportList(params, [callback](const flight_hub_sdk::GetSelfDiagnosisReportListResults& result, flight_hub_sdk::FlightHubError err) {
             if (callback) {
                 callback->onGetSelfDiagnosisReportList(err, result);
-                delete callback;
+                FHSDK_DELETE_CALLBACK();
             }
         });
     }
