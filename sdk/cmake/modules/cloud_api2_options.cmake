@@ -5,6 +5,7 @@ option(ENABLE_CCACHE "Enable ccache if installed" ON)
 option(ASAN_ENABLE "AddressSanitizer (debug)" OFF)
 option(FH_SDK_DEBUG_SYMBOLS "Debug symbols + frame pointers" ON)
 option(ENABLE_JAVA "Build JNI / SWIG Java binding" ON)
+option(ENABLE_CSHARP "Build .NET 8 binding (Linux x64)" OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Debug or Release" FORCE)
